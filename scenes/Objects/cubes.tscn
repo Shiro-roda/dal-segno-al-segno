@@ -1,0 +1,17 @@
+[gd_scene load_steps=5 format=3 uid="uid://ehp2kr08xka1"]
+
+[ext_resource type="PackedScene" uid="uid://b2q5wtfvu37mj" path="res://assets/glb/Cubes.glb" id="1_614sr"]
+[ext_resource type="Shader" uid="uid://kxwu864eola6" path="res://scripts/Shaders/default_object.gdshader" id="2_mr4m7"]
+[ext_resource type="Texture2D" uid="uid://dow7nmdog0rar" path="res://assets/glb/Cubes_Tileset1.png" id="3_2klt6"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_4cvvx"]
+render_priority = 0
+shader = ExtResource("2_mr4m7")
+shader_parameter/color_texture = ExtResource("3_2klt6")
+shader_parameter/vertex_wobble = 0.6499999854712
+shader_parameter/affine_mapping = 1.0
+
+[node name="Cubes" instance=ExtResource("1_614sr")]
+
+[node name="cube" parent="." index="0"]
+material_override = SubResource("ShaderMaterial_4cvvx")

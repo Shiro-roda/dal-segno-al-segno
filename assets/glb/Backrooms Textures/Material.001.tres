@@ -1,0 +1,9 @@
+[gd_resource type="StandardMaterial3D" load_steps=2 format=3 uid="uid://cajhv4ldyrp1l"]
+
+[ext_resource type="Texture2D" uid="uid://dow7nmdog0rar" path="res://assets/glb/Cubes_Tileset1.png" id="1_pp1a6"]
+
+[resource]
+resource_name = "Material.001"
+cull_mode = 2
+albedo_texture = ExtResource("1_pp1a6")
+texture_filter = 2

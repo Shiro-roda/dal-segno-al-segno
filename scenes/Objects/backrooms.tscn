@@ -1,0 +1,5 @@
+[gd_scene load_steps=2 format=3 uid="uid://74p2hefwwrab"]
+
+[ext_resource type="PackedScene" uid="uid://bohcau24yh2wc" path="res://assets/glb/Backrooms.glb" id="1_2rl5k"]
+
+[node name="Backrooms" instance=ExtResource("1_2rl5k")]

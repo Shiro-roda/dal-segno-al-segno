@@ -1,0 +1,5 @@
+[gd_scene load_steps=2 format=3 uid="uid://c7xf6lw4r2ki6"]
+
+[ext_resource type="PackedScene" uid="uid://bjqwwwxr63vrg" path="res://assets/glb/Carcosa2.glb" id="1_jfnmt"]
+
+[node name="Carcosa2" instance=ExtResource("1_jfnmt")]
