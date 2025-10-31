@@ -6,7 +6,7 @@ const JUMP_VELOCITY = 8.0
 var has_jumped = false
 var last_direction = 0
 @onready var ken_model: Node3D = $ken_model_test9
-@onready var flashlight: SpotLight3D = $Flashlight
+@onready var flashlight: SpotLight3D = $ken_model_test9/Kendall_rig_001/Skeleton3D/Head_001/Flashlight
 
 
 var current_channel := 0 # 0=C, 1=M, 2=Y

@@ -1,6 +1,7 @@
-[gd_scene load_steps=33 format=4 uid="uid://6kmv2ko6w15m"]
+[gd_scene load_steps=34 format=4 uid="uid://6kmv2ko6w15m"]
 
 [ext_resource type="Script" uid="uid://d2keok0ggm4q7" path="res://scripts/Characters/ken_model.gd" id="1_bcqfp"]
+[ext_resource type="Script" uid="uid://cavw6svwq4uq4" path="res://scenes/Characters/flashlight.gd" id="2_2ukw1"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f1bl2"]
 cull_mode = 2
@@ -7659,6 +7660,22 @@ skin = SubResource("Skin_t3pg5")
 [node name="Head_001" type="MeshInstance3D" parent="Kendall_rig_001/Skeleton3D"]
 mesh = SubResource("ArrayMesh_t7kha")
 skin = SubResource("Skin_t3pg5")
+
+[node name="Flashlight" type="SpotLight3D" parent="Kendall_rig_001/Skeleton3D/Head_001"]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, 1.6252351, 0.3950249)
+light_energy = 3.0
+light_indirect_energy = 0.0
+light_volumetric_fog_energy = 26.32
+light_negative = true
+light_specular = 9.625
+shadow_enabled = true
+shadow_bias = 5.795
+shadow_transmittance_bias = 9.94
+shadow_opacity = 0.0
+shadow_blur = 0.0
+spot_range = 9.79947
+spot_angle = 63.021217
+script = ExtResource("2_2ukw1")
 
 [node name="Leg_001" type="MeshInstance3D" parent="Kendall_rig_001/Skeleton3D"]
 mesh = SubResource("ArrayMesh_lp7wy")
