@@ -5,8 +5,8 @@ const SPEED = 5.0
 const JUMP_VELOCITY = 8.0
 var has_jumped = false
 var last_direction = 0
-@onready var ken_model: Node3D = $ken_model_test9
-@onready var flashlight: SpotLight3D = $ken_model_test9/Kendall_rig_001/Skeleton3D/Head_001/Flashlight
+@onready var ken_model: Node3D = $ken_model_test11
+@onready var flashlight: SpotLight3D = $ken_model_test11/Kendall_rig_001/Skeleton3D/Head_001/Flashlight
 
 
 var current_channel := 0 # 0=C, 1=M, 2=Y
@@ -68,7 +68,7 @@ func _physics_process(delta: float) -> void:
 	
 	if Input.is_action_just_pressed("close_your_eyes"):
 		if flashlight.light_energy == 0.0:
-			flashlight.light_energy = 3.0
+			flashlight.light_energy = 40.0
 		else:
 			flashlight.light_energy = 0.0
 

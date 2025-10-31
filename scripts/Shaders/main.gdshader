@@ -8,14 +8,14 @@ uniform int vision_mode = 0;        // 0=C,1=M,2=Y
 uniform vec3 flash_pos = vec3(0.0);
 uniform vec3 flash_dir = vec3(0.0, 0.0, -1.0);
 uniform float flash_angle = 0.5;   // radians
-uniform float hue_boost = 10.0;     // resonance multiplier
+uniform float hue_boost = 100.0;     // resonance multiplier
 uniform float cone_range = 20.0;   // distance falloff range (meters)
-uniform float edge_softness = 0.05; // small for hard edge
+uniform float edge_softness = 0.01; // small for hard edge
 
 vec3 absorb(vec3 c, int mode){
     if(mode==0){ c.g = 0.0; c.b = 0.0; }      // cyan -> red
-    else if(mode==1){ c.r = 0.0; c.g = 0.0; } // magenta -> blue
-    else if(mode==2){ c.r = 0.0; c.b = 0.0; } // yellow -> green
+    else if(mode==1){ c.r = 0.0; c.g = 0.0; } // yellow -> blue
+    else if(mode==2){ c.r = 0.0; c.b = 0.0; } // magenta -> green
     return c;
 }
 
@@ -52,11 +52,8 @@ void fragment(){
     float cam_side = dot(flash_pos - cam_pos, world_pos - cam_pos);
     float flash_between = step(0.0, cam_side); // 1 when flash is on the same side of the world_pos as camera (simple test)
 
-    // distance falloff for volumetric feel
-    float dist_falloff = clamp(1.0 - (dist / cone_range), 0.0, 1.0);
-
     // final influence mask
-    float influence = inside * flash_between * dist_falloff;
+    float influence = inside * flash_between;
 
     // build filtered/resonant color
     vec3 filtered = absorb(col, vision_mode);

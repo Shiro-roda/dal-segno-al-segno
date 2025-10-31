@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Dal Segno al Segno"
-run/main_scene="uid://b07y2n7t5etiw"
+run/main_scene="uid://djg2vd8clkqy5"
 config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="res://icon.svg"
 
