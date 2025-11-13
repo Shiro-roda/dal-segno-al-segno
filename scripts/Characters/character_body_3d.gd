@@ -7,10 +7,22 @@ var has_jumped = false
 var last_direction = 0
 @onready var ken_model: Node3D = $ken_model_test11
 @onready var flashlight: SpotLight3D = $ken_model_test11/Kendall_rig_001/Skeleton3D/Head_001/Flashlight
+@onready var red: AudioStreamPlayer3D = $"../Level/Red"
+@onready var green: AudioStreamPlayer3D = $"../Level/Green"
+var color = 0
+@onready var cry_of_the_red_dragon: AudioStreamPlayer3D = $"../Level/Cry of the Red Dragon"
+@onready var footstep: AudioStreamPlayer3D = $Footstep
+@onready var run: AudioStreamPlayer3D = $Run
 
 
-var current_channel := 0 # 0=C, 1=M, 2=Y
+
+@export var current_channel := 0 # 0=C, 1=M, 2=Y
 const CHANNEL_COLORS = [Color.CYAN, Color.MAGENTA, Color.YELLOW]
+
+func _ready() -> void:
+	flashlight.light_color = CHANNEL_COLORS[current_channel]
+
+
 
 func _physics_process(delta: float) -> void:
 	# Add the gravity.
@@ -61,9 +73,13 @@ func _physics_process(delta: float) -> void:
 		if (is_on_floor() == true) and not ken_model.anim.current_animation == "Jump2":
 			ken_model.play_anim("Idle2")
 	
+	
 	last_direction = direction
 	
 	if Input.is_action_just_pressed("eye_sore_input"):
+		color +=1
+		if color == 3:
+			color = 0
 		lens_change(current_channel)
 	
 	if Input.is_action_just_pressed("close_your_eyes"):
@@ -71,6 +87,16 @@ func _physics_process(delta: float) -> void:
 			flashlight.light_energy = 40.0
 		else:
 			flashlight.light_energy = 0.0
+	if ((color == 1) or color == 2) and flashlight.light_energy > 0:
+		red.volume_db = -100.0
+	elif (color == 0) or flashlight.light_energy == 0:
+		red.volume_db = 0.0
+	if ((color == 0) or color == 2) and flashlight.light_energy > 0:
+		green.volume_db = -100.0
+	elif (color == 1) or flashlight.light_energy == 0:
+		green.volume_db = 0.0
+	
+	sfx()
 
 	move_and_slide()
 
@@ -81,6 +107,32 @@ func lens_change(int):
 	print(current_channel)
 	RenderingServer.global_shader_parameter_set("vision_mode", current_channel)
 
+func sfx():
+	if ken_model.anim.current_animation == "Action_003":
+		if footstep.get_playback_position() >= 4.0:
+			footstep.stop()
+		if not footstep.playing:
+			footstep.play()
+	else:
+		footstep.stop()
+	if ken_model.anim.current_animation == "Action_004":
+		if run.get_playback_position() >= 4.0:
+			run.stop()
+		if not run.playing:
+			run.play()
+	else:
+		run.stop()
+
 func _on_stage_enter_body_entered(body: Node3D) -> void:
 	print("Setting Stage!")
-	get_tree().change_scene_to_file("res://scenes/main.tscn")
+	get_tree().change_scene_to_file("res://scenes/Maps/yellow_gate.tscn")
+
+	
+
+
+
+
+
+func _on_hell_hole_body_entered(body: Node3D) -> void:
+	if body == self:
+		get_tree().change_scene_to_file("res://scenes/Maps/white_end.tscn")

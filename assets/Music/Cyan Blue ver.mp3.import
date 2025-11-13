@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://d00n2f7aa86y8"
+path="res://.godot/imported/Cyan Blue ver.mp3-f40630ce6a4167ca36fd2d9d6d2ab1f8.mp3str"
+
+[deps]
+
+source_file="res://assets/Music/Cyan Blue ver.mp3"
+dest_files=["res://.godot/imported/Cyan Blue ver.mp3-f40630ce6a4167ca36fd2d9d6d2ab1f8.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

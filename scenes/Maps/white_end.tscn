@@ -1,22 +1,22 @@
-[gd_scene load_steps=24 format=3 uid="uid://b3ga3dwpbbift"]
+[gd_scene load_steps=25 format=3 uid="uid://ba0mh4h83vgv6"]
 
-[ext_resource type="Shader" uid="uid://cow4hovotygtk" path="res://scripts/Shaders/main.gdshader" id="1_42w07"]
-[ext_resource type="Shader" uid="uid://c7dhsbe1s7mgu" path="res://scripts/Shaders/post_processing.gdshader" id="1_873xd"]
-[ext_resource type="Script" uid="uid://bd046eokvcnu2" path="res://addons/phantom_camera/scripts/phantom_camera_host/phantom_camera_host.gd" id="2_42w07"]
-[ext_resource type="Script" uid="uid://csjccrhj5wnx7" path="res://addons/phantom_camera/scripts/phantom_camera/phantom_camera_3d.gd" id="3_ssq04"]
-[ext_resource type="Script" uid="uid://8umksf8e80fw" path="res://addons/phantom_camera/scripts/resources/tween_resource.gd" id="4_u3lff"]
-[ext_resource type="Script" uid="uid://b8hhnqsugykly" path="res://addons/phantom_camera/scripts/resources/camera_3d_resource.gd" id="5_3qhpo"]
-[ext_resource type="PackedScene" uid="uid://6giatmcbhmpp" path="res://scenes/Characters/player.tscn" id="6_8rc2h"]
-[ext_resource type="AudioStream" uid="uid://ccqv1qe3fu0yo" path="res://assets/Music/Cloudwalk(neededit).wav" id="7_ssq04"]
-[ext_resource type="MeshLibrary" uid="uid://bmpxa1n2vxmv2" path="res://assets/mesh_library/onyx_mesh.tres" id="7_yusxf"]
-[ext_resource type="PackedScene" uid="uid://c7xf6lw4r2ki6" path="res://scenes/Objects/carcosa_2.tscn" id="8_tm6lv"]
-[ext_resource type="Script" uid="uid://bfddby35j3amh" path="res://scripts/Events/stage_enter.gd" id="9_37tiq"]
+[ext_resource type="Shader" uid="uid://cow4hovotygtk" path="res://scripts/Shaders/main.gdshader" id="1_yppfe"]
+[ext_resource type="Shader" uid="uid://c7dhsbe1s7mgu" path="res://scripts/Shaders/post_processing.gdshader" id="2_eexkp"]
+[ext_resource type="Script" uid="uid://bd046eokvcnu2" path="res://addons/phantom_camera/scripts/phantom_camera_host/phantom_camera_host.gd" id="3_rjw3r"]
+[ext_resource type="Script" uid="uid://csjccrhj5wnx7" path="res://addons/phantom_camera/scripts/phantom_camera/phantom_camera_3d.gd" id="4_jjfog"]
+[ext_resource type="Script" uid="uid://8umksf8e80fw" path="res://addons/phantom_camera/scripts/resources/tween_resource.gd" id="5_8gvw4"]
+[ext_resource type="Script" uid="uid://b8hhnqsugykly" path="res://addons/phantom_camera/scripts/resources/camera_3d_resource.gd" id="6_ra2wp"]
+[ext_resource type="PackedScene" uid="uid://6giatmcbhmpp" path="res://scenes/Characters/player.tscn" id="7_n258p"]
+[ext_resource type="MeshLibrary" uid="uid://bmpxa1n2vxmv2" path="res://assets/mesh_library/onyx_mesh.tres" id="9_acidl"]
+[ext_resource type="AudioStream" uid="uid://c7a6odeaessmq" path="res://assets/Music/Yellow End ver.mp3" id="9_eexkp"]
+[ext_resource type="PackedScene" uid="uid://c7xf6lw4r2ki6" path="res://scenes/Objects/carcosa_2.tscn" id="10_0my58"]
+[ext_resource type="Script" uid="uid://bfddby35j3amh" path="res://scripts/Events/stage_enter.gd" id="11_rropi"]
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_eb6dy"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ssq04"]
 render_priority = 0
-shader = ExtResource("1_42w07")
+shader = ExtResource("1_yppfe")
 shader_parameter/vision_mode = 0
 shader_parameter/flash_pos = Vector3(0, 0, 0)
 shader_parameter/flash_dir = Vector3(0, 0, -1)
@@ -28,7 +28,7 @@ shader_parameter/edge_softness = 0.01
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_tipki"]
 render_priority = 0
 next_pass = SubResource("ShaderMaterial_ssq04")
-shader = ExtResource("1_873xd")
+shader = ExtResource("2_eexkp")
 shader_parameter/dither_amount = 0.5
 
 [sub_resource type="QuadMesh" id="QuadMesh_85g3d"]
@@ -36,12 +36,26 @@ flip_faces = true
 size = Vector2(2, 2)
 
 [sub_resource type="Resource" id="Resource_jkv2x"]
-script = ExtResource("4_u3lff")
+script = ExtResource("5_8gvw4")
 duration = 2.115
 
 [sub_resource type="Resource" id="Resource_jbj1t"]
-script = ExtResource("5_3qhpo")
+script = ExtResource("6_ra2wp")
 metadata/_custom_type_script = "uid://b8hhnqsugykly"
+
+[sub_resource type="GDScript" id="GDScript_yppfe"]
+script/source = "extends Node3D
+
+@onready var audio: AudioStreamPlayer3D = $\"../RunnerCam/AudioStreamPlayer3D\"
+
+# Called when the node enters the scene tree for the first time.
+
+
+# Called every frame. 'delta' is the elapsed time since the previous frame.
+func _process(delta: float) -> void:
+	if not audio.is_playing:
+		audio.play()
+"
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_jbnoc"]
 sky_horizon_color = Color(1, 1, 1, 1)
@@ -53,21 +67,16 @@ sky_material = SubResource("ProceduralSkyMaterial_jbnoc")
 [sub_resource type="Environment" id="Environment_0wfyh"]
 background_mode = 2
 sky = SubResource("Sky_jbnoc")
-ambient_light_color = Color(0.851769, 0.851769, 0.8517688, 1)
+ambient_light_color = Color(0.72464263, 0.7246426, 0.7246426, 1)
 ambient_light_sky_contribution = 0.05
 glow_enabled = true
 glow_blend_mode = 4
 glow_hdr_luminance_cap = 8.63
 fog_enabled = true
 fog_mode = 1
-fog_light_color = Color(1, 1, 1, 1)
-fog_density = 0.0
+fog_light_color = Color(0.95104617, 0.956587, 0.96490365, 1)
+fog_density = 0.0865
 fog_depth_begin = 30.0
-volumetric_fog_enabled = true
-volumetric_fog_density = 0.017
-volumetric_fog_emission = Color(1, 1, 1, 1)
-volumetric_fog_gi_inject = 4.65
-volumetric_fog_length = 23.25
 
 [sub_resource type="WorldBoundaryShape3D" id="WorldBoundaryShape3D_jbnoc"]
 
@@ -104,13 +113,19 @@ transform = Transform3D(0.99999976, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 0, 2
 [node name="PhantomCameraHost" type="Node" parent="Main/RunnerCam"]
 process_priority = 300
 process_physics_priority = 300
-script = ExtResource("2_42w07")
+script = ExtResource("3_rjw3r")
 metadata/_custom_type_script = "uid://bd046eokvcnu2"
+
+[node name="AudioStreamPlayer3D" type="AudioStreamPlayer3D" parent="Main/RunnerCam"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2, -10.000001)
+stream = ExtResource("9_eexkp")
+volume_db = -16.9
+autoplay = true
 
 [node name="PhantomCamera3D" type="Node3D" parent="Main" node_paths=PackedStringArray("follow_target")]
 transform = Transform3D(0.99999976, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 0, 2, 10.000001)
 top_level = true
-script = ExtResource("3_ssq04")
+script = ExtResource("4_jjfog")
 priority = 1
 follow_mode = 5
 follow_target = NodePath("../Player")
@@ -126,19 +141,20 @@ dead_zone_height = 0.195
 spring_length = 10.0
 metadata/_custom_type_script = "uid://csjccrhj5wnx7"
 
-[node name="Player" parent="Main" instance=ExtResource("6_8rc2h")]
+[node name="Player" parent="Main" instance=ExtResource("7_n258p")]
 
 [node name="Footstep" type="AudioStreamPlayer3D" parent="Main/Player"]
-stream = ExtResource("7_ssq04")
+visible = false
 volume_db = -15.643
 pitch_scale = 1.75
 
 [node name="Run" type="AudioStreamPlayer3D" parent="Main/Player"]
-stream = ExtResource("7_ssq04")
+visible = false
 volume_db = -19.395
-pitch_scale = 2.59
+pitch_scale = 2.9
 
 [node name="Level" type="Node3D" parent="Main"]
+script = SubResource("GDScript_yppfe")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="Main/Level"]
 environment = SubResource("Environment_0wfyh")
@@ -153,17 +169,17 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.32110667, 0)
 shape = SubResource("WorldBoundaryShape3D_jbnoc")
 
 [node name="Onyx" type="GridMap" parent="Main/Level"]
-mesh_library = ExtResource("7_yusxf")
+mesh_library = ExtResource("9_acidl")
 cell_scale = 2.0
 data = {
 "cells": PackedInt32Array(196618, 65528, 0, 786426, 65534, 1441792, 1310712, 65405, 655364, 3014686, 65405, 524292, 2162699, 65405, 524294, 2031627, 65405, 524295, 2228235, 65405, 524296, 65381, 65437, 655364, 851832, 65437, 524295, 982904, 65437, 524294, 1048440, 65437, 524296, 1834891, 65437, 524292, 4063091, 65334, 655364, 4849542, 65334, 524295, 4980614, 65334, 524294, 5046150, 65334, 524296, 5832601, 65334, 524292, 3997866, 65306, 655364, 4784317, 65306, 524295, 4915389, 65306, 524294, 4980925, 65306, 524296, 5767376, 65306, 524292, 7602071, 65283, 655364, 8388522, 65283, 524295, 8519594, 65283, 524294, 8585130, 65283, 524296, 9371581, 65283, 524292, 2293853, 64962, 655364, 3080304, 64962, 524295, 3211376, 64962, 524294, 3276912, 64962, 524296, 4063363, 64962, 524292, 3931513, 64990, 655364, 4717964, 64990, 524295, 4849036, 64990, 524294, 4914572, 64990, 524296, 5701023, 64990, 524292, 7995714, 64524, 655364, 8782165, 64524, 524295, 8913237, 64524, 524294, 8978773, 64524, 524296, 9765224, 64524, 524292, 12648083, 64561, 655364, 13434534, 64561, 524295, 13565606, 64561, 524294, 13631142, 64561, 524296, 14417593, 64561, 524292, 14614175, 65195, 2, 13762478, 65207, 2, 10813222, 65051, 2, 10091855, 65015, 2, 11468244, 64740, 2, 14811001, 64739, 2, 15269310, 64606, 2, 14352075, 64842, 2, 15859442, 64864, 0, 11730473, 64669, 0, 9043876, 64328, 0, 8978488, 64660, 0, 8978484, 64659, 0, 8978481, 64659, 0, 11141325, 64773, 0, 11141325, 64775, 0, 6750395, 64249, 0, 10157958, 64860, 0, 7012631, 64915, 0, 7077815, 64442, 0, 10879013, 64298, 0, 10879129, 64520, 0, 12779637, 65148, 1, 10878926, 65233, 1, 11927531, 64913, 3, 12517536, 64988, 3, 10616677, 65083, 3, 10551358, 65167, 262147, 10551541, 64387, 262147, 10616546, 64537, 262147, 2883511, 65429, 262147, 2818075, 65455, 786435, 6160599, 65420, 786435, 131045, 65361, 524290, 3473514, 65248, 262153, 1572698, 65212, 262153, 327666, 65446, 1310722, 524274, 65446, 1441794, 1245170, 65446, 1310722, 1507314, 65446, 1441794, 2228210, 65446, 1310722, 196641, 65511, 1310722, 393249, 65511, 1441794, 1114145, 65511, 1310722, 1376289, 65511, 1441794, 2097185, 65511, 1310722, 2359329, 65511, 1441794, 3080225, 65511, 1310722, 3342369, 65511, 1441794, 4063265, 65511, 1310722, 4259873, 65511, 1441794, -982917, 65353, 0, -982915, 65350, 1, -982894, 65336, 1310722, -786286, 65336, 1441794, -65390, 65336, 1310722, 196754, 65336, 1441794, 917650, 65336, 1310722, 1179794, 65336, 1441794, 1900690, 65336, 1310722, 2162834, 65336, 1441794, 2883730, 65336, 1310722, 3080338, 65336, 1441794, 196622, 65530, 1, 655312, 65517, 1310721, 786384, 65517, 1441793, 524314, 65470, 1441793, 393242, 65470, 1310721, 1179744, 65379, 1441794, 327607, 65409, 1441794, 1769559, 65402, 1441792, 2424723, 65473, 1441792, 3801030, 65236, 1441792, 5374073, 65176, 1441792, 4849497, 65129, 1441792, 4521988, 65026, 1441792, 4521988, 65025, 1441792, 8060883, 64764, 1441792, 8388907, 64661, 1441792, 6422848, 65049, 1441794, 9044446, 64739, 1441794, 27655679, 64580, 1048578, 23264694, 64771, 1048577, 23068130, 64700, 1048576, 21823035, 64707, 1048576, 19725718, 64856, 1048576, 18022045, 64785, 1048576, 20643686, 64275, 1048576, 17956403, 64189, 1048576, 17956410, 64325, 1048576, 19529653, 64411, 1048576, 19070540, 64724, 1048576, 36110354, 64542, 1048577, 35651505, 64318, 1048577, 34799475, 64305, 1048577, 34340676, 64264, 1048577, 33816356, 64380, 1048577, 32178134, 64351, 1048577, 30605160, 64298, 1048578, 29360042, 64362, 1048578, 28245615, 64367, 1048578, 29687588, 64641, 1048578, 33030451, 64648, 1048578, 31392119, 64625, 1048578, 30146760, 64489, 1048578, 35127507, 64519, 1048577, 34275686, 64511, 1048577, 30540015, 64404, 1048577, 30540021, 64570, 1048577, 31457626, 64633, 1048577, 26411237, 64566, 1048577, 26411144, 64477, 1048577, 23265281, 64416, 1048577, 19202196, 64443, 1048577, 17498466, 64552, 1048577, 20709650, 64527, 1048577, 19005039, 65229, 1048577, 15597248, 65095, 1048577, 13500062, 65362, 1048577, 11534055, 65424, 1048579, 10485485, 65292, 1245187, 7077643, 65390, 1179651, 3538596, 65371, 1179651, 7142986, 65199, 0, 6422144, 65145, 0, 5439196, 65138, 0, 3669626, 64968, 0, 40238446, 65279, 0, 38993331, 65262, 0, 34078157, 65230, 0, 32308682, 65304, 0, 27000204, 64889, 0, 31980917, 64716, 0, 31980738, 64864, 0, 23592045, 64813, 0, -523302, 0, 1441794, -195619, 0, 1441792, 66528, 0, 1441793, -64541, 0, 1441792, 197606, 0, 1441793, 66537, 0, 1441792, -195604, 0, 1441794, 132079, 0, 1441792, 394226, 0, 1441793, 263157, 0, 1441792, 525304, 0, 1441793, 394235, 0, 1441792, 1770493, 65532, 131076, 132094, 0, 1441794, 459777, 0, 1441792, 721924, 0, 1441793, 590855, 0, 1441792, 853002, 0, 1441793, 721933, 0, 1441792, 459792, 0, 1441794, 853008, 65532, 1507331, 918544, 65532, 1441795, 1059, 65532, 4)
 }
 metadata/_editor_floor_ = Vector3(0, -24, 0)
 
-[node name="Carcosa" parent="Main/Level" instance=ExtResource("8_tm6lv")]
+[node name="Carcosa" parent="Main/Level" instance=ExtResource("10_0my58")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1089.4543, -5.9608965, 0)
 
-[node name="Carcosa2" parent="Main/Level/Carcosa" instance=ExtResource("8_tm6lv")]
+[node name="Carcosa2" parent="Main/Level/Carcosa" instance=ExtResource("10_0my58")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1089.4543, 0, 0)
 
 [node name="Left Wall" type="StaticBody3D" parent="Main/Level"]
@@ -297,7 +313,7 @@ shape = SubResource("BoxShape3D_gcoep")
 
 [node name="StageEnter" type="Area3D" parent="Main/Level"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2074.5234, 26.034754, -11.741632)
-script = ExtResource("9_37tiq")
+script = ExtResource("11_rropi")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/StageEnter"]
 transform = Transform3D(-4.371136e-08, 0.9999995, 0, -0.9999995, -4.371136e-08, 0, 0, 0, 1, 6.7026367, 1.7514076, 5.097087)

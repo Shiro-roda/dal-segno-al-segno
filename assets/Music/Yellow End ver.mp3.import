@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://c7a6odeaessmq"
+path="res://.godot/imported/Yellow End ver.mp3-0e1429de34bde364142a5183994d215b.mp3str"
+
+[deps]
+
+source_file="res://assets/Music/Yellow End ver.mp3"
+dest_files=["res://.godot/imported/Yellow End ver.mp3-0e1429de34bde364142a5183994d215b.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

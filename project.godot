@@ -13,7 +13,7 @@ config_version=5
 config/name="Dal Segno al Segno"
 run/main_scene="uid://djg2vd8clkqy5"
 config/features=PackedStringArray("4.5", "Forward Plus")
-config/icon="res://icon.svg"
+config/icon="uid://c8se4h4c3ijek"
 
 [autoload]
 
@@ -28,8 +28,8 @@ layout/style_directory={}
 
 [display]
 
-window/size/viewport_width=1280
-window/size/viewport_height=920
+window/size/viewport_width=1400
+window/size/viewport_height=1050
 window/stretch/mode="viewport"
 
 [editor_plugins]
