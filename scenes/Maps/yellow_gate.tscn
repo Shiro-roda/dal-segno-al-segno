@@ -1,19 +1,20 @@
-[gd_scene load_steps=40 format=3 uid="uid://djg2vd8clkqy5"]
+[gd_scene load_steps=41 format=3 uid="uid://djg2vd8clkqy5"]
 
 [ext_resource type="Script" uid="uid://bd046eokvcnu2" path="res://addons/phantom_camera/scripts/phantom_camera_host/phantom_camera_host.gd" id="1_pwgpl"]
 [ext_resource type="Script" uid="uid://csjccrhj5wnx7" path="res://addons/phantom_camera/scripts/phantom_camera/phantom_camera_3d.gd" id="2_1nwnd"]
 [ext_resource type="Script" uid="uid://8umksf8e80fw" path="res://addons/phantom_camera/scripts/resources/tween_resource.gd" id="3_8gtjp"]
 [ext_resource type="Script" uid="uid://b8hhnqsugykly" path="res://addons/phantom_camera/scripts/resources/camera_3d_resource.gd" id="4_2e8qx"]
 [ext_resource type="PackedScene" uid="uid://6giatmcbhmpp" path="res://scenes/Characters/player.tscn" id="5_qauom"]
+[ext_resource type="AudioStream" uid="uid://bpuvfinlse0hl" path="res://assets/Music/mp3/Carpetwalk.mp3" id="6_1nwnd"]
 [ext_resource type="Script" uid="uid://b7a7g16rq0hhf" path="res://scenes/Maps/level.gd" id="6_divoe"]
 [ext_resource type="MeshLibrary" uid="uid://bp1sqksheecrx" path="res://assets/mesh_library/backrooms_mesh_lib.tres" id="7_fedbu"]
-[ext_resource type="AudioStream" uid="uid://caj0egl338khr" path="res://assets/Music/Carpetwalk.mp3" id="8_8gtjp"]
-[ext_resource type="AudioStream" uid="uid://bjauew6jth8u3" path="res://assets/Music/Yellow Red ver.mp3" id="8_v1ake"]
-[ext_resource type="AudioStream" uid="uid://3vttcbv7mccn" path="res://assets/Music/Yellow Green ver.mp3" id="9_xmcsu"]
-[ext_resource type="AudioStream" uid="uid://d1yt57r8fo4pu" path="res://assets/Music/spooky_rooster.wav" id="10_1nwnd"]
+[ext_resource type="AudioStream" uid="uid://dlyjaleif5gli" path="res://assets/Music/wav/spooky_rooster.wav" id="8_2e8qx"]
+[ext_resource type="AudioStream" uid="uid://ck4yyjvj8y4qs" path="res://assets/Music/mp3/Yellow Red ver.mp3" id="10_2e8qx"]
 [ext_resource type="Shader" uid="uid://cow4hovotygtk" path="res://scripts/Shaders/main.gdshader" id="10_6f8cl"]
 [ext_resource type="Shader" uid="uid://btx6r8lriyqjk" path="res://sign.gdshader" id="10_8gtjp"]
+[ext_resource type="Script" uid="uid://dla4j23523dbv" path="res://scenes/Maps/music_player.gd" id="11_8gtjp"]
 [ext_resource type="Shader" uid="uid://c7dhsbe1s7mgu" path="res://scripts/Shaders/post_processing.gdshader" id="11_ofbsw"]
+[ext_resource type="AudioStream" uid="uid://dh8m04cb8cxf1" path="res://assets/Music/mp3/Yellow Green ver.mp3" id="11_qauom"]
 [ext_resource type="Shader" uid="uid://cb5jkne0ljnhv" path="res://scripts/Shaders/Yellow.gdshader" id="12_crsho"]
 [ext_resource type="Shader" uid="uid://cfw2f3d8q6ml3" path="res://scripts/Shaders/crt_shader.gdshader" id="13_gbohn"]
 
@@ -152,13 +153,13 @@ center_offset = Vector3(700, 525, 0)
 [sub_resource type="LabelSettings" id="LabelSettings_1nwnd"]
 font_size = 22
 
-[node name="Court of the Dragon" type="Node"]
+[node name="Yellow Gate" type="Node"]
 
 [node name="Node3D" type="Node3D" parent="."]
 
 [node name="RunnerCam" type="Camera3D" parent="Node3D"]
 physics_interpolation_mode = 1
-transform = Transform3D(0.99999976, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 0, 2, 8.000001)
+transform = Transform3D(0.99999976, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 0, 2.5, 8.000001)
 
 [node name="PhantomCameraHost" type="Node" parent="Node3D/RunnerCam"]
 process_priority = 300
@@ -167,7 +168,7 @@ script = ExtResource("1_pwgpl")
 metadata/_custom_type_script = "uid://bd046eokvcnu2"
 
 [node name="PhantomCamera3D" type="Node3D" parent="Node3D" node_paths=PackedStringArray("follow_target")]
-transform = Transform3D(0.99999976, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 0, 2, 8.000001)
+transform = Transform3D(0.99999976, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 0, 2.5, 8.000001)
 top_level = true
 script = ExtResource("2_1nwnd")
 priority = 1
@@ -175,7 +176,7 @@ follow_mode = 5
 follow_target = NodePath("../Player")
 tween_resource = SubResource("Resource_jkv2x")
 camera_3d_resource = SubResource("Resource_jbj1t")
-follow_offset = Vector3(0, 2, 0)
+follow_offset = Vector3(0, 2.5, 0)
 follow_damping = true
 follow_damping_value = Vector3(0.435, 0.435, 0.435)
 follow_axis_lock = 3
@@ -189,12 +190,12 @@ metadata/_custom_type_script = "uid://csjccrhj5wnx7"
 unique_name_in_owner = true
 
 [node name="Run" type="AudioStreamPlayer3D" parent="Node3D/Player"]
-stream = ExtResource("8_8gtjp")
+stream = ExtResource("6_1nwnd")
 volume_db = -19.395
 pitch_scale = 1.6
 
 [node name="Footstep" type="AudioStreamPlayer3D" parent="Node3D/Player"]
-stream = ExtResource("8_8gtjp")
+stream = ExtResource("6_1nwnd")
 volume_db = -20.668
 
 [node name="Level" type="Node3D" parent="Node3D"]
@@ -202,7 +203,7 @@ script = ExtResource("6_divoe")
 
 [node name="Cry of the Red Dragon" type="AudioStreamPlayer3D" parent="Node3D/Level"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -30.48476, -31.506779, 0)
-stream = ExtResource("10_1nwnd")
+stream = ExtResource("8_2e8qx")
 volume_db = 11.025
 unit_size = 29.4
 pitch_scale = 0.75
@@ -212,7 +213,7 @@ doppler_tracking = 2
 [node name="FrontWall" type="StaticBody3D" parent="Node3D/Level"]
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Node3D/Level/FrontWall"]
-transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 4.1300035, 0.46741557, 0.39176273)
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 4.1300035, 0.46741557, 1.9869289)
 shape = SubResource("WorldBoundaryShape3D_eb6dy")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="Node3D/Level"]
@@ -229,7 +230,7 @@ metadata/_editor_floor_ = Vector3(0, 7, 0)
 [node name="BackWall" type="StaticBody3D" parent="Node3D/Level"]
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Node3D/Level/BackWall"]
-transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, -81.45188, 0.46741557, -2.482767)
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 11.330681, 0.46741557, -2.0797334)
 shape = SubResource("WorldBoundaryShape3D_pwgpl")
 
 [node name="Props" type="Node3D" parent="Node3D/Level"]
@@ -252,22 +253,24 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 13.827705, 0.56658316, -1.101
 mesh = SubResource("BoxMesh_im76t")
 
 [node name="Red" type="AudioStreamPlayer3D" parent="Node3D/Level"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -401.803, 0, -20.427464)
-stream = ExtResource("8_v1ake")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -401.803, 0, -42.1375)
+stream = ExtResource("10_2e8qx")
 attenuation_model = 1
 volume_db = 80.0
+unit_size = 20.0
 max_db = 6.0
 autoplay = true
-parameters/looping = true
+script = ExtResource("11_8gtjp")
 
 [node name="Green" type="AudioStreamPlayer3D" parent="Node3D/Level"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -516.1145, 3.3686562, -43.65117)
-stream = ExtResource("9_xmcsu")
+stream = ExtResource("11_qauom")
 attenuation_model = 1
 volume_db = 80.0
+unit_size = 20.0
 max_db = 6.0
 autoplay = true
-parameters/looping = true
+script = ExtResource("11_8gtjp")
 
 [node name="HellHole" type="Area3D" parent="Node3D/Level"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 57.797703, -12.388435, 0)

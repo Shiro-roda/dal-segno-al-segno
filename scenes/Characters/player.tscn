@@ -5,13 +5,13 @@
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_jyhfs"]
 radius = 0.59521484
-height = 1.9819336
+height = 1.9285889
 
 [node name="Player" type="CharacterBody3D"]
 script = ExtResource("1_dqkch")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9521189, 0.08042693)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0013905, 0.08042693)
 shape = SubResource("CapsuleShape3D_jyhfs")
 
 [node name="ken_model_test11" parent="." instance=ExtResource("3_8iw34")]
