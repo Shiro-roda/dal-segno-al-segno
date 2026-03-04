@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="BattleTrack" format=3 uid="uid://d3s71movk40pc"]
+
+[ext_resource type="Script" uid="uid://xwx6wvfy78m2" path="res://resources/audio/battletrack.gd" id="1_dyttx"]
+[ext_resource type="AudioStream" uid="uid://ciqvr3jj37hcg" path="res://assets/audio/mp3/Magenta Red ver.mp3" id="1_kmubt"]
+[ext_resource type="AudioStream" uid="uid://c7s3i1yuja4kg" path="res://assets/audio/mp3/Magenta Blue ver.mp3" id="2_kc3ce"]
+
+[resource]
+script = ExtResource("1_dyttx")
+red = ExtResource("2_kc3ce")
+blue = ExtResource("1_kmubt")

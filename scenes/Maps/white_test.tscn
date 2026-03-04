@@ -1,4 +1,4 @@
-[gd_scene load_steps=42 format=3 uid="uid://b3ga3dwpbbift"]
+[gd_scene format=3 uid="uid://b3ga3dwpbbift"]
 
 [ext_resource type="Shader" uid="uid://cow4hovotygtk" path="res://scripts/Shaders/main.gdshader" id="1_42w07"]
 [ext_resource type="Shader" uid="uid://c7dhsbe1s7mgu" path="res://scripts/Shaders/post_processing.gdshader" id="1_873xd"]
@@ -8,15 +8,17 @@
 [ext_resource type="Script" uid="uid://b8hhnqsugykly" path="res://addons/phantom_camera/scripts/resources/camera_3d_resource.gd" id="5_3qhpo"]
 [ext_resource type="PackedScene" uid="uid://6giatmcbhmpp" path="res://scenes/Characters/player.tscn" id="6_8rc2h"]
 [ext_resource type="MeshLibrary" uid="uid://bmpxa1n2vxmv2" path="res://assets/mesh_library/onyx_mesh.tres" id="7_yusxf"]
-[ext_resource type="AudioStream" uid="uid://4mjuppios830" path="res://assets/Music/wav/Cloudwalk(neededit).wav" id="8_42w07"]
+[ext_resource type="AudioStream" uid="uid://4mjuppios830" path="res://assets/audio/wav/Cloudwalk(neededit).wav" id="8_42w07"]
 [ext_resource type="PackedScene" uid="uid://c7xf6lw4r2ki6" path="res://scenes/Objects/carcosa_2.tscn" id="8_tm6lv"]
 [ext_resource type="Script" uid="uid://bfddby35j3amh" path="res://scripts/Events/stage_enter.gd" id="9_37tiq"]
+[ext_resource type="Script" uid="uid://ukgt4feyi8a5" path="res://scenes/Maps/cloud.gd" id="11_3qhpo"]
 [ext_resource type="FontFile" uid="uid://bcmou87njsfkv" path="res://assets/Fonts/SpaceMono-Bold.ttf" id="12_u3lff"]
 [ext_resource type="Shader" uid="uid://courbxkb6q767" path="res://flicker_text.gdshader" id="13_3qhpo"]
+[ext_resource type="PackedScene" uid="uid://6kmv2ko6w15m" path="res://scenes/Characters/ken_model.tscn" id="15_8rc2h"]
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_eb6dy"]
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_ssq04"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_1whc8"]
 render_priority = 0
 shader = ExtResource("1_42w07")
 shader_parameter/vision_mode = 0
@@ -30,7 +32,7 @@ shader_parameter/resonance_tolerance = 0.15
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_tipki"]
 render_priority = 0
-next_pass = SubResource("ShaderMaterial_ssq04")
+next_pass = SubResource("ShaderMaterial_1whc8")
 shader = ExtResource("1_873xd")
 shader_parameter/dither_amount = 0.5
 
@@ -65,14 +67,17 @@ fog_enabled = true
 fog_mode = 1
 fog_light_color = Color(1, 1, 1, 1)
 fog_density = 0.0
-fog_depth_begin = 30.0
 volumetric_fog_enabled = true
-volumetric_fog_density = 0.017
+volumetric_fog_density = 0.0045
 volumetric_fog_emission = Color(1, 1, 1, 1)
+volumetric_fog_emission_energy = 0.5
 volumetric_fog_gi_inject = 4.65
 volumetric_fog_length = 23.25
 
 [sub_resource type="WorldBoundaryShape3D" id="WorldBoundaryShape3D_jbnoc"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_8rc2h"]
+size = Vector3(821.11426, 12.969849, 703.59467)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_gcoep"]
 size = Vector3(4.0912156, 1.59375, 7.843723)
@@ -213,7 +218,7 @@ shader_parameter/text_color = Color(0.9999997, 0.9324009, 0.3595721, 1)
 shader_parameter/flicker_speed = 0.15000000386512
 shader_parameter/uv_aspect = 8.23
 shader_parameter/pixel_size = 13.798000607905
-shader_parameter/flicker_intensity = 0.027000001282499998
+shader_parameter/flicker_intensity = 0.02700000128249999
 
 [sub_resource type="TextMesh" id="TextMesh_tm6lv"]
 material = SubResource("ShaderMaterial_yusxf")
@@ -230,7 +235,7 @@ depth = 0.0
 render_priority = 1
 shader = SubResource("Shader_u3lff")
 shader_parameter/text_color = Color(0.9323184, 0.8528785, 0, 1)
-shader_parameter/flicker_speed = 1.1620000519351201
+shader_parameter/flicker_speed = 1.16200005193512
 shader_parameter/uv_aspect = 8.23
 shader_parameter/pixel_size = 8.400000351500001
 shader_parameter/flicker_intensity = 0.2850000135375
@@ -249,7 +254,7 @@ depth = 0.0
 render_priority = 1
 shader = SubResource("Shader_u3lff")
 shader_parameter/text_color = Color(0.9323184, 0.8528785, 0, 1)
-shader_parameter/flicker_speed = 1.1620000519351201
+shader_parameter/flicker_speed = 1.16200005193512
 shader_parameter/uv_aspect = 8.23
 shader_parameter/pixel_size = 8.400000351500001
 shader_parameter/flicker_intensity = 0.2850000135375
@@ -268,38 +273,38 @@ line_spacing = 10.0
 justification_flags = 171
 depth = 0.0
 
-[node name="White_Test" type="Node"]
+[node name="White_Test" type="Node" unique_id=362476263]
 
-[node name="Background" type="CanvasLayer" parent="."]
+[node name="Background" type="CanvasLayer" parent="." unique_id=1349494321]
 layer = -1
 
-[node name="White_Wall" type="CanvasLayer" parent="Background"]
+[node name="White_Wall" type="CanvasLayer" parent="Background" unique_id=364997097]
 
-[node name="parallax" type="CanvasLayer" parent="Background/White_Wall"]
+[node name="parallax" type="CanvasLayer" parent="Background/White_Wall" unique_id=1155298770]
 
-[node name="Sprite2D" type="Sprite2D" parent="Background/White_Wall/parallax"]
+[node name="Sprite2D" type="Sprite2D" parent="Background/White_Wall/parallax" unique_id=1687490183]
 material = SubResource("CanvasItemMaterial_eb6dy")
 
-[node name="Main" type="Node3D" parent="."]
+[node name="Main" type="Node3D" parent="." unique_id=245817930]
 
-[node name="ScreenQuad" type="MeshInstance3D" parent="Main"]
+[node name="ScreenQuad" type="MeshInstance3D" parent="Main" unique_id=1276330239]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.4246502, 1.3194637, 5.2776985)
 material_override = SubResource("ShaderMaterial_tipki")
 extra_cull_margin = 16384.0
 mesh = SubResource("QuadMesh_85g3d")
 
-[node name="RunnerCam" type="Camera3D" parent="Main"]
+[node name="RunnerCam" type="Camera3D" parent="Main" unique_id=1414285473]
 physics_interpolation_mode = 1
-transform = Transform3D(0.99999976, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 2068.992, 33.468887, 10.000001)
+transform = Transform3D(0.99999976, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 690.2307, 33.468887, 10.000001)
 
-[node name="PhantomCameraHost" type="Node" parent="Main/RunnerCam"]
+[node name="PhantomCameraHost" type="Node" parent="Main/RunnerCam" unique_id=2117520764]
 process_priority = 300
 process_physics_priority = 300
 script = ExtResource("2_42w07")
 metadata/_custom_type_script = "uid://bd046eokvcnu2"
 
-[node name="PhantomCamera3D" type="Node3D" parent="Main" node_paths=PackedStringArray("follow_target")]
-transform = Transform3D(0.99999976, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 2068.992, 33.468887, 10.000001)
+[node name="PhantomCamera3D" type="Node3D" parent="Main" unique_id=2102426851 node_paths=PackedStringArray("follow_target")]
+transform = Transform3D(0.99999976, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 690.2307, 33.468887, 10.000001)
 top_level = true
 script = ExtResource("3_ssq04")
 priority = 1
@@ -317,34 +322,34 @@ dead_zone_height = 0.195
 spring_length = 10.0
 metadata/_custom_type_script = "uid://csjccrhj5wnx7"
 
-[node name="Player" parent="Main" instance=ExtResource("6_8rc2h")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2068.992, 31.468887, 0)
+[node name="Player" parent="Main" unique_id=1201495616 instance=ExtResource("6_8rc2h")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 690.2307, 31.468887, 0)
 
-[node name="Footstep" type="AudioStreamPlayer3D" parent="Main/Player"]
+[node name="Footstep" type="AudioStreamPlayer3D" parent="Main/Player" unique_id=1152693671]
 stream = ExtResource("8_42w07")
 volume_db = -15.643
 pitch_scale = 1.75
 
-[node name="Run" type="AudioStreamPlayer3D" parent="Main/Player"]
+[node name="Run" type="AudioStreamPlayer3D" parent="Main/Player" unique_id=1232790852]
 stream = ExtResource("8_42w07")
 volume_db = -19.395
 pitch_scale = 2.59
 
-[node name="Level" type="Node3D" parent="Main"]
+[node name="Level" type="Node3D" parent="Main" unique_id=1242662227]
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="Main/Level"]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="Main/Level" unique_id=1369738011]
 environment = SubResource("Environment_0wfyh")
 
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="Main/Level"]
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="Main/Level" unique_id=320766789]
 transform = Transform3D(-0.9024183, 0.37968063, 0.20367607, -0.22365466, -0.81683296, 0.53175426, 0.3682661, 0.43431163, 0.8220423, -27.672874, 12.37525, 14.644928)
 
-[node name="Floor" type="StaticBody3D" parent="Main/Level"]
+[node name="Floor" type="StaticBody3D" parent="Main/Level" unique_id=1349320731]
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Floor"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Floor" unique_id=90163370]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.32110667, 0)
 shape = SubResource("WorldBoundaryShape3D_jbnoc")
 
-[node name="Onyx" type="GridMap" parent="Main/Level"]
+[node name="Onyx" type="GridMap" parent="Main/Level" unique_id=1555408823]
 mesh_library = ExtResource("7_yusxf")
 cell_scale = 2.0
 data = {
@@ -352,198 +357,220 @@ data = {
 }
 metadata/_editor_floor_ = Vector3(0, -24, 0)
 
-[node name="Carcosa" parent="Main/Level" instance=ExtResource("8_tm6lv")]
+[node name="Carcosa" parent="Main/Level" unique_id=630411964 instance=ExtResource("8_tm6lv")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1089.4543, -5.9608965, 0)
 
-[node name="Carcosa2" parent="Main/Level/Carcosa" instance=ExtResource("8_tm6lv")]
+[node name="Carcosa2" parent="Main/Level/Carcosa" unique_id=218846871 instance=ExtResource("8_tm6lv")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1089.4543, 0, 0)
 
-[node name="Left Wall" type="StaticBody3D" parent="Main/Level"]
+[node name="Cloud" type="Area3D" parent="Main/Level/Carcosa/Carcosa2" unique_id=1347486203]
+script = ExtResource("11_3qhpo")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Carcosa/Carcosa2/Cloud" unique_id=1603305212]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1214447, 5.9849243, -57.827118)
+shape = SubResource("BoxShape3D_8rc2h")
+
+[node name="Cloud" type="Area3D" parent="Main/Level/Carcosa" unique_id=1815002471]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Carcosa/Cloud" unique_id=1964455866]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.1214447, 5.9849243, -57.827118)
+shape = SubResource("BoxShape3D_8rc2h")
+
+[node name="Left Wall" type="StaticBody3D" parent="Main/Level" unique_id=1079741930]
 transform = Transform3D(0.99999994, 0, 0, 0, 0.99999994, 0, 0, 0, 1, -417.53888, -2.9600754, 0)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Left Wall"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Left Wall" unique_id=611669438]
 transform = Transform3D(-4.371136e-08, 0.9999995, 0, -0.9999995, -4.371136e-08, 0, 0, 0, 1, 18.618866, 0.26883245, 0)
 shape = SubResource("WorldBoundaryShape3D_jbnoc")
 
-[node name="PlatformDialogue" type="Area3D" parent="Main/Level"]
+[node name="PlatformDialogue" type="Area3D" parent="Main/Level" unique_id=646477355]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2051.5923, 0, 0)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/PlatformDialogue"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/PlatformDialogue" unique_id=1518599381]
 transform = Transform3D(-4.371136e-08, 0.9999995, 0, -0.9999995, -4.371136e-08, 0, 0, 0, 1, -202.90112, 0, 0)
 shape = SubResource("WorldBoundaryShape3D_jbnoc")
 
-[node name="Platforms" type="Node3D" parent="Main/Level"]
+[node name="Platforms" type="Node3D" parent="Main/Level" unique_id=667424438]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1964.0413, 0, 0)
 
-[node name="Platform" type="StaticBody3D" parent="Main/Level/Platforms"]
+[node name="Platform" type="StaticBody3D" parent="Main/Level/Platforms" unique_id=1002854268]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 27.601685, 0.94267666, 0.9592378)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform" unique_id=547797263]
 transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, -0.56640625, -0.7475765, -0.0064674616)
 shape = SubResource("BoxShape3D_gcoep")
 
-[node name="Platform2" type="StaticBody3D" parent="Main/Level/Platforms"]
+[node name="Platform2" type="StaticBody3D" parent="Main/Level/Platforms" unique_id=1052467500]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 39.543823, 4.662679, 0.9592378)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform2"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform2" unique_id=1257491186]
 transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, -0.47387695, -0.4516182, 0.07230842)
 shape = SubResource("BoxShape3D_gcoep")
 
-[node name="Platform3" type="StaticBody3D" parent="Main/Level/Platforms"]
+[node name="Platform3" type="StaticBody3D" parent="Main/Level/Platforms" unique_id=742785256]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50.99878, 6.918267, 0.9592378)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform3"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform3" unique_id=737197138]
 transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, -0.04638672, -0.70563126, 0.07230842)
 shape = SubResource("BoxShape3D_gcoep")
 
-[node name="Platform4" type="StaticBody3D" parent="Main/Level/Platforms"]
+[node name="Platform4" type="StaticBody3D" parent="Main/Level/Platforms" unique_id=317734427]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 62.84265, 11.060106, 0.9592378)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform4"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform4" unique_id=2135173486]
 transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, 0.08117676, -0.7855282, 0.07230842)
 shape = SubResource("BoxShape3D_gcoep")
 
-[node name="Platform5" type="StaticBody3D" parent="Main/Level/Platforms"]
+[node name="Platform5" type="StaticBody3D" parent="Main/Level/Platforms" unique_id=330459589]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 75.11841, 15.196295, 0.9592378)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform5"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform5" unique_id=1535760760]
 transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, -0.14160156, -1.0702553, 0.07230842)
 shape = SubResource("BoxShape3D_gcoep")
 
-[node name="Platform6" type="StaticBody3D" parent="Main/Level/Platforms"]
+[node name="Platform6" type="StaticBody3D" parent="Main/Level/Platforms" unique_id=1396244508]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 87.38599, 15.196295, 0.9592378)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform6"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform6" unique_id=733247856]
 transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, -0.35791016, 1.0807247, 0.07230842)
 shape = SubResource("BoxShape3D_gcoep")
 
-[node name="Platform7" type="StaticBody3D" parent="Main/Level/Platforms"]
+[node name="Platform7" type="StaticBody3D" parent="Main/Level/Platforms" unique_id=1612867807]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 98.82666, 20.81031, 0.9592378)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform7"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform7" unique_id=2008018880]
 transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, 0.09790039, -0.6423645, 0.07230842)
 shape = SubResource("BoxShape3D_gcoep")
 
-[node name="Platform8" type="StaticBody3D" parent="Main/Level/Platforms"]
+[node name="Platform8" type="StaticBody3D" parent="Main/Level/Platforms" unique_id=625231786]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 110.97485, 25.034966, 0.9592378)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform8"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform8" unique_id=109353825]
 transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, -0.036376953, -0.86483955, 0.07230842)
 shape = SubResource("BoxShape3D_gcoep")
 
-[node name="Platform9" type="StaticBody3D" parent="Main/Level/Platforms"]
+[node name="Platform9" type="StaticBody3D" parent="Main/Level/Platforms" unique_id=1537256971]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 105.036865, 23.194199, 0.9592378)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform9"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform9" unique_id=76041247]
 transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, -0.036376953, -0.6720314, 0.07230842)
 shape = SubResource("BoxShape3D_gcoep")
 
-[node name="Platform10" type="StaticBody3D" parent="Main/Level/Platforms"]
+[node name="Platform10" type="StaticBody3D" parent="Main/Level/Platforms" unique_id=357814701]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 93.07129, 19.425909, 0.9592378)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform10"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform10" unique_id=618792618]
 transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, -0.036376953, -0.8409157, 0.07230842)
 shape = SubResource("BoxShape3D_gcoep")
 
-[node name="Platform11" type="StaticBody3D" parent="Main/Level/Platforms"]
+[node name="Platform11" type="StaticBody3D" parent="Main/Level/Platforms" unique_id=1963425567]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33.303955, 3.0933547, 0.9592378)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform11"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform11" unique_id=1367983182]
 transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, -0.35327148, -0.5616214, 0.07230842)
 shape = SubResource("BoxShape3D_gcoep")
 
-[node name="Platform12" type="StaticBody3D" parent="Main/Level/Platforms"]
+[node name="Platform12" type="StaticBody3D" parent="Main/Level/Platforms" unique_id=905103963]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 56.66101, 9.3728485, 0.9592378)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform12"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform12" unique_id=1032197071]
 transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, 0.27612305, -0.7438841, 0.07230842)
 shape = SubResource("BoxShape3D_gcoep")
 
-[node name="Platform13" type="StaticBody3D" parent="Main/Level/Platforms"]
+[node name="Platform13" type="StaticBody3D" parent="Main/Level/Platforms" unique_id=1137439410]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 44.920532, 4.662679, 0.9592378)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform13"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform13" unique_id=336735679]
 transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, 0.15856934, 0.7865586, 0.07230842)
 shape = SubResource("BoxShape3D_gcoep")
 
-[node name="Platform14" type="StaticBody3D" parent="Main/Level/Platforms"]
+[node name="Platform14" type="StaticBody3D" parent="Main/Level/Platforms" unique_id=282799274]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 81.17456, 16.327671, 0.9592378)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform14"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform14" unique_id=299392386]
 transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, -0.14160156, -0.96774673, 0.07230842)
 shape = SubResource("BoxShape3D_gcoep")
 
-[node name="Platform15" type="StaticBody3D" parent="Main/Level/Platforms"]
+[node name="Platform15" type="StaticBody3D" parent="Main/Level/Platforms" unique_id=1891461127]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 117.09277, 26.331915, 0.9592378)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform15"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform15" unique_id=985800862]
 transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, -0.09716797, -0.91726875, -1.9651686)
 shape = SubResource("BoxShape3D_gcoep")
 
-[node name="Platform16" type="StaticBody3D" parent="Main/Level/Platforms"]
+[node name="Platform16" type="StaticBody3D" parent="Main/Level/Platforms" unique_id=813574136]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 69.01428, 13.184126, 0.9592378)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform16"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/Platforms/Platform16" unique_id=1253748242]
 transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, -0.06896973, -0.69433117, 0.07230842)
 shape = SubResource("BoxShape3D_gcoep")
 
-[node name="StageEnter" type="Area3D" parent="Main/Level"]
+[node name="StageEnter" type="Area3D" parent="Main/Level" unique_id=2030977510]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2074.5234, 26.034754, -11.741632)
 script = ExtResource("9_37tiq")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/StageEnter"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Main/Level/StageEnter" unique_id=295097011]
 transform = Transform3D(-4.371136e-08, 0.9999995, 0, -0.9999995, -4.371136e-08, 0, 0, 0, 1, 6.7026367, 1.7514076, 5.097087)
 shape = SubResource("SphereShape3D_p7ou5")
 
-[node name="Red" type="AudioStreamPlayer3D" parent="Main/Level"]
+[node name="Red" type="AudioStreamPlayer3D" parent="Main/Level" unique_id=1562499187]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -401.803, 0, -20.427464)
 volume_db = 80.0
 unit_size = 0.5
 max_db = 6.0
 autoplay = true
 
-[node name="Green" type="AudioStreamPlayer3D" parent="Main/Level"]
+[node name="Green" type="AudioStreamPlayer3D" parent="Main/Level" unique_id=1295480232]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -516.1145, 3.3686562, -43.65117)
 volume_db = 80.0
 unit_size = 0.5
 max_db = 6.0
 autoplay = true
 
-[node name="Text" type="Node3D" parent="Main/Level"]
+[node name="Text" type="Node3D" parent="Main/Level" unique_id=1295053019]
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Main/Level/Text"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Main/Level/Text" unique_id=1386064064]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 95.23056, 13.643942, -22.49703)
 mesh = SubResource("TextMesh_37tiq")
 
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="Main/Level/Text"]
+[node name="MeshInstance3D2" type="MeshInstance3D" parent="Main/Level/Text" unique_id=571688241]
 transform = Transform3D(1.615, 0, 0, 0, 1.615, 0, 0, 0, 1.615, 168.61087, 7.1898518, -42.200073)
 mesh = SubResource("TextMesh_u3lff")
 
-[node name="MeshInstance3D3" type="MeshInstance3D" parent="Main/Level/Text"]
+[node name="MeshInstance3D3" type="MeshInstance3D" parent="Main/Level/Text" unique_id=1882596196]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 299.8234, 7.966258, -17.872047)
 mesh = SubResource("TextMesh_3qhpo")
 
-[node name="MeshInstance3D4" type="MeshInstance3D" parent="Main/Level/Text"]
+[node name="MeshInstance3D4" type="MeshInstance3D" parent="Main/Level/Text" unique_id=492103141]
 transform = Transform3D(2.5751903, 0, -4.2858367, 0, 5, 0, 4.2858367, 0, 2.5751903, 688.1072, 15.185371, -160.56908)
 mesh = SubResource("TextMesh_8rc2h")
 
-[node name="MeshInstance3D5" type="MeshInstance3D" parent="Main/Level/Text"]
+[node name="MeshInstance3D5" type="MeshInstance3D" parent="Main/Level/Text" unique_id=424675694]
 transform = Transform3D(0.9443763, 0, -0.3288666, 0, 1, 0, 0.3288666, 0, 0.9443763, 688.1072, 8.039305, -27.62681)
 mesh = SubResource("TextMesh_yusxf")
 
-[node name="MeshInstance3D6" type="MeshInstance3D" parent="Main/Level/Text"]
+[node name="MeshInstance3D6" type="MeshInstance3D" parent="Main/Level/Text" unique_id=362612771]
 transform = Transform3D(0.9999999, 0, 0, 0, 1, 0, 0, 0, 0.9999999, 766.00073, 6.175873, -27.62681)
 mesh = SubResource("TextMesh_tm6lv")
 
-[node name="MeshInstance3D7" type="MeshInstance3D" parent="Main/Level/Text"]
+[node name="MeshInstance3D7" type="MeshInstance3D" parent="Main/Level/Text" unique_id=595852943]
 transform = Transform3D(0.9999999, 0, 0, 0, 1, 0, 0, 0, 0.9999999, 2041.1741, 19.853994, -7.0887604)
 mesh = SubResource("TextMesh_1whc8")
 
-[node name="MeshInstance3D8" type="MeshInstance3D" parent="Main/Level/Text"]
+[node name="MeshInstance3D8" type="MeshInstance3D" parent="Main/Level/Text" unique_id=1965787532]
 transform = Transform3D(0.28, 0, 0, 0, 0.28, 0, 0, 0, 0.28, 2081.0737, 30.543251, 2.884686)
 mesh = SubResource("TextMesh_fypm3")
 
-[node name="Foreground" type="CanvasLayer" parent="."]
+[node name="Doll" type="Node3D" parent="Main" unique_id=1531594369]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 814.3341, 0, 0)
+
+[node name="ken_model_test9" parent="Main/Doll" unique_id=2123688970 instance=ExtResource("15_8rc2h")]
+
+[node name="Foreground" type="CanvasLayer" parent="." unique_id=1355191191]
 visible = false
 
+[connection signal="body_entered" from="Main/Level/Carcosa/Carcosa2/Cloud" to="Main/Player" method="_on_cloud_body_entered"]
+[connection signal="body_exited" from="Main/Level/Carcosa/Carcosa2/Cloud" to="Main/Player" method="_on_cloud_body_exited"]
+[connection signal="body_entered" from="Main/Level/Carcosa/Cloud" to="Main/Player" method="_on_cloud_body_entered"]
+[connection signal="body_exited" from="Main/Level/Carcosa/Cloud" to="Main/Player" method="_on_cloud_body_exited"]
 [connection signal="body_entered" from="Main/Level/StageEnter" to="Main/Player" method="_on_stage_enter_body_entered"]

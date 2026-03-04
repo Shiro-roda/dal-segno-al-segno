@@ -1,0 +1,6 @@
+[gd_resource type="Resource" script_class="BattleTrack" format=3 uid="uid://doa7huxje0c8h"]
+
+[ext_resource type="Script" uid="uid://xwx6wvfy78m2" path="res://resources/audio/battletrack.gd" id="1_wwibb"]
+
+[resource]
+script = ExtResource("1_wwibb")

@@ -1,10 +1,10 @@
-[gd_scene load_steps=25 format=3 uid="uid://ba0mh4h83vgv6"]
+[gd_scene format=3 uid="uid://ba0mh4h83vgv6"]
 
 [ext_resource type="Shader" uid="uid://cow4hovotygtk" path="res://scripts/Shaders/main.gdshader" id="1_yppfe"]
 [ext_resource type="Shader" uid="uid://c7dhsbe1s7mgu" path="res://scripts/Shaders/post_processing.gdshader" id="2_eexkp"]
 [ext_resource type="Script" uid="uid://bd046eokvcnu2" path="res://addons/phantom_camera/scripts/phantom_camera_host/phantom_camera_host.gd" id="3_rjw3r"]
 [ext_resource type="Script" uid="uid://csjccrhj5wnx7" path="res://addons/phantom_camera/scripts/phantom_camera/phantom_camera_3d.gd" id="4_jjfog"]
-[ext_resource type="AudioStream" uid="uid://bv2bjeirujv5g" path="res://assets/Music/mp3/Yellow End ver.mp3" id="4_yppfe"]
+[ext_resource type="AudioStream" uid="uid://bv2bjeirujv5g" path="res://assets/audio/mp3/Yellow End ver.mp3" id="4_yppfe"]
 [ext_resource type="Script" uid="uid://8umksf8e80fw" path="res://addons/phantom_camera/scripts/resources/tween_resource.gd" id="5_8gvw4"]
 [ext_resource type="Script" uid="uid://b8hhnqsugykly" path="res://addons/phantom_camera/scripts/resources/camera_3d_resource.gd" id="6_ra2wp"]
 [ext_resource type="PackedScene" uid="uid://6giatmcbhmpp" path="res://scenes/Characters/player.tscn" id="7_n258p"]

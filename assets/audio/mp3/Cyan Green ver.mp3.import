@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://euhvpx68qe44"
+path="res://.godot/imported/Cyan Green ver.mp3-3747065599228945bdc4f9c16f225a99.mp3str"
+
+[deps]
+
+source_file="res://assets/audio/mp3/Cyan Green ver.mp3"
+dest_files=["res://.godot/imported/Cyan Green ver.mp3-3747065599228945bdc4f9c16f225a99.mp3str"]
+
+[params]
+
+loop=true
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

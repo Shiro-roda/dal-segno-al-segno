@@ -1,0 +1,534 @@
+extends Node
+
+var current_state : Node = null
+
+var actors : Array[BattleActor] = []
+var turn_queue : Array[BattleActor] = []
+var current_index : int = 0
+
+
+var active_player_actor : BattleActor
+var selected_command : String = ""
+var selected_target : BattleActor = null
+var selected_body_part : BodyPartData = null
+var selected_filter : int = -1
+var input_locked := false
+
+
+var shake_strength := 0.0
+var shake_decay := 10.00
+var shake_time := 0.0
+var shake_direction := Vector3.ZERO
+var shake_cam: PhantomCamera3D = null
+var shaking := false
+var original_cam_offset := Vector3.ZERO
+var original_target_offset := Vector3.ZERO
+
+
+
+enum InputStage {
+	COMMAND,
+	TARGET,
+	PART,
+	FILTER,
+	CONFIRM,
+	DONE
+}
+
+
+var input_stage : InputStage = InputStage.COMMAND
+
+
+
+enum Channel {
+	R = 1,
+	G = 2,
+	B = 4
+}
+
+var removed_channels : int = 0
+
+@onready var ca_mesh: MeshInstance2D = $"../BattleUI/MeshInstance2D"
+@onready var ca_mesh_mat: ShaderMaterial = ca_mesh.material
+
+
+
+@onready var active_cam: PhantomCamera3D = $"../CameraRig/active_cam"
+@onready var target_cam: PhantomCamera3D = $"../CameraRig/target_cam"
+
+@onready var idle_orbit_pivot: Node3D = $"../CameraRig/IdleOrbitPivot"
+@onready var idle_orbiter: Node3D = $"../CameraRig/IdleOrbitPivot/IdleOrbiter"
+
+
+@onready var battle_ui = get_parent().get_node("BattleUI")
+
+@onready var states = $States
+
+func _ready():
+	await get_tree().process_frame
+	add_to_group("battle_manager")
+	register_actors()
+	build_turn_queue()
+	original_cam_offset = active_cam.follow_offset
+	original_target_offset = target_cam.follow_offset
+	
+	battle_ui.command_selected.connect(_on_command_selected)
+	battle_ui.target_selected.connect(_on_target_selected)
+	battle_ui.body_part_selected.connect(_on_body_part_selected)
+	battle_ui.filter_selected.connect(_on_filter_selected)
+	battle_ui.confirm_pressed.connect(_on_confirm_pressed)
+	battle_ui.cancel_pressed.connect(_on_cancel_pressed)
+	
+	
+	change_state("BattleIntroState")
+
+func _process(delta):
+
+	if shake_time > 0 and shake_cam != null:
+		shake_time -= delta
+
+		var offset = (shake_direction * shake_strength) + Vector3(
+			randf_range(-0.2, 0.2),
+			randf_range(-0.2, 0.2),
+			0
+		)
+
+		if shake_cam == active_cam:
+			shake_cam.follow_offset = original_cam_offset + offset
+		else:
+			shake_cam.follow_offset = original_target_offset + offset
+
+		shake_strength = lerp(shake_strength, 0.0, delta * shake_decay)
+
+	else:
+		if shaking:
+			# Restore offsets
+			active_cam.follow_offset = original_cam_offset
+			target_cam.follow_offset = original_target_offset
+
+			shaking = false
+
+
+
+
+func change_state(state_name: String):
+	if current_state:
+		current_state.exit()
+	current_state = states.get_node(state_name)
+	current_state.enter(self)
+
+func start_battle():
+	AudioManagerAuto.play_battle_track(preload("res://audio/tracks/magenta.tres"))
+	AudioManagerAuto.ambience_player.play()
+	
+	current_index = 0
+	next_turn()
+
+
+
+func register_actors():
+	actors.clear()
+
+	var root = get_parent().get_node("ActorsRoot")
+
+	for slot in root.get_children():
+		if slot.get_child_count() > 0:
+			var actor = slot.get_child(0)
+			if actor is BattleActor:
+				actors.append(actor)
+				actor.died.connect(Callable(self, "_on_actor_died"))
+				actor.turn_finished.connect(Callable(self, "_on_turn_finished"))
+			print("Actor:", actor.name, "Team:", actor.team)
+
+
+	print("Registered:", actors.size())
+
+
+func build_turn_queue():
+	turn_queue.clear()
+
+	var players = actors.filter(func(a): return a.team == "player")
+	var enemies = actors.filter(func(a): return a.team == "enemy")
+
+	turn_queue.append_array(players)
+	turn_queue.append_array(enemies)
+
+func next_turn():
+	print("Turn: ", current_index)
+
+	if check_victory():
+		return
+
+	if turn_queue.is_empty():
+		return
+
+	if current_index >= turn_queue.size():
+		current_index = 0
+
+	var actor = turn_queue[current_index]
+
+	if not actor.is_alive():
+		current_index += 1
+		next_turn()
+		return
+
+	print("Turn: ", actor.name, " HP: ", actor.hp)
+
+	if actor.team == "player":
+		input_locked = false
+		await handle_player_turn(actor)
+	else:
+		await handle_enemy_turn(actor)
+
+func handle_player_turn(actor: BattleActor) -> void:
+	active_player_actor = actor
+
+	active_cam.set_follow_target(actor)
+	active_cam.set_look_at_target(null)
+
+	input_stage = InputStage.COMMAND
+	battle_ui.show_commands()
+	update_ui_state()
+
+
+
+
+
+
+
+
+func handle_enemy_turn(actor: BattleActor) -> void:
+
+	await get_tree().process_frame
+
+	var target = choose_target(actor)
+	if target == null:
+		return
+
+	# LEFT SCREEN = player being attacked
+	active_cam.set_follow_target(target)
+	active_cam.set_look_at_target(null)
+
+	# RIGHT SCREEN = attacking enemy
+	target_cam.set_follow_target(actor)
+	target_cam.set_look_at_target(null)
+
+	await actor.take_turn(target)
+
+
+
+
+
+
+
+
+
+
+
+func await_actor_turn(actor: BattleActor, action: Callable) -> void:
+	var finished = false
+	
+	var on_finish = func():
+		finished = true
+	
+	actor.turn_finished.connect(on_finish, CONNECT_ONE_SHOT)
+	
+	action.call()
+	
+	while not finished:
+		await get_tree().process_frame
+
+func _on_turn_finished():
+	current_index += 1
+	next_turn()
+
+
+
+func _on_actor_died(actor: BattleActor):
+	turn_queue.erase(actor)
+	actors.erase(actor)
+
+
+
+func choose_target(actor: BattleActor) -> BattleActor:
+	var possible_targets = actors.filter(func(a):
+		return a.team != actor.team and a.is_alive()
+	)
+
+	if possible_targets.is_empty():
+		return null
+
+	return possible_targets.pick_random()
+
+
+
+func check_victory() -> bool:
+	var players_alive = actors.any(func(a):
+		return a.team == "player" and a.is_alive()
+	)
+
+	var enemies_alive = actors.any(func(a):
+		return a.team == "enemy" and a.is_alive()
+	)
+
+	if not players_alive:
+		print("Defeat")
+		return true
+
+	if not enemies_alive:
+		print("Victory")
+		return true
+
+	return false
+
+
+func apply_lens(channel: int):
+	if removed_channels & channel != 0:
+		return
+	
+	if count_bits(removed_channels) >= 2:
+		print("Already using 2 filters.")
+		return
+	
+	removed_channels |= channel
+	
+	AudioManagerAuto.update_color_layers(removed_channels)
+	AudioManagerAuto.set_glitch_intensity(1.5, 0.22)
+	animate_channel_removal()
+	update_enemy_visibility()
+
+func animate_channel_removal():
+
+	var strength := Vector3(1, 1, 1)
+
+	if removed_channels & Channel.R:
+		strength.x = 0
+	if removed_channels & Channel.G:
+		strength.y = 0
+	if removed_channels & Channel.B:
+		strength.z = 0
+
+	
+	ca_mesh_mat.set_shader_parameter("tear_intensity", 2.0)
+	
+	await get_tree().process_frame
+	
+
+	var tween := create_tween()
+
+	# Violent burst
+	ca_mesh_mat.set_shader_parameter("glitch_intensity", 1.0)
+	ca_mesh_mat.set_shader_parameter("noise_strength", 0.6)
+	ca_mesh_mat.set_shader_parameter("tear_intensity", 1.0)
+	ca_mesh_mat.set_shader_parameter("block_glitch", 0.8)
+	
+	tween.set_trans(Tween.TRANS_EXPO)
+	tween.set_ease(Tween.EASE_IN_OUT)
+	
+	
+	
+	tween.tween_property(
+		ca_mesh_mat,
+		"shader_parameter/channel_strength",
+		strength,
+		0.25
+	)
+	
+
+	tween.tween_property(
+		ca_mesh_mat,
+		"shader_parameter/glitch_intensity",
+		0.0,
+		0.47
+	)
+
+	tween.parallel().tween_property(
+		ca_mesh_mat,
+		"shader_parameter/noise_strength",
+		0.0,
+		0.38
+	)
+
+	tween.parallel().tween_property(
+		ca_mesh_mat,
+		"shader_parameter/tear_intensity",
+		0.0,
+		0.53
+	)
+
+	tween.parallel().tween_property(
+		ca_mesh_mat,
+		"shader_parameter/block_glitch",
+		0.0,
+		0.44
+	)
+
+func screen_shake_on_actor(target: BattleActor, dir: Vector3, strength: float, duration: float):
+
+	# Determine which camera is following this actor
+	if active_cam.get_follow_target() == target:
+		shake_cam = active_cam
+	elif target_cam.get_follow_target() == target:
+		shake_cam = target_cam
+	else:
+		shake_cam = null
+		return
+
+	shake_direction = dir
+	shake_strength = strength
+	shake_time = duration
+	shaking = true
+	
+	AudioManagerAuto.duck_bgm(-8.0, 0.4)
+	AudioManagerAuto.set_glitch_intensity(0.2, 0.15)
+	
+
+
+
+
+
+func count_bits(value: int) -> int:
+	var count := 0
+	while value > 0:
+		count += value & 1
+		value >>= 1
+	return count
+
+func update_enemy_visibility():
+	for actor in actors:
+		if actor.team == "enemy":
+			actor.update_shader_visibility(removed_channels)
+
+	ca_mesh_mat.set_shader_parameter("removed_mask", removed_channels)
+
+
+func reset_selection():
+	selected_command = ""
+	selected_target = null
+	selected_body_part = null
+
+	
+	battle_ui.hide_target_container()
+	battle_ui.hide_confirmation()
+	
+
+func focus_idle_orbit():
+	target_cam.set_follow_offset(Vector3(0, 0, 0))
+	target_cam.set_follow_target(idle_orbiter)
+	target_cam.set_look_at_target(idle_orbit_pivot)
+	target_cam.set_look_at_offset(Vector3(0, 0, 0))
+
+func update_ui_state():
+	if input_locked:
+		return
+
+	battle_ui.set_back_enabled(input_stage != InputStage.COMMAND)
+
+	match input_stage:
+
+		InputStage.COMMAND:
+			focus_idle_orbit()
+			battle_ui.show_commands()
+			battle_ui.set_lens_enabled(count_bits(removed_channels) < 2)
+			battle_ui.set_confirm_enabled(false)
+
+		InputStage.TARGET:
+			var targets = actors.filter(func(a):
+				return a.team != active_player_actor.team and a.is_alive()
+			)
+			battle_ui.show_targets(targets)
+			battle_ui.set_confirm_enabled(false)
+
+		InputStage.PART:
+			var parts = selected_target.get_visible_parts(removed_channels)
+			battle_ui.show_body_part_targets(parts)
+			battle_ui.set_confirm_enabled(false)
+
+		InputStage.FILTER:
+			focus_idle_orbit()
+			battle_ui.show_filter_options()
+			battle_ui.set_confirm_enabled(false)
+
+		InputStage.CONFIRM:
+			battle_ui.set_confirm_enabled(true)
+
+
+func _on_confirm_pressed():
+	if input_locked:
+		return
+	input_locked = true
+	input_stage = InputStage.DONE
+
+	match selected_command:
+		"attack":
+			await_actor_turn(active_player_actor, func():
+				active_player_actor.take_turn(selected_target, selected_body_part)
+			)
+		"lens":
+			await_actor_turn(active_player_actor, func():
+				active_player_actor.use_lens(selected_filter)
+			)
+
+
+
+
+func _on_cancel_pressed():
+	match input_stage:
+		InputStage.TARGET:
+			input_stage = InputStage.COMMAND
+
+		InputStage.PART:
+			input_stage = InputStage.TARGET
+
+		InputStage.FILTER:
+			input_stage = InputStage.COMMAND
+
+		InputStage.CONFIRM:
+			if selected_command == "attack":
+				input_stage = InputStage.PART
+			else:
+				input_stage = InputStage.FILTER
+
+	update_ui_state()
+
+
+func _on_command_selected(command):
+	selected_command = command
+
+	if command == "attack":
+		input_stage = InputStage.TARGET
+
+	elif command == "lens":
+		input_stage = InputStage.FILTER
+
+	update_ui_state()
+
+
+func _on_target_selected(target):
+	selected_target = target
+	target_cam.set_follow_damping_value(Vector3(.25, .25, .15))
+
+	target_cam.set_follow_target(target)
+	target_cam.set_follow_offset(Vector3(-1.25, 1.5, .55))
+	await get_tree().process_frame
+	target_cam.set_look_at_target(target)
+	target_cam.set_look_at_offset(Vector3(0, 1.5, -.2))
+
+	
+
+	input_stage = InputStage.PART
+	
+	update_ui_state()
+
+
+
+func _on_body_part_selected(part):
+	selected_body_part = part
+	input_stage = InputStage.CONFIRM
+	update_ui_state()
+
+
+func _on_filter_selected(channel):
+	selected_filter = channel
+	input_stage = InputStage.CONFIRM
+	update_ui_state()

@@ -1,0 +1,6 @@
+[gd_resource type="Resource" format=3 uid="uid://bqdl7aldmwolo"]
+
+[ext_resource type="Script" uid="uid://coeqyvqijtkns" path="res://resources/encounters/encounterdata.gd" id="1_ecrcj"]
+
+[resource]
+script = ExtResource("1_ecrcj")

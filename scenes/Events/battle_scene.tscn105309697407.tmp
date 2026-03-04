@@ -1,0 +1,338 @@
+[gd_scene format=3 uid="uid://crk45tyrcis3h"]
+
+[ext_resource type="Script" uid="uid://ooy1vi7u8mr1" path="res://scenes/Events/battle_manager.gd" id="1_tsimo"]
+[ext_resource type="Script" uid="uid://br7brteiolp64" path="res://resources/BattleIntroState.gd" id="2_pfdmd"]
+[ext_resource type="Script" uid="uid://c8fvcb046bf6m" path="res://resources/Actors/BattleActor.gd" id="3_qf24n"]
+[ext_resource type="PackedScene" uid="uid://dhu0qxbwinbyv" path="res://scenes/Characters/ken_model_test_11.tscn" id="4_yr51w"]
+[ext_resource type="PackedScene" uid="uid://6kmv2ko6w15m" path="res://scenes/Characters/ken_model.tscn" id="5_5hsfr"]
+[ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://resources/bodyparts/BodyPartData.gd" id="5_b48sr"]
+[ext_resource type="Script" uid="uid://bd046eokvcnu2" path="res://addons/phantom_camera/scripts/phantom_camera_host/phantom_camera_host.gd" id="6_wfe2u"]
+[ext_resource type="Script" uid="uid://csjccrhj5wnx7" path="res://addons/phantom_camera/scripts/phantom_camera/phantom_camera_3d.gd" id="7_dg68v"]
+[ext_resource type="Script" uid="uid://8umksf8e80fw" path="res://addons/phantom_camera/scripts/resources/tween_resource.gd" id="8_b48sr"]
+[ext_resource type="Script" uid="uid://b8hhnqsugykly" path="res://addons/phantom_camera/scripts/resources/camera_3d_resource.gd" id="9_58qkj"]
+[ext_resource type="Script" uid="uid://dy7nm6c7r8ulp" path="res://scenes/Events/BattleUI.gd" id="10_dg68v"]
+[ext_resource type="Script" uid="uid://qre1hxk7lxh4" path="res://scenes/Events/idle_orbit_pivot.gd" id="10_xhnwx"]
+[ext_resource type="Shader" uid="uid://cow4hovotygtk" path="res://scripts/Shaders/main.gdshader" id="11_26idg"]
+[ext_resource type="Shader" uid="uid://c7dhsbe1s7mgu" path="res://scripts/Shaders/post_processing.gdshader" id="12_xhnwx"]
+[ext_resource type="Shader" uid="uid://btm2rulspg8el" path="res://scripts/Shaders/battleglitch.gdshader" id="15_itxmc"]
+[ext_resource type="PackedScene" uid="uid://cx2gw1tu0rxpi" path="res://scenes/Managers/audio_manager.tscn" id="16_hq6gs"]
+
+[sub_resource type="Resource" id="Resource_58qkj"]
+script = ExtResource("5_b48sr")
+part_name = "Torso"
+base_visible = true
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[sub_resource type="Resource" id="Resource_itxmc"]
+script = ExtResource("5_b48sr")
+part_name = "Arm"
+required_removed_mask = 2
+damage_multiplier = 1.5
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[sub_resource type="Resource" id="Resource_b48sr"]
+script = ExtResource("5_b48sr")
+part_name = "Heart"
+required_removed_mask = 4
+is_cognitohazard = true
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[sub_resource type="Resource" id="Resource_hq6gs"]
+script = ExtResource("5_b48sr")
+part_name = "Head"
+required_removed_mask = 1
+damage_multiplier = 2.0
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[sub_resource type="Resource" id="Resource_ohpiy"]
+script = ExtResource("5_b48sr")
+part_name = "Torso"
+base_visible = true
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[sub_resource type="Resource" id="Resource_ucieq"]
+script = ExtResource("5_b48sr")
+part_name = "Heart"
+required_removed_mask = 4
+damage_multiplier = 1.8
+is_cognitohazard = true
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[sub_resource type="Resource" id="Resource_26idg"]
+script = ExtResource("8_b48sr")
+duration = 0.5
+
+[sub_resource type="Resource" id="Resource_xhnwx"]
+script = ExtResource("9_58qkj")
+metadata/_custom_type_script = "uid://b8hhnqsugykly"
+
+[sub_resource type="Resource" id="Resource_nejpu"]
+script = ExtResource("8_b48sr")
+duration = 0.5
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ssq04"]
+render_priority = 0
+shader = ExtResource("11_26idg")
+shader_parameter/vision_mode = 0
+shader_parameter/flash_pos = Vector3(0, 0, 0)
+shader_parameter/flash_dir = Vector3(0, 0, -1)
+shader_parameter/flash_angle = 0.5
+shader_parameter/cone_range = 20.0
+shader_parameter/edge_softness = 0.01
+shader_parameter/hue_boost = 100.0
+shader_parameter/resonance_tolerance = 0.15
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_itxmc"]
+render_priority = 0
+next_pass = SubResource("ShaderMaterial_ssq04")
+shader = ExtResource("12_xhnwx")
+shader_parameter/dither_amount = 0.5
+
+[sub_resource type="QuadMesh" id="QuadMesh_hq6gs"]
+flip_faces = true
+size = Vector2(2, 2)
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_wfe2u"]
+ground_bottom_color = Color(0.40543693, 0.35203698, 0.42831427, 1)
+energy_multiplier = 2.35
+
+[sub_resource type="Sky" id="Sky_dg68v"]
+sky_material = SubResource("ProceduralSkyMaterial_wfe2u")
+
+[sub_resource type="Environment" id="Environment_b48sr"]
+background_mode = 2
+sky = SubResource("Sky_dg68v")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_hq6gs"]
+shader = ExtResource("15_itxmc")
+shader_parameter/curvature = 5.60000008344672
+shader_parameter/vignette_multiplier = 0.20000000298024
+shader_parameter/ca_strength = 4.5000000670554
+shader_parameter/blur_strength = 0.10000000149012
+shader_parameter/channel_strength = Vector3(1, 1, 1)
+shader_parameter/glitch_intensity = 0.0
+shader_parameter/noise_strength = 0.0
+shader_parameter/tear_intensity = 0.0
+shader_parameter/block_glitch = 0.0
+
+[sub_resource type="QuadMesh" id="QuadMesh_ohpiy"]
+size = Vector2(1400, 1050)
+center_offset = Vector3(700, 525, 0)
+
+[node name="BattleScene" type="Node3D" unique_id=259883929]
+
+[node name="BattleManager" type="Node" parent="." unique_id=1762645527]
+script = ExtResource("1_tsimo")
+
+[node name="States" type="Node" parent="BattleManager" unique_id=576574296]
+
+[node name="BattleIntroState" type="Node" parent="BattleManager/States" unique_id=643864943]
+script = ExtResource("2_pfdmd")
+
+[node name="PlayerTurnState" type="Node" parent="BattleManager/States" unique_id=509371858]
+
+[node name="ActorsRoot" type="Node3D" parent="." unique_id=1065592989]
+
+[node name="PlayerSlot0" type="Node3D" parent="ActorsRoot" unique_id=1948691805]
+transform = Transform3D(-0.23582065, 0, 0.9717966, 0, 1, 0, -0.9717966, 0, -0.23582065, -2.6308358, 0, 1.0198298)
+
+[node name="Ken1" type="Node3D" parent="ActorsRoot/PlayerSlot0" unique_id=1661949978]
+script = ExtResource("3_qf24n")
+team = "player"
+max_hp = 14
+attack_power = 2
+
+[node name="ken_model_test11" parent="ActorsRoot/PlayerSlot0/Ken1" unique_id=433556683 instance=ExtResource("4_yr51w")]
+
+[node name="PlayerSlot1" type="Node3D" parent="ActorsRoot" unique_id=2006635434]
+transform = Transform3D(0.20944786, 0, 0.9778198, 0, 1, 0, -0.9778198, 0, 0.20944786, -3.175598, 0, -1.8292017)
+
+[node name="Ken2" type="Node3D" parent="ActorsRoot/PlayerSlot1" unique_id=726510468]
+script = ExtResource("3_qf24n")
+team = "player"
+
+[node name="ken_model_test11" parent="ActorsRoot/PlayerSlot1/Ken2" unique_id=1280621632 instance=ExtResource("4_yr51w")]
+
+[node name="PlayerSlot2" type="Node3D" parent="ActorsRoot" unique_id=1245586878]
+transform = Transform3D(0.012216957, 0, 0.9999254, 0, 1, 0, -0.9999254, 0, 0.012216957, -4.1868544, 0, -0.43312144)
+
+[node name="Ken3" type="Node3D" parent="ActorsRoot/PlayerSlot2" unique_id=2103833632]
+script = ExtResource("3_qf24n")
+team = "player"
+max_hp = 8
+attack_power = 4
+
+[node name="ken_model_test11" parent="ActorsRoot/PlayerSlot2/Ken3" unique_id=2056180615 instance=ExtResource("4_yr51w")]
+
+[node name="EnemySlot0" type="Node3D" parent="ActorsRoot" unique_id=1355596423]
+transform = Transform3D(0.039556243, 0, -0.99921733, 0, 1, 0, 0.99921733, 0, 0.039556243, 2.960981, 0, 0)
+
+[node name="Shadow1" type="Node3D" parent="ActorsRoot/EnemySlot0" unique_id=1281790285]
+script = ExtResource("3_qf24n")
+team = "enemy"
+max_hp = 18
+attack_power = 1
+body_parts = Array[ExtResource("5_b48sr")]([SubResource("Resource_58qkj"), SubResource("Resource_itxmc"), SubResource("Resource_b48sr")])
+
+[node name="ken_model_test9" parent="ActorsRoot/EnemySlot0/Shadow1" unique_id=440704510 instance=ExtResource("5_5hsfr")]
+
+[node name="EnemySlot1" type="Node3D" parent="ActorsRoot" unique_id=333407998]
+transform = Transform3D(0.3012051, 0, -0.9535595, 0, 1, 0, 0.9535595, 0, 0.3012051, 2.007721, 0, -1.9357876)
+
+[node name="Shadow2" type="Node3D" parent="ActorsRoot/EnemySlot1" unique_id=627916966]
+script = ExtResource("3_qf24n")
+team = "enemy"
+max_hp = 8
+attack_power = 4
+body_parts = Array[ExtResource("5_b48sr")]([SubResource("Resource_hq6gs"), SubResource("Resource_ohpiy"), SubResource("Resource_ucieq")])
+
+[node name="ken_model_test9" parent="ActorsRoot/EnemySlot1/Shadow2" unique_id=631900749 instance=ExtResource("5_5hsfr")]
+
+[node name="CameraRig" type="Node3D" parent="." unique_id=1931292584]
+
+[node name="active_cam" type="Node3D" parent="CameraRig" unique_id=2025165075]
+transform = Transform3D(1, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, -1.3915569, 2.0777407, 3.37666)
+top_level = true
+script = ExtResource("7_dg68v")
+follow_mode = 2
+tween_resource = SubResource("Resource_26idg")
+camera_3d_resource = SubResource("Resource_xhnwx")
+follow_offset = Vector3(0.15, 1.5, 0.75)
+follow_damping = true
+follow_damping_value = Vector3(0.2, 0.2, 0.2)
+
+[node name="target_cam" type="Node3D" parent="CameraRig" unique_id=1804288770]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.9518425, 0.88769054, 1.2990618)
+top_level = true
+script = ExtResource("7_dg68v")
+follow_mode = 2
+look_at_mode = 2
+tween_resource = SubResource("Resource_nejpu")
+host_layers = 2
+follow_offset = Vector3(-1, 1.5, 0.75)
+follow_damping = true
+follow_damping_value = Vector3(0.35, 0.35, 0.35)
+look_at_damping = true
+look_at_damping_value = 0.157
+metadata/_custom_type_script = "uid://csjccrhj5wnx7"
+
+[node name="IdleOrbitPivot" type="Node3D" parent="CameraRig" unique_id=1532661715]
+transform = Transform3D(1, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, -0.16304493, 0, -0.8420439)
+script = ExtResource("10_xhnwx")
+
+[node name="IdleOrbiter" type="Node3D" parent="CameraRig/IdleOrbitPivot" unique_id=1216574263]
+transform = Transform3D(1, 0, 0, 0, 0.9999998, 0, 0, 0, 0.9999998, 0, 4.304206, 3.6548314)
+
+[node name="ScreenQuad" type="MeshInstance3D" parent="CameraRig" unique_id=48743744]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.4246502, 1.3194637, 5.2776985)
+material_override = SubResource("ShaderMaterial_itxmc")
+extra_cull_margin = 16384.0
+mesh = SubResource("QuadMesh_hq6gs")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1340271938]
+environment = SubResource("Environment_b48sr")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=130250288]
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="Left_Container" type="SubViewportContainer" parent="HBoxContainer" unique_id=1776021748]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Left" type="SubViewport" parent="HBoxContainer/Left_Container" unique_id=1840474016]
+handle_input_locally = false
+size = Vector2i(700, 850)
+size_2d_override_stretch = true
+render_target_update_mode = 4
+
+[node name="PlayerActorCam" type="Camera3D" parent="HBoxContainer/Left_Container/Left" unique_id=1335861594]
+transform = Transform3D(1, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, -1.3915569, 2.0777407, 3.37666)
+fov = 100.418106
+
+[node name="PhantomCameraHost" type="Node" parent="HBoxContainer/Left_Container/Left/PlayerActorCam" unique_id=774086878]
+process_priority = 300
+process_physics_priority = 300
+script = ExtResource("6_wfe2u")
+
+[node name="Right_Container" type="SubViewportContainer" parent="HBoxContainer" unique_id=1715034904]
+layout_mode = 2
+
+[node name="Right" type="SubViewport" parent="HBoxContainer/Right_Container" unique_id=249572341]
+handle_input_locally = false
+size = Vector2i(700, 1050)
+render_target_update_mode = 4
+
+[node name="TargetCam" type="Camera3D" parent="HBoxContainer/Right_Container/Right" unique_id=30126024]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.9518425, 0.88769054, 1.2990618)
+fov = 100.418106
+
+[node name="PhantomCameraHost" type="Node" parent="HBoxContainer/Right_Container/Right/TargetCam" unique_id=1124316229]
+process_priority = 300
+process_physics_priority = 300
+script = ExtResource("6_wfe2u")
+host_layers = 2
+
+[node name="BattleUI" type="CanvasLayer" parent="." unique_id=100288458]
+script = ExtResource("10_dg68v")
+
+[node name="Panel" type="Panel" parent="BattleUI" unique_id=650984837]
+anchors_preset = -1
+anchor_top = 0.81333333
+anchor_right = 0.5007143
+anchor_bottom = 1.0
+offset_right = -1.0
+offset_bottom = 4.0
+grow_horizontal = 2
+grow_vertical = 2
+metadata/_edit_use_anchors_ = true
+
+[node name="HBoxContainer" type="HBoxContainer" parent="BattleUI/Panel" unique_id=900893671]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="BattleUI/Panel/HBoxContainer" unique_id=1170081938]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="AttackButton" type="Button" parent="BattleUI/Panel/HBoxContainer/VBoxContainer" unique_id=1179292353]
+layout_mode = 2
+size_flags_vertical = 3
+text = "ATTACK"
+
+[node name="DefendButton" type="Button" parent="BattleUI/Panel/HBoxContainer/VBoxContainer" unique_id=759974259]
+layout_mode = 2
+size_flags_vertical = 3
+text = "DEFEND"
+
+[node name="ChangeButton" type="Button" parent="BattleUI/Panel/HBoxContainer/VBoxContainer" unique_id=549145381]
+layout_mode = 2
+size_flags_vertical = 3
+text = "CHANGE LENS"
+
+[node name="VBoxContainer2" type="VBoxContainer" parent="BattleUI/Panel/HBoxContainer" unique_id=1992375307]
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 2
+
+[node name="TargetContainer" type="VBoxContainer" parent="BattleUI/Panel/HBoxContainer/VBoxContainer2" unique_id=1606708148]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ConfirmButton" type="Button" parent="BattleUI/Panel/HBoxContainer/VBoxContainer2" unique_id=973170720]
+layout_mode = 2
+text = "Confirm"
+
+[node name="CancelButton" type="Button" parent="BattleUI/Panel/HBoxContainer/VBoxContainer2" unique_id=1288275422]
+layout_mode = 2
+text = "Back"
+
+[node name="MeshInstance2D" type="MeshInstance2D" parent="BattleUI" unique_id=319291248]
+material = SubResource("ShaderMaterial_hq6gs")
+mesh = SubResource("QuadMesh_ohpiy")
+
+[node name="Audio Manager" parent="." unique_id=2102780936 instance=ExtResource("16_hq6gs")]

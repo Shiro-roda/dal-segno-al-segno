@@ -8,22 +8,35 @@
 
 config_version=5
 
+[animation]
+
+compatibility/default_parent_skeleton_in_mesh_instance_3d=true
+
 [application]
 
 config/name="Dal Segno al Segno"
 run/main_scene="uid://b3ga3dwpbbift"
-config/features=PackedStringArray("4.5", "Forward Plus")
+config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="uid://c8se4h4c3ijek"
+
+[audio]
+
+buses/default_bus_layout="uid://civek8py85e0a"
 
 [autoload]
 
 Dialogic="*res://addons/dialogic/Core/DialogicGameHandler.gd"
-PhantomCameraManager="*res://addons/phantom_camera/scripts/managers/phantom_camera_manager.gd"
+PhantomCameraManager="*uid://duq6jhf6unyis"
+AudioManagerAuto="*uid://cx2gw1tu0rxpi"
 
 [dialogic]
 
-directories/dch_directory={}
-directories/dtl_directory={}
+directories/dch_directory={
+"Helenus": "res://characters/Helenus.dch"
+}
+directories/dtl_directory={
+"tutorial": "res://Dialogic/Timelines/tutorial.dtl"
+}
 layout/style_directory={}
 
 [display]

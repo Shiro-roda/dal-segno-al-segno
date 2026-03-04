@@ -1,4 +1,4 @@
-[gd_resource type="MeshLibrary" load_steps=49 format=4 uid="uid://bmpxa1n2vxmv2"]
+[gd_resource type="MeshLibrary" format=4 uid="uid://bmpxa1n2vxmv2"]
 
 [ext_resource type="Shader" uid="uid://b6h53nobsekci" path="res://scripts/Shaders/onyx_mesh.gdshader" id="1_nculs"]
 

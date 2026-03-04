@@ -1,4 +1,4 @@
-[gd_resource type="MeshLibrary" load_steps=715 format=4 uid="uid://bp1sqksheecrx"]
+[gd_resource type="MeshLibrary" format=4 uid="uid://bp1sqksheecrx"]
 
 [ext_resource type="Texture2D" uid="uid://d1nml7x2xsa2f" path="res://assets/glb/Backrooms_carpet_color.png" id="1_4pw3y"]
 [ext_resource type="Texture2D" uid="uid://blr7q6fwbr1gm" path="res://assets/glb/Backrooms_painted_wall_2_color.png" id="2_edfxd"]

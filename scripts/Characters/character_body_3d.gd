@@ -5,6 +5,7 @@ const SPEED = 6.0
 const JUMP_VELOCITY = 8.0
 var has_jumped = false
 var last_direction = 0
+var on_cloud: bool = true
 @onready var ken_model: Node3D = $ken_model_test11
 @onready var flashlight: SpotLight3D = $ken_model_test11/Kendall_rig_001/Skeleton3D/Head_001/Flashlight
 @onready var red: AudioStreamPlayer3D = $"../Level/Red"
@@ -108,20 +109,24 @@ func lens_change(int):
 	RenderingServer.global_shader_parameter_set("vision_mode", current_channel)
 
 func sfx():
-	if ken_model.anim.current_animation == "Action_003":
-		if footstep.get_playback_position() >= 4.0:
+	if on_cloud == true:
+		if ken_model.anim.current_animation == "Action_003":
+			if footstep.get_playback_position() >= 4.0:
+				footstep.stop()
+			if not footstep.playing:
+				footstep.play()
+		else:
 			footstep.stop()
-		if not footstep.playing:
-			footstep.play()
-	else:
-		footstep.stop()
-	if ken_model.anim.current_animation == "Action_004":
-		if run.get_playback_position() >= 4.0:
+		if ken_model.anim.current_animation == "Action_004":
+			if run.get_playback_position() >= 4.0:
+				run.stop()
+			if not run.playing:
+				run.play()
+		else:
 			run.stop()
-		if not run.playing:
-			run.play()
-	else:
+	else: 
 		run.stop()
+		footstep.stop()
 
 func _on_stage_enter_body_entered(body: Node3D) -> void:
 	print("Setting Stage!")
@@ -136,3 +141,11 @@ func _on_stage_enter_body_entered(body: Node3D) -> void:
 func _on_hell_hole_body_entered(body: Node3D) -> void:
 	if body == self:
 		get_tree().change_scene_to_file("res://scenes/Maps/white_end.tscn")
+
+
+func _on_cloud_body_exited(body: Node3D) -> void:
+	on_cloud = false
+
+
+func _on_cloud_body_entered(body: Node3D) -> void:
+	on_cloud = true
