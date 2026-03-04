@@ -1,0 +1,6 @@
+[gd_resource type="Resource" format=3 uid="uid://d2h8w12iv6w8e"]
+
+[ext_resource type="Script" uid="uid://csvbewm7qdlit" path="res://resources/rundata.gd" id="1_cpmpu"]
+
+[resource]
+script = ExtResource("1_cpmpu")

@@ -1,0 +1,6 @@
+[gd_resource type="Resource" format=3 uid="uid://b6qr0y1bcfjbh"]
+
+[ext_resource type="Script" uid="uid://do4qdqjcw7vj0" path="res://resources/characters/partymemberdata.gd" id="1_qkkmk"]
+
+[resource]
+script = ExtResource("1_qkkmk")

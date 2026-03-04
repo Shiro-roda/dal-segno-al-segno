@@ -1,8 +1,8 @@
 [gd_scene format=3 uid="uid://crk45tyrcis3h"]
 
 [ext_resource type="Script" uid="uid://ooy1vi7u8mr1" path="res://scenes/Events/battle_manager.gd" id="1_tsimo"]
-[ext_resource type="Script" uid="uid://br7brteiolp64" path="res://resources/BattleIntroState.gd" id="2_pfdmd"]
-[ext_resource type="Script" uid="uid://c8fvcb046bf6m" path="res://resources/Actors/BattleActor.gd" id="3_qf24n"]
+[ext_resource type="Script" uid="uid://br7brteiolp64" path="res://resources/battlestates/BattleIntroState.gd" id="2_pfdmd"]
+[ext_resource type="Script" uid="uid://c8fvcb046bf6m" path="res://scripts/Characters/BattleActor.gd" id="3_qf24n"]
 [ext_resource type="PackedScene" uid="uid://dhu0qxbwinbyv" path="res://scenes/Characters/ken_model_test_11.tscn" id="4_yr51w"]
 [ext_resource type="PackedScene" uid="uid://6kmv2ko6w15m" path="res://scenes/Characters/ken_model.tscn" id="5_5hsfr"]
 [ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://resources/bodyparts/BodyPartData.gd" id="5_b48sr"]
