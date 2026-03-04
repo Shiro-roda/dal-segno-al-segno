@@ -2,10 +2,6 @@
 
 [ext_resource type="Script" uid="uid://ooy1vi7u8mr1" path="res://scenes/Events/battle_manager.gd" id="1_tsimo"]
 [ext_resource type="Script" uid="uid://br7brteiolp64" path="res://resources/battlestates/BattleIntroState.gd" id="2_pfdmd"]
-[ext_resource type="Script" uid="uid://c8fvcb046bf6m" path="res://scripts/Characters/BattleActor.gd" id="3_qf24n"]
-[ext_resource type="PackedScene" uid="uid://dhu0qxbwinbyv" path="res://scenes/Characters/ken_model_test_11.tscn" id="4_yr51w"]
-[ext_resource type="PackedScene" uid="uid://6kmv2ko6w15m" path="res://scenes/Characters/ken_model.tscn" id="5_5hsfr"]
-[ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://resources/bodyparts/BodyPartData.gd" id="5_b48sr"]
 [ext_resource type="Script" uid="uid://bd046eokvcnu2" path="res://addons/phantom_camera/scripts/phantom_camera_host/phantom_camera_host.gd" id="6_wfe2u"]
 [ext_resource type="Script" uid="uid://csjccrhj5wnx7" path="res://addons/phantom_camera/scripts/phantom_camera/phantom_camera_3d.gd" id="7_dg68v"]
 [ext_resource type="Script" uid="uid://8umksf8e80fw" path="res://addons/phantom_camera/scripts/resources/tween_resource.gd" id="8_b48sr"]
@@ -16,47 +12,6 @@
 [ext_resource type="Shader" uid="uid://c7dhsbe1s7mgu" path="res://scripts/Shaders/post_processing.gdshader" id="12_xhnwx"]
 [ext_resource type="Shader" uid="uid://btm2rulspg8el" path="res://scripts/Shaders/battleglitch.gdshader" id="15_itxmc"]
 [ext_resource type="PackedScene" uid="uid://cx2gw1tu0rxpi" path="res://scenes/Managers/audio_manager.tscn" id="16_hq6gs"]
-
-[sub_resource type="Resource" id="Resource_58qkj"]
-script = ExtResource("5_b48sr")
-part_name = "Torso"
-base_visible = true
-metadata/_custom_type_script = "uid://bewuwngi8x4ad"
-
-[sub_resource type="Resource" id="Resource_itxmc"]
-script = ExtResource("5_b48sr")
-part_name = "Arm"
-required_removed_mask = 2
-damage_multiplier = 1.5
-metadata/_custom_type_script = "uid://bewuwngi8x4ad"
-
-[sub_resource type="Resource" id="Resource_b48sr"]
-script = ExtResource("5_b48sr")
-part_name = "Heart"
-required_removed_mask = 4
-is_cognitohazard = true
-metadata/_custom_type_script = "uid://bewuwngi8x4ad"
-
-[sub_resource type="Resource" id="Resource_hq6gs"]
-script = ExtResource("5_b48sr")
-part_name = "Head"
-required_removed_mask = 1
-damage_multiplier = 2.0
-metadata/_custom_type_script = "uid://bewuwngi8x4ad"
-
-[sub_resource type="Resource" id="Resource_ohpiy"]
-script = ExtResource("5_b48sr")
-part_name = "Torso"
-base_visible = true
-metadata/_custom_type_script = "uid://bewuwngi8x4ad"
-
-[sub_resource type="Resource" id="Resource_ucieq"]
-script = ExtResource("5_b48sr")
-part_name = "Heart"
-required_removed_mask = 4
-damage_multiplier = 1.8
-is_cognitohazard = true
-metadata/_custom_type_script = "uid://bewuwngi8x4ad"
 
 [sub_resource type="Resource" id="Resource_26idg"]
 script = ExtResource("8_b48sr")
@@ -130,63 +85,6 @@ script = ExtResource("1_tsimo")
 script = ExtResource("2_pfdmd")
 
 [node name="PlayerTurnState" type="Node" parent="BattleManager/States" unique_id=509371858]
-
-[node name="ActorsRoot" type="Node3D" parent="." unique_id=1065592989]
-
-[node name="PlayerSlot0" type="Node3D" parent="ActorsRoot" unique_id=1948691805]
-transform = Transform3D(-0.23582065, 0, 0.9717966, 0, 1, 0, -0.9717966, 0, -0.23582065, -2.6308358, 0, 1.0198298)
-
-[node name="Ken1" type="Node3D" parent="ActorsRoot/PlayerSlot0" unique_id=1661949978]
-script = ExtResource("3_qf24n")
-team = "player"
-max_hp = 14
-attack_power = 2
-
-[node name="ken_model_test11" parent="ActorsRoot/PlayerSlot0/Ken1" unique_id=433556683 instance=ExtResource("4_yr51w")]
-
-[node name="PlayerSlot1" type="Node3D" parent="ActorsRoot" unique_id=2006635434]
-transform = Transform3D(0.20944786, 0, 0.9778198, 0, 1, 0, -0.9778198, 0, 0.20944786, -3.175598, 0, -1.8292017)
-
-[node name="Ken2" type="Node3D" parent="ActorsRoot/PlayerSlot1" unique_id=726510468]
-script = ExtResource("3_qf24n")
-team = "player"
-
-[node name="ken_model_test11" parent="ActorsRoot/PlayerSlot1/Ken2" unique_id=1280621632 instance=ExtResource("4_yr51w")]
-
-[node name="PlayerSlot2" type="Node3D" parent="ActorsRoot" unique_id=1245586878]
-transform = Transform3D(0.012216957, 0, 0.9999254, 0, 1, 0, -0.9999254, 0, 0.012216957, -4.1868544, 0, -0.43312144)
-
-[node name="Ken3" type="Node3D" parent="ActorsRoot/PlayerSlot2" unique_id=2103833632]
-script = ExtResource("3_qf24n")
-team = "player"
-max_hp = 8
-attack_power = 4
-
-[node name="ken_model_test11" parent="ActorsRoot/PlayerSlot2/Ken3" unique_id=2056180615 instance=ExtResource("4_yr51w")]
-
-[node name="EnemySlot0" type="Node3D" parent="ActorsRoot" unique_id=1355596423]
-transform = Transform3D(0.039556243, 0, -0.99921733, 0, 1, 0, 0.99921733, 0, 0.039556243, 2.960981, 0, 0)
-
-[node name="Shadow1" type="Node3D" parent="ActorsRoot/EnemySlot0" unique_id=1281790285]
-script = ExtResource("3_qf24n")
-team = "enemy"
-max_hp = 18
-attack_power = 1
-body_parts = Array[ExtResource("5_b48sr")]([SubResource("Resource_58qkj"), SubResource("Resource_itxmc"), SubResource("Resource_b48sr")])
-
-[node name="ken_model_test9" parent="ActorsRoot/EnemySlot0/Shadow1" unique_id=440704510 instance=ExtResource("5_5hsfr")]
-
-[node name="EnemySlot1" type="Node3D" parent="ActorsRoot" unique_id=333407998]
-transform = Transform3D(0.3012051, 0, -0.9535595, 0, 1, 0, 0.9535595, 0, 0.3012051, 2.007721, 0, -1.9357876)
-
-[node name="Shadow2" type="Node3D" parent="ActorsRoot/EnemySlot1" unique_id=627916966]
-script = ExtResource("3_qf24n")
-team = "enemy"
-max_hp = 8
-attack_power = 4
-body_parts = Array[ExtResource("5_b48sr")]([SubResource("Resource_hq6gs"), SubResource("Resource_ohpiy"), SubResource("Resource_ucieq")])
-
-[node name="ken_model_test9" parent="ActorsRoot/EnemySlot1/Shadow2" unique_id=631900749 instance=ExtResource("5_5hsfr")]
 
 [node name="CameraRig" type="Node3D" parent="." unique_id=1931292584]
 

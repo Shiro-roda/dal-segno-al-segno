@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="EncounterData" format=3 uid="uid://br73gevor1yrr"]
+
+[ext_resource type="PackedScene" uid="uid://qythxyqix8sw" path="res://scenes/Managers/battle_field_test.tscn" id="1_4tvwq"]
+[ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://resources/characters/characterdata.gd" id="2_rtlx1"]
+[ext_resource type="Resource" uid="uid://cqcjsnswptvk8" path="res://resources/characters/enemies/shadow1.tres" id="3_g1efg"]
+[ext_resource type="Resource" uid="uid://c7inm1j3nh7i4" path="res://resources/characters/enemies/shadow2.tres" id="4_7y7tb"]
+[ext_resource type="Resource" uid="uid://d3s71movk40pc" path="res://audio/tracks/magenta.tres" id="5_xqpoj"]
+[ext_resource type="Script" uid="uid://coeqyvqijtkns" path="res://resources/encounters/encounterdata.gd" id="6_nvxc5"]
+
+[resource]
+script = ExtResource("6_nvxc5")
+battlefield_scene = ExtResource("1_4tvwq")
+enemies = Array[ExtResource("2_rtlx1")]([ExtResource("3_g1efg"), ExtResource("4_7y7tb")])
+override_music = ExtResource("5_xqpoj")

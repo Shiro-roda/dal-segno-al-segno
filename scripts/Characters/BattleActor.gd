@@ -4,7 +4,9 @@ class_name BattleActor
 signal turn_finished
 signal died
 
-@export var team : String
+enum Team { PLAYER, ENEMY }
+@export var team : Team
+
 @export var max_hp : int = 10
 @export var attack_power : int = 3
 @export var body_parts : Array[BodyPartData]

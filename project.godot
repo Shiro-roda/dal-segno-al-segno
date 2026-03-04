@@ -28,6 +28,7 @@ buses/default_bus_layout="uid://civek8py85e0a"
 Dialogic="*res://addons/dialogic/Core/DialogicGameHandler.gd"
 PhantomCameraManager="*uid://duq6jhf6unyis"
 AudioManagerAuto="*uid://cx2gw1tu0rxpi"
+GameController="*uid://e0k6d8aob0l7"
 
 [dialogic]
 

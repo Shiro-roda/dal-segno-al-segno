@@ -1,6 +1,12 @@
 extends Node
 
+
+signal battle_finished(victory: bool)
+
 var current_state : Node = null
+
+var context : BattleContext
+var battlefield_root : Node3D
 
 var actors : Array[BattleActor] = []
 var turn_queue : Array[BattleActor] = []
@@ -67,8 +73,6 @@ var removed_channels : int = 0
 func _ready():
 	await get_tree().process_frame
 	add_to_group("battle_manager")
-	register_actors()
-	build_turn_queue()
 	original_cam_offset = active_cam.follow_offset
 	original_target_offset = target_cam.follow_offset
 	
@@ -79,8 +83,6 @@ func _ready():
 	battle_ui.confirm_pressed.connect(_on_confirm_pressed)
 	battle_ui.cancel_pressed.connect(_on_cancel_pressed)
 	
-	
-	change_state("BattleIntroState")
 
 func _process(delta):
 
@@ -126,29 +128,73 @@ func start_battle():
 
 
 
-func register_actors():
-	actors.clear()
+func start_battle_with_context(battle_context : BattleContext):
+	context = battle_context
 
-	var root = get_parent().get_node("ActorsRoot")
+	setup_battlefield()
+	spawn_players()
+	spawn_enemies()
+	removed_channels = context.encounter.forced_removed_channels
+	update_enemy_visibility()
 
-	for slot in root.get_children():
-		if slot.get_child_count() > 0:
-			var actor = slot.get_child(0)
-			if actor is BattleActor:
-				actors.append(actor)
-				actor.died.connect(Callable(self, "_on_actor_died"))
-				actor.turn_finished.connect(Callable(self, "_on_turn_finished"))
-			print("Actor:", actor.name, "Team:", actor.team)
+	build_turn_queue()
+
+	current_index = 0
+	next_turn()
+
+func spawn_players():
+	var player_slots = battlefield_root.get_node("PlayerSlots").get_children()
+
+	for i in context.run_state.party_members.size():
+		var member_data = context.run_state.party_members[i]
+		var char_data = member_data.character
+
+		var actor = char_data.battle_scene.instantiate()
+
+		actor.team = BattleActor.Team.PLAYER
+		actor.max_hp = char_data.base_max_hp + member_data.bonus_max_hp
+		actor.attack_power = char_data.base_attack + member_data.bonus_attack
+		actor.hp = member_data.current_hp
+		actor.body_parts = char_data.body_parts
+
+		player_slots[i].add_child(actor)
+
+		actors.append(actor)
+		actor.died.connect(_on_actor_died)
+		actor.turn_finished.connect(_on_turn_finished)
+
+func spawn_enemies():
+	var enemy_slots = battlefield_root.get_node("EnemySlots").get_children()
+
+	for i in context.encounter.enemy_scenes.size():
+		var actor = context.encounter.enemy_scenes[i].instantiate()
+
+		actor.team = BattleActor.Team.ENEMY
+
+		enemy_slots[i].add_child(actor)
+
+		actors.append(actor)
+		actor.died.connect(_on_actor_died)
+		actor.turn_finished.connect(_on_turn_finished)
 
 
-	print("Registered:", actors.size())
+func setup_battlefield():
+	battlefield_root = context.encounter.battlefield_scene.instantiate()
+	get_parent().add_child(battlefield_root)
+
 
 
 func build_turn_queue():
 	turn_queue.clear()
 
-	var players = actors.filter(func(a): return a.team == "player")
-	var enemies = actors.filter(func(a): return a.team == "enemy")
+	var players = actors.filter(func(a):
+		return a.team == BattleActor.Team.PLAYER
+	)
+
+	var enemies = actors.filter(func(a):
+		return a.team == BattleActor.Team.ENEMY
+	)
+
 
 	turn_queue.append_array(players)
 	turn_queue.append_array(enemies)
@@ -174,7 +220,7 @@ func next_turn():
 
 	print("Turn: ", actor.name, " HP: ", actor.hp)
 
-	if actor.team == "player":
+	if actor.team == BattleActor.Team.PLAYER:
 		input_locked = false
 		await handle_player_turn(actor)
 	else:
@@ -264,22 +310,41 @@ func choose_target(actor: BattleActor) -> BattleActor:
 
 func check_victory() -> bool:
 	var players_alive = actors.any(func(a):
-		return a.team == "player" and a.is_alive()
+		return a.team == BattleActor.Team.PLAYER and a.is_alive()
 	)
 
 	var enemies_alive = actors.any(func(a):
-		return a.team == "enemy" and a.is_alive()
+		return a.team == BattleActor.Team.ENEMY and a.is_alive()
 	)
 
 	if not players_alive:
-		print("Defeat")
+		end_battle(false)
 		return true
 
 	if not enemies_alive:
-		print("Victory")
+		end_battle(true)
 		return true
 
 	return false
+
+func end_battle(victory: bool):
+	save_party_state()
+	if battlefield_root:
+		battlefield_root.queue_free()
+
+	emit_signal("battle_finished", victory)
+
+
+func save_party_state():
+	var party_data = context.run_state.party_members
+
+	var player_actors = actors.filter(func(a):
+		return a.team == BattleActor.Team.PLAYER
+	)
+
+	for i in min(player_actors.size(), context.run_state.party_members.size()):
+		context.run_state.party_members[i].current_hp = player_actors[i].hp
+
 
 
 func apply_lens(channel: int):
@@ -396,7 +461,7 @@ func count_bits(value: int) -> int:
 
 func update_enemy_visibility():
 	for actor in actors:
-		if actor.team == "enemy":
+		if actor.team == BattleActor.Team.ENEMY:
 			actor.update_shader_visibility(removed_channels)
 
 	ca_mesh_mat.set_shader_parameter("removed_mask", removed_channels)

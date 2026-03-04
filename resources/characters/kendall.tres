@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CharacterData" format=3 uid="uid://c42j123nvslxv"]
+
+[ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://resources/bodyparts/BodyPartData.gd" id="1_5d63v"]
+[ext_resource type="PackedScene" uid="uid://dhu0qxbwinbyv" path="res://scenes/Characters/ken_model_test_11.tscn" id="1_pm2yt"]
+[ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://resources/characters/characterdata.gd" id="2_mij0t"]
+
+[resource]
+script = ExtResource("2_mij0t")
+display_name = "Kendall"
+base_max_hp = 20
+base_attack = 5
+battle_scene = ExtResource("1_pm2yt")

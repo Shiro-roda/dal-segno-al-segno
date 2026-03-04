@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="CharacterData" format=3 uid="uid://cqcjsnswptvk8"]
+
+[ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://resources/bodyparts/BodyPartData.gd" id="1_bc0hm"]
+[ext_resource type="PackedScene" uid="uid://6kmv2ko6w15m" path="res://scenes/Characters/ken_model.tscn" id="1_rwi5t"]
+[ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://resources/characters/characterdata.gd" id="2_rwi5t"]
+
+[sub_resource type="Resource" id="Resource_dh7dq"]
+script = ExtResource("1_bc0hm")
+part_name = "Torso"
+base_visible = true
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[sub_resource type="Resource" id="Resource_m6ok7"]
+script = ExtResource("1_bc0hm")
+part_name = "Head"
+required_removed_mask = 1
+damage_multiplier = 2.0
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[sub_resource type="Resource" id="Resource_tvp6t"]
+script = ExtResource("1_bc0hm")
+part_name = "Heart"
+required_removed_mask = 4
+damage_multiplier = 2.5
+is_cognitohazard = true
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[resource]
+script = ExtResource("2_rwi5t")
+display_name = "Shadow1"
+base_max_hp = 15
+base_attack = 3
+body_parts = Array[ExtResource("1_bc0hm")]([SubResource("Resource_dh7dq"), SubResource("Resource_m6ok7"), SubResource("Resource_tvp6t")])
+battle_scene = ExtResource("1_rwi5t")
+metadata/_custom_type_script = "uid://b2t1syvrybco8"
