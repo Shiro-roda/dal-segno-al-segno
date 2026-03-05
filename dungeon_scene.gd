@@ -1,9 +1,10 @@
 extends Node
 
 func _ready():
+
+	# --- Create Run ---
 	var run = RunState.new()
 
-	# Create dummy party for now
 	var member = PartyMemberData.new()
 	member.character = preload("res://resources/characters/kendall.tres")
 	member.current_hp = member.character.base_max_hp
@@ -14,6 +15,8 @@ func _ready():
 
 	GameController.start_new_run(run)
 
-	# For testing, immediately start battle
-	var encounter = preload("res://resources/encounters/test_encounter.tres")
-	GameController.start_battle(encounter)
+	# --- Create Dungeon ---
+	var dungeon_data = preload("res://resources/dungeons/test_dungeon.tres")
+
+	var controller : DungeonController = $DungeonController
+	controller.start_dungeon(run, dungeon_data)

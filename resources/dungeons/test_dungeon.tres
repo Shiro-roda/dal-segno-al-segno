@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="DungeonData" format=3 uid="uid://dpvtgkchj7i60"]
+
+[ext_resource type="Resource" uid="uid://dh41c43q5ekyx" path="res://audio/tracks/yellow.tres" id="1_2l6ym"]
+[ext_resource type="Script" uid="uid://2pqfqk1bjeam" path="res://resources/dungeons/dungeondata.gd" id="2_xmptu"]
+
+[resource]
+script = ExtResource("2_xmptu")
+default_battle_track = ExtResource("1_2l6ym")
