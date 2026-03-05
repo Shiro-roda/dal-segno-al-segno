@@ -2,6 +2,7 @@ extends Node
 
 
 signal battle_finished(victory: bool)
+signal battle_manager_ready
 
 var current_state : Node = null
 
@@ -67,14 +68,20 @@ var removed_channels : int = 0
 
 
 @onready var battle_ui = get_parent().get_node("BattleUI")
+var battle_hud : BattleHUD
+
 
 @onready var states = $States
 
 func _ready():
 	await get_tree().process_frame
+
+
 	add_to_group("battle_manager")
 	original_cam_offset = active_cam.follow_offset
 	original_target_offset = target_cam.follow_offset
+	
+	battle_hud = get_parent().get_node("BattleHUD")
 	
 	battle_ui.command_selected.connect(_on_command_selected)
 	battle_ui.target_selected.connect(_on_target_selected)
@@ -82,6 +89,8 @@ func _ready():
 	battle_ui.filter_selected.connect(_on_filter_selected)
 	battle_ui.confirm_pressed.connect(_on_confirm_pressed)
 	battle_ui.cancel_pressed.connect(_on_cancel_pressed)
+	
+	emit_signal("battle_manager_ready")
 	
 
 func _process(delta):
@@ -119,23 +128,46 @@ func change_state(state_name: String):
 	current_state = states.get_node(state_name)
 	current_state.enter(self)
 
-func start_battle():
-	AudioManagerAuto.play_battle_track(preload("res://audio/tracks/magenta.tres"))
-	AudioManagerAuto.ambience_player.play()
-	
-	current_index = 0
-	next_turn()
+
 
 
 
 func start_battle_with_context(battle_context : BattleContext):
+
+	print("STARTING BATTLE")
+
 	context = battle_context
+
+	# ✅ START MUSIC HERE
+	var track = context.encounter.override_music
+
+	if track:
+		AudioManagerAuto.play_battle_track(track)
+	else:
+		AudioManagerAuto.play_battle_track(
+		GameController.current_dungeon.default_battle_track
+	)
+
+	AudioManagerAuto.ambience_player.play()
+
 
 	setup_battlefield()
 	spawn_players()
 	spawn_enemies()
+	print("Players:", context.run_state.party_members.size())
+	print("Enemies:", context.encounter.enemies.size())
+	print(context.run_state.party_members)
+	print(battlefield_root.get_children())
+
+	battle_hud.setup(actors)
+
+
+
+
+
 	removed_channels = context.encounter.forced_removed_channels
-	update_enemy_visibility()
+	if removed_channels:
+		update_enemy_visibility()
 
 	build_turn_queue()
 
@@ -145,42 +177,57 @@ func start_battle_with_context(battle_context : BattleContext):
 func spawn_players():
 	var player_slots = battlefield_root.get_node("PlayerSlots").get_children()
 
-	for i in context.run_state.party_members.size():
+	for i in range(context.run_state.party_members.size()):
+
 		var member_data = context.run_state.party_members[i]
 		var char_data = member_data.character
 
 		var actor = char_data.battle_scene.instantiate()
-
+		
+		actor.name = char_data.display_name
 		actor.team = BattleActor.Team.PLAYER
 		actor.max_hp = char_data.base_max_hp + member_data.bonus_max_hp
 		actor.attack_power = char_data.base_attack + member_data.bonus_attack
 		actor.hp = member_data.current_hp
 		actor.body_parts = char_data.body_parts
-
 		player_slots[i].add_child(actor)
 
 		actors.append(actor)
 		actor.died.connect(_on_actor_died)
 		actor.turn_finished.connect(_on_turn_finished)
+		actor.hp_changed.connect(_on_hp_changed)
+	
 
 func spawn_enemies():
 	var enemy_slots = battlefield_root.get_node("EnemySlots").get_children()
 
-	for i in context.encounter.enemy_scenes.size():
-		var actor = context.encounter.enemy_scenes[i].instantiate()
+	for i in range(context.encounter.enemies.size()):
+		var char_data = context.encounter.enemies[i]
 
+		var actor : BattleActor = char_data.battle_scene.instantiate()
+		
+		actor.name = char_data.display_name
 		actor.team = BattleActor.Team.ENEMY
+		actor.max_hp = char_data.base_max_hp
+		actor.attack_power = char_data.base_attack
+		actor.hp = actor.max_hp
+		actor.body_parts = char_data.body_parts
+		
 
 		enemy_slots[i].add_child(actor)
 
 		actors.append(actor)
 		actor.died.connect(_on_actor_died)
 		actor.turn_finished.connect(_on_turn_finished)
+		actor.hp_changed.connect(_on_hp_changed)
+
+
 
 
 func setup_battlefield():
 	battlefield_root = context.encounter.battlefield_scene.instantiate()
 	get_parent().add_child(battlefield_root)
+
 
 
 
@@ -194,7 +241,7 @@ func build_turn_queue():
 	var enemies = actors.filter(func(a):
 		return a.team == BattleActor.Team.ENEMY
 	)
-
+	
 
 	turn_queue.append_array(players)
 	turn_queue.append_array(enemies)
@@ -222,6 +269,7 @@ func next_turn():
 
 	if actor.team == BattleActor.Team.PLAYER:
 		input_locked = false
+		battle_hud.set_active_actor(actor)
 		await handle_player_turn(actor)
 	else:
 		await handle_enemy_turn(actor)
@@ -285,6 +333,8 @@ func await_actor_turn(actor: BattleActor, action: Callable) -> void:
 		await get_tree().process_frame
 
 func _on_turn_finished():
+	battle_hud.target_info.hide()
+	battle_hud.set_active_actor(active_player_actor, false)
 	current_index += 1
 	next_turn()
 
@@ -443,7 +493,6 @@ func screen_shake_on_actor(target: BattleActor, dir: Vector3, strength: float, d
 	shake_strength = strength
 	shake_time = duration
 	shaking = true
-	
 	AudioManagerAuto.duck_bgm(-8.0, 0.4)
 	AudioManagerAuto.set_glitch_intensity(0.2, 0.15)
 	
@@ -529,11 +578,12 @@ func _on_confirm_pressed():
 			await_actor_turn(active_player_actor, func():
 				active_player_actor.take_turn(selected_target, selected_body_part)
 			)
+			
 		"lens":
 			await_actor_turn(active_player_actor, func():
 				active_player_actor.use_lens(selected_filter)
 			)
-
+	
 
 
 
@@ -578,6 +628,7 @@ func _on_target_selected(target):
 	await get_tree().process_frame
 	target_cam.set_look_at_target(target)
 	target_cam.set_look_at_offset(Vector3(0, 1.5, -.2))
+	battle_hud.show_target(selected_target)
 
 	
 
@@ -597,3 +648,7 @@ func _on_filter_selected(channel):
 	selected_filter = channel
 	input_stage = InputStage.CONFIRM
 	update_ui_state()
+
+func _on_hp_changed(actor: BattleActor):
+	if actor.team == BattleActor.Team.ENEMY:
+		battle_hud.show_target(actor)

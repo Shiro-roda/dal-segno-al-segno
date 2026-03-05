@@ -9,6 +9,8 @@
 [ext_resource type="Script" uid="uid://dy7nm6c7r8ulp" path="res://scenes/Events/BattleUI.gd" id="10_dg68v"]
 [ext_resource type="Script" uid="uid://qre1hxk7lxh4" path="res://scenes/Events/idle_orbit_pivot.gd" id="10_xhnwx"]
 [ext_resource type="Shader" uid="uid://cow4hovotygtk" path="res://scripts/Shaders/main.gdshader" id="11_26idg"]
+[ext_resource type="FontFile" uid="uid://c8q52n0ssb7w3" path="res://assets/Fonts/TerminalVector.ttf" id="11_xhnwx"]
+[ext_resource type="Script" uid="uid://r12gfink2342" path="res://scenes/Events/battle_hud.gd" id="12_26idg"]
 [ext_resource type="Shader" uid="uid://c7dhsbe1s7mgu" path="res://scripts/Shaders/post_processing.gdshader" id="12_xhnwx"]
 [ext_resource type="Shader" uid="uid://btm2rulspg8el" path="res://scripts/Shaders/battleglitch.gdshader" id="15_itxmc"]
 [ext_resource type="PackedScene" uid="uid://cx2gw1tu0rxpi" path="res://scenes/Managers/audio_manager.tscn" id="16_hq6gs"]
@@ -58,11 +60,68 @@ sky_material = SubResource("ProceduralSkyMaterial_wfe2u")
 background_mode = 2
 sky = SubResource("Sky_dg68v")
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xhnwx"]
+content_margin_left = 15.0
+content_margin_top = 10.0
+content_margin_right = 15.0
+content_margin_bottom = 10.0
+bg_color = Color(0.07815654, 0.078156434, 0.07815645, 0.73333335)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.0048998194, 0.00489983, 0.004899827, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[sub_resource type="LabelSettings" id="LabelSettings_itxmc"]
+font = ExtResource("11_xhnwx")
+font_size = 24
+
+[sub_resource type="Gradient" id="Gradient_itxmc"]
+colors = PackedColorArray(1, 1, 1, 1, 0, 0, 0, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_xhnwx"]
+gradient = SubResource("Gradient_itxmc")
+
+[sub_resource type="Gradient" id="Gradient_hq6gs"]
+colors = PackedColorArray(1, 0, 0, 1, 1, 1, 0, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_hq6gs"]
+gradient = SubResource("Gradient_hq6gs")
+
+[sub_resource type="LabelSettings" id="LabelSettings_hq6gs"]
+font = ExtResource("11_xhnwx")
+font_size = 26
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_itxmc"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(0.1, 0.1, 0.1, 0.6)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.067437805, 0.06743773, 0.06743767, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+corner_detail = 5
+
+[sub_resource type="Theme" id="Theme_xhnwx"]
+default_font = ExtResource("11_xhnwx")
+default_font_size = 21
+
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_hq6gs"]
 shader = ExtResource("15_itxmc")
 shader_parameter/curvature = 5.60000008344672
 shader_parameter/vignette_multiplier = 0.20000000298024
-shader_parameter/ca_strength = 4.5000000670554
+shader_parameter/ca_strength = 3.0000000447036
 shader_parameter/blur_strength = 0.10000000149012
 shader_parameter/channel_strength = Vector3(1, 1, 1)
 shader_parameter/glitch_intensity = 0.0
@@ -115,11 +174,11 @@ look_at_damping_value = 0.157
 metadata/_custom_type_script = "uid://csjccrhj5wnx7"
 
 [node name="IdleOrbitPivot" type="Node3D" parent="CameraRig" unique_id=1532661715]
-transform = Transform3D(1, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, -0.16304493, 0, -0.8420439)
+transform = Transform3D(1, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 0, 0, 0)
 script = ExtResource("10_xhnwx")
 
 [node name="IdleOrbiter" type="Node3D" parent="CameraRig/IdleOrbitPivot" unique_id=1216574263]
-transform = Transform3D(1, 0, 0, 0, 0.9999998, 0, 0, 0, 0.9999998, 0, 4.304206, 3.6548314)
+transform = Transform3D(1, 0, 0, 0, 0.9999998, 0, 0, 0, 0.9999998, 0, 5.2470794, 5.168442)
 
 [node name="ScreenQuad" type="MeshInstance3D" parent="CameraRig" unique_id=48743744]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.4246502, 1.3194637, 5.2776985)
@@ -171,6 +230,50 @@ process_physics_priority = 300
 script = ExtResource("6_wfe2u")
 host_layers = 2
 
+[node name="BattleHUD" type="CanvasLayer" parent="." unique_id=1441720760]
+script = ExtResource("12_26idg")
+
+[node name="PlayerPanels" type="HBoxContainer" parent="BattleHUD" unique_id=489023876]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 5.0
+offset_top = -285.0
+offset_right = 45.0
+offset_bottom = -200.0
+grow_vertical = 0
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="TargetInfo" type="PanelContainer" parent="BattleHUD" unique_id=828853757]
+offset_left = 536.0
+offset_top = 738.0
+offset_right = 696.0
+offset_bottom = 847.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_xhnwx")
+
+[node name="TargetInfoBox" type="VBoxContainer" parent="BattleHUD/TargetInfo" unique_id=36994380]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="NameLabel" type="Label" parent="BattleHUD/TargetInfo/TargetInfoBox" unique_id=749312287]
+layout_mode = 2
+label_settings = SubResource("LabelSettings_itxmc")
+
+[node name="HPBar" type="TextureProgressBar" parent="BattleHUD/TargetInfo/TargetInfoBox" unique_id=598575795]
+layout_mode = 2
+size_flags_vertical = 3
+nine_patch_stretch = true
+texture_under = SubResource("GradientTexture1D_xhnwx")
+texture_progress = SubResource("GradientTexture2D_hq6gs")
+
+[node name="HPText" type="Label" parent="BattleHUD/TargetInfo/TargetInfoBox" unique_id=1974015090]
+layout_mode = 2
+label_settings = SubResource("LabelSettings_hq6gs")
+
 [node name="BattleUI" type="CanvasLayer" parent="." unique_id=100288458]
 script = ExtResource("10_dg68v")
 
@@ -183,6 +286,7 @@ offset_right = -1.0
 offset_bottom = 4.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_itxmc")
 metadata/_edit_use_anchors_ = true
 
 [node name="HBoxContainer" type="HBoxContainer" parent="BattleUI/Panel" unique_id=900893671]
@@ -192,6 +296,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = SubResource("Theme_xhnwx")
 
 [node name="VBoxContainer" type="VBoxContainer" parent="BattleUI/Panel/HBoxContainer" unique_id=1170081938]
 layout_mode = 2

@@ -1,0 +1,71 @@
+[gd_scene format=3 uid="uid://bmycm3fk77yls"]
+
+[ext_resource type="Script" uid="uid://binb8ped5kkdv" path="res://scenes/UI/actor_panel.gd" id="1_jdca4"]
+[ext_resource type="FontFile" uid="uid://c8q52n0ssb7w3" path="res://assets/Fonts/TerminalVector.ttf" id="2_p0etj"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_p0etj"]
+content_margin_left = 6.0
+content_margin_top = 6.0
+content_margin_right = 6.0
+content_margin_bottom = 6.0
+bg_color = Color(0.09803922, 0.09803922, 0.09803922, 0.7411765)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0, 0, 0, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+corner_detail = 5
+
+[sub_resource type="Theme" id="Theme_p0etj"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_h3ar0"]
+font = ExtResource("2_p0etj")
+font_size = 24
+
+[sub_resource type="Gradient" id="Gradient_26idg"]
+colors = PackedColorArray(1, 1, 1, 1, 0, 0, 0, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_p0etj"]
+gradient = SubResource("Gradient_26idg")
+
+[sub_resource type="Gradient" id="Gradient_itxmc"]
+colors = PackedColorArray(1, 0, 0, 1, 1, 1, 0, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_h3ar0"]
+gradient = SubResource("Gradient_itxmc")
+
+[sub_resource type="LabelSettings" id="LabelSettings_h8jys"]
+font = ExtResource("2_p0etj")
+font_size = 26
+
+[node name="ActorPanel" type="PanelContainer" unique_id=1593661217]
+offset_right = 156.0
+offset_bottom = 96.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_p0etj")
+script = ExtResource("1_jdca4")
+
+[node name="ActorPanelVBox" type="VBoxContainer" parent="." unique_id=1555664132]
+layout_mode = 2
+theme = SubResource("Theme_p0etj")
+theme_override_constants/separation = 4
+alignment = 1
+
+[node name="NameLabel" type="Label" parent="ActorPanelVBox" unique_id=1775829427]
+layout_mode = 2
+text = "Name"
+label_settings = SubResource("LabelSettings_h3ar0")
+
+[node name="HPBar" type="TextureProgressBar" parent="ActorPanelVBox" unique_id=1404490146]
+layout_mode = 2
+size_flags_vertical = 3
+nine_patch_stretch = true
+texture_under = SubResource("GradientTexture1D_p0etj")
+texture_progress = SubResource("GradientTexture2D_h3ar0")
+
+[node name="HPText" type="Label" parent="ActorPanelVBox" unique_id=397857968]
+layout_mode = 2
+label_settings = SubResource("LabelSettings_h8jys")

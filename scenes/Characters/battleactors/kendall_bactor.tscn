@@ -1,0 +1,9 @@
+[gd_scene format=3 uid="uid://d3idossxkgtjh"]
+
+[ext_resource type="Script" uid="uid://c8fvcb046bf6m" path="res://scripts/Characters/BattleActor.gd" id="1_kkg3i"]
+[ext_resource type="PackedScene" uid="uid://dhu0qxbwinbyv" path="res://scenes/Characters/ken_model_test_11.tscn" id="2_u31kg"]
+
+[node name="BattleActor" type="Node3D" unique_id=620316433]
+script = ExtResource("1_kkg3i")
+
+[node name="ken_model_test11" parent="." unique_id=2005524327 instance=ExtResource("2_u31kg")]

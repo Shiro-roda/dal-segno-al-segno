@@ -3,7 +3,7 @@ class_name EncounterData
 
 
 @export var battlefield_scene : PackedScene
-@export var enemies : Array[CharacterData]
+@export var enemies : Array[CharacterData] = []
 # @export var intro_dialogue : DialogueData
 @export var override_music : BattleTrack
 # @export var override_field_effects : Array[FieldEffectData]

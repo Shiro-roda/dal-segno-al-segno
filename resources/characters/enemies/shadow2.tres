@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="CharacterData" format=3 uid="uid://c7inm1j3nh7i4"]
 
 [ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://resources/bodyparts/BodyPartData.gd" id="1_tpfi6"]
-[ext_resource type="PackedScene" uid="uid://6kmv2ko6w15m" path="res://scenes/Characters/ken_model.tscn" id="1_v3wxi"]
+[ext_resource type="PackedScene" uid="uid://433fpucnuqkf" path="res://scenes/Characters/battleactors/shadow_bactor.tscn" id="1_v3wxi"]
 [ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://resources/characters/characterdata.gd" id="2_v3wxi"]
 
 [sub_resource type="Resource" id="Resource_dh7dq"]
@@ -28,8 +28,8 @@ metadata/_custom_type_script = "uid://bewuwngi8x4ad"
 [resource]
 script = ExtResource("2_v3wxi")
 display_name = "Shadow2"
-base_max_hp = 8
-base_attack = 5
+base_max_hp = 10
+base_attack = 2
 body_parts = Array[ExtResource("1_tpfi6")]([SubResource("Resource_dh7dq"), SubResource("Resource_sxdbf"), SubResource("Resource_tvp6t")])
 battle_scene = ExtResource("1_v3wxi")
 metadata/_custom_type_script = "uid://b2t1syvrybco8"

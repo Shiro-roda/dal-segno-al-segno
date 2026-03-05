@@ -3,6 +3,8 @@ class_name BattleActor
 
 signal turn_finished
 signal died
+signal hp_changed
+
 
 enum Team { PLAYER, ENEMY }
 @export var team : Team
@@ -10,6 +12,7 @@ enum Team { PLAYER, ENEMY }
 @export var max_hp : int = 10
 @export var attack_power : int = 3
 @export var body_parts : Array[BodyPartData]
+var perishing := false
 
 
 var hp : int
@@ -35,9 +38,7 @@ func spend_turn():
 
 
 func attack(target: BattleActor) -> void:
-	
-	await play_attack_animation(target)
-	target.take_damage(attack_power)
+	await play_attack_animation(target, attack_power)
 
 
 
@@ -45,10 +46,11 @@ func attack(target: BattleActor) -> void:
 
 
 func attack_part(target: BattleActor, part: BodyPartData) -> void:
-	await play_attack_animation(target)
-	
 	var damage = attack_power * part.damage_multiplier
-	target.take_damage(damage)
+	if part.is_cognitohazard:
+		perishing = true
+	await play_attack_animation(target, damage)
+	
 
 	emit_signal("turn_finished")
 
@@ -57,6 +59,7 @@ func attack_part(target: BattleActor, part: BodyPartData) -> void:
 func take_damage(amount: int):
 	
 	hp -= amount
+	emit_signal("hp_changed", self)
 	print(name, " takes ", amount, " damage, ", hp, " hp remaining.")
 	
 	if hp <= 0:
@@ -92,7 +95,7 @@ func use_lens(channel: int):
 
 	spend_turn()
 
-func play_attack_animation(target: BattleActor) -> void:
+func play_attack_animation(target: BattleActor, damage: int = 0) -> void:
 	
 	var manager = get_tree().get_first_node_in_group("battle_manager")
 	manager.active_cam.follow_damping = false
@@ -123,7 +126,7 @@ func play_attack_animation(target: BattleActor) -> void:
 	var impact_dir = (global_position - target.global_position).normalized()
 	
 	manager.screen_shake_on_actor(target, impact_dir, 2.0, 0.5)
-	
+
 	
 
 	
@@ -136,6 +139,12 @@ func play_attack_animation(target: BattleActor) -> void:
 	back_tween.tween_property(self, "global_position", original_pos, 0.3)
 	await back_tween.finished
 	
+	target.take_damage(damage)
+	if perishing:
+		print("You saw something you shouldn't have.")
+		emit_signal("turn_finished")
+		take_damage(damage)
+		perishing = false
 	manager.active_cam.follow_damping = true
 	manager.target_cam.follow_damping = true
 	

@@ -15,7 +15,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="Dal Segno al Segno"
-run/main_scene="uid://b3ga3dwpbbift"
+run/main_scene="uid://cprbg06xivaq4"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="uid://c8se4h4c3ijek"
 
