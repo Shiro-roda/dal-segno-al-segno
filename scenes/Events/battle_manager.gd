@@ -5,6 +5,8 @@ signal battle_finished(victory: bool)
 signal battle_manager_ready
 
 var current_state : Node = null
+var battle_ending := false
+
 
 var context : BattleContext
 var battlefield_root : Node3D
@@ -58,6 +60,7 @@ var removed_channels : int = 0
 @onready var ca_mesh: MeshInstance2D = $"../BattleUI/MeshInstance2D"
 @onready var ca_mesh_mat: ShaderMaterial = ca_mesh.material
 
+var ca_defaults := {}
 
 
 @onready var active_cam: PhantomCamera3D = $"../CameraRig/active_cam"
@@ -80,6 +83,13 @@ func _ready():
 	add_to_group("battle_manager")
 	original_cam_offset = active_cam.follow_offset
 	original_target_offset = target_cam.follow_offset
+	if ca_defaults.is_empty():
+		ca_mesh.material = ca_mesh.material.duplicate()
+		ca_mesh_mat = ca_mesh.material
+		cache_ca_defaults()
+	else:
+		reset_ca_material()
+
 	
 	battle_hud = get_parent().get_node("BattleHUD")
 	
@@ -95,6 +105,8 @@ func _ready():
 
 func _process(delta):
 
+	if battle_ending:
+		return
 	if shake_time > 0 and shake_cam != null:
 		shake_time -= delta
 
@@ -137,6 +149,9 @@ func start_battle_with_context(battle_context : BattleContext):
 	print("STARTING BATTLE")
 
 	context = battle_context
+	
+	removed_channels = context.encounter.forced_removed_channels
+
 
 	# ✅ START MUSIC HERE
 	var track = context.encounter.override_music
@@ -186,10 +201,12 @@ func spawn_players():
 		
 		actor.name = char_data.display_name
 		actor.team = BattleActor.Team.PLAYER
-		actor.max_hp = char_data.base_max_hp + member_data.bonus_max_hp
-		actor.attack_power = char_data.base_attack + member_data.bonus_attack
+		actor.max_hp = member_data.character.base_max_hp + member_data.bonus_max_hp
 		actor.hp = member_data.current_hp
+		actor.attack_power = member_data.character.base_attack + member_data.bonus_attack
+		
 		actor.body_parts = char_data.body_parts
+		actor.party_member = member_data
 		player_slots[i].add_child(actor)
 
 		actors.append(actor)
@@ -247,6 +264,14 @@ func build_turn_queue():
 	turn_queue.append_array(enemies)
 
 func next_turn():
+
+	if battle_ending:
+		return
+
+	if not is_inside_tree():
+		return
+
+
 	print("Turn: ", current_index)
 
 	if check_victory():
@@ -329,8 +354,11 @@ func await_actor_turn(actor: BattleActor, action: Callable) -> void:
 	
 	action.call()
 	
-	while not finished:
+	while not finished and not battle_ending:
+		if not is_inside_tree():
+			return
 		await get_tree().process_frame
+
 
 func _on_turn_finished():
 	battle_hud.target_info.hide()
@@ -378,11 +406,16 @@ func check_victory() -> bool:
 	return false
 
 func end_battle(victory: bool):
+
+	battle_ending = true
+	
 	save_party_state()
+
 	if battlefield_root:
 		battlefield_root.queue_free()
 
 	emit_signal("battle_finished", victory)
+
 
 
 func save_party_state():
@@ -524,7 +557,22 @@ func reset_selection():
 	
 	battle_ui.hide_target_container()
 	battle_ui.hide_confirmation()
-	
+
+func reset_ca_material():
+
+	for key in ca_defaults:
+		ca_mesh_mat.set_shader_parameter(key, ca_defaults[key])
+
+
+func cache_ca_defaults():
+
+	ca_defaults["removed_mask"] = ca_mesh_mat.get_shader_parameter("removed_mask")
+	ca_defaults["channel_strength"] = ca_mesh_mat.get_shader_parameter("channel_strength")
+	ca_defaults["glitch_intensity"] = ca_mesh_mat.get_shader_parameter("glitch_intensity")
+	ca_defaults["noise_strength"] = ca_mesh_mat.get_shader_parameter("noise_strength")
+	ca_defaults["tear_intensity"] = ca_mesh_mat.get_shader_parameter("tear_intensity")
+	ca_defaults["block_glitch"] = ca_mesh_mat.get_shader_parameter("block_glitch")
+
 
 func focus_idle_orbit():
 	target_cam.set_follow_offset(Vector3(0, 0, 0))

@@ -1,22 +1,43 @@
+# dungeon_scene.gd
 extends Node
+
+var controller : DungeonController
 
 func _ready():
 
-	# --- Create Run ---
-	var run = RunState.new()
+	await get_tree().process_frame
 
-	var member = PartyMemberData.new()
-	member.character = preload("res://resources/characters/kendall.tres")
-	member.current_hp = member.character.base_max_hp
+	controller = get_tree().get_first_node_in_group("dungeon_controller")
 
-	run.party_members.append(member)
-	run.party_members.append(member)
-	run.party_members.append(member)
 
-	GameController.start_new_run(run)
+	if GameController.current_run == null:
 
-	# --- Create Dungeon ---
-	var dungeon_data = preload("res://resources/dungeons/test_dungeon.tres")
+		var run = RunState.new()
 
-	var controller : DungeonController = $DungeonController
-	controller.start_dungeon(run, dungeon_data)
+		var member = PartyMemberData.new()
+		member.character = preload("res://resources/characters/kendall.tres")
+		member.current_hp = member.character.base_max_hp
+
+		run.party_members.append(member)
+		member = PartyMemberData.new()
+		member.character = preload("res://resources/characters/kendall.tres")
+		member.current_hp = member.character.base_max_hp
+		run.party_members.append(member)
+		member = PartyMemberData.new()
+		member.character = preload("res://resources/characters/kendall.tres")
+		member.current_hp = member.character.base_max_hp
+		run.party_members.append(member)
+
+		GameController.start_new_run(run)
+
+		var dungeon_data = preload("res://resources/dungeons/test_dungeon.tres")
+
+		await get_tree().process_frame
+	
+		
+
+
+		
+		
+		if controller:
+			controller.start_dungeon(run, dungeon_data)

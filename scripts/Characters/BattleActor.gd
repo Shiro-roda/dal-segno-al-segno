@@ -12,14 +12,15 @@ enum Team { PLAYER, ENEMY }
 @export var max_hp : int = 10
 @export var attack_power : int = 3
 @export var body_parts : Array[BodyPartData]
+var party_member : PartyMemberData
+
 var perishing := false
 
 
 var hp : int
 
 func _ready():
-	hp = max_hp
-	
+	print(hp)
 	add_to_group("battle_actor")
 
 

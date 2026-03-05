@@ -42,9 +42,8 @@ func change_scene_to_battle(context: BattleContext):
 func _on_battle_finished(victory: bool):
 
 	if victory:
+		
 		return_to_dungeon()
-	else:
-		print("Handle death logic")
 
 
 
@@ -79,15 +78,19 @@ func _wait_for_event_finish():
 	return_to_dungeon()
 
 func return_to_dungeon():
-
+	
+	call_deferred("_resume_dungeon")
 	get_tree().change_scene_to_file(
 		"res://scenes/Maps/dungeon_scene.tscn"
 	)
-	call_deferred("_resume_dungeon")
+	
 
 func _resume_dungeon():
 
-	var controller = get_tree().get_first_node_in_group("dungeon_controller")
+	var controller : DungeonController = null
 
-	if controller:
-		controller.on_room_completed()
+	while controller == null:
+		await get_tree().process_frame
+		controller = get_tree().get_first_node_in_group("dungeon_controller")
+
+	controller.on_room_completed()
