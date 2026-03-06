@@ -1,24 +1,8 @@
 [gd_resource type="Resource" script_class="CharacterData" format=3 uid="uid://bwmbdd8ixs5kf"]
 
-[ext_resource type="Script" uid="uid://c8fvcb046bf6m" path="res://scripts/Characters/BattleActor.gd" id="1_oaxon"]
+[ext_resource type="PackedScene" uid="uid://433fpucnuqkf" path="res://scenes/Characters/battleactors/shadow_bactor.tscn" id="1_mb5vk"]
 [ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://resources/bodyparts/BodyPartData.gd" id="2_oaxon"]
-[ext_resource type="PackedScene" uid="uid://6kmv2ko6w15m" path="res://scenes/Characters/ken_model.tscn" id="2_wyblm"]
 [ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://resources/characters/characterdata.gd" id="3_wyblm"]
-
-[sub_resource type="PackedScene" id="PackedScene_c4h3t"]
-_bundled = {
-"conn_count": 0,
-"conns": PackedInt32Array(),
-"editable_instances": [],
-"id_paths": [PackedInt32Array()],
-"names": PackedStringArray("BattleActor", "Node3D", "script", "ken_model_test9"),
-"node_count": 2,
-"node_ids": PackedInt32Array(620316433, 515500204),
-"node_paths": [NodePath(".")],
-"nodes": PackedInt32Array(-1, -1, 1, 0, -1, 1, 2, 0, 0, 1073741824, 0, 2147483647, 3, 1, 0, 0),
-"variants": [ExtResource("1_oaxon"), ExtResource("2_wyblm")],
-"version": 3
-}
 
 [sub_resource type="Resource" id="Resource_5ghe2"]
 script = ExtResource("2_oaxon")
@@ -47,5 +31,5 @@ display_name = "Shadow3"
 base_max_hp = 8
 base_attack = 5
 body_parts = Array[ExtResource("2_oaxon")]([SubResource("Resource_5ghe2"), SubResource("Resource_3nniw"), SubResource("Resource_6wgkd")])
-battle_scene = SubResource("PackedScene_c4h3t")
+battle_scene = ExtResource("1_mb5vk")
 metadata/_custom_type_script = "uid://b2t1syvrybco8"

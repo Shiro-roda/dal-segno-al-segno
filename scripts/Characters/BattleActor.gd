@@ -13,6 +13,7 @@ enum Team { PLAYER, ENEMY }
 @export var attack_power : int = 3
 @export var body_parts : Array[BodyPartData]
 var party_member : PartyMemberData
+@onready var camera_anchor: Node3D = $CameraAnchor
 
 var perishing := false
 
@@ -39,7 +40,7 @@ func spend_turn():
 
 
 func attack(target: BattleActor) -> void:
-	await play_attack_animation(target, attack_power)
+	await play_attack_animation(target, attack_power, 2.0, attack_power)
 
 
 
@@ -50,7 +51,7 @@ func attack_part(target: BattleActor, part: BodyPartData) -> void:
 	var damage = attack_power * part.damage_multiplier
 	if part.is_cognitohazard:
 		perishing = true
-	await play_attack_animation(target, damage)
+	await play_attack_animation(target, 2.0, damage, damage)
 	
 
 	emit_signal("turn_finished")
@@ -96,7 +97,7 @@ func use_lens(channel: int):
 
 	spend_turn()
 
-func play_attack_animation(target: BattleActor, damage: int = 0) -> void:
+func play_attack_animation(target: BattleActor, player_mult, enemy_mult, damage : int = 0) -> void:
 	
 	var manager = get_tree().get_first_node_in_group("battle_manager")
 	manager.active_cam.follow_damping = false
@@ -127,7 +128,10 @@ func play_attack_animation(target: BattleActor, damage: int = 0) -> void:
 	# IMPACT MOMENT
 	var impact_dir = (global_position - target.global_position).normalized()
 	
-	manager.screen_shake_on_actor(target, impact_dir, 2.0, 0.5)
+	
+	
+	
+	manager.screen_shake(self, target, impact_dir, player_mult, enemy_mult, 0.5 * damage)
 
 	
 

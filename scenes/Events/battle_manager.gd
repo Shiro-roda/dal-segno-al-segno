@@ -17,6 +17,11 @@ var current_index : int = 0
 
 
 var active_player_actor : BattleActor
+var enemy_player_actor : BattleActor
+var active_anchor : Node3D
+var target_anchor : Node3D
+var active_look_anchor : Node3D
+var target_look_anchor : Node3D
 var selected_command : String = ""
 var selected_target : BattleActor = null
 var selected_body_part : BodyPartData = null
@@ -24,19 +29,14 @@ var selected_filter : int = -1
 var input_locked := false
 
 
-var shake_strength := 0.0
-var shake_decay := 10.00
 var shake_time := 0.0
-var shake_direction := Vector3.ZERO
-var shake_cam: PhantomCamera3D = null
-var shaking := false
-var original_cam_offset := Vector3.ZERO
-var original_target_offset := Vector3.ZERO
-var offset = (shake_direction * shake_strength * 0.6) + Vector3(
-		randf_range(-0.3,0.3),
-		randf_range(-0.3,0.3),
-		randf_range(-0.1,0.1)
-	)
+var active_shake_strength := 0.0
+var target_shake_strength := 0.0
+var shake_decay := 8.0
+var active_base_follow_position := Vector3.ZERO
+var target_base_follow_position := Vector3.ZERO
+
+
 
 
 
@@ -75,7 +75,7 @@ var ca_defaults := {}
 
 @onready var idle_orbit_pivot: Node3D = $"../CameraRig/IdleOrbitPivot"
 @onready var idle_orbiter: Node3D = $"../CameraRig/IdleOrbitPivot/IdleOrbiter"
-@onready var follow_pivot: Node3D = $"../CameraRig/FollowPivot"
+
 
 
 
@@ -91,8 +91,6 @@ func _ready():
 
 
 	add_to_group("battle_manager")
-	original_cam_offset = active_cam.follow_offset
-	original_target_offset = target_cam.follow_offset
 	if ca_defaults.is_empty():
 		ca_mesh.material = ca_mesh.material.duplicate()
 		ca_mesh_mat = ca_mesh.material
@@ -117,21 +115,44 @@ func _process(delta):
 	if battle_ending:
 		return
 
+
+
 	if shake_time > 0:
+
 		shake_time -= delta
 
-		var offset = (shake_direction * shake_strength) + Vector3(
-			randf_range(-0.2,0.2),
-			randf_range(-0.2,0.2),
-			0
+		var active_offset = Vector3(
+			randf_range(-active_shake_strength, active_shake_strength),
+			randf_range(-active_shake_strength * 0.3, active_shake_strength * 0.3),
+			randf_range(-active_shake_strength * 0.3, active_shake_strength * 0.3)
 		)
+		
+		var target_offset = Vector3(
+			randf_range(-target_shake_strength, target_shake_strength),
+			randf_range(-target_shake_strength * 0.3, target_shake_strength * 0.3),
+			randf_range(-target_shake_strength * 0.3, target_shake_strength * 0.3)
+		)
+		if active_anchor:
+			active_anchor.position = active_base_follow_position + active_offset
+		if target_anchor:
+			target_anchor.position = target_base_follow_position + target_offset
+		active_shake_strength = lerp(active_shake_strength, 0.0, delta * shake_decay)
+		target_shake_strength = lerp(target_shake_strength, 0.0, delta * shake_decay)
 
-		shake_pivot.position = offset
-
-		shake_strength = lerp(shake_strength, 0.0, delta * shake_decay)
-
-	else:
-		shake_pivot.position = Vector3.ZERO
+	elif active_anchor and target_anchor:
+		if active_cam.follow_target != active_anchor:
+			active_base_follow_position = active_anchor.position
+			active_cam.set_follow_target(active_anchor)
+		if target_cam.follow_target != target_anchor:
+			target_base_follow_position = target_anchor.position
+			target_cam.set_follow_target(target_anchor)
+		
+		active_anchor.position = active_base_follow_position
+		target_anchor.position = target_base_follow_position
+	if active_look_anchor and (active_cam.look_at_target != active_look_anchor):
+		active_cam.set_look_at_target(active_look_anchor)
+	if target_look_anchor and (target_cam.look_at_target != target_look_anchor):
+		target_cam.set_look_at_target(target_look_anchor)
 
 
 
@@ -304,16 +325,16 @@ func next_turn():
 		await handle_enemy_turn(actor)
 
 func handle_player_turn(actor: BattleActor) -> void:
+
 	active_player_actor = actor
 
-	active_cam.set_follow_target(actor)
-	active_cam.set_look_at_target(null)
+	active_anchor = actor.camera_anchor
+	await get_tree().process_frame
+
 
 	input_stage = InputStage.COMMAND
 	battle_ui.show_commands()
 	update_ui_state()
-
-
 
 
 
@@ -328,13 +349,14 @@ func handle_enemy_turn(actor: BattleActor) -> void:
 	if target == null:
 		return
 
-	# LEFT SCREEN = player being attacked
-	active_cam.set_follow_target(target)
-	active_cam.set_look_at_target(null)
-
-	# RIGHT SCREEN = attacking enemy
-	target_cam.set_follow_target(actor)
-	target_cam.set_look_at_target(null)
+	
+	target_cam.set_follow_damping_value(Vector3(.25, .25, .15))
+	target_cam.set_follow_offset(Vector3(-1.25, 0, .55))
+	await get_tree().process_frame
+	target_anchor = actor.camera_anchor
+	target_look_anchor = actor.camera_anchor
+	active_anchor = target.camera_anchor
+	target_cam.set_look_at_offset(Vector3(0, 0, -.2))
 
 	await actor.take_turn(target)
 
@@ -528,14 +550,15 @@ func animate_channel_removal():
 		0.44
 	)
 
-func screen_shake_on_actor(target: BattleActor, dir: Vector3, strength: float, duration: float):
-
-	shake_direction = dir
-	shake_strength = strength
+func screen_shake(source: BattleActor, target: BattleActor, dir: Vector3, active_strength: float, target_strength: float, duration: float):
+	
+	active_shake_strength = active_strength
+	target_shake_strength = target_strength
 	shake_time = duration
 
 	AudioManagerAuto.duck_bgm(-8.0, 0.4)
 	AudioManagerAuto.set_glitch_intensity(0.2, 0.15)
+
 
 
 
@@ -584,9 +607,9 @@ func cache_ca_defaults():
 
 func focus_idle_orbit():
 	target_cam.set_follow_offset(Vector3(0, 0, 0))
-	target_cam.set_follow_target(idle_orbiter)
-	target_cam.set_look_at_target(idle_orbit_pivot)
 	target_cam.set_look_at_offset(Vector3(0, 0, 0))
+	target_anchor = idle_orbiter
+	target_look_anchor = idle_orbit_pivot
 
 func update_ui_state():
 	if input_locked:
@@ -677,13 +700,12 @@ func _on_command_selected(command):
 
 func _on_target_selected(target):
 	selected_target = target
+	target_anchor = target.camera_anchor
+	target_look_anchor = target.camera_anchor
 	target_cam.set_follow_damping_value(Vector3(.25, .25, .15))
-
-	target_cam.set_follow_target(target)
-	target_cam.set_follow_offset(Vector3(-1.25, 1.5, .55))
+	target_cam.set_follow_offset(Vector3(-1.25, 0, .55))
 	await get_tree().process_frame
-	target_cam.set_look_at_target(target)
-	target_cam.set_look_at_offset(Vector3(0, 1.5, -.2))
+	target_cam.set_look_at_offset(Vector3(0, 0, -.2))
 	battle_hud.show_target(selected_target)
 
 	

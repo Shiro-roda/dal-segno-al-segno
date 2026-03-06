@@ -11,8 +11,7 @@
 [ext_resource type="Resource" uid="uid://c7inm1j3nh7i4" path="res://resources/characters/enemies/shadow2.tres" id="8_oveqs"]
 [ext_resource type="Resource" uid="uid://d3s71movk40pc" path="res://audio/tracks/magenta.tres" id="9_1man1"]
 [ext_resource type="Resource" uid="uid://br73gevor1yrr" path="res://resources/encounters/test_encounter.tres" id="10_vit4c"]
-[ext_resource type="Script" uid="uid://c8fvcb046bf6m" path="res://scripts/Characters/BattleActor.gd" id="11_75ucp"]
-[ext_resource type="PackedScene" uid="uid://6kmv2ko6w15m" path="res://scenes/Characters/ken_model.tscn" id="12_oveqs"]
+[ext_resource type="PackedScene" uid="uid://433fpucnuqkf" path="res://scenes/Characters/battleactors/shadow_bactor.tscn" id="11_cqasl"]
 [ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://resources/bodyparts/BodyPartData.gd" id="13_1man1"]
 
 [sub_resource type="Resource" id="Resource_w5o4c"]
@@ -73,21 +72,6 @@ description = "A place for your signpost."
 danger_level = 0
 metadata/_custom_type_script = "uid://b3i3n6lphwajh"
 
-[sub_resource type="PackedScene" id="PackedScene_tvp6t"]
-_bundled = {
-"conn_count": 0,
-"conns": PackedInt32Array(),
-"editable_instances": [],
-"id_paths": [PackedInt32Array()],
-"names": PackedStringArray("BattleActor", "Node3D", "script", "ken_model_test9"),
-"node_count": 2,
-"node_ids": PackedInt32Array(620316433, 515500204),
-"node_paths": [NodePath(".")],
-"nodes": PackedInt32Array(-1, -1, 1, 0, -1, 1, 2, 0, 0, 1073741824, 0, 2147483647, 3, 1, 0, 0),
-"variants": [ExtResource("11_75ucp"), ExtResource("12_oveqs")],
-"version": 3
-}
-
 [sub_resource type="Resource" id="Resource_t2pf7"]
 script = ExtResource("13_1man1")
 part_name = "Torso"
@@ -115,7 +99,7 @@ display_name = "Tall Shadow"
 base_max_hp = 50
 base_attack = 10
 body_parts = Array[ExtResource("13_1man1")]([SubResource("Resource_t2pf7"), SubResource("Resource_irf0e"), SubResource("Resource_f87ha")])
-battle_scene = SubResource("PackedScene_tvp6t")
+battle_scene = ExtResource("11_cqasl")
 metadata/_custom_type_script = "uid://b2t1syvrybco8"
 
 [sub_resource type="Resource" id="Resource_bx1x4"]

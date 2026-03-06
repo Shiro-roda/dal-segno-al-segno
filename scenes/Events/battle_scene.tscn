@@ -167,7 +167,7 @@ script = ExtResource("7_dg68v")
 follow_mode = 2
 tween_resource = SubResource("Resource_26idg")
 camera_3d_resource = SubResource("Resource_xhnwx")
-follow_offset = Vector3(0.15, 1.5, 0.75)
+follow_offset = Vector3(0.15, 0, 0.75)
 follow_damping = true
 follow_damping_value = Vector3(0.2, 0.2, 0.2)
 
@@ -179,14 +179,11 @@ follow_mode = 2
 look_at_mode = 2
 tween_resource = SubResource("Resource_nejpu")
 host_layers = 2
-follow_offset = Vector3(-1, 1.5, 0.75)
 follow_damping = true
 follow_damping_value = Vector3(0.35, 0.35, 0.35)
 look_at_damping = true
 look_at_damping_value = 0.157
 metadata/_custom_type_script = "uid://csjccrhj5wnx7"
-
-[node name="FollowPivot" type="Node3D" parent="CameraRig" unique_id=531524209]
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1340271938]
 environment = SubResource("Environment_b48sr")
