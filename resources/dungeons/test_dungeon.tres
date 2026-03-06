@@ -133,7 +133,23 @@ description = "A stronger foe approaches."
 encounter = SubResource("Resource_bx1x4")
 metadata/_custom_type_script = "uid://b3i3n6lphwajh"
 
+[sub_resource type="Resource" id="Resource_vit4c"]
+script = ExtResource("7_75ucp")
+battlefield_scene = ExtResource("4_4oxoh")
+enemies = Array[ExtResource("5_cqasl")]([ExtResource("6_vit4c")])
+override_music = ExtResource("9_1man1")
+
+[sub_resource type="Resource" id="Resource_75ucp"]
+script = ExtResource("2_gacfb")
+room_name = "Atrium"
+description = "The mouth of the dungeon."
+encounter = SubResource("Resource_vit4c")
+danger_level = 0
+allows_segno = false
+metadata/_custom_type_script = "uid://b3i3n6lphwajh"
+
 [resource]
 script = ExtResource("2_xmptu")
 default_battle_track = ExtResource("1_2l6ym")
 rooms = Array[ExtResource("2_gacfb")]([SubResource("Resource_w5o4c"), SubResource("Resource_s5enb"), SubResource("Resource_gavt7"), SubResource("Resource_plsdk"), SubResource("Resource_job2v"), SubResource("Resource_fg3e6")])
+start_room = SubResource("Resource_75ucp")

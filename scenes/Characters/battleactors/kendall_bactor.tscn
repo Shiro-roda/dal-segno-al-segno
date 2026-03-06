@@ -7,3 +7,5 @@
 script = ExtResource("1_kkg3i")
 
 [node name="ken_model_test11" parent="." unique_id=2005524327 instance=ExtResource("2_u31kg")]
+
+[node name="CameraAnchor" type="Node3D" parent="." unique_id=836785041]

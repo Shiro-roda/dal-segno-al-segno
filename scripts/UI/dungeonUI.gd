@@ -43,6 +43,9 @@ func setup(controller_dungeon : DungeonRunState, dungeon_controller : DungeonCon
 
 func show_rest_screen():
 
+	for child in room_list.get_children():
+		child.queue_free()
+
 	var rest_button = Button.new()
 	rest_button.text = "Rest (+20 HP)"
 
@@ -62,36 +65,38 @@ func show_rest_screen():
 	room_list.add_child(rest_button)
 
 
-func show_room_choices(controller_dungeon : DungeonRunState, dungeon_controller : DungeonController):
+
+func show_room_choices(dungeon: DungeonRunState, controller: DungeonController):
+
+	clear_room_list()
+
+	var positions = controller.get_available_positions()
+
+	for pos in positions:
+
+		var label = Label.new()
+		label.text = "Build at " + str(pos)
+		room_list.add_child(label)
+
+		for i in range(3):
+
+			var room_data = dungeon.dungeon_data.rooms.pick_random()
+			var data: RoomData = room_data
+
+			var button = Button.new()
+			button.text = data.room_name
+
+			button.pressed.connect(func():
+				controller.build_room(pos, data)
+			)
+
+			room_list.add_child(button)
+
+func clear_room_list():
+
+	if room_list == null:
+		push_error("RoomList node missing!")
+		return
 
 	for child in room_list.get_children():
 		child.queue_free()
-	controller = dungeon_controller
-	dungeon = controller_dungeon
-	var all_rooms = dungeon.dungeon_data.rooms
-
-	var choices = []
-
-	while choices.size() < 3:
-		var choice = all_rooms.pick_random()
-		if choice not in choices:
-			choices.append(choice)
-
-	for room_data in choices:
-
-		var button = Button.new()
-		button.text = room_data.room_name
-
-		button.pressed.connect(func():
-
-			var instance = RoomInstance.new()
-			instance.room_data = room_data
-			instance.position_index = dungeon.current_room_index
-
-			dungeon.rooms.append(instance)
-
-			controller.enter_current_room()
-
-		)
-
-		room_list.add_child(button)

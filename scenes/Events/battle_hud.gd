@@ -2,7 +2,6 @@ extends CanvasLayer
 class_name BattleHUD
 
 @onready var player_container = $PlayerPanels
-@onready var enemy_container = $EnemyPanels
 @onready var target_info = $TargetInfo/TargetInfoBox
 
 const ACTOR_PANEL = preload("res://scenes/UI/actor_panel.tscn")

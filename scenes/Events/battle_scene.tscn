@@ -15,18 +15,6 @@
 [ext_resource type="Shader" uid="uid://btm2rulspg8el" path="res://scripts/Shaders/battleglitch.gdshader" id="15_itxmc"]
 [ext_resource type="PackedScene" uid="uid://cx2gw1tu0rxpi" path="res://scenes/Managers/audio_manager.tscn" id="16_hq6gs"]
 
-[sub_resource type="Resource" id="Resource_26idg"]
-script = ExtResource("8_b48sr")
-duration = 0.5
-
-[sub_resource type="Resource" id="Resource_xhnwx"]
-script = ExtResource("9_58qkj")
-metadata/_custom_type_script = "uid://b8hhnqsugykly"
-
-[sub_resource type="Resource" id="Resource_nejpu"]
-script = ExtResource("8_b48sr")
-duration = 0.5
-
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ssq04"]
 render_priority = 0
 shader = ExtResource("11_26idg")
@@ -48,6 +36,18 @@ shader_parameter/dither_amount = 0.5
 [sub_resource type="QuadMesh" id="QuadMesh_hq6gs"]
 flip_faces = true
 size = Vector2(2, 2)
+
+[sub_resource type="Resource" id="Resource_26idg"]
+script = ExtResource("8_b48sr")
+duration = 0.5
+
+[sub_resource type="Resource" id="Resource_xhnwx"]
+script = ExtResource("9_58qkj")
+metadata/_custom_type_script = "uid://b8hhnqsugykly"
+
+[sub_resource type="Resource" id="Resource_nejpu"]
+script = ExtResource("8_b48sr")
+duration = 0.5
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_wfe2u"]
 ground_bottom_color = Color(0.40543693, 0.35203698, 0.42831427, 1)
@@ -147,6 +147,19 @@ script = ExtResource("2_pfdmd")
 
 [node name="CameraRig" type="Node3D" parent="." unique_id=1931292584]
 
+[node name="IdleOrbitPivot" type="Node3D" parent="CameraRig" unique_id=1532661715]
+transform = Transform3D(1, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 0, 0, 0)
+script = ExtResource("10_xhnwx")
+
+[node name="IdleOrbiter" type="Node3D" parent="CameraRig/IdleOrbitPivot" unique_id=1216574263]
+transform = Transform3D(1, 0, 0, 0, 0.9999998, 0, 0, 0, 0.9999998, 0, 5.2470794, 5.168442)
+
+[node name="ScreenQuad" type="MeshInstance3D" parent="CameraRig" unique_id=48743744]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.4246502, 1.3194637, 5.2776985)
+material_override = SubResource("ShaderMaterial_itxmc")
+extra_cull_margin = 16384.0
+mesh = SubResource("QuadMesh_hq6gs")
+
 [node name="active_cam" type="Node3D" parent="CameraRig" unique_id=2025165075]
 transform = Transform3D(1, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, -1.3915569, 2.0777407, 3.37666)
 top_level = true
@@ -173,18 +186,7 @@ look_at_damping = true
 look_at_damping_value = 0.157
 metadata/_custom_type_script = "uid://csjccrhj5wnx7"
 
-[node name="IdleOrbitPivot" type="Node3D" parent="CameraRig" unique_id=1532661715]
-transform = Transform3D(1, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 0, 0, 0)
-script = ExtResource("10_xhnwx")
-
-[node name="IdleOrbiter" type="Node3D" parent="CameraRig/IdleOrbitPivot" unique_id=1216574263]
-transform = Transform3D(1, 0, 0, 0, 0.9999998, 0, 0, 0, 0.9999998, 0, 5.2470794, 5.168442)
-
-[node name="ScreenQuad" type="MeshInstance3D" parent="CameraRig" unique_id=48743744]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.4246502, 1.3194637, 5.2776985)
-material_override = SubResource("ShaderMaterial_itxmc")
-extra_cull_margin = 16384.0
-mesh = SubResource("QuadMesh_hq6gs")
+[node name="FollowPivot" type="Node3D" parent="CameraRig" unique_id=531524209]
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1340271938]
 environment = SubResource("Environment_b48sr")

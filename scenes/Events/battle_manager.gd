@@ -32,6 +32,11 @@ var shake_cam: PhantomCamera3D = null
 var shaking := false
 var original_cam_offset := Vector3.ZERO
 var original_target_offset := Vector3.ZERO
+var offset = (shake_direction * shake_strength * 0.6) + Vector3(
+		randf_range(-0.3,0.3),
+		randf_range(-0.3,0.3),
+		randf_range(-0.1,0.1)
+	)
 
 
 
@@ -66,12 +71,17 @@ var ca_defaults := {}
 @onready var active_cam: PhantomCamera3D = $"../CameraRig/active_cam"
 @onready var target_cam: PhantomCamera3D = $"../CameraRig/target_cam"
 
+
+
 @onready var idle_orbit_pivot: Node3D = $"../CameraRig/IdleOrbitPivot"
 @onready var idle_orbiter: Node3D = $"../CameraRig/IdleOrbitPivot/IdleOrbiter"
+@onready var follow_pivot: Node3D = $"../CameraRig/FollowPivot"
+
 
 
 @onready var battle_ui = get_parent().get_node("BattleUI")
-var battle_hud : BattleHUD
+@onready var battle_hud: BattleHUD = $"../BattleHUD"
+
 
 
 @onready var states = $States
@@ -91,7 +101,6 @@ func _ready():
 		reset_ca_material()
 
 	
-	battle_hud = get_parent().get_node("BattleHUD")
 	
 	battle_ui.command_selected.connect(_on_command_selected)
 	battle_ui.target_selected.connect(_on_target_selected)
@@ -107,29 +116,23 @@ func _process(delta):
 
 	if battle_ending:
 		return
-	if shake_time > 0 and shake_cam != null:
+
+	if shake_time > 0:
 		shake_time -= delta
 
 		var offset = (shake_direction * shake_strength) + Vector3(
-			randf_range(-0.2, 0.2),
-			randf_range(-0.2, 0.2),
+			randf_range(-0.2,0.2),
+			randf_range(-0.2,0.2),
 			0
 		)
 
-		if shake_cam == active_cam:
-			shake_cam.follow_offset = original_cam_offset + offset
-		else:
-			shake_cam.follow_offset = original_target_offset + offset
+		shake_pivot.position = offset
 
 		shake_strength = lerp(shake_strength, 0.0, delta * shake_decay)
 
 	else:
-		if shaking:
-			# Restore offsets
-			active_cam.follow_offset = original_cam_offset
-			target_cam.follow_offset = original_target_offset
+		shake_pivot.position = Vector3.ZERO
 
-			shaking = false
 
 
 
@@ -160,8 +163,9 @@ func start_battle_with_context(battle_context : BattleContext):
 		AudioManagerAuto.play_battle_track(track)
 	else:
 		AudioManagerAuto.play_battle_track(
-		GameController.current_dungeon.default_battle_track
-	)
+			context.run_state.current_dungeon.default_battle_track
+		)
+
 
 	AudioManagerAuto.ambience_player.play()
 
@@ -243,7 +247,7 @@ func spawn_enemies():
 
 func setup_battlefield():
 	battlefield_root = context.encounter.battlefield_scene.instantiate()
-	get_parent().add_child(battlefield_root)
+	get_tree().get_first_node_in_group("battle_layer").add_child(battlefield_root)
 
 
 
@@ -407,14 +411,27 @@ func check_victory() -> bool:
 
 func end_battle(victory: bool):
 
+	if battle_ending:
+		return
+
 	battle_ending = true
-	
+
 	save_party_state()
 
 	if battlefield_root:
 		battlefield_root.queue_free()
 
+	actors.clear()
+	turn_queue.clear()
+	current_index = 0
+
+	await get_tree().process_frame
+
 	emit_signal("battle_finished", victory)
+
+	battle_ending = false
+
+
 
 
 
@@ -513,22 +530,13 @@ func animate_channel_removal():
 
 func screen_shake_on_actor(target: BattleActor, dir: Vector3, strength: float, duration: float):
 
-	# Determine which camera is following this actor
-	if active_cam.get_follow_target() == target:
-		shake_cam = active_cam
-	elif target_cam.get_follow_target() == target:
-		shake_cam = target_cam
-	else:
-		shake_cam = null
-		return
-
 	shake_direction = dir
 	shake_strength = strength
 	shake_time = duration
-	shaking = true
+
 	AudioManagerAuto.duck_bgm(-8.0, 0.4)
 	AudioManagerAuto.set_glitch_intensity(0.2, 0.15)
-	
+
 
 
 

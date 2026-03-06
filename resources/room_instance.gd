@@ -1,8 +1,8 @@
 extends Resource
 class_name RoomInstance
 
-@export var room_data : RoomData
+var room_data : RoomData
+var position : Vector2i
 
-var cleared : bool = false
-var visited : bool = false
-var position_index : int
+var visited := false
+var cleared := false

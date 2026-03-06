@@ -101,6 +101,7 @@ func play_attack_animation(target: BattleActor, damage: int = 0) -> void:
 	var manager = get_tree().get_first_node_in_group("battle_manager")
 	manager.active_cam.follow_damping = false
 	manager.target_cam.follow_damping = false
+	
 
 	var original_pos = global_position
 	var direction = (target.global_position - global_position).normalized()

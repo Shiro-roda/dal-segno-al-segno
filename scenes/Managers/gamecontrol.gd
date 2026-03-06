@@ -1,96 +1,112 @@
 extends Node
 class_name GameControl
 
-var current_run : RunState
-var current_dungeon : DungeonData
-var current_scene : Node
-var current_dungeon_run : DungeonRunState
+static var current_run : RunState
+static var current_dungeon_run : DungeonRunState
+
+var dungeon_layer
+var battle_layer
+var event_layer
+
+var battle_manager
+var dungeon_controller
+
+
+func _ready():
+
+	await _wait_for_layers()
+
+	dungeon_layer.visible = true
+	battle_layer.visible = false
+	event_layer.visible = false
+
+	await _wait_for_controllers()
+
+	battle_manager.connect("battle_finished", _on_battle_finished)
+
+func _wait_for_layers():
+
+	while dungeon_layer == null or battle_layer == null or event_layer == null:
+
+		await get_tree().process_frame
+
+		dungeon_layer = get_tree().get_first_node_in_group("dungeon_layer")
+		battle_layer = get_tree().get_first_node_in_group("battle_layer")
+		event_layer = get_tree().get_first_node_in_group("event_layer")
+
+
+func _wait_for_controllers():
+
+	while dungeon_controller == null:
+		await get_tree().process_frame
+		dungeon_controller = get_tree().get_first_node_in_group("dungeon_controller")
+
+	while battle_manager == null:
+		await get_tree().process_frame
+		battle_manager = get_tree().get_first_node_in_group("battle_manager")
+
+	await battle_manager.battle_manager_ready
 
 
 
-func start_new_run(run: RunState):
+func start_new_run(run : RunState):
 	current_run = run
-	
-
-func start_battle(encounter: EncounterData):
-	var context = BattleContext.new()
-	context.run_state = current_run
-	context.encounter = encounter
-
-	current_run = context.run_state
-
-	get_tree().change_scene_to_file("res://scenes/Events/battle_scene.tscn")
-
-	call_deferred("_start_loaded_battle", context)
 
 
-func change_scene_to_battle(context: BattleContext):
-	if current_scene:
-		current_scene.queue_free()
+func start_battle(encounter):
+
+	clear_layer(battle_layer)
 
 	var battle_scene = preload("res://scenes/Events/battle_scene.tscn").instantiate()
-	get_tree().root.add_child(battle_scene)
-	current_scene = battle_scene
+
+	battle_layer.add_child(battle_scene)
 
 	var manager = battle_scene.get_node("BattleManager")
-	manager.connect("battle_finished", _on_battle_finished)
-	await manager.battle_manager_ready
+
+	var context = BattleContext.new()
+	context.encounter = encounter
+	context.run_state = current_run
+
 	manager.start_battle_with_context(context)
 
+	manager.battle_finished.connect(_on_battle_finished)
 
 
-func _on_battle_finished(victory: bool):
+
+
+func _on_battle_finished(victory):
+
+	clear_layer(battle_layer)
+
+	var dungeon_controller = get_tree().get_first_node_in_group("dungeon_controller")
 
 	if victory:
-		
-		return_to_dungeon()
+		dungeon_controller.on_room_completed()
+
+func clear_layer(layer):
+
+	for child in layer.get_children():
+		child.queue_free()
 
 
 
-func _start_loaded_battle(context):
-
-	var bm : Node = null
-
-	while bm == null:
-		await get_tree().process_frame
-		bm = get_tree().get_first_node_in_group("battle_manager")
-
-	bm.connect("battle_finished", _on_battle_finished)
-
-	bm.start_battle_with_context(context)
 
 func start_event(event_scene: PackedScene):
 
-	get_tree().change_scene_to_packed(event_scene)
+	clear_layer(event_layer)
 
-	call_deferred("_wait_for_event_finish")
+	var event = event_scene.instantiate()
 
-func _wait_for_event_finish():
+	event_layer.add_child(event)
 
-	var event_node : Node = null
+	event.event_finished.connect(_on_event_finished)
 
-	while event_node == null:
-		await get_tree().process_frame
-		event_node = get_tree().current_scene
 
-	await event_node.event_finished
 
-	return_to_dungeon()
+func _on_event_finished():
 
-func return_to_dungeon():
-	
-	call_deferred("_resume_dungeon")
-	get_tree().change_scene_to_file(
-		"res://scenes/Maps/dungeon_scene.tscn"
-	)
-	
+	clear_layer(event_layer)
 
-func _resume_dungeon():
+	var dungeon_controller = get_tree().get_first_node_in_group("dungeon_controller")
 
-	var controller : DungeonController = null
-
-	while controller == null:
-		await get_tree().process_frame
-		controller = get_tree().get_first_node_in_group("dungeon_controller")
-
-	controller.on_room_completed()
+	dungeon_controller.on_room_completed()
