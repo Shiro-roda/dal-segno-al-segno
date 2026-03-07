@@ -1,4 +1,4 @@
-@ -1,348 +1,356 @@
+
 [gd_scene format=3 uid="uid://crk45tyrcis3h"]
 
 [ext_resource type="Script" uid="uid://ooy1vi7u8mr1" path="res://scenes/Events/battle_manager.gd" id="1_tsimo"]

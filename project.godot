@@ -50,15 +50,12 @@ window/stretch/mode="viewport"
 
 enabled=PackedStringArray("res://addons/dialogic/plugin.cfg", "res://addons/phantom_camera/plugin.cfg")
 
-
 [global_group]
 
 dungeon_layer=""
 battle_layer=""
 event_layer=""
-
 world_layer=""
-
 
 [input]
 
