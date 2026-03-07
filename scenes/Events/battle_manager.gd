@@ -29,6 +29,9 @@ var active_look_source : Node3D = null
 var target_look_source : Node3D = null
 
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 var selected_command : String = ""
 var selected_target : BattleActor = null
@@ -110,6 +113,9 @@ func _ready():
 	target_cam.set_follow_target(target_anchor)
 
 	target_cam.set_look_at_target(target_look_anchor)
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 	
 	battle_ui.command_selected.connect(_on_command_selected)
@@ -125,8 +131,11 @@ func _ready():
 func _process(delta):
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 	if shake_time > 0 and shake_cam != null:
 =======
+=======
+>>>>>>> Stashed changes
 
 	if active_anchor_source:
 		active_anchor.global_position = active_anchor_source.global_position
@@ -152,12 +161,15 @@ func _process(delta):
 			0
 		)
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
 		if shake_cam == active_cam:
 			shake_cam.follow_offset = original_cam_offset + offset
 		else:
 			shake_cam.follow_offset = original_target_offset + offset
 =======
+=======
+>>>>>>> Stashed changes
 
 		var target_offset = Vector3(
 			randf_range(-target_shake_strength, target_shake_strength),
@@ -171,6 +183,9 @@ func _process(delta):
 		active_shake_strength = lerp(active_shake_strength, 0.0, delta * shake_decay)
 		target_shake_strength = lerp(target_shake_strength, 0.0, delta * shake_decay)
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 		shake_strength = lerp(shake_strength, 0.0, delta * shake_decay)
@@ -348,8 +363,14 @@ func handle_player_turn(actor: BattleActor) -> void:
 	active_player_actor = actor
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 	active_cam.set_follow_target(actor)
 	active_cam.set_look_at_target(null)
+=======
+	focus_actor(actor)
+
+	await get_tree().process_frame
+>>>>>>> Stashed changes
 =======
 	focus_actor(actor)
 
@@ -368,7 +389,10 @@ func handle_player_turn(actor: BattleActor) -> void:
 
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 func handle_enemy_turn(actor: BattleActor) -> void:
@@ -379,6 +403,7 @@ func handle_enemy_turn(actor: BattleActor) -> void:
 	if target == null:
 		return
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
 	# LEFT SCREEN = player being attacked
 	active_cam.set_follow_target(target)
@@ -388,6 +413,8 @@ func handle_enemy_turn(actor: BattleActor) -> void:
 	target_cam.set_follow_target(actor)
 	target_cam.set_look_at_target(null)
 =======
+=======
+>>>>>>> Stashed changes
 	battle_hud.show_target(actor)
 	
 	
@@ -579,6 +606,10 @@ func screen_shake(source: BattleActor, target: BattleActor, dir: Vector3, active
 	shake_time = duration
 	active_shake_strength = active_strength
 	target_shake_strength = target_strength
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
 
 >>>>>>> Stashed changes
 
@@ -600,12 +631,15 @@ func screen_shake(source: BattleActor, target: BattleActor, dir: Vector3, active
 <<<<<<< Updated upstream
 	
 
+<<<<<<< Updated upstream
 
 
 
 =======
 >>>>>>> Stashed changes
 
+=======
+>>>>>>> Stashed changes
 func count_bits(value: int) -> int:
 	var count := 0
 	while value > 0:
@@ -694,6 +728,9 @@ func focus_idle_orbit():
 	follow_anchor(target_anchor, idle_orbiter)
 	follow_anchor(target_look_anchor, idle_orbit_pivot)
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 func update_ui_state():
@@ -787,6 +824,7 @@ func _on_target_selected(target):
 
 	selected_target = target
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 	target_cam.set_follow_damping_value(Vector3(.25, .25, .15))
 
 	target_cam.set_follow_target(target)
@@ -795,6 +833,8 @@ func _on_target_selected(target):
 	target_cam.set_look_at_target(target)
 	target_cam.set_look_at_offset(Vector3(0, 1.5, -.2))
 =======
+=======
+>>>>>>> Stashed changes
 
 	target_cam.set_follow_damping_value(Vector3(.25, .25, .15))
 	target_cam.set_follow_offset(Vector3(-1.25, 0, .55))
@@ -802,6 +842,9 @@ func _on_target_selected(target):
 
 	focus_target(target)
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 	battle_hud.show_target(selected_target)
 

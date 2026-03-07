@@ -221,6 +221,9 @@ metadata/_custom_type_script = "uid://csjccrhj5wnx7"
 
 [node name="TargetLookAnchor" type="Node3D" parent="CameraRig" unique_id=1898894596]
 
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1340271938]
 environment = SubResource("Environment_b48sr")
