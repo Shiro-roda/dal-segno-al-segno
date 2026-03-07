@@ -107,7 +107,6 @@ func _ready():
 		cache_ca_defaults()
 	else:
 		reset_ca_material()
-
 	
 	active_cam.set_follow_target(active_anchor)
 	target_cam.set_follow_target(target_anchor)
@@ -163,7 +162,6 @@ func _process(delta):
 
 		active_shake_strength = lerp(active_shake_strength, 0.0, delta * shake_decay)
 		target_shake_strength = lerp(target_shake_strength, 0.0, delta * shake_decay)
-
 
 
 
@@ -340,7 +338,6 @@ func handle_player_turn(actor: BattleActor) -> void:
 
 	active_player_actor = actor
 
-
 	focus_actor(actor)
 
 	await get_tree().process_frame
@@ -363,7 +360,6 @@ func handle_enemy_turn(actor: BattleActor) -> void:
 	var target = choose_target(actor)
 	if target == null:
 		return
-
 	battle_hud.show_target(actor)
 	
 	
@@ -373,7 +369,6 @@ func handle_enemy_turn(actor: BattleActor) -> void:
 
 	target_cam.set_follow_damping_value(Vector3(.25, .25, .15))
 	target_cam.set_follow_offset(Vector3(-1.25, 0, .55))
-
 	target_cam.set_look_at_offset(Vector3(0, 0, -.2))
 
 	await actor.take_turn(target)
@@ -569,22 +564,14 @@ func animate_channel_removal():
 	)
 
 func screen_shake(source: BattleActor, target: BattleActor, dir: Vector3, active_strength: float, target_strength: float, duration: float):
-	
 
 	shake_time = duration
 	active_shake_strength = active_strength
 	target_shake_strength = target_strength
 
 
-
 	AudioManagerAuto.duck_bgm(-8.0, 0.4)
 	AudioManagerAuto.set_glitch_intensity(0.2, 0.15)
-
-
-
-
-
-
 
 func count_bits(value: int) -> int:
 	var count := 0
@@ -658,7 +645,6 @@ func focus_target(actor: BattleActor):
 
 
 func focus_idle_orbit():
-
 
 	target_cam.set_follow_offset(Vector3.ZERO)
 	target_cam.set_look_at_offset(Vector3.ZERO)
@@ -758,20 +744,15 @@ func _on_target_selected(target):
 
 	selected_target = target
 
-
 	target_cam.set_follow_damping_value(Vector3(.25, .25, .15))
 	target_cam.set_follow_offset(Vector3(-1.25, 0, .55))
-
 	target_cam.set_look_at_offset(Vector3(0, 0, -.2))
 
-
-	
 	focus_target(target)
 
 	battle_hud.show_target(selected_target)
 
 	input_stage = InputStage.PART
-	
 	update_ui_state()
 
 

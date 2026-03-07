@@ -78,7 +78,6 @@ func start_new_game():
 func start_new_run(run : RunState):
 	current_run = run
 
-
 func start_battle(encounter):
 
 	dungeon_layer.visible = false
