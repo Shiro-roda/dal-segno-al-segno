@@ -1,8 +1,8 @@
 [gd_scene format=3 uid="uid://pwxv1hrkra0k"]
 
-[ext_resource type="Script" uid="uid://cv0b5qovvw88e" path="res://scenes/Managers/dungeon_controller.gd" id="2_a1rh6"]
+[ext_resource type="Script" uid="uid://dx8r5yikyemjr" path="res://scenes/Managers/dungeon_controller.gd" id="2_a1rh6"]
 [ext_resource type="Script" uid="uid://bt4xwltdukunr" path="res://dungeon_scene.gd" id="2_iusj4"]
-[ext_resource type="Script" uid="uid://c2gidpo1ajqk3" path="res://scripts/UI/dungeonUI.gd" id="3_j7aru"]
+[ext_resource type="Script" uid="uid://snhktyfrtb0v" path="res://scripts/UI/dungeonUI.gd" id="3_j7aru"]
 [ext_resource type="PackedScene" uid="uid://cawuaxeud518f" path="res://scenes/Maps/Dungeons/dungeon_map_3d.tscn" id="4_jb3nc"]
 
 [node name="GameRoot" type="Node" unique_id=1011693636]
