@@ -1,3 +1,4 @@
+@ -1,348 +1,356 @@
 [gd_scene format=3 uid="uid://crk45tyrcis3h"]
 
 [ext_resource type="Script" uid="uid://ooy1vi7u8mr1" path="res://scenes/Events/battle_manager.gd" id="1_tsimo"]
@@ -14,18 +15,6 @@
 [ext_resource type="Shader" uid="uid://c7dhsbe1s7mgu" path="res://scripts/Shaders/post_processing.gdshader" id="12_xhnwx"]
 [ext_resource type="Shader" uid="uid://btm2rulspg8el" path="res://scripts/Shaders/battleglitch.gdshader" id="15_itxmc"]
 [ext_resource type="PackedScene" uid="uid://cx2gw1tu0rxpi" path="res://scenes/Managers/audio_manager.tscn" id="16_hq6gs"]
-
-[sub_resource type="Resource" id="Resource_26idg"]
-script = ExtResource("8_b48sr")
-duration = 0.5
-
-[sub_resource type="Resource" id="Resource_xhnwx"]
-script = ExtResource("9_58qkj")
-metadata/_custom_type_script = "uid://b8hhnqsugykly"
-
-[sub_resource type="Resource" id="Resource_nejpu"]
-script = ExtResource("8_b48sr")
-duration = 0.5
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ssq04"]
 render_priority = 0
@@ -48,6 +37,18 @@ shader_parameter/dither_amount = 0.5
 [sub_resource type="QuadMesh" id="QuadMesh_hq6gs"]
 flip_faces = true
 size = Vector2(2, 2)
+
+[sub_resource type="Resource" id="Resource_26idg"]
+script = ExtResource("8_b48sr")
+duration = 0.5
+
+[sub_resource type="Resource" id="Resource_xhnwx"]
+script = ExtResource("9_58qkj")
+metadata/_custom_type_script = "uid://b8hhnqsugykly"
+
+[sub_resource type="Resource" id="Resource_nejpu"]
+script = ExtResource("8_b48sr")
+duration = 0.5
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_wfe2u"]
 ground_bottom_color = Color(0.40543693, 0.35203698, 0.42831427, 1)
@@ -147,32 +148,6 @@ script = ExtResource("2_pfdmd")
 
 [node name="CameraRig" type="Node3D" parent="." unique_id=1931292584]
 
-[node name="active_cam" type="Node3D" parent="CameraRig" unique_id=2025165075]
-transform = Transform3D(1, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, -1.3915569, 2.0777407, 3.37666)
-top_level = true
-script = ExtResource("7_dg68v")
-follow_mode = 2
-tween_resource = SubResource("Resource_26idg")
-camera_3d_resource = SubResource("Resource_xhnwx")
-follow_offset = Vector3(0.15, 1.5, 0.75)
-follow_damping = true
-follow_damping_value = Vector3(0.2, 0.2, 0.2)
-
-[node name="target_cam" type="Node3D" parent="CameraRig" unique_id=1804288770]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.9518425, 0.88769054, 1.2990618)
-top_level = true
-script = ExtResource("7_dg68v")
-follow_mode = 2
-look_at_mode = 2
-tween_resource = SubResource("Resource_nejpu")
-host_layers = 2
-follow_offset = Vector3(-1, 1.5, 0.75)
-follow_damping = true
-follow_damping_value = Vector3(0.35, 0.35, 0.35)
-look_at_damping = true
-look_at_damping_value = 0.157
-metadata/_custom_type_script = "uid://csjccrhj5wnx7"
-
 [node name="IdleOrbitPivot" type="Node3D" parent="CameraRig" unique_id=1532661715]
 transform = Transform3D(1, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 0, 0, 0)
 script = ExtResource("10_xhnwx")
@@ -186,8 +161,6 @@ material_override = SubResource("ShaderMaterial_itxmc")
 extra_cull_margin = 16384.0
 mesh = SubResource("QuadMesh_hq6gs")
 
-<<<<<<< Updated upstream
-=======
 [node name="active_cam" type="Node3D" parent="CameraRig" unique_id=2025165075]
 transform = Transform3D(1, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, -1.3915569, 2.0777407, 3.37666)
 top_level = true
@@ -221,10 +194,6 @@ metadata/_custom_type_script = "uid://csjccrhj5wnx7"
 
 [node name="TargetLookAnchor" type="Node3D" parent="CameraRig" unique_id=1898894596]
 
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1340271938]
 environment = SubResource("Environment_b48sr")
 
@@ -285,10 +254,17 @@ size_flags_horizontal = 3
 theme_override_constants/separation = 10
 
 [node name="TargetInfo" type="PanelContainer" parent="BattleHUD" unique_id=828853757]
-offset_left = 536.0
-offset_top = 738.0
-offset_right = 696.0
-offset_bottom = 847.0
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -864.0
+offset_top = 213.0
+offset_right = -704.0
+offset_bottom = 322.0
+grow_horizontal = 0
+grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_xhnwx")
 
 [node name="TargetInfoBox" type="VBoxContainer" parent="BattleHUD/TargetInfo" unique_id=36994380]
