@@ -19,7 +19,6 @@ var current_index : int = 0
 
 var active_player_actor : BattleActor
 var enemy_player_actor : BattleActor
-
 @onready var active_anchor: Node3D = $"../CameraRig/ActiveAnchor"
 @onready var active_look_anchor: Node3D = $"../CameraRig/ActiveLookAnchor"
 @onready var target_anchor: Node3D = $"../CameraRig/TargetAnchor"
@@ -97,7 +96,6 @@ var ca_defaults := {}
 
 func _ready():
 	await get_tree().process_frame
-
 	
 
 	add_to_group("battle_manager")
@@ -148,14 +146,12 @@ func _process(delta):
 			randf_range(-active_shake_strength * 0.3, active_shake_strength * 0.3),
 			randf_range(-active_shake_strength * 0.3, active_shake_strength * 0.3)
 		)
-		
 
 		var target_offset = Vector3(
 			randf_range(-target_shake_strength, target_shake_strength),
 			randf_range(-target_shake_strength * 0.3, target_shake_strength * 0.3),
 			randf_range(-target_shake_strength * 0.3, target_shake_strength * 0.3)
 		)
-
 
 		active_anchor.position += active_offset
 		target_anchor.position += target_offset
