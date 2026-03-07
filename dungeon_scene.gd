@@ -8,6 +8,7 @@ func _ready():
 	member.character = preload("res://resources/characters/kendall.tres")
 	member.current_hp = member.character.base_max_hp
 
+<<<<<<< Updated upstream
 	run.party_members.append(member)
 	run.party_members.append(member)
 	run.party_members.append(member)
@@ -17,3 +18,6 @@ func _ready():
 	# For testing, immediately start battle
 	var encounter = preload("res://resources/encounters/test_encounter.tres")
 	GameController.start_battle(encounter)
+=======
+	controller = get_tree().get_first_node_in_group("dungeon_controller")
+>>>>>>> Stashed changes

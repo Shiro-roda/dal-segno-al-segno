@@ -1,0 +1,18 @@
+[gd_scene format=3 uid="uid://cawuaxeud518f"]
+
+[ext_resource type="Script" uid="uid://b5jghtnfade1b" path="res://scenes/Maps/Dungeons/dungeon_map_3d.gd" id="1_amtgv"]
+
+[node name="DungeonMap3D" type="Node3D" unique_id=1533421829]
+script = ExtResource("1_amtgv")
+
+[node name="CameraPivot" type="Node3D" parent="." unique_id=229720238]
+transform = Transform3D(0.70710677, -0.61237246, 0.35355335, 0, 0.49999997, 0.86602545, -0.70710677, -0.61237246, 0.35355335, 0, 0, 0)
+
+[node name="Camera3D" type="Camera3D" parent="CameraPivot" unique_id=1809252166]
+transform = Transform3D(0.70710677, 0, -0.70710677, -0.61237246, 0.49999994, -0.61237246, 0.35355335, 0.86602545, 0.35355335, 0, 18, 18)
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=54701972]
+
+[node name="MapRoot" type="Node3D" parent="." unique_id=802182999]
+
+[node name="Cursor" type="Node3D" parent="." unique_id=741314470]

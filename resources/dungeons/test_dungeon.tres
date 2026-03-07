@@ -1,0 +1,133 @@
+[gd_resource type="Resource" script_class="DungeonData" format=3 uid="uid://dpvtgkchj7i60"]
+
+[ext_resource type="Resource" uid="uid://dh41c43q5ekyx" path="res://audio/tracks/yellow.tres" id="1_2l6ym"]
+[ext_resource type="Script" uid="uid://b3i3n6lphwajh" path="res://resources/rooms/room_data.gd" id="2_gacfb"]
+[ext_resource type="Script" uid="uid://2pqfqk1bjeam" path="res://resources/dungeons/dungeondata.gd" id="2_xmptu"]
+[ext_resource type="Texture2D" uid="uid://d1lr8w2d7rryn" path="res://icon.svg" id="3_cjxev"]
+[ext_resource type="PackedScene" uid="uid://qythxyqix8sw" path="res://scenes/Maps/battle_field_test.tscn" id="4_4oxoh"]
+[ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://resources/characters/characterdata.gd" id="5_cqasl"]
+[ext_resource type="Resource" uid="uid://cqcjsnswptvk8" path="res://resources/characters/enemies/shadow1.tres" id="6_vit4c"]
+[ext_resource type="Script" uid="uid://coeqyvqijtkns" path="res://resources/encounters/encounterdata.gd" id="7_75ucp"]
+[ext_resource type="Resource" uid="uid://c7inm1j3nh7i4" path="res://resources/characters/enemies/shadow2.tres" id="8_oveqs"]
+[ext_resource type="Resource" uid="uid://d3s71movk40pc" path="res://audio/tracks/magenta.tres" id="9_1man1"]
+[ext_resource type="Resource" uid="uid://br73gevor1yrr" path="res://resources/encounters/test_encounter.tres" id="10_vit4c"]
+[ext_resource type="PackedScene" uid="uid://433fpucnuqkf" path="res://scenes/Characters/battleactors/shadow_bactor.tscn" id="11_cqasl"]
+[ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://resources/bodyparts/BodyPartData.gd" id="13_1man1"]
+
+[sub_resource type="Resource" id="Resource_w5o4c"]
+script = ExtResource("2_gacfb")
+room_name = "Bathroom"
+room_type = 4
+icon = ExtResource("3_cjxev")
+description = "A place to rest."
+danger_level = 0
+metadata/_custom_type_script = "uid://b3i3n6lphwajh"
+
+[sub_resource type="Resource" id="Resource_0evoc"]
+script = ExtResource("7_75ucp")
+battlefield_scene = ExtResource("4_4oxoh")
+enemies = Array[ExtResource("5_cqasl")]([ExtResource("6_vit4c")])
+metadata/_custom_type_script = "uid://coeqyvqijtkns"
+
+[sub_resource type="Resource" id="Resource_s5enb"]
+script = ExtResource("2_gacfb")
+room_name = "Battle 1"
+icon = ExtResource("3_cjxev")
+description = "A single foe."
+encounter = SubResource("Resource_0evoc")
+allows_segno = false
+metadata/_custom_type_script = "uid://b3i3n6lphwajh"
+
+[sub_resource type="Resource" id="Resource_gyugg"]
+script = ExtResource("7_75ucp")
+battlefield_scene = ExtResource("4_4oxoh")
+enemies = Array[ExtResource("5_cqasl")]([ExtResource("6_vit4c"), ExtResource("8_oveqs")])
+override_music = ExtResource("9_1man1")
+
+[sub_resource type="Resource" id="Resource_gavt7"]
+script = ExtResource("2_gacfb")
+room_name = "Battle 2"
+icon = ExtResource("3_cjxev")
+description = "Twice as many."
+encounter = SubResource("Resource_gyugg")
+danger_level = 2
+allows_segno = false
+metadata/_custom_type_script = "uid://b3i3n6lphwajh"
+
+[sub_resource type="Resource" id="Resource_plsdk"]
+script = ExtResource("2_gacfb")
+room_name = "Battle3"
+icon = ExtResource("3_cjxev")
+description = "Many foes."
+encounter = ExtResource("10_vit4c")
+danger_level = 3
+metadata/_custom_type_script = "uid://b3i3n6lphwajh"
+
+[sub_resource type="Resource" id="Resource_job2v"]
+script = ExtResource("2_gacfb")
+room_name = "Crossroads"
+room_type = 5
+icon = ExtResource("3_cjxev")
+description = "A place for your signpost."
+danger_level = 0
+metadata/_custom_type_script = "uid://b3i3n6lphwajh"
+
+[sub_resource type="Resource" id="Resource_t2pf7"]
+script = ExtResource("13_1man1")
+part_name = "Torso"
+base_visible = true
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[sub_resource type="Resource" id="Resource_irf0e"]
+script = ExtResource("13_1man1")
+part_name = "Head"
+required_removed_mask = 1
+damage_multiplier = 2.0
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[sub_resource type="Resource" id="Resource_f87ha"]
+script = ExtResource("13_1man1")
+part_name = "Heart"
+required_removed_mask = 4
+damage_multiplier = 2.5
+is_cognitohazard = true
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[sub_resource type="Resource" id="Resource_iy6lp"]
+script = ExtResource("5_cqasl")
+display_name = "Tall Shadow"
+base_max_hp = 50
+base_attack = 10
+body_parts = Array[ExtResource("13_1man1")]([SubResource("Resource_t2pf7"), SubResource("Resource_irf0e"), SubResource("Resource_f87ha")])
+battle_scene = ExtResource("11_cqasl")
+metadata/_custom_type_script = "uid://b2t1syvrybco8"
+
+[sub_resource type="Resource" id="Resource_bx1x4"]
+script = ExtResource("7_75ucp")
+battlefield_scene = ExtResource("4_4oxoh")
+enemies = Array[ExtResource("5_cqasl")]([SubResource("Resource_iy6lp")])
+metadata/_custom_type_script = "uid://coeqyvqijtkns"
+
+[sub_resource type="Resource" id="Resource_fg3e6"]
+script = ExtResource("2_gacfb")
+room_name = "Elite"
+room_type = 1
+icon = ExtResource("3_cjxev")
+description = "A stronger foe approaches."
+encounter = SubResource("Resource_bx1x4")
+metadata/_custom_type_script = "uid://b3i3n6lphwajh"
+
+[sub_resource type="Resource" id="Resource_75ucp"]
+script = ExtResource("2_gacfb")
+room_name = "Atrium"
+room_type = 5
+description = "The mouth of the dungeon."
+danger_level = 0
+allows_segno = false
+metadata/_custom_type_script = "uid://b3i3n6lphwajh"
+
+[resource]
+script = ExtResource("2_xmptu")
+default_battle_track = ExtResource("1_2l6ym")
+rooms = Array[ExtResource("2_gacfb")]([SubResource("Resource_w5o4c"), SubResource("Resource_s5enb"), SubResource("Resource_gavt7"), SubResource("Resource_plsdk"), SubResource("Resource_job2v"), SubResource("Resource_fg3e6")])
+start_room = SubResource("Resource_75ucp")

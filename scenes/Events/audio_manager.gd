@@ -83,24 +83,45 @@ func _ready() -> void:
 
 func play_battle_track(track: BattleTrack):
 
+	stop_bgm() # ensure clean state
+
 	bgm_base.stream = track.base
 	bgm_layers[1].stream = track.red
 	bgm_layers[2].stream = track.green
 	bgm_layers[4].stream = track.blue
 
-	var time = AudioServer.get_time_to_next_mix()
+	# reset volumes
+	bgm_base.volume_db = 0
+	for player in bgm_layers.values():
+		player.volume_db = 0
+
+	var time = AudioServer.get_time_since_last_mix()
 
 	bgm_base.play(time)
 
 	for player in bgm_layers.values():
-		player.volume_db = 0
 		player.play(time)
+
 
 
 func stop_bgm():
 	bgm_base.stop()
 	for player in bgm_layers.values():
 		player.stop()
+
+func fade_out_bgm(duration := 0.6):
+
+	var tween = create_tween()
+
+	tween.tween_property(bgm_base, "volume_db", -80, duration)
+
+	for player in bgm_layers.values():
+		tween.parallel().tween_property(player, "volume_db", -80, duration)
+
+	await tween.finished
+
+	stop_bgm()
+
 
 func update_color_layers(removed_mask: int):
 

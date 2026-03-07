@@ -1,0 +1,46 @@
+[gd_scene format=3 uid="uid://pwxv1hrkra0k"]
+
+[ext_resource type="Script" uid="uid://cv0b5qovvw88e" path="res://scenes/Managers/dungeon_controller.gd" id="2_a1rh6"]
+[ext_resource type="Script" uid="uid://bt4xwltdukunr" path="res://dungeon_scene.gd" id="2_iusj4"]
+[ext_resource type="Script" uid="uid://c2gidpo1ajqk3" path="res://scripts/UI/dungeonUI.gd" id="3_j7aru"]
+[ext_resource type="PackedScene" uid="uid://cawuaxeud518f" path="res://scenes/Maps/Dungeons/dungeon_map_3d.tscn" id="4_jb3nc"]
+
+[node name="GameRoot" type="Node" unique_id=1011693636]
+
+[node name="WorldLayer" type="CanvasLayer" parent="." unique_id=1138420764]
+visible = false
+
+[node name="DungeonLayer" type="CanvasLayer" parent="." unique_id=982368690 groups=["dungeon_layer"]]
+
+[node name="DungeonController" type="Node" parent="DungeonLayer" unique_id=573565279]
+script = ExtResource("2_a1rh6")
+
+[node name="DungeonScene" type="Node" parent="DungeonLayer" unique_id=657695467]
+script = ExtResource("2_iusj4")
+
+[node name="DungeonUI" type="Control" parent="DungeonLayer" unique_id=1900235927]
+layout_mode = 3
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 10.0
+offset_top = -20.0
+offset_right = 50.0
+offset_bottom = 20.0
+grow_vertical = 2
+script = ExtResource("3_j7aru")
+
+[node name="RoomList" type="VBoxContainer" parent="DungeonLayer/DungeonUI" unique_id=2043892156]
+layout_mode = 1
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_right = 118.0
+grow_vertical = 2
+
+[node name="DungeonMap3D" parent="DungeonLayer" unique_id=1533421829 instance=ExtResource("4_jb3nc")]
+
+[node name="BattleLayer" type="CanvasLayer" parent="." unique_id=529536140 groups=["battle_layer"]]
+visible = false
+
+[node name="EventLayer" type="CanvasLayer" parent="." unique_id=1236010400 groups=["event_layer"]]
+visible = false

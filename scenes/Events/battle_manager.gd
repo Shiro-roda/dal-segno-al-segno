@@ -15,6 +15,21 @@ var current_index : int = 0
 
 
 var active_player_actor : BattleActor
+<<<<<<< Updated upstream
+=======
+var enemy_player_actor : BattleActor
+@onready var active_anchor: Node3D = $"../CameraRig/ActiveAnchor"
+@onready var active_look_anchor: Node3D = $"../CameraRig/ActiveLookAnchor"
+@onready var target_anchor: Node3D = $"../CameraRig/TargetAnchor"
+@onready var target_look_anchor: Node3D = $"../CameraRig/TargetLookAnchor"
+
+var active_anchor_source : Node3D = null
+var target_anchor_source : Node3D = null
+var active_look_source : Node3D = null
+var target_look_source : Node3D = null
+
+
+>>>>>>> Stashed changes
 var selected_command : String = ""
 var selected_target : BattleActor = null
 var selected_body_part : BodyPartData = null
@@ -75,13 +90,27 @@ var battle_hud : BattleHUD
 
 func _ready():
 	await get_tree().process_frame
-
+	
 
 	add_to_group("battle_manager")
+<<<<<<< Updated upstream
 	original_cam_offset = active_cam.follow_offset
 	original_target_offset = target_cam.follow_offset
 	
 	battle_hud = get_parent().get_node("BattleHUD")
+=======
+	if ca_defaults.is_empty():
+		ca_mesh.material = ca_mesh.material.duplicate()
+		ca_mesh_mat = ca_mesh.material
+		cache_ca_defaults()
+	else:
+		reset_ca_material()
+	
+	active_cam.set_follow_target(active_anchor)
+	target_cam.set_follow_target(target_anchor)
+
+	target_cam.set_look_at_target(target_look_anchor)
+>>>>>>> Stashed changes
 	
 	battle_ui.command_selected.connect(_on_command_selected)
 	battle_ui.target_selected.connect(_on_target_selected)
@@ -95,7 +124,26 @@ func _ready():
 
 func _process(delta):
 
+<<<<<<< Updated upstream
 	if shake_time > 0 and shake_cam != null:
+=======
+
+	if active_anchor_source:
+		active_anchor.global_position = active_anchor_source.global_position
+
+	if target_anchor_source:
+		target_anchor.global_position = target_anchor_source.global_position
+
+	if active_look_source:
+		active_look_anchor.global_position = active_look_source.global_position
+
+	if target_look_source:
+		target_look_anchor.global_position = target_look_source.global_position
+
+
+	if shake_time > 0:
+
+>>>>>>> Stashed changes
 		shake_time -= delta
 
 		var offset = (shake_direction * shake_strength) + Vector3(
@@ -103,11 +151,27 @@ func _process(delta):
 			randf_range(-0.2, 0.2),
 			0
 		)
+<<<<<<< Updated upstream
 
 		if shake_cam == active_cam:
 			shake_cam.follow_offset = original_cam_offset + offset
 		else:
 			shake_cam.follow_offset = original_target_offset + offset
+=======
+
+		var target_offset = Vector3(
+			randf_range(-target_shake_strength, target_shake_strength),
+			randf_range(-target_shake_strength * 0.3, target_shake_strength * 0.3),
+			randf_range(-target_shake_strength * 0.3, target_shake_strength * 0.3)
+		)
+
+		active_anchor.position += active_offset
+		target_anchor.position += target_offset
+
+		active_shake_strength = lerp(active_shake_strength, 0.0, delta * shake_decay)
+		target_shake_strength = lerp(target_shake_strength, 0.0, delta * shake_decay)
+
+>>>>>>> Stashed changes
 
 		shake_strength = lerp(shake_strength, 0.0, delta * shake_decay)
 
@@ -143,10 +207,16 @@ func start_battle_with_context(battle_context : BattleContext):
 
 	if track:
 		AudioManagerAuto.play_battle_track(track)
-	else:
+	"else:
 		AudioManagerAuto.play_battle_track(
+<<<<<<< Updated upstream
 		GameController.current_dungeon.default_battle_track
 	)
+=======
+			context.run_state.current_dungeon.default_battle_track
+		)"
+
+>>>>>>> Stashed changes
 
 	AudioManagerAuto.ambience_player.play()
 
@@ -277,11 +347,18 @@ func next_turn():
 func handle_player_turn(actor: BattleActor) -> void:
 	active_player_actor = actor
 
+<<<<<<< Updated upstream
 	active_cam.set_follow_target(actor)
 	active_cam.set_look_at_target(null)
+=======
+	focus_actor(actor)
+
+	await get_tree().process_frame
+>>>>>>> Stashed changes
 
 	input_stage = InputStage.COMMAND
 	battle_ui.show_commands()
+
 	update_ui_state()
 
 
@@ -290,7 +367,10 @@ func handle_player_turn(actor: BattleActor) -> void:
 
 
 
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
 func handle_enemy_turn(actor: BattleActor) -> void:
 
 	await get_tree().process_frame
@@ -298,6 +378,7 @@ func handle_enemy_turn(actor: BattleActor) -> void:
 	var target = choose_target(actor)
 	if target == null:
 		return
+<<<<<<< Updated upstream
 
 	# LEFT SCREEN = player being attacked
 	active_cam.set_follow_target(target)
@@ -306,6 +387,18 @@ func handle_enemy_turn(actor: BattleActor) -> void:
 	# RIGHT SCREEN = attacking enemy
 	target_cam.set_follow_target(actor)
 	target_cam.set_look_at_target(null)
+=======
+	battle_hud.show_target(actor)
+	
+	
+	await get_tree().process_frame
+	focus_target(actor)
+	focus_actor(target)
+
+	target_cam.set_follow_damping_value(Vector3(.25, .25, .15))
+	target_cam.set_follow_offset(Vector3(-1.25, 0, .55))
+	target_cam.set_look_at_offset(Vector3(0, 0, -.2))
+>>>>>>> Stashed changes
 
 	await actor.take_turn(target)
 
@@ -478,7 +571,16 @@ func animate_channel_removal():
 		0.44
 	)
 
+<<<<<<< Updated upstream
 func screen_shake_on_actor(target: BattleActor, dir: Vector3, strength: float, duration: float):
+=======
+func screen_shake(source: BattleActor, target: BattleActor, dir: Vector3, active_strength: float, target_strength: float, duration: float):
+
+	shake_time = duration
+	active_shake_strength = active_strength
+	target_shake_strength = target_strength
+
+>>>>>>> Stashed changes
 
 	# Determine which camera is following this actor
 	if active_cam.get_follow_target() == target:
@@ -495,11 +597,14 @@ func screen_shake_on_actor(target: BattleActor, dir: Vector3, strength: float, d
 	shaking = true
 	AudioManagerAuto.duck_bgm(-8.0, 0.4)
 	AudioManagerAuto.set_glitch_intensity(0.2, 0.15)
+<<<<<<< Updated upstream
 	
 
 
 
 
+=======
+>>>>>>> Stashed changes
 
 func count_bits(value: int) -> int:
 	var count := 0
@@ -524,6 +629,7 @@ func reset_selection():
 	
 	battle_ui.hide_target_container()
 	battle_ui.hide_confirmation()
+<<<<<<< Updated upstream
 	
 
 func focus_idle_orbit():
@@ -531,6 +637,64 @@ func focus_idle_orbit():
 	target_cam.set_follow_target(idle_orbiter)
 	target_cam.set_look_at_target(idle_orbit_pivot)
 	target_cam.set_look_at_offset(Vector3(0, 0, 0))
+=======
+
+func reset_ca_material():
+
+	for key in ca_defaults:
+		ca_mesh_mat.set_shader_parameter(key, ca_defaults[key])
+
+
+func cache_ca_defaults():
+
+	ca_defaults["removed_mask"] = ca_mesh_mat.get_shader_parameter("removed_mask")
+	ca_defaults["channel_strength"] = ca_mesh_mat.get_shader_parameter("channel_strength")
+	ca_defaults["glitch_intensity"] = ca_mesh_mat.get_shader_parameter("glitch_intensity")
+	ca_defaults["noise_strength"] = ca_mesh_mat.get_shader_parameter("noise_strength")
+	ca_defaults["tear_intensity"] = ca_mesh_mat.get_shader_parameter("tear_intensity")
+	ca_defaults["block_glitch"] = ca_mesh_mat.get_shader_parameter("block_glitch")
+
+func follow_anchor(anchor: Node3D, source: Node3D):
+
+	if anchor == active_anchor:
+		active_anchor_source = source
+
+	elif anchor == target_anchor:
+		target_anchor_source = source
+
+	elif anchor == active_look_anchor:
+		active_look_source = source
+
+	elif anchor == target_look_anchor:
+		target_look_source = source
+
+
+func focus_actor(actor: BattleActor):
+
+	if actor == null:
+		return
+
+	follow_anchor(active_anchor, actor.camera_anchor)
+	follow_anchor(active_look_anchor, actor.camera_anchor)
+
+func focus_target(actor: BattleActor):
+
+	if actor == null:
+		return
+
+	follow_anchor(target_anchor, actor.camera_anchor)
+	follow_anchor(target_look_anchor, actor.camera_anchor)
+
+
+func focus_idle_orbit():
+
+	target_cam.set_follow_offset(Vector3.ZERO)
+	target_cam.set_look_at_offset(Vector3.ZERO)
+
+	follow_anchor(target_anchor, idle_orbiter)
+	follow_anchor(target_look_anchor, idle_orbit_pivot)
+
+>>>>>>> Stashed changes
 
 func update_ui_state():
 	if input_locked:
@@ -620,7 +784,9 @@ func _on_command_selected(command):
 
 
 func _on_target_selected(target):
+
 	selected_target = target
+<<<<<<< Updated upstream
 	target_cam.set_follow_damping_value(Vector3(.25, .25, .15))
 
 	target_cam.set_follow_target(target)
@@ -628,13 +794,20 @@ func _on_target_selected(target):
 	await get_tree().process_frame
 	target_cam.set_look_at_target(target)
 	target_cam.set_look_at_offset(Vector3(0, 1.5, -.2))
+=======
+
+	target_cam.set_follow_damping_value(Vector3(.25, .25, .15))
+	target_cam.set_follow_offset(Vector3(-1.25, 0, .55))
+	target_cam.set_look_at_offset(Vector3(0, 0, -.2))
+
+	focus_target(target)
+
+>>>>>>> Stashed changes
 	battle_hud.show_target(selected_target)
 
-	
-
 	input_stage = InputStage.PART
-	
 	update_ui_state()
+
 
 
 
