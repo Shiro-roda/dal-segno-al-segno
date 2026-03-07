@@ -1,6 +1,29 @@
 [gd_scene format=3 uid="uid://cprbg06xivaq4"]
 
 [ext_resource type="Script" uid="uid://bt4xwltdukunr" path="res://dungeon_scene.gd" id="1_e8fv0"]
+[ext_resource type="Script" uid="uid://cv0b5qovvw88e" path="res://scenes/Managers/dungeon_controller.gd" id="2_swt46"]
+[ext_resource type="Script" uid="uid://c2gidpo1ajqk3" path="res://scripts/UI/dungeonUI.gd" id="3_ifq1p"]
 
 [node name="DungeonScene" type="Node3D" unique_id=1132002358]
 script = ExtResource("1_e8fv0")
+
+[node name="DungeonController" type="Node" parent="." unique_id=1222314331]
+script = ExtResource("2_swt46")
+
+[node name="DungeonUI" type="Control" parent="." unique_id=843467474]
+layout_mode = 3
+anchors_preset = 4
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_top = -20.0
+offset_right = 40.0
+offset_bottom = 20.0
+grow_vertical = 2
+script = ExtResource("3_ifq1p")
+
+[node name="RoomList" type="VBoxContainer" parent="DungeonUI" unique_id=1028134442]
+layout_mode = 1
+anchors_preset = 9
+anchor_bottom = 1.0
+offset_right = 118.0
+grow_vertical = 2

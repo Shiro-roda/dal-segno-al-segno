@@ -146,6 +146,18 @@ func _process(delta):
 			randf_range(-active_shake_strength * 0.3, active_shake_strength * 0.3),
 			randf_range(-active_shake_strength * 0.3, active_shake_strength * 0.3)
 		)
+		
+		var target_offset = Vector3(
+			randf_range(-target_shake_strength, target_shake_strength),
+			randf_range(-target_shake_strength * 0.3, target_shake_strength * 0.3),
+			randf_range(-target_shake_strength * 0.3, target_shake_strength * 0.3)
+		)
+		if active_anchor:
+			active_anchor.position = active_base_follow_position + active_offset
+		if target_anchor:
+			target_anchor.position = target_base_follow_position + target_offset
+		active_shake_strength = lerp(active_shake_strength, 0.0, delta * shake_decay)
+		target_shake_strength = lerp(target_shake_strength, 0.0, delta * shake_decay)
 
 		var target_offset = Vector3(
 			randf_range(-target_shake_strength, target_shake_strength),
@@ -342,8 +354,6 @@ func handle_player_turn(actor: BattleActor) -> void:
 	battle_ui.show_commands()
 
 	update_ui_state()
-
-
 
 
 

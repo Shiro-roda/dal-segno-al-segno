@@ -4,3 +4,5 @@
 
 [node name="BattleActor" type="Node3D" unique_id=620316433]
 script = ExtResource("1_xinpp")
+
+[node name="CameraAnchor" type="Node3D" parent="." unique_id=413819805]

@@ -1,46 +1,15 @@
 [gd_resource type="Resource" script_class="EncounterData" format=3 uid="uid://br73gevor1yrr"]
 
-[ext_resource type="PackedScene" uid="uid://qythxyqix8sw" path="res://scenes/Managers/battle_field_test.tscn" id="1_4tvwq"]
+[ext_resource type="PackedScene" uid="uid://qythxyqix8sw" path="res://scenes/Maps/battle_field_test.tscn" id="1_rtlx1"]
 [ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://resources/characters/characterdata.gd" id="2_rtlx1"]
 [ext_resource type="Resource" uid="uid://cqcjsnswptvk8" path="res://resources/characters/enemies/shadow1.tres" id="3_g1efg"]
 [ext_resource type="Resource" uid="uid://c7inm1j3nh7i4" path="res://resources/characters/enemies/shadow2.tres" id="4_7y7tb"]
-[ext_resource type="PackedScene" uid="uid://433fpucnuqkf" path="res://scenes/Characters/battleactors/shadow_bactor.tscn" id="5_g1efg"]
+[ext_resource type="Resource" uid="uid://bwmbdd8ixs5kf" path="res://resources/characters/enemies/shadow3.tres" id="5_g1efg"]
 [ext_resource type="Resource" uid="uid://d3s71movk40pc" path="res://audio/tracks/magenta.tres" id="5_xqpoj"]
-[ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://resources/bodyparts/BodyPartData.gd" id="6_7y7tb"]
 [ext_resource type="Script" uid="uid://coeqyvqijtkns" path="res://resources/encounters/encounterdata.gd" id="6_nvxc5"]
-
-[sub_resource type="Resource" id="Resource_xqpoj"]
-script = ExtResource("6_7y7tb")
-part_name = "Torso"
-base_visible = true
-metadata/_custom_type_script = "uid://bewuwngi8x4ad"
-
-[sub_resource type="Resource" id="Resource_nvxc5"]
-script = ExtResource("6_7y7tb")
-part_name = "Arm"
-required_removed_mask = 2
-damage_multiplier = 1.5
-metadata/_custom_type_script = "uid://bewuwngi8x4ad"
-
-[sub_resource type="Resource" id="Resource_s55yo"]
-script = ExtResource("6_7y7tb")
-part_name = "Heart"
-required_removed_mask = 4
-damage_multiplier = 2.5
-is_cognitohazard = true
-metadata/_custom_type_script = "uid://bewuwngi8x4ad"
-
-[sub_resource type="Resource" id="Resource_88qt0"]
-script = ExtResource("2_rtlx1")
-display_name = "Shadow3"
-base_max_hp = 8
-base_attack = 5
-body_parts = Array[ExtResource("6_7y7tb")]([SubResource("Resource_xqpoj"), SubResource("Resource_nvxc5"), SubResource("Resource_s55yo")])
-battle_scene = ExtResource("5_g1efg")
-metadata/_custom_type_script = "uid://b2t1syvrybco8"
 
 [resource]
 script = ExtResource("6_nvxc5")
-battlefield_scene = ExtResource("1_4tvwq")
-enemies = Array[ExtResource("2_rtlx1")]([ExtResource("3_g1efg"), ExtResource("4_7y7tb"), SubResource("Resource_88qt0")])
+battlefield_scene = ExtResource("1_rtlx1")
+enemies = Array[ExtResource("2_rtlx1")]([ExtResource("3_g1efg"), ExtResource("4_7y7tb"), ExtResource("5_g1efg")])
 override_music = ExtResource("5_xqpoj")

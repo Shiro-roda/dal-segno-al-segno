@@ -4,20 +4,20 @@
 [ext_resource type="PackedScene" uid="uid://433fpucnuqkf" path="res://scenes/Characters/battleactors/shadow_bactor.tscn" id="1_v3wxi"]
 [ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://resources/characters/characterdata.gd" id="2_v3wxi"]
 
-[sub_resource type="Resource" id="Resource_dh7dq"]
+[sub_resource type="Resource" id="Resource_l101s"]
 script = ExtResource("1_tpfi6")
 part_name = "Torso"
 base_visible = true
 metadata/_custom_type_script = "uid://bewuwngi8x4ad"
 
-[sub_resource type="Resource" id="Resource_sxdbf"]
+[sub_resource type="Resource" id="Resource_1b2at"]
 script = ExtResource("1_tpfi6")
 part_name = "Arm"
 required_removed_mask = 2
 damage_multiplier = 1.5
 metadata/_custom_type_script = "uid://bewuwngi8x4ad"
 
-[sub_resource type="Resource" id="Resource_tvp6t"]
+[sub_resource type="Resource" id="Resource_vuso0"]
 script = ExtResource("1_tpfi6")
 part_name = "Heart"
 required_removed_mask = 4
@@ -30,6 +30,6 @@ script = ExtResource("2_v3wxi")
 display_name = "Shadow2"
 base_max_hp = 10
 base_attack = 2
-body_parts = Array[ExtResource("1_tpfi6")]([SubResource("Resource_dh7dq"), SubResource("Resource_sxdbf"), SubResource("Resource_tvp6t")])
+body_parts = Array[ExtResource("1_tpfi6")]([SubResource("Resource_l101s"), SubResource("Resource_1b2at"), SubResource("Resource_vuso0")])
 battle_scene = ExtResource("1_v3wxi")
 metadata/_custom_type_script = "uid://b2t1syvrybco8"
