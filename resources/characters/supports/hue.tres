@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="CharacterData" format=3 uid="uid://2s23chpgsy4t"]
+
+[ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://resources/characters/characterdata.gd" id="1_chardata"]
+[ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://resources/bodyparts/BodyPartData.gd" id="1_smrkh"]
+[ext_resource type="PackedScene" uid="uid://drgt1emnpwnap" path="res://scenes/Characters/battleactors/hue_bactor.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_chardata")
+display_name = "Hue"
+base_max_hp = 20
+base_attack = 3
+base_max_will = 12
+battle_scene = ExtResource("2_scene")

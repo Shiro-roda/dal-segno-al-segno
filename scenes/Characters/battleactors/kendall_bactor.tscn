@@ -1,13 +1,14 @@
 [gd_scene format=3 uid="uid://d3idossxkgtjh"]
 
-[ext_resource type="Script" uid="uid://c8fvcb046bf6m" path="res://scripts/Characters/BattleActor.gd" id="1_kkg3i"]
+[ext_resource type="Script" uid="uid://bvemdwbw77sji" path="res://scripts/Characters/kendall_actor.gd" id="1_u31kg"]
 [ext_resource type="PackedScene" uid="uid://dhu0qxbwinbyv" path="res://scenes/Characters/ken_model_test_11.tscn" id="2_u31kg"]
+[ext_resource type="Script" uid="uid://d2keok0ggm4q7" path="res://scripts/Characters/ken_model.gd" id="3_8y4ch"]
 
 [node name="BattleActor" type="Node3D" unique_id=620316433]
-script = ExtResource("1_kkg3i")
+script = ExtResource("1_u31kg")
 
-[node name="ken_model_test11" parent="." unique_id=2005524327 instance=ExtResource("2_u31kg")]
-
+[node name="ken_model_test11" type="Node3D" parent="." unique_id=2005524327 instance=ExtResource("2_u31kg")]
+script = ExtResource("3_8y4ch")
 
 [node name="CameraAnchor" type="Node3D" parent="." unique_id=836785041]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5532758, 0)

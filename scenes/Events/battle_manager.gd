@@ -34,6 +34,18 @@ var selected_target : BattleActor = null
 var selected_body_part : BodyPartData = null
 var selected_filter : int = -1
 var input_locked := false
+var free_shot_pending := false
+var support_targeting := false  # true when picking an ally target for a support skill
+var selected_attack_skips_targeting := false  # true for AoE or struggle (no target/part selection)
+var selected_is_struggle := false
+
+func grant_free_shot() -> void:
+	free_shot_pending = true
+
+func delay_actor_turn(actor: BattleActor) -> void:
+	# Drain the actor's tempo pool so they act much later
+	actor.tempo_pool -= TEMPO_COST_ATTACK * 2.0
+	print(actor.name, " is delayed — tempo drained.")
 
 
 var shake_time := 0.0
@@ -107,8 +119,10 @@ func _ready():
 	
 	active_cam.set_follow_target(active_anchor)
 	target_cam.set_follow_target(target_anchor)
-
 	target_cam.set_look_at_target(target_look_anchor)
+
+	active_cam.set_priority(10)
+	target_cam.set_priority(10)
 	
 	battle_ui.command_selected.connect(_on_command_selected)
 	battle_ui.target_selected.connect(_on_target_selected)
@@ -121,7 +135,6 @@ func _ready():
 	
 
 func _process(delta):
-
 
 	if active_anchor_source:
 		active_anchor.global_position = active_anchor_source.global_position
@@ -136,8 +149,9 @@ func _process(delta):
 		target_look_anchor.global_position = target_look_source.global_position
 
 
-	if shake_time > 0:
-
+	if (active_shake_strength > 0.1) or (target_shake_strength > 0.1):
+		active_cam.follow_damping = false
+		target_cam.follow_damping = false
 		shake_time -= delta
 
 		var active_offset = Vector3(
@@ -152,16 +166,15 @@ func _process(delta):
 			randf_range(-target_shake_strength * 0.3, target_shake_strength * 0.3)
 		)
 		if active_anchor:
-			active_anchor.position = active_base_follow_position + active_offset
+			active_anchor.global_position += active_offset
 		if target_anchor:
-			target_anchor.position = target_base_follow_position + target_offset
-
-		active_anchor.position += active_offset
-		target_anchor.position += target_offset
+			target_anchor.global_position += target_offset
 
 		active_shake_strength = lerp(active_shake_strength, 0.0, delta * shake_decay)
 		target_shake_strength = lerp(target_shake_strength, 0.0, delta * shake_decay)
-
+	else:
+		active_cam.follow_damping = true
+		target_cam.follow_damping = true
 
 
 
@@ -208,7 +221,22 @@ func start_battle_with_context(battle_context : BattleContext):
 	print(context.run_state.party_members)
 	print(battlefield_root.get_children())
 
+	# Pre-position anchors and idle orbit at battlefield center
+	var first_player = actors.filter(func(a): return a.team == BattleActor.Team.PLAYER)
+	var first_enemy = actors.filter(func(a): return a.team == BattleActor.Team.ENEMY)
+	var battlefield_center := Vector3.ZERO
+	if first_player.size() > 0 and first_player[0].camera_anchor:
+		active_anchor.global_position = first_player[0].camera_anchor.global_position
+		active_anchor_source = first_player[0].camera_anchor
+		battlefield_center = first_player[0].camera_anchor.global_position
+	if first_enemy.size() > 0 and first_enemy[0].camera_anchor:
+		target_anchor.global_position = first_enemy[0].camera_anchor.global_position
+		target_anchor_source = first_enemy[0].camera_anchor
+		battlefield_center = (battlefield_center + first_enemy[0].camera_anchor.global_position) * 0.5
+	idle_orbit_pivot.global_position = battlefield_center
+
 	battle_hud.setup(actors)
+	battle_hud.refresh_queue(self)
 
 
 
@@ -226,9 +254,15 @@ func start_battle_with_context(battle_context : BattleContext):
 func spawn_players():
 	var player_slots = battlefield_root.get_node("PlayerSlots").get_children()
 
+	var slot_index = 0
 	for i in range(context.run_state.party_members.size()):
+		if slot_index >= player_slots.size():
+			break
 
 		var member_data = context.run_state.party_members[i]
+		if member_data.current_hp <= 0:
+			continue  # skip dead characters
+
 		var char_data = member_data.character
 
 		var actor = char_data.battle_scene.instantiate()
@@ -238,15 +272,17 @@ func spawn_players():
 		actor.max_hp = member_data.character.base_max_hp + member_data.bonus_max_hp
 		actor.hp = member_data.current_hp
 		actor.attack_power = member_data.character.base_attack + member_data.bonus_attack
-		
+		actor.tempo_stat = char_data.tempo
 		actor.body_parts = char_data.body_parts
 		actor.party_member = member_data
-		player_slots[i].add_child(actor)
+		actor.run_state = context.run_state
+		player_slots[slot_index].add_child(actor)
+		slot_index += 1
 
 		actors.append(actor)
 		actor.died.connect(_on_actor_died)
 		actor.turn_finished.connect(_on_turn_finished)
-		actor.hp_changed.connect(_on_hp_changed)
+		actor.hp_changed.connect(func(): _on_hp_changed(actor))
 	
 
 func spawn_enemies():
@@ -270,7 +306,7 @@ func spawn_enemies():
 		actors.append(actor)
 		actor.died.connect(_on_actor_died)
 		actor.turn_finished.connect(_on_turn_finished)
-		actor.hp_changed.connect(_on_hp_changed)
+		actor.hp_changed.connect(func(): _on_hp_changed(actor))
 
 
 
@@ -282,49 +318,47 @@ func setup_battlefield():
 
 
 
+# Default action tempo costs - subtracted from tempo_pool when an actor acts.
+# Costs are large relative to tempo_stat (~10-15) so acting creates real debt.
+# A stat difference of 2-3 produces occasional double-turns; bonuses are scarce.
+const TEMPO_COST_ATTACK  = 50
+const TEMPO_COST_SPECIAL = 100
+const TEMPO_COST_SUPPORT = 30
+const TEMPO_COST_DEFAULT = 50
+
 func build_turn_queue():
-	turn_queue.clear()
+	# Seed with a random offset in [0, tempo_stat) so starting order is shuffled
+	# while still respecting speed — faster actors are still more likely to go first.
+	for actor in actors:
+		actor.tempo_pool = randf_range(0.0, float(actor.tempo_stat))
 
-	var players = actors.filter(func(a):
-		return a.team == BattleActor.Team.PLAYER
-	)
+func _pick_next_actor() -> BattleActor:
+	# Tick tempo for all living actors, then return whoever has the most
+	var living = actors.filter(func(a): return a.is_alive())
+	if living.is_empty(): return null
+	for actor in living:
+		actor.tick_tempo()
+	living.sort_custom(func(a, b): return a.tempo_pool > b.tempo_pool)
+	while living[0].tempo_pool < 100:
+		for actor in living:
+			actor.tick_tempo()
+		living.sort_custom(func(a, b): return a.tempo_pool > b.tempo_pool)
+	return living[0]
 
-	var enemies = actors.filter(func(a):
-		return a.team == BattleActor.Team.ENEMY
-	)
-	
-
-	turn_queue.append_array(players)
-	turn_queue.append_array(enemies)
 
 func next_turn():
-
 	if battle_ending:
 		return
-
 	if not is_inside_tree():
 		return
-
-
-	print("Turn: ", current_index)
-
 	if check_victory():
 		return
 
-	if turn_queue.is_empty():
+	var actor = _pick_next_actor()
+	if actor == null:
 		return
 
-	if current_index >= turn_queue.size():
-		current_index = 0
-
-	var actor = turn_queue[current_index]
-
-	if not actor.is_alive():
-		current_index += 1
-		next_turn()
-		return
-
-	print("Turn: ", actor.name, " HP: ", actor.hp)
+	print("Turn: ", actor.name, " TP: ", actor.tempo_pool, " HP: ", actor.hp)
 
 	if actor.team == BattleActor.Team.PLAYER:
 		input_locked = false
@@ -337,12 +371,13 @@ func handle_player_turn(actor: BattleActor) -> void:
 
 	active_player_actor = actor
 
-	focus_actor(actor)
-
 	await get_tree().process_frame
 
+	focus_actor(actor)
+	print("handle_player_turn: active_anchor_source=", active_anchor_source, " pos=", active_anchor.global_position)
+
 	input_stage = InputStage.COMMAND
-	battle_ui.show_commands()
+	battle_ui.show_commands(actor)
 
 	update_ui_state()
 
@@ -351,24 +386,22 @@ func handle_player_turn(actor: BattleActor) -> void:
 
 
 func handle_enemy_turn(actor: BattleActor) -> void:
-
 	await get_tree().process_frame
-
 	var target = choose_target(actor)
 	if target == null:
 		return
 	battle_hud.show_target(actor)
-	
-	
 	await get_tree().process_frame
 	focus_target(actor)
 	focus_actor(target)
-
 	target_cam.set_follow_damping_value(Vector3(.25, .25, .15))
 	target_cam.set_follow_offset(Vector3(-1.25, 0, .55))
 	target_cam.set_look_at_offset(Vector3(0, 0, -.2))
-
 	await actor.take_turn(target)
+	# Deduct tempo cost and reset bonus for enemy
+	actor.tempo_pool -= TEMPO_COST_ATTACK
+	actor.reset_tempo_bonus()
+	battle_hud.refresh_queue(self)
 
 
 
@@ -382,14 +415,15 @@ func handle_enemy_turn(actor: BattleActor) -> void:
 
 func await_actor_turn(actor: BattleActor, action: Callable) -> void:
 	var finished = false
-	
+
 	var on_finish = func():
 		finished = true
-	
+
 	actor.turn_finished.connect(on_finish, CONNECT_ONE_SHOT)
-	
-	action.call()
-	
+
+	# await the callable so coroutines (use_skill, use_lens, etc.) run to completion
+	await action.call()
+
 	while not finished and not battle_ending:
 		if not is_inside_tree():
 			return
@@ -399,13 +433,58 @@ func await_actor_turn(actor: BattleActor, action: Callable) -> void:
 func _on_turn_finished():
 	battle_hud.target_info.hide()
 	battle_hud.set_active_actor(active_player_actor, false)
-	current_index += 1
+	# Deduct tempo cost from whoever just acted
+	var cost = _tempo_cost_for_command(selected_command)
+	if active_player_actor != null and is_instance_valid(active_player_actor):
+		active_player_actor.tempo_pool -= cost
+		active_player_actor.reset_tempo_bonus()
+	battle_hud.refresh_queue(self)
 	next_turn()
+
+func _tempo_cost_for_command(cmd: String) -> float:
+	match cmd:
+		"attack": return TEMPO_COST_ATTACK
+		"special": return TEMPO_COST_SPECIAL
+		"support": return TEMPO_COST_SUPPORT
+		_: return TEMPO_COST_DEFAULT
+
+
+# Returns an Array of {actor: BattleActor, tempo: float} dicts showing projected turn order.
+# Simulates tempo ticks on shadow pools - never mutates real actors.
+func get_projected_queue(steps: int = 8) -> Array:
+	var living = actors.filter(func(a): return a.is_alive())
+	if living.is_empty():
+		return []
+
+	# Shadow pools: dict actor -> simulated tempo_pool
+	var pools : Dictionary = {}
+	for a in living:
+		pools[a] = a.tempo_pool
+
+	var result : Array = []
+	for _i in range(steps):
+		# Tick every actor
+		for a in living:
+			if a.has_status(BattleActor.STATUS_FROZEN):
+				continue
+			var gain = float(a.tempo_stat)
+			if a.has_status(BattleActor.STATUS_SLOW):
+				gain *= BattleActor.SLOW_TEMPO_MULT
+			pools[a] += gain
+		# Find who acts next
+		var top : BattleActor = living[0]
+		for a in living:
+			if pools[a] > pools[top]:
+				top = a
+		result.append({"actor": top, "tempo": pools[top]})
+		# Deduct standard attack cost from their shadow pool
+		pools[top] -= TEMPO_COST_ATTACK
+
+	return result
 
 
 
 func _on_actor_died(actor: BattleActor):
-	turn_queue.erase(actor)
 	actors.erase(actor)
 
 
@@ -455,7 +534,6 @@ func end_battle(victory: bool):
 
 	actors.clear()
 	turn_queue.clear()
-	current_index = 0
 
 	await get_tree().process_frame
 
@@ -468,14 +546,14 @@ func end_battle(victory: bool):
 
 
 func save_party_state():
-	var party_data = context.run_state.party_members
+	# First zero out everyone — actors that died were queue_freed and won't appear below
+	for member in context.run_state.party_members:
+		member.current_hp = 0
 
-	var player_actors = actors.filter(func(a):
-		return a.team == BattleActor.Team.PLAYER
-	)
-
-	for i in min(player_actors.size(), context.run_state.party_members.size()):
-		context.run_state.party_members[i].current_hp = player_actors[i].hp
+	# Overwrite with actual HP for actors still alive
+	for actor in actors:
+		if actor.team == BattleActor.Team.PLAYER and is_instance_valid(actor) and actor.party_member:
+			actor.party_member.current_hp = actor.hp
 
 
 
@@ -560,11 +638,12 @@ func animate_channel_removal():
 		0.44
 	)
 
-func screen_shake(source: BattleActor, target: BattleActor, dir: Vector3, active_strength: float, target_strength: float, duration: float):
+func screen_shake(source: BattleActor, target: BattleActor, dir: Vector3, active_strength: float, target_strength: float):
 
-	shake_time = duration
 	active_shake_strength = active_strength
 	target_shake_strength = target_strength
+	active_base_follow_position = active_anchor.global_position
+	target_base_follow_position = target_anchor.global_position
 
 
 	AudioManagerAuto.duck_bgm(-8.0, 0.4)
@@ -589,7 +668,8 @@ func reset_selection():
 	selected_command = ""
 	selected_target = null
 	selected_body_part = null
-
+	selected_attack_skips_targeting = false
+	selected_is_struggle = false
 	
 	battle_ui.hide_target_container()
 	battle_ui.hide_confirmation()
@@ -659,15 +739,18 @@ func update_ui_state():
 	match input_stage:
 
 		InputStage.COMMAND:
+			if active_player_actor:
+				focus_actor(active_player_actor)
 			focus_idle_orbit()
-			battle_ui.show_commands()
-			battle_ui.set_lens_enabled(count_bits(removed_channels) < 2)
+			battle_ui.show_commands(active_player_actor)
 			battle_ui.set_confirm_enabled(false)
 
 		InputStage.TARGET:
-			var targets = actors.filter(func(a):
-				return a.team != active_player_actor.team and a.is_alive()
-			)
+			var targets: Array
+			if support_targeting:
+				targets = actors.filter(func(a): return a.team == active_player_actor.team and a.is_alive())
+			else:
+				targets = actors.filter(func(a): return a.team != active_player_actor.team and a.is_alive())
 			battle_ui.show_targets(targets)
 			battle_ui.set_confirm_enabled(false)
 
@@ -691,15 +774,41 @@ func _on_confirm_pressed():
 	input_locked = true
 	input_stage = InputStage.DONE
 
+	var is_ammo_user = active_player_actor.party_member == null or not active_player_actor.party_member.has_will()
+
 	match selected_command:
 		"attack":
+			if is_ammo_user and not selected_is_struggle:
+				# Hidden (cognitohazard) parts cost 2 ammo; normal parts cost 1
+				var ammo_cost = 2 if (selected_body_part != null and not selected_body_part.base_visible) else 1
+				if not free_shot_pending and not context.run_state.spend_ammo(ammo_cost):
+					print("Not enough ammo!")
+					input_locked = false
+					input_stage = InputStage.COMMAND
+					update_ui_state()
+					return
+				free_shot_pending = false
 			await_actor_turn(active_player_actor, func():
 				active_player_actor.take_turn(selected_target, selected_body_part)
 			)
-			
-		"lens":
+
+		"special":
+			if is_ammo_user:  # Kendall: Change Lens — costs ally will, not ammo
+				await_actor_turn(active_player_actor, func():
+					active_player_actor.use_lens(selected_filter)
+				)
+			else:
+				var _special_targets = [selected_target] if selected_target != null else []
+				await_actor_turn(active_player_actor, func():
+					active_player_actor.use_skill("special", _special_targets)
+				)
+
+		"support":
+			var _sk = active_player_actor.get_skills().filter(func(s): return s["key"] == "support")
+			var _is_aoe_sup = not _sk.is_empty() and _sk[0].get("aoe", false)
+			var _support_targets = actors if _is_aoe_sup else ([selected_target] if selected_target != null else actors)
 			await_actor_turn(active_player_actor, func():
-				active_player_actor.use_lens(selected_filter)
+				active_player_actor.use_skill("support", _support_targets)
 			)
 	
 
@@ -708,6 +817,7 @@ func _on_confirm_pressed():
 func _on_cancel_pressed():
 	match input_stage:
 		InputStage.TARGET:
+			support_targeting = false  # always clear when stepping back from target
 			input_stage = InputStage.COMMAND
 
 		InputStage.PART:
@@ -717,22 +827,78 @@ func _on_cancel_pressed():
 			input_stage = InputStage.COMMAND
 
 		InputStage.CONFIRM:
-			if selected_command == "attack":
-				input_stage = InputStage.PART
-			else:
-				input_stage = InputStage.FILTER
+			match selected_command:
+				"attack":
+					if selected_attack_skips_targeting:
+						input_stage = InputStage.COMMAND
+					else:
+						input_stage = InputStage.PART
+				"special":
+					# Targeted specials (Calcify) go back to target pick;
+					# AoE/lens specials go back to command
+					var _skills = active_player_actor.get_skills() if active_player_actor else []
+					var _sd = _skills.filter(func(s): return s["key"] == "special")
+					if not _sd.is_empty() and _sd[0].get("targeted", false):
+						input_stage = InputStage.TARGET
+					else:
+						input_stage = InputStage.COMMAND
+				"support":  input_stage = InputStage.COMMAND
+				_:          input_stage = InputStage.COMMAND
 
 	update_ui_state()
 
 
 func _on_command_selected(command):
 	selected_command = command
+	# Read skill flags: aoe = hits all enemies, struggle = random target (both skip targeting UI)
+	var skills = active_player_actor.get_skills() if active_player_actor else []
+	var skill_data = skills.filter(func(s): return s["key"] == command)
+	var is_aoe      = not skill_data.is_empty() and skill_data[0].get("aoe", false)
+	var is_struggle = not skill_data.is_empty() and skill_data[0].get("struggle", false)
+	selected_attack_skips_targeting = is_aoe or is_struggle
+	selected_is_struggle = is_struggle
 
-	if command == "attack":
-		input_stage = InputStage.TARGET
-
-	elif command == "lens":
-		input_stage = InputStage.FILTER
+	match command:
+		"attack":
+			if selected_attack_skips_targeting:
+				selected_target = null
+				selected_body_part = null
+				input_stage = InputStage.CONFIRM
+			else:
+				input_stage = InputStage.TARGET
+		"special":
+			var _is_ammo_user = active_player_actor.party_member == null or not active_player_actor.party_member.has_will()
+			if _is_ammo_user:
+				input_stage = InputStage.FILTER  # Kendall: choose lens channel
+			elif not skill_data.is_empty() and skill_data[0].get("targeted", false):
+				# Special that needs an enemy target (e.g. Calcify)
+				support_targeting = false
+				input_stage = InputStage.TARGET
+			else:
+				# AoE special: no target needed
+				input_stage = InputStage.CONFIRM
+		"support":
+			var _is_aoe_support    = not skill_data.is_empty() and skill_data[0].get("aoe", false)
+			var _is_ally_target    = not skill_data.is_empty() and skill_data[0].get("ally_target", false)
+			var _is_enemy_target   = not skill_data.is_empty() and skill_data[0].get("enemy_target", false)
+			if _is_aoe_support:
+				# No targeting needed (Augur, Evade, Galvanize, Martyr, Waste)
+				support_targeting = false
+				input_stage = InputStage.CONFIRM
+			elif _is_ally_target:
+				# Pick an ally (Shelter, Embrace)
+				support_targeting = true
+				input_stage = InputStage.TARGET
+			elif _is_enemy_target:
+				# Pick an enemy (Wither)
+				support_targeting = false
+				input_stage = InputStage.TARGET
+			else:
+				# Fallback: pick an ally
+				support_targeting = true
+				input_stage = InputStage.TARGET
+		_:
+			input_stage = InputStage.CONFIRM
 
 	update_ui_state()
 
@@ -747,9 +913,13 @@ func _on_target_selected(target):
 
 	focus_target(target)
 
-	battle_hud.show_target(selected_target)
+	if support_targeting:
+		support_targeting = false
+		input_stage = InputStage.CONFIRM
+	else:
+		battle_hud.show_target(selected_target)
+		input_stage = InputStage.PART
 
-	input_stage = InputStage.PART
 	update_ui_state()
 
 

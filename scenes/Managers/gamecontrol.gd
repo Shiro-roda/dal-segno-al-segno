@@ -52,37 +52,64 @@ func start_new_game():
 
 	var run = RunState.new()
 
+	# Kendall is always in the party
 	var member = PartyMemberData.new()
-	member.character = preload("res://resources/characters/kendall.tres")
-	member.current_hp = member.character.base_max_hp
+	member.init_from_character(preload("res://resources/characters/kendall.tres"))
 	run.party_members.append(member)
 
-	member = PartyMemberData.new()
-	member.character = preload("res://resources/characters/kendall.tres")
-	member.current_hp = member.character.base_max_hp
-	run.party_members.append(member)
-
-	member = PartyMemberData.new()
-	member.character = preload("res://resources/characters/kendall.tres")
-	member.current_hp = member.character.base_max_hp
-	run.party_members.append(member)
+	# All three supports available; player picks one via companion-select event
+	run.available_supports = [
+		preload("res://resources/characters/supports/hue.tres"),
+		preload("res://resources/characters/supports/indra.tres"),
+		preload("res://resources/characters/supports/vritra.tres"),
+	]
 
 	start_new_run(run)
 
-	var dungeon_data = preload("res://resources/dungeons/test_dungeon.tres")
+	# Show companion select before entering the dungeon
+	var select_scene := preload("res://scenes/Events/companion_select/companion_select.tscn")
+	var dungeon_data := preload("res://resources/dungeons/test_dungeon.tres")
 
-	start_dungeon(dungeon_data)
+	_start_companion_select(select_scene, dungeon_data)
+
+
+func _start_companion_select(select_scene: PackedScene, dungeon_data: DungeonData) -> void:
+	clear_layer(event_layer)
+	var select := select_scene.instantiate()
+	event_layer.add_child(select)
+	dungeon_layer.visible = false
+	battle_layer.visible = false
+	event_layer.visible = true
+	select.event_finished.connect(func():
+		clear_layer(event_layer)
+		event_layer.visible = false
+		start_dungeon(dungeon_data)
+	)
 
 
 
 func start_new_run(run : RunState):
 	current_run = run
 
+func _set_dungeon_map_visible(visible: bool):
+	var map_3d = get_tree().get_first_node_in_group("dungeon_map_3d")
+	if map_3d:
+		map_3d.visible = visible
+		# Disable/enable the phantom camera host so no main viewport camera is active during battle
+		var host = map_3d.get_node_or_null("CameraPivot/Camera3D/PhantomCameraHost")
+		if host:
+			host.set_process(visible)
+			host.set_physics_process(visible)
+		var cam = map_3d.get_node_or_null("CameraPivot/Camera3D")
+		if cam:
+			cam.current = visible
+
 func start_battle(encounter):
 
 	dungeon_layer.visible = false
 	event_layer.visible = false
 	battle_layer.visible = true
+	_set_dungeon_map_visible(false)
 
 	clear_layer(battle_layer)
 
@@ -110,9 +137,13 @@ func _on_battle_finished(victory):
 	battle_layer.visible = false
 	event_layer.visible = false
 	dungeon_layer.visible = true
+	_set_dungeon_map_visible(true)
 	
 	AudioManagerAuto.fade_out_bgm()
-	
+	# Resume dungeon ambient after battle BGM fades
+	var resume_tween = create_tween()
+	resume_tween.tween_callback(AudioManagerAuto.resume_dungeon_track).set_delay(0.7)
+
 	var dungeon_controller = get_tree().get_first_node_in_group("dungeon_controller")
 
 	if victory:
@@ -138,6 +169,10 @@ func start_event(event_scene: PackedScene):
 
 	event_layer.add_child(event)
 
+	dungeon_layer.visible = false
+	battle_layer.visible = false
+	event_layer.visible = true
+
 	event.event_finished.connect(_on_event_finished)
 
 
@@ -145,6 +180,9 @@ func start_event(event_scene: PackedScene):
 func _on_event_finished():
 
 	clear_layer(event_layer)
+	event_layer.visible = false
+	dungeon_layer.visible = true
+	_set_dungeon_map_visible(true)
 
 	var dungeon_controller = get_tree().get_first_node_in_group("dungeon_controller")
 
@@ -162,10 +200,12 @@ func start_world(scene: PackedScene):
 	battle_layer.visible = false
 	event_layer.visible = false
 	world_layer.visible = true
+	_set_dungeon_map_visible(false)
 
 func start_dungeon(dungeon_data: DungeonData):
 
 	dungeon_layer.visible = true
 	world_layer.visible = false
+	_set_dungeon_map_visible(true)
 
 	dungeon_controller.start_dungeon(current_run, dungeon_data)

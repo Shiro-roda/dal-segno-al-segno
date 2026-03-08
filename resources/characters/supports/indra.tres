@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CharacterData" format=3 uid="uid://dfdya8weujssl"]
+
+[ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://resources/characters/characterdata.gd" id="1_chardata"]
+[ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://resources/bodyparts/BodyPartData.gd" id="2_ocirn"]
+[ext_resource type="PackedScene" uid="uid://d23jj42kvsjw" path="res://scenes/Characters/battleactors/indra_bactor.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_chardata")
+display_name = "Indra"
+base_max_hp = 17
+base_attack = 5
+base_max_will = 16
+tempo = 11
+battle_scene = ExtResource("2_scene")

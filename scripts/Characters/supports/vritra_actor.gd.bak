@@ -1,0 +1,95 @@
+extends BattleActor
+# Vritra — the serpent demigod of the ferris wheel carnival.
+# High will cost, high damage. Leeching a target feeds her next action.
+# A leeched target heals whoever strikes it — including Kendall's gun shots —
+# making her synergy with him uniquely potent and uniquely dangerous.
+# Her will restoration loop: leech heals grant her will back proportionally,
+# so a living leeched target is an active resource she cannot bear to waste.
+# She can also drain a willing or unwilling party member's HP directly,
+# which is very her.
+
+const LEECH_DURATION            = 2    # turns the leech persists
+const LEECH_WILL_RESTORE_RATIO  = 0.5  # fraction of leech heal that restores will
+const LEECH_CHANCE_NORMAL       = 0.6  # 60% on plain attack
+const DRAIN_ALLY_HP_COST        = 5    # HP taken from ally
+const DRAIN_ALLY_WILL_RESTORE   = 4    # will restored to Vritra
+
+func take_turn(target: BattleActor, part: BodyPartData = null) -> void:
+	await get_tree().create_timer(0.1).timeout
+
+	tick_status_effects()
+	if not is_alive():
+		emit_signal("turn_finished")
+		return
+
+	if has_status(STATUS_FROZEN):
+		print(name, " is frozen and cannot act.")
+		spend_turn()
+		return
+
+	if not party_member.spend_will(party_member.character.will_attack_cost):
+		print(name, " has no will left.")
+		spend_turn()
+		return
+
+	var damage := int(attack_power * (part.damage_multiplier if part else 1.0))
+
+	if part and part.is_cognitohazard:
+		perishing = true
+
+	# Leech application — 60% on normal, guaranteed on body part hits
+	var should_leech := part != null or randf() < LEECH_CHANCE_NORMAL
+	if should_leech:
+		target.apply_status(STATUS_LEECHED, LEECH_DURATION)
+		print(name, " leeches onto ", target.name, ".")
+
+	await play_attack_animation(target, attack_power, 2.0, damage)
+	emit_signal("turn_finished")
+
+
+# Called from take_damage override below: when Vritra herself deals damage
+# to a leeched target, she recovers a portion of will from the life flowing
+# back into her.
+func _on_leech_heal(heal_amount: int) -> void:
+	var will_gain : int = ceili(heal_amount) * 1  # scale by ratio then ceil to int
+	will_gain = maxi(1, int(heal_amount * LEECH_WILL_RESTORE_RATIO))
+	if will_gain > 0 and party_member:
+		party_member.restore_will(will_gain)
+		print(name, " savours the leech, restoring ", will_gain, " will.")
+
+
+# Override take_damage so when Vritra is the attacker on a leeched target,
+# the leech-will loop fires.
+func take_damage(amount: int, attacker: BattleActor = null) -> void:
+	# Standard damage handling first
+	super.take_damage(amount, attacker)
+	# If we were the attacker and a leech heal happened, it was already
+	# processed in BattleActor.take_damage — the will restore fires via
+	# _on_leech_heal called below.
+
+
+# BattleActor.take_damage emits hp_changed on the healed attacker.
+# We hook in here by overriding the leech heal path directly in our attack.
+# This is called after play_attack_animation resolves in take_turn;
+# check if the target is leeched and we were the attacker to grant will.
+func _after_attack_leech_check(target: BattleActor, damage_dealt: int) -> void:
+	if target.has_status(STATUS_LEECHED):
+		var heal : int = maxi(1, damage_dealt / 2)
+		_on_leech_heal(heal)
+
+
+# Drain an ally: extract HP to refill will. Very her.
+# ally: another BattleActor on the player team.
+func drain_ally(ally: BattleActor) -> void:
+	if ally == self or not ally.is_alive():
+		spend_turn()
+		return
+	if ally.hp <= DRAIN_ALLY_HP_COST:
+		print(name, " — not enough left in ", ally.name, " to take.")
+		spend_turn()
+		return
+	ally.take_damage(DRAIN_ALLY_HP_COST, self)
+	party_member.restore_will(DRAIN_ALLY_WILL_RESTORE)
+	print(name, " drains ", DRAIN_ALLY_HP_COST, " from ", ally.name,
+		", restoring ", DRAIN_ALLY_WILL_RESTORE, " will.")
+	emit_signal("turn_finished")

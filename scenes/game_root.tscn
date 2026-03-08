@@ -4,10 +4,15 @@
 [ext_resource type="Script" uid="uid://bt4xwltdukunr" path="res://dungeon_scene.gd" id="2_iusj4"]
 [ext_resource type="Script" uid="uid://snhktyfrtb0v" path="res://scripts/UI/dungeonUI.gd" id="3_j7aru"]
 [ext_resource type="PackedScene" uid="uid://cawuaxeud518f" path="res://scenes/Maps/Dungeons/dungeon_map_3d.tscn" id="4_jb3nc"]
+[ext_resource type="Script" uid="uid://cmi4bl88a2kuc" path="res://scenes/UI/menu/party_menu.gd" id="6_a1rh6"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_iusj4"]
+font_size = 10
+font_color = Color(0.48178947, 0.48178947, 0.48178947, 1)
 
 [node name="GameRoot" type="Node" unique_id=1011693636]
 
-[node name="WorldLayer" type="CanvasLayer" parent="." unique_id=1138420764]
+[node name="WorldLayer" type="CanvasLayer" parent="." unique_id=1138420764 groups=["world_layer"]]
 visible = false
 
 [node name="DungeonLayer" type="CanvasLayer" parent="." unique_id=982368690 groups=["dungeon_layer"]]
@@ -37,10 +42,22 @@ anchor_bottom = 1.0
 offset_right = 118.0
 grow_vertical = 2
 
-[node name="DungeonMap3D" parent="DungeonLayer" unique_id=1533421829 instance=ExtResource("4_jb3nc")]
+[node name="Label" type="Label" parent="DungeonLayer/DungeonUI" unique_id=399074236]
+layout_mode = 1
+offset_left = -7.0
+offset_top = -503.0
+offset_right = 79.0
+offset_bottom = -480.0
+text = "[TAB]menu"
+label_settings = SubResource("LabelSettings_iusj4")
+
+[node name="DungeonMap3D" parent="." unique_id=1533421829 instance=ExtResource("4_jb3nc")]
 
 [node name="BattleLayer" type="CanvasLayer" parent="." unique_id=529536140 groups=["battle_layer"]]
 visible = false
 
 [node name="EventLayer" type="CanvasLayer" parent="." unique_id=1236010400 groups=["event_layer"]]
 visible = false
+
+[node name="PartyMenu" type="CanvasLayer" parent="." unique_id=2037623213]
+script = ExtResource("6_a1rh6")

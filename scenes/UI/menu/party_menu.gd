@@ -1,0 +1,690 @@
+extends CanvasLayer
+
+# -----------------------------------------------------------------------
+# Party / Options overlay menu
+# Tab to open/close. Works from dungeon and battle contexts.
+# -----------------------------------------------------------------------
+
+signal menu_opened
+signal menu_closed
+
+const TAB_PARTY   := 0
+const TAB_SKILLS  := 1
+const TAB_OPTIONS := 2
+
+var _open       := false
+var _active_tab := TAB_PARTY
+
+# Root panel
+var _root_panel   : PanelContainer
+var _tab_bar      : HBoxContainer
+var _tab_btns     : Array = []
+var _pages        : Array = []  # one Control per tab
+
+# Party page node refs
+var _party_rows   : Array = []  # VBoxContainers, one per member
+
+# Skills page node refs
+var _skill_detail_name : Label
+var _skill_detail_type : Label
+var _skill_detail_cost : Label
+var _skill_detail_desc : Label
+var _skill_list_vbox   : VBoxContainer
+var _skill_btns        : Array = []
+
+# Options page node refs
+var _master_slider : HSlider
+var _bgm_slider    : HSlider
+var _sfx_slider    : HSlider
+
+# -----------------------------------------------------------------------
+# Skill descriptions - fill these in yourself.
+# Keys match skill "name" strings from each actor's get_skills().
+# -----------------------------------------------------------------------
+const SKILL_DESCRIPTIONS : Dictionary = {
+	"Shoot":        "",
+	"Pistol Whip":  "",
+	"Change Lens":  "",
+	"Augur":        "",
+	"Evade":        "",
+	"Rebuke":       "",
+	"Cling":        "",
+	"Calcify":      "",
+	"Shelter":      "",
+	"Embrace":      "",
+	"Crucify":      "",
+	"Clobber":      "",
+	"Fulminate":    "",
+	"Galvanize":    "",
+	"Martyr":       "",
+	"Vice":         "",
+	"Strangulate":  "",
+	"Devour":       "",
+	"Wither":       "",
+	"Waste":        "",
+	"Drain Ally":   "",
+}
+
+# -----------------------------------------------------------------------
+# Colours / style constants
+# -----------------------------------------------------------------------
+const C_BG        := Color(0.08, 0.07, 0.06, 0.97)   # near-black parchment
+const C_BORDER    := Color(0.35, 0.28, 0.22, 1.0)    # worn sepia border
+const C_ACCENT    := Color(0.72, 0.18, 0.18, 1.0)    # dull crimson
+const C_TEXT      := Color(0.88, 0.83, 0.74, 1.0)    # aged paper
+const C_DIM       := Color(0.55, 0.50, 0.43, 1.0)    # muted label
+const C_TAB_ACT   := Color(0.72, 0.18, 0.18, 1.0)    # active tab = accent
+const C_TAB_INACT := Color(0.18, 0.15, 0.12, 1.0)    # inactive tab
+
+const W := 1400
+const H := 1050
+const MENU_W := 820
+const MENU_H := 560
+
+# -----------------------------------------------------------------------
+func _ready() -> void:
+	# Remove Tab from ui_focus_next so it doesn't get eaten before we see it
+	var tab_ev := InputEventKey.new()
+	tab_ev.keycode = KEY_TAB
+	if InputMap.has_action("ui_focus_next"):
+		InputMap.action_erase_event("ui_focus_next", tab_ev)
+
+	# Register open_menu on both Tab and I
+	if not InputMap.has_action("open_menu"):
+		InputMap.add_action("open_menu")
+	InputMap.action_erase_events("open_menu")
+	var ev_tab := InputEventKey.new()
+	ev_tab.keycode = KEY_TAB
+	InputMap.action_add_event("open_menu", ev_tab)
+	var ev_i := InputEventKey.new()
+	ev_i.keycode = KEY_I
+	InputMap.action_add_event("open_menu", ev_i)
+
+	layer = 128   # above everything
+	_build_ui()
+	hide_menu()
+
+# -----------------------------------------------------------------------
+func _input(event: InputEvent) -> void:
+	if event.is_action_pressed("open_menu"):
+		if _open:
+			hide_menu()
+		else:
+			show_menu()
+		get_viewport().set_input_as_handled()
+
+# -----------------------------------------------------------------------
+func show_menu() -> void:
+	_open = true
+	_root_panel.visible = true
+	_refresh_party()
+	_switch_tab(_active_tab)
+	emit_signal("menu_opened")
+
+func hide_menu() -> void:
+	_open = false
+	_root_panel.visible = false
+	emit_signal("menu_closed")
+
+# -----------------------------------------------------------------------
+# UI CONSTRUCTION
+# -----------------------------------------------------------------------
+func _build_ui() -> void:
+	_root_panel = PanelContainer.new()
+	_root_panel.name = "MenuRoot"
+	# Anchor to centre, then offset inward by half the menu size
+	_root_panel.anchor_left   = 0.5
+	_root_panel.anchor_top    = 0.5
+	_root_panel.anchor_right  = 0.5
+	_root_panel.anchor_bottom = 0.5
+	_root_panel.offset_left   = -MENU_W * 0.5
+	_root_panel.offset_top    = -MENU_H * 0.5
+	_root_panel.offset_right  =  MENU_W * 0.5
+	_root_panel.offset_bottom =  MENU_H * 0.5
+	_root_panel.custom_minimum_size = Vector2(MENU_W, MENU_H)
+
+	var style := StyleBoxFlat.new()
+	style.bg_color = C_BG
+	style.border_color = C_BORDER
+	style.set_border_width_all(2)
+	style.set_content_margin_all(0)
+	_root_panel.add_theme_stylebox_override("panel", style)
+	add_child(_root_panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 0)
+	_root_panel.add_child(vbox)
+
+	# --- Tab bar ---
+	_tab_bar = HBoxContainer.new()
+	_tab_bar.custom_minimum_size = Vector2(MENU_W, 36)
+	_tab_bar.add_theme_constant_override("separation", 0)
+	vbox.add_child(_tab_bar)
+
+	var tab_names := ["PARTY", "SKILLS", "OPTIONS"]
+	for i in tab_names.size():
+		var btn := Button.new()
+		btn.text = tab_names[i]
+		btn.custom_minimum_size = Vector2(120, 36)
+		btn.add_theme_font_size_override("font_size", 13)
+		btn.add_theme_color_override("font_color", C_TEXT)
+		btn.add_theme_color_override("font_focus_color", C_TEXT)
+		btn.add_theme_color_override("font_hover_color", C_TEXT)
+		btn.add_theme_color_override("font_pressed_color", C_TEXT)
+		var idx := i
+		btn.pressed.connect(func(): _switch_tab(idx))
+		_tab_bar.add_child(btn)
+		_tab_btns.append(btn)
+
+	# Divider
+	var div := ColorRect.new()
+	div.color = C_BORDER
+	div.custom_minimum_size = Vector2(MENU_W, 2)
+	vbox.add_child(div)
+
+	# --- Content area ---
+	var content := Control.new()
+	content.custom_minimum_size = Vector2(MENU_W, MENU_H - 38)
+	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vbox.add_child(content)
+
+	# Party page
+	var party_page := _build_party_page()
+	party_page.set_anchors_preset(Control.PRESET_FULL_RECT)
+	content.add_child(party_page)
+	_pages.append(party_page)
+
+	# Skills page
+	var skills_page := _build_skills_page()
+	skills_page.set_anchors_preset(Control.PRESET_FULL_RECT)
+	content.add_child(skills_page)
+	_pages.append(skills_page)
+
+	# Options page
+	var options_page := _build_options_page()
+	options_page.set_anchors_preset(Control.PRESET_FULL_RECT)
+	content.add_child(options_page)
+	_pages.append(options_page)
+
+# -----------------------------------------------------------------------
+# PARTY PAGE
+# -----------------------------------------------------------------------
+func _build_party_page() -> Control:
+	var page := ScrollContainer.new()
+	page.name = "PartyPage"
+
+	var vbox := VBoxContainer.new()
+	vbox.name = "PartyVBox"
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.add_theme_constant_override("separation", 1)
+	page.add_child(vbox)
+
+	# Header row
+	var header := _make_member_header()
+	vbox.add_child(header)
+
+	var hdiv := ColorRect.new()
+	hdiv.color = C_ACCENT
+	hdiv.custom_minimum_size = Vector2(0, 1)
+	vbox.add_child(hdiv)
+
+	# Member rows - populated by _refresh_party()
+	_party_rows.clear()
+	for i in range(4):  # max 4 party members
+		var row := _make_member_row_placeholder()
+		row.visible = false
+		vbox.add_child(row)
+		_party_rows.append(row)
+
+	return page
+
+
+func _make_member_header() -> Control:
+	var row := HBoxContainer.new()
+	row.custom_minimum_size = Vector2(0, 28)
+	row.add_theme_constant_override("separation", 0)
+
+	var cols := [
+		["NAME",       200, HORIZONTAL_ALIGNMENT_LEFT],
+		["HP",          90, HORIZONTAL_ALIGNMENT_CENTER],
+		["WILL / AMMO", 90, HORIZONTAL_ALIGNMENT_CENTER],
+		["ATK",         70, HORIZONTAL_ALIGNMENT_CENTER],
+		["TEMPO",       70, HORIZONTAL_ALIGNMENT_CENTER],
+		["STATUS",     260, HORIZONTAL_ALIGNMENT_LEFT],
+	]
+
+	for c in cols:
+		var lbl := Label.new()
+		lbl.text = c[0]
+		lbl.custom_minimum_size = Vector2(c[1], 28)
+		lbl.add_theme_font_size_override("font_size", 10)
+		lbl.add_theme_color_override("font_color", C_DIM)
+		lbl.horizontal_alignment = c[2]
+		lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+		var pad := _padded(lbl, 12, 0)
+		row.add_child(pad)
+
+	return row
+
+
+func _make_member_row_placeholder() -> Control:
+	# A pre-built row with named labels we update in _refresh_party
+	var row := HBoxContainer.new()
+	row.custom_minimum_size = Vector2(0, 52)
+	row.add_theme_constant_override("separation", 0)
+
+	var cols := [
+		["name_lbl",   200, HORIZONTAL_ALIGNMENT_LEFT,   16, C_TEXT],
+		["hp_lbl",      90, HORIZONTAL_ALIGNMENT_CENTER, 13, C_TEXT],
+		["will_lbl",    90, HORIZONTAL_ALIGNMENT_CENTER, 13, C_TEXT],
+		["atk_lbl",     70, HORIZONTAL_ALIGNMENT_CENTER, 13, C_TEXT],
+		["tempo_lbl",   70, HORIZONTAL_ALIGNMENT_CENTER, 13, C_TEXT],
+		["status_lbl", 260, HORIZONTAL_ALIGNMENT_LEFT,   11, C_DIM],
+	]
+
+	for c in cols:
+		var lbl := Label.new()
+		lbl.name = c[0]
+		lbl.custom_minimum_size = Vector2(c[1], 52)
+		lbl.add_theme_font_size_override("font_size", c[3])
+		lbl.add_theme_color_override("font_color", c[4])
+		lbl.horizontal_alignment = c[2]
+		lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		var pad := _padded(lbl, 12, 0)
+		row.add_child(pad)
+
+	# Bottom border
+	var sep := ColorRect.new()
+	sep.color = C_BORDER
+	sep.custom_minimum_size = Vector2(0, 1)
+	sep.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	row.add_child(sep)
+
+	return row
+
+
+func _refresh_party() -> void:
+	var run := GameController.current_run
+	if run == null:
+		return
+
+	var members := run.party_members
+
+	for i in _party_rows.size():
+		var row : Control = _party_rows[i]
+		if i >= members.size():
+			row.visible = false
+			continue
+
+		row.visible = true
+		var m : PartyMemberData = members[i]
+		var char_data : CharacterData = m.character
+		var max_hp := char_data.base_max_hp + m.bonus_max_hp
+		var dead := m.current_hp <= 0
+
+		_set_row_label(row, "name_lbl", char_data.display_name)
+		_set_row_label(row, "hp_lbl",   "%d / %d" % [m.current_hp, max_hp])
+		_set_row_label(row, "atk_lbl",  str(char_data.base_attack + m.bonus_attack))
+		_set_row_label(row, "tempo_lbl", str(char_data.tempo))
+
+		if m.has_will():
+			_set_row_label(row, "will_lbl", "%d / %d" % [m.will, m.max_will])
+		else:
+			var rs := GameController.current_run
+			if rs != null:
+				_set_row_label(row, "will_lbl", "%d / %d" % [rs.ammo, rs.max_ammo])
+			else:
+				_set_row_label(row, "will_lbl", "-- / --")
+
+		# Status summary
+		var status_parts : Array = []
+		if dead:
+			status_parts.append("DEAD")
+		for effect in m.status_effects:
+			if effect is Dictionary and effect.has("id"):
+				status_parts.append(effect["id"].to_upper())
+		_set_row_label(row, "status_lbl",
+			", ".join(status_parts) if not status_parts.is_empty() else "OK")
+
+		# Tint dead members
+		var tint := Color(0.55, 0.55, 0.55, 0.6) if dead else Color.WHITE
+		row.modulate = tint
+
+
+func _set_row_label(row: Control, lbl_name: String, value: String) -> void:
+	# Labels are wrapped in a margin container - find them by name recursively
+	for child in row.get_children():
+		var lbl := child.get_node_or_null(lbl_name)
+		if lbl:
+			lbl.text = value
+			return
+
+# -----------------------------------------------------------------------
+# SKILLS PAGE
+# -----------------------------------------------------------------------
+# Layout: left panel = scrollable per-character skill list
+#         right panel = fixed detail card for the selected skill
+# -----------------------------------------------------------------------
+func _build_skills_page() -> Control:
+	var page := HBoxContainer.new()
+	page.name = "SkillsPage"
+	page.add_theme_constant_override("separation", 0)
+
+	# --- Left: character + skill list ---
+	var left := ScrollContainer.new()
+	left.custom_minimum_size = Vector2(320, 0)
+	left.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	left.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+	page.add_child(left)
+
+	_skill_list_vbox = VBoxContainer.new()
+	_skill_list_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_skill_list_vbox.add_theme_constant_override("separation", 0)
+	left.add_child(_skill_list_vbox)
+
+	# Vertical divider
+	var vdiv := ColorRect.new()
+	vdiv.color = C_BORDER
+	vdiv.custom_minimum_size = Vector2(2, 0)
+	vdiv.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	page.add_child(vdiv)
+
+	# --- Right: detail panel ---
+	var right := MarginContainer.new()
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+	right.add_theme_constant_override("margin_left",   28)
+	right.add_theme_constant_override("margin_top",    28)
+	right.add_theme_constant_override("margin_right",  28)
+	right.add_theme_constant_override("margin_bottom", 28)
+	page.add_child(right)
+
+	var detail := VBoxContainer.new()
+	detail.add_theme_constant_override("separation", 10)
+	right.add_child(detail)
+
+	# Skill name
+	_skill_detail_name = Label.new()
+	_skill_detail_name.text = "Select a skill"
+	_skill_detail_name.add_theme_font_size_override("font_size", 20)
+	_skill_detail_name.add_theme_color_override("font_color", C_TEXT)
+	detail.add_child(_skill_detail_name)
+
+	# Type + cost row
+	var meta_row := HBoxContainer.new()
+	meta_row.add_theme_constant_override("separation", 12)
+	detail.add_child(meta_row)
+
+	_skill_detail_type = Label.new()
+	_skill_detail_type.add_theme_font_size_override("font_size", 11)
+	_skill_detail_type.add_theme_color_override("font_color", C_ACCENT)
+	meta_row.add_child(_skill_detail_type)
+
+	_skill_detail_cost = Label.new()
+	_skill_detail_cost.add_theme_font_size_override("font_size", 11)
+	_skill_detail_cost.add_theme_color_override("font_color", C_DIM)
+	meta_row.add_child(_skill_detail_cost)
+
+	# Divider under meta
+	var detail_div := ColorRect.new()
+	detail_div.color = C_BORDER
+	detail_div.custom_minimum_size = Vector2(0, 1)
+	detail.add_child(detail_div)
+
+	# Description
+	_skill_detail_desc = Label.new()
+	_skill_detail_desc.add_theme_font_size_override("font_size", 13)
+	_skill_detail_desc.add_theme_color_override("font_color", C_TEXT)
+	_skill_detail_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_skill_detail_desc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	detail.add_child(_skill_detail_desc)
+
+	# Populate list
+	_populate_skill_list()
+
+	return page
+
+
+func _populate_skill_list() -> void:
+	for child in _skill_list_vbox.get_children():
+		child.queue_free()
+	_skill_btns.clear()
+
+	# All skills per character - static, not runtime get_skills()
+	# key: "attack" | "special" | "support"   cost: shown in detail panel
+	var roster : Array = [
+		{"character": "Kendall", "skills": [
+			{"name": "Shoot",       "type": "ATTACK",  "cost": "1 Ammo"},
+			{"name": "Pistol Whip", "type": "ATTACK",  "cost": "No Ammo"},
+			{"name": "Augur",       "type": "SUPPORT", "cost": "2 Will (allies)"},
+			{"name": "Evade",       "type": "SUPPORT", "cost": "Ally Unwilling"},
+			{"name": "Change Lens", "type": "SPECIAL", "cost": "2 Will (allies)"},
+		]},
+		{"character": "Hue", "skills": [
+			{"name": "Rebuke",  "type": "ATTACK",  "cost": "1 Will"},
+			{"name": "Cling",   "type": "ATTACK",  "cost": "Unwilling"},
+			{"name": "Shelter", "type": "SUPPORT", "cost": "2 Will"},
+			{"name": "Embrace", "type": "SUPPORT", "cost": "Unwilling"},
+			{"name": "Calcify", "type": "SPECIAL", "cost": "3 Will"},
+		]},
+		{"character": "Indra", "skills": [
+			{"name": "Crucify",   "type": "ATTACK",  "cost": "1 Will"},
+			{"name": "Clobber",   "type": "ATTACK",  "cost": "Unwilling"},
+			{"name": "Galvanize", "type": "SUPPORT", "cost": "2 Will"},
+			{"name": "Martyr",    "type": "SUPPORT", "cost": "Unwilling"},
+			{"name": "Fulminate", "type": "SPECIAL", "cost": "3 Will"},
+		]},
+		{"character": "Vritra", "skills": [
+			{"name": "Vice",        "type": "ATTACK",  "cost": "1 Will"},
+			{"name": "Strangulate", "type": "ATTACK",  "cost": "Unwilling"},
+			{"name": "Wither",      "type": "SUPPORT", "cost": "2 Will"},
+			{"name": "Waste",       "type": "SUPPORT", "cost": "Unwilling"},
+			{"name": "Devour",      "type": "SPECIAL", "cost": "3 Will"},
+		]},
+	]
+
+	for entry in roster:
+		# Character header
+		var char_lbl := Label.new()
+		char_lbl.text = entry["character"].to_upper()
+		char_lbl.add_theme_font_size_override("font_size", 10)
+		char_lbl.add_theme_color_override("font_color", C_DIM)
+		char_lbl.custom_minimum_size = Vector2(0, 28)
+		char_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		var char_pad := MarginContainer.new()
+		char_pad.add_theme_constant_override("margin_left", 16)
+		char_pad.add_child(char_lbl)
+		_skill_list_vbox.add_child(char_pad)
+
+		var char_div := ColorRect.new()
+		char_div.color = C_ACCENT
+		char_div.custom_minimum_size = Vector2(0, 1)
+		_skill_list_vbox.add_child(char_div)
+
+		for skill in entry["skills"]:
+			var skill_data : Dictionary = skill
+			var btn := Button.new()
+			btn.text = skill["name"]
+			btn.custom_minimum_size = Vector2(0, 36)
+			btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			btn.add_theme_font_size_override("font_size", 13)
+			btn.add_theme_color_override("font_color", C_TEXT)
+			btn.add_theme_color_override("font_hover_color", C_TEXT)
+			btn.add_theme_color_override("font_pressed_color", C_TEXT)
+			btn.add_theme_color_override("font_focus_color", C_TEXT)
+			var flat := StyleBoxFlat.new()
+			flat.bg_color = Color(0, 0, 0, 0)
+			flat.set_content_margin_all(0)
+			var flat_hover := StyleBoxFlat.new()
+			flat_hover.bg_color = Color(0.72, 0.18, 0.18, 0.18)
+			flat_hover.set_content_margin_all(0)
+			btn.add_theme_stylebox_override("normal",  flat)
+			btn.add_theme_stylebox_override("focus",   flat)
+			btn.add_theme_stylebox_override("pressed", flat_hover)
+			btn.add_theme_stylebox_override("hover",   flat_hover)
+			btn.pressed.connect(func(): _show_skill_detail(skill_data))
+			var btn_pad := MarginContainer.new()
+			btn_pad.add_theme_constant_override("margin_left", 16)
+			btn_pad.add_theme_constant_override("margin_right", 8)
+			btn_pad.add_child(btn)
+			_skill_list_vbox.add_child(btn_pad)
+			_skill_btns.append(btn)
+
+		var gap := Control.new()
+		gap.custom_minimum_size = Vector2(0, 8)
+		_skill_list_vbox.add_child(gap)
+
+
+func _show_skill_detail(skill: Dictionary) -> void:
+	_skill_detail_name.text = skill["name"]
+	_skill_detail_type.text = skill["type"]
+	_skill_detail_cost.text = skill["cost"]
+	_skill_detail_desc.text = SKILL_DESCRIPTIONS.get(skill["name"], "")
+
+
+# -----------------------------------------------------------------------
+# OPTIONS PAGE
+# -----------------------------------------------------------------------
+func _build_options_page() -> Control:
+	var page := VBoxContainer.new()
+	page.name = "OptionsPage"
+	page.add_theme_constant_override("separation", 0)
+
+	var pad := MarginContainer.new()
+	pad.add_theme_constant_override("margin_left",  32)
+	pad.add_theme_constant_override("margin_top",   32)
+	pad.add_theme_constant_override("margin_right", 32)
+	pad.add_theme_constant_override("margin_bottom",32)
+	pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pad.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+	page.add_child(pad)
+
+	var inner := VBoxContainer.new()
+	inner.add_theme_constant_override("separation", 24)
+	pad.add_child(inner)
+
+	# Section label
+	var sec_lbl := Label.new()
+	sec_lbl.text = "AUDIO"
+	sec_lbl.add_theme_font_size_override("font_size", 10)
+	sec_lbl.add_theme_color_override("font_color", C_DIM)
+	inner.add_child(sec_lbl)
+
+	var audio_div := ColorRect.new()
+	audio_div.color = C_BORDER
+	audio_div.custom_minimum_size = Vector2(0, 1)
+	inner.add_child(audio_div)
+
+	# Sliders
+	var master_bus := AudioServer.get_bus_index("Master")
+	var bgm_bus    := AudioServer.get_bus_index("BGM")
+	var sfx_bus    := AudioServer.get_bus_index("SFX")
+
+	var slider_data := [
+		["MASTER VOLUME", master_bus],
+		["MUSIC VOLUME",  bgm_bus],
+		["SFX VOLUME",    sfx_bus],
+	]
+
+	var slider_refs := []
+	for entry in slider_data:
+		var label_text : String = entry[0]
+		var bus_idx : int = entry[1]
+		var current_db := AudioServer.get_bus_volume_db(bus_idx) if bus_idx >= 0 else 0.0
+		var current_pct := db_to_linear(current_db)
+
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 16)
+		inner.add_child(row)
+
+		var lbl := Label.new()
+		lbl.text = label_text
+		lbl.custom_minimum_size = Vector2(180, 0)
+		lbl.add_theme_font_size_override("font_size", 13)
+		lbl.add_theme_color_override("font_color", C_TEXT)
+		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		row.add_child(lbl)
+
+		var slider := HSlider.new()
+		slider.min_value = 0.0
+		slider.max_value = 1.0
+		slider.step      = 0.01
+		slider.value     = clampf(current_pct, 0.0, 1.0)
+		slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var b := bus_idx
+		slider.value_changed.connect(func(v: float):
+			if b >= 0:
+				AudioServer.set_bus_volume_db(b, linear_to_db(v) if v > 0.0 else -80.0)
+		)
+		row.add_child(slider)
+
+		var val_lbl := Label.new()
+		val_lbl.custom_minimum_size = Vector2(42, 0)
+		val_lbl.add_theme_font_size_override("font_size", 12)
+		val_lbl.add_theme_color_override("font_color", C_DIM)
+		val_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		val_lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+		val_lbl.text = "%d%%" % int(current_pct * 100)
+		row.add_child(val_lbl)
+
+		# Keep val_lbl synced
+		slider.value_changed.connect(func(v: float):
+			val_lbl.text = "%d%%" % int(v * 100)
+		)
+
+		slider_refs.append(slider)
+
+	if slider_refs.size() >= 3:
+		_master_slider = slider_refs[0]
+		_bgm_slider    = slider_refs[1]
+		_sfx_slider    = slider_refs[2]
+
+	# Spacer
+	var spacer := Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	inner.add_child(spacer)
+
+	# Close hint
+	var hint := Label.new()
+	hint.text = "[TAB] close"
+	hint.add_theme_font_size_override("font_size", 10)
+	hint.add_theme_color_override("font_color", C_DIM)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	inner.add_child(hint)
+
+	return page
+
+# -----------------------------------------------------------------------
+# TAB SWITCHING
+# -----------------------------------------------------------------------
+func _switch_tab(idx: int) -> void:
+	_active_tab = idx
+	for i in _pages.size():
+		_pages[i].visible = (i == idx)
+	for i in _tab_btns.size():
+		var btn : Button = _tab_btns[i]
+		var active := (i == idx)
+		var sbox := StyleBoxFlat.new()
+		sbox.bg_color    = C_TAB_ACT if active else C_TAB_INACT
+		sbox.border_color = C_ACCENT if active else C_BORDER
+		sbox.set_border_width_all(0)
+		sbox.border_width_bottom = 2 if active else 0
+		sbox.set_content_margin_all(6)
+		btn.add_theme_stylebox_override("normal",   sbox)
+		btn.add_theme_stylebox_override("hover",    sbox)
+		btn.add_theme_stylebox_override("pressed",  sbox)
+		btn.add_theme_stylebox_override("focus",    sbox)
+
+# -----------------------------------------------------------------------
+# HELPERS
+# -----------------------------------------------------------------------
+func _padded(child: Control, h: int, v: int) -> MarginContainer:
+	var m := MarginContainer.new()
+	m.add_theme_constant_override("margin_left",   h)
+	m.add_theme_constant_override("margin_right",  h)
+	m.add_theme_constant_override("margin_top",    v)
+	m.add_theme_constant_override("margin_bottom", v)
+	m.size_flags_horizontal = Control.SIZE_EXPAND_FILL if child.custom_minimum_size.x == 0 else Control.SIZE_SHRINK_BEGIN
+	m.add_child(child)
+	return m

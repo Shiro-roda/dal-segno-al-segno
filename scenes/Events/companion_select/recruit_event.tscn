@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://n6jpv02bi3lq"]
+
+[ext_resource type="Script" uid="uid://1rrohtdh87us" path="res://scenes/Events/companion_select/recruit_event.gd" id="1_sng74"]
+
+[node name="RecruitEvent" type="Control" unique_id=463680630]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_sng74")

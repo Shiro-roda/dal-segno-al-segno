@@ -6,3 +6,4 @@ var position : Vector2i
 
 var visited := false
 var cleared := false
+var rested := false  # REST rooms: consumed once the player actually rests

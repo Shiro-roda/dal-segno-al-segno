@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="CharacterData" format=3 uid="uid://cjc8huabcavmm"]
+
+[ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://resources/characters/characterdata.gd" id="1_chardata"]
+[ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://resources/bodyparts/BodyPartData.gd" id="2_l3fpx"]
+[ext_resource type="PackedScene" uid="uid://btqwkbg0gpxtt" path="res://scenes/Characters/battleactors/vritra_bactor.tscn" id="2_scene"]
+
+[resource]
+script = ExtResource("1_chardata")
+display_name = "Vritra"
+base_max_hp = 14
+base_attack = 7
+base_max_will = 9
+tempo = 12
+battle_scene = ExtResource("2_scene")

@@ -1,0 +1,20 @@
+[gd_scene format=3 uid="uid://d23jj42kvsjw"]
+
+[ext_resource type="Script" uid="uid://bvbmtqu5i3uvl" path="res://scripts/Characters/supports/indra_actor.gd" id="1_jan5a"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_jan5a"]
+albedo_color = Color(0.02745098, 0.8666667, 1, 1)
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_mkouj"]
+material = SubResource("StandardMaterial3D_jan5a")
+radius = 0.35
+
+[node name="BattleActor" type="Node3D" unique_id=202670828]
+script = ExtResource("1_jan5a")
+
+[node name="CameraAnchor" type="Node3D" parent="." unique_id=206294826]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=401051072]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+mesh = SubResource("CapsuleMesh_mkouj")

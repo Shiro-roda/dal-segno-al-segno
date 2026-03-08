@@ -6,6 +6,9 @@ var room_instance : RoomInstance
 var controller : DungeonController
 
 @onready var mesh : MeshInstance3D = get_node_or_null("MeshInstance3D")
+@onready var area : Area3D = get_node_or_null("Area3D")
+
+
 
 
 
@@ -43,7 +46,9 @@ func update_visual():
 
 
 func _on_area_3d_input_event(camera, event, position, normal, shape_idx):
-
-	if event is InputEventMouseButton and event.pressed:
-
-		controller.move_to_room(grid_pos)
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		print("Clicked room at: ", grid_pos, " has_instance=", room_instance != null)
+		if room_instance != null:
+			controller.move_to_room(grid_pos)
+		else:
+			controller.build_room(grid_pos, null)  # null signals UI to ask which room type

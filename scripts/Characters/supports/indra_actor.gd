@@ -1,0 +1,169 @@
+extends BattleActor
+# Indra — the android saviour, storm-god lineage.
+# Mid will, mid-high damage. His nailed bat opens bleeding wounds.
+# Bleed scales off target max HP — he understands bodies as structures to dismantle.
+#
+# ATTACK  — Crucify:    spends will, bleed application, medium damage
+# ATTACK  — Clobber:    struggle (no will), random target, chance to miss/self-hit, no bleed
+# SPECIAL — Fulminate:  spends 3 will, AoE lightning hits all enemies for reduced damage
+# SPECIAL — Martyr:     sacrifice HP to restore will (no will for Fulminate)
+# SUPPORT — Galvanize:  spends 2 will, raises attack+will of both supports slightly,
+#                        grants Kendall a free shot this turn
+# SUPPORT — Martyr:     sacrifice HP to restore will (fallback, same as special fallback)
+
+const BLEED_DURATION          = 3
+const BLEED_CHANCE_NORMAL     = 0.5
+const FULMINATE_WILL_COST     = 3
+const FULMINATE_DMG_MULT      = 0.7   # each enemy takes 70% of normal attack
+const GALVANIZE_WILL_COST     = 2
+const GALVANIZE_ATK_BONUS     = 2
+const GALVANIZE_WILL_BONUS    = 1
+const MARTYR_HP_COST          = 4
+const MARTYR_WILL_RESTORE     = 3
+
+const CHATTER_CRUCIFY = [
+	"Hold out your arms.",
+	" ",
+	" ",
+	" ",
+	" ",
+]
+const CHATTER_CLOBBER = [
+	"Get out of my way!",
+	" ",
+	" ",
+	" ",
+	" ",
+	" ",
+]
+const CHATTER_FULMINATE = [
+	" ",
+]
+const CHATTER_GALVANIZE = [
+	" ",
+]
+const CHATTER_MARTYR = [
+	"It's not my right to falter now.",
+	" ",
+	" ",
+	" ",
+	" ",
+	" ",
+	" ",
+]
+const CHATTER_HURT = [
+	"It's nothing.",
+	"I can always get another arm.",
+	"...!",
+	"This won't stop me.",
+	" ",
+	" ",
+	" ",
+]
+
+
+func get_skills() -> Array:
+	var has_will = party_member != null and party_member.will > 0
+	var can_fulminate = party_member != null and party_member.will >= FULMINATE_WILL_COST
+	var can_galvanize = party_member != null and party_member.will >= GALVANIZE_WILL_COST
+	var skills = [
+		{"name": "Crucify" if has_will else "Clobber", "key": "attack", "struggle": not has_will},
+		{"name": "Galvanize" if can_galvanize else "Martyr", "key": "support", "aoe": true},
+	]
+	# Fulminate only appears when affordable
+	if can_fulminate:
+		skills.insert(1, {"name": "Fulminate", "key": "special"})
+	return skills
+
+
+func take_turn(target: BattleActor, part: BodyPartData = null) -> void:
+	await get_tree().create_timer(0.1).timeout
+	tick_status_effects()
+	if not is_alive():
+		emit_signal("turn_finished")
+		return
+	if has_status(STATUS_FROZEN):
+		print(name, " is frozen and cannot act.")
+		spend_turn()
+		return
+	if party_member.will > 0:
+		await _crucify(target, part)
+	else:
+		var manager = get_tree().get_first_node_in_group("battle_manager")
+		await struggle_attack(manager.actors, attack_power)
+
+
+func use_skill(command_key: String, targets: Array) -> void:
+	match command_key:
+		"special":
+			var manager = get_tree().get_first_node_in_group("battle_manager")
+			await _fulminate(manager.actors)
+		"support":
+			if party_member.will >= GALVANIZE_WILL_COST:
+				var manager = get_tree().get_first_node_in_group("battle_manager")
+				await _galvanize(manager.actors)
+			else:
+				await _martyr()
+		_:
+			spend_turn()
+
+
+# --- Skills ---
+
+func _crucify(target: BattleActor, part: BodyPartData) -> void:
+	if not party_member.spend_will(1):
+		var manager = get_tree().get_first_node_in_group("battle_manager")
+		await struggle_attack(manager.actors, attack_power)
+		return
+	var damage := int(attack_power * part.damage_multiplier)
+	if part.is_cognitohazard:
+		perishing = true
+	if randf() < BLEED_CHANCE_NORMAL:
+		target.apply_status(STATUS_BLEEDING, BLEED_DURATION)
+		log_msg("%s opens a wound on %s." % [name, target.name])
+	say_random(CHATTER_CRUCIFY)
+	await play_attack_animation(target, attack_power, 2.0, damage)
+	emit_signal("turn_finished")
+
+
+func _fulminate(all_actors: Array) -> void:
+	party_member.spend_will(FULMINATE_WILL_COST)
+	var enemies = all_actors.filter(func(a): return a.team == Team.ENEMY and a.is_alive())
+	say_random(CHATTER_FULMINATE)
+	for enemy in enemies:
+		var dmg = int(attack_power * FULMINATE_DMG_MULT)
+		enemy.take_damage(dmg, self)
+	emit_signal("turn_finished")
+
+
+func _galvanize(all_actors: Array) -> void:
+	party_member.spend_will(GALVANIZE_WILL_COST)
+	var supports = all_actors.filter(func(a):
+		return a.team == Team.PLAYER and a != self and a.party_member != null and a.party_member.has_will()
+	)
+	for s in supports:
+		s.attack_power += GALVANIZE_ATK_BONUS
+		s.party_member.restore_will(GALVANIZE_WILL_BONUS)
+	# Grant Kendall a free shot: flag on the manager
+	var manager = get_tree().get_first_node_in_group("battle_manager")
+	manager.grant_free_shot()
+	say_random(CHATTER_GALVANIZE)
+	spend_turn()
+
+
+func _martyr() -> void:
+	if hp <= MARTYR_HP_COST:
+		log_msg("%s has nothing left to give." % name)
+		spend_turn()
+		return
+	take_damage(MARTYR_HP_COST)
+	party_member.restore_will(MARTYR_WILL_RESTORE)
+	say_random(CHATTER_MARTYR)
+	log_msg("%s offers up %d HP to restore %d will." % [name, MARTYR_HP_COST, MARTYR_WILL_RESTORE])
+	spend_turn()
+
+
+func take_damage(amount: int, attacker: BattleActor = null) -> void:
+	super.take_damage(amount, attacker)
+	if is_alive():
+		say_random(CHATTER_HURT)

@@ -19,7 +19,7 @@ func start_dungeon(run_state: RunState, dungeon_data: DungeonData):
 		dungeon_ui = get_parent().get_node("DungeonUI")
 
 	if map_ui == null:
-		map_ui = get_parent().get_node("DungeonMap3D")
+		map_ui = get_tree().get_first_node_in_group("dungeon_map_3d")
 
 	dungeon = DungeonRunState.new()
 	dungeon.run_state = run_state
@@ -34,8 +34,27 @@ func start_dungeon(run_state: RunState, dungeon_data: DungeonData):
 	dungeon.grid[Vector2i.ZERO] = start_room
 	dungeon.current_pos = Vector2i.ZERO
 
+	# Pre-place recruit room south of start.
+	# Uses dungeon_data.recruit_room if assigned, otherwise a default one.
+	var recruit_data : RoomData = dungeon_data.recruit_room
+	if recruit_data == null:
+		recruit_data = RoomData.new()
+		recruit_data.room_name = "Crossroads"
+		recruit_data.room_type = RoomData.RoomType.RECRUIT
+		recruit_data.danger_level = 0
+		recruit_data.allows_segno = false
+	var recruit_instance := RoomInstance.new()
+	recruit_instance.room_data = recruit_data
+	recruit_instance.position = Vector2i(0, -1)
+	dungeon.grid[Vector2i(-3, -5)] = recruit_instance
+
 	map_ui.setup(dungeon, self)
 
+	# Start dungeon ambient music
+	if dungeon_data.dungeon_track != null:
+		AudioManagerAuto.play_dungeon_track(dungeon_data.dungeon_track)
+
+	enter_current_room()
 
 
 
@@ -59,20 +78,15 @@ func move_to_room(pos : Vector2i):
 	enter_current_room()
 
 
+const BATTLE_RESPAWN_CHANCE = 0.4
+
 func enter_current_room():
 
 	var room : RoomInstance = dungeon.grid.get(dungeon.current_pos)
 
-	if room.visited and room.cleared:
-		show_build_choices()
-		return
-
-
 	if room == null:
 		push_error("Room missing at " + str(dungeon.current_pos))
 		return
-
-	room.visited = true
 
 	var data : RoomData = room.room_data
 
@@ -80,32 +94,38 @@ func enter_current_room():
 		push_error("Room has no RoomData!")
 		return
 
+	room.visited = true
+
 	match data.room_type:
 
-		RoomData.RoomType.BATTLE:
-			GameController.start_battle(data.encounter)
-
-		RoomData.RoomType.ELITE:
-			GameController.start_battle(data.encounter)
+		RoomData.RoomType.BATTLE, RoomData.RoomType.ELITE:
+			if not room.cleared or randf() < BATTLE_RESPAWN_CHANCE:
+				room.cleared = false
+				GameController.start_battle(data.encounter)
 
 		RoomData.RoomType.EVENT:
 			load_event(data.event_scene)
 
 		RoomData.RoomType.REST:
-			open_rest_ui()
+			if not room.rested:
+				open_rest_ui()
 
 		RoomData.RoomType.SEGNO:
 			place_segno()
+
+		RoomData.RoomType.RECRUIT:
+			if not room.cleared:
+				load_recruit_event()
+			# If already cleared (recruited), fall through silently
 
 
 func on_room_completed():
 
 	var room : RoomInstance = dungeon.grid[dungeon.current_pos]
 	room.cleared = true
+	dungeon_ui.clear_room_list()
 
 	map_ui.redraw_map()
-
-	show_build_choices()
 
 
 func get_available_positions():
@@ -130,10 +150,28 @@ func get_available_positions():
 
 
 func show_build_choices():
-	dungeon_ui.show_room_choices(dungeon, self)
+	dungeon_ui.clear_room_list()
 
+
+var pending_build_pos : Vector2i = Vector2i(-999, -999)
+var pending_room_choices : Dictionary = {}  # Vector2i -> Array[RoomData]
 
 func build_room(pos: Vector2i, room_data: RoomData):
+	if room_data == null:
+		# Generate choices once per position, reuse on repeated clicks
+		if not pending_room_choices.has(pos):
+			var choices : Array[RoomData] = []
+			while choices.size() < 3:
+				var choice = dungeon.dungeon_data.rooms.pick_random()
+				if choice not in choices:
+					choices.append(choice)
+			pending_room_choices[pos] = choices
+		pending_build_pos = pos
+		dungeon_ui.show_room_choices(dungeon, self)
+		return
+
+	pending_room_choices.erase(pos)
+	pending_build_pos = Vector2i(-999, -999)
 
 	var instance = RoomInstance.new()
 	instance.room_data = room_data
@@ -145,6 +183,11 @@ func build_room(pos: Vector2i, room_data: RoomData):
 	map_ui.redraw_map()
 
 	enter_current_room()
+
+
+func load_recruit_event() -> void:
+	var scene := preload("res://scenes/Events/companion_select/recruit_event.tscn")
+	GameController.start_event(scene)
 
 
 func load_event(event_scene: PackedScene):

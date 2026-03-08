@@ -1,0 +1,20 @@
+[gd_scene format=3 uid="uid://btqwkbg0gpxtt"]
+
+[ext_resource type="Script" uid="uid://bqgqff54qagij" path="res://scripts/Characters/supports/vritra_actor.gd" id="1_gcjt2"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_gcjt2"]
+albedo_color = Color(1, 0.08235294, 0.46666667, 1)
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_ukjlv"]
+material = SubResource("StandardMaterial3D_gcjt2")
+radius = 0.35
+
+[node name="BattleActor" type="Node3D" unique_id=1538544639]
+script = ExtResource("1_gcjt2")
+
+[node name="CameraAnchor" type="Node3D" parent="." unique_id=2071011302]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6305662, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=891095583]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+mesh = SubResource("CapsuleMesh_ukjlv")

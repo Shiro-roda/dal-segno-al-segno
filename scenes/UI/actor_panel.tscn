@@ -25,12 +25,21 @@ corner_detail = 5
 [sub_resource type="LabelSettings" id="LabelSettings_h3ar0"]
 font = ExtResource("2_p0etj")
 font_size = 24
+outline_color = Color(0, 0, 0, 1)
+shadow_size = 2
+shadow_color = Color(0, 0, 0, 0.52156866)
 
-[sub_resource type="Gradient" id="Gradient_26idg"]
-colors = PackedColorArray(1, 1, 1, 1, 0, 0, 0, 1)
+[sub_resource type="Gradient" id="Gradient_p0etj"]
+colors = PackedColorArray(0.9268064, 0.9268064, 0.92680633, 1, 0.70371616, 0, 0.13647404, 1)
 
-[sub_resource type="GradientTexture1D" id="GradientTexture1D_p0etj"]
-gradient = SubResource("Gradient_26idg")
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_p0etj"]
+noise_type = 2
+frequency = 0.0264
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_h3ar0"]
+width = 1024
+noise = SubResource("FastNoiseLite_p0etj")
+color_ramp = SubResource("Gradient_p0etj")
 
 [sub_resource type="Gradient" id="Gradient_itxmc"]
 colors = PackedColorArray(1, 0, 0, 1, 1, 1, 0, 1)
@@ -41,10 +50,53 @@ gradient = SubResource("Gradient_itxmc")
 [sub_resource type="LabelSettings" id="LabelSettings_h8jys"]
 font = ExtResource("2_p0etj")
 font_size = 26
+outline_color = Color(0, 0, 0, 1)
+shadow_size = 2
+shadow_color = Color(0, 0, 0, 0.52156866)
+
+[sub_resource type="Gradient" id="Gradient_h3ar0"]
+colors = PackedColorArray(1, 1, 1, 1, 0, 0.30980393, 0.8627451, 1)
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_h8jys"]
+noise_type = 0
+frequency = 0.0031
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_ci0dn"]
+width = 1024
+noise = SubResource("FastNoiseLite_h8jys")
+color_ramp = SubResource("Gradient_h3ar0")
+
+[sub_resource type="Gradient" id="Gradient_h8jys"]
+offsets = PackedFloat32Array(0, 0.9859155)
+colors = PackedColorArray(0, 0, 1, 1, 0, 1, 1, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_ci0dn"]
+gradient = SubResource("Gradient_h8jys")
+
+[sub_resource type="LabelSettings" id="LabelSettings_ci0dn"]
+font = ExtResource("2_p0etj")
+font_size = 24
+outline_size = 3
+outline_color = Color(0.0142752165, 0.014275218, 0.014275218, 1)
+shadow_size = 2
+shadow_color = Color(0.0048998436, 0.0048998194, 0.0048998287, 0.39607844)
+
+[sub_resource type="FontVariation" id="FontVariation_p0etj"]
+base_font = ExtResource("2_p0etj")
+variation_transform = Transform2D(0.745, 0, 0, 1, 0, 0)
+spacing_glyph = -2
+
+[sub_resource type="LabelSettings" id="LabelSettings_p0etj"]
+font = SubResource("FontVariation_p0etj")
+font_size = 22
+font_color = Color(0.83137256, 0.6862745, 0.21568628, 1)
+outline_size = 8
+outline_color = Color(0, 0, 0, 1)
 
 [node name="ActorPanel" type="PanelContainer" unique_id=1593661217]
+custom_minimum_size = Vector2(120, 100)
 offset_right = 156.0
-offset_bottom = 96.0
+offset_bottom = 120.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_p0etj")
 script = ExtResource("1_jdca4")
 
@@ -60,12 +112,37 @@ text = "Name"
 label_settings = SubResource("LabelSettings_h3ar0")
 
 [node name="HPBar" type="TextureProgressBar" parent="ActorPanelVBox" unique_id=1404490146]
+custom_minimum_size = Vector2(0, 22)
 layout_mode = 2
 size_flags_vertical = 3
 nine_patch_stretch = true
-texture_under = SubResource("GradientTexture1D_p0etj")
+texture_under = SubResource("NoiseTexture2D_h3ar0")
 texture_progress = SubResource("GradientTexture2D_h3ar0")
 
 [node name="HPText" type="Label" parent="ActorPanelVBox" unique_id=397857968]
 layout_mode = 2
 label_settings = SubResource("LabelSettings_h8jys")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="WillBar" type="TextureProgressBar" parent="ActorPanelVBox" unique_id=65937750]
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+size_flags_vertical = 3
+nine_patch_stretch = true
+texture_under = SubResource("NoiseTexture2D_ci0dn")
+texture_progress = SubResource("GradientTexture2D_ci0dn")
+
+[node name="WillLabel" type="Label" parent="ActorPanelVBox" unique_id=1140995825]
+layout_mode = 2
+size_flags_vertical = 6
+label_settings = SubResource("LabelSettings_ci0dn")
+horizontal_alignment = 1
+vertical_alignment = 3
+
+[node name="AmmoLabel" type="Label" parent="ActorPanelVBox" unique_id=1991943165]
+layout_mode = 2
+size_flags_vertical = 6
+text = "AMMO: 20/20"
+label_settings = SubResource("LabelSettings_p0etj")
+horizontal_alignment = 1

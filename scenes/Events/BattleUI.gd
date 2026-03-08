@@ -8,34 +8,48 @@ signal confirm_pressed
 signal cancel_pressed
 
 
-@onready var attack_button: Button = $Panel/HBoxContainer/VBoxContainer/AttackButton
+@onready var command_container: VBoxContainer = $Panel/HBoxContainer/VBoxContainer
 @onready var target_container: VBoxContainer = $Panel/HBoxContainer/VBoxContainer2/TargetContainer
-@onready var change_lens_button: Button = $Panel/HBoxContainer/VBoxContainer/ChangeButton
 @onready var confirm_button: Button = $Panel/HBoxContainer/VBoxContainer2/ConfirmButton
 @onready var cancel_button: Button = $Panel/HBoxContainer/VBoxContainer2/CancelButton
-
 
 var current_targets : Array = []
 
 func _ready():
-	
-	attack_button.pressed.connect(_on_attack_pressed)
-	change_lens_button.pressed.connect(_on_change_lens_pressed)
 	confirm_button.pressed.connect(func(): emit_signal("confirm_pressed"))
 	cancel_button.pressed.connect(func(): emit_signal("cancel_pressed"))
-
-
 	hide()
 
-func show_commands():
+
+func show_commands(actor: BattleActor = null):
 	show()
 	target_container.hide()
+	for child in command_container.get_children():
+		child.queue_free()
+	if actor == null:
+		return
+	var skills = actor.get_skills()
+	# Sort: attack first, then support, then special
+	var order = {"attack": 0, "support": 1, "special": 2}
+	skills.sort_custom(func(a, b):
+		return order.get(a["key"], 3) < order.get(b["key"], 3)
+	)
+	for skill in skills:
+		var btn = Button.new()
+		btn.text = skill["name"]
+		btn.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		var key = skill["key"]
+		btn.pressed.connect(func(): emit_signal("command_selected", key))
+		command_container.add_child(btn)
 
 func hide_commands():
 	hide()
 
 func hide_target_container():
 	target_container.hide()
+
+func hide_confirmation():
+	set_confirm_enabled(false)
 
 
 func set_confirm_enabled(enabled: bool):
@@ -44,8 +58,7 @@ func set_confirm_enabled(enabled: bool):
 func set_back_enabled(enabled: bool):
 	cancel_button.disabled = not enabled
 
-func set_lens_enabled(enabled: bool):
-	change_lens_button.disabled = not enabled
+
 
 
 
@@ -60,6 +73,7 @@ func show_targets(targets: Array):
 	for target in targets:
 		var btn = Button.new()
 		btn.text = target.name
+		btn.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		btn.pressed.connect(func(): _on_target_pressed(target))
 		target_container.add_child(btn)
 
@@ -73,6 +87,7 @@ func show_body_part_targets(parts: Array):
 	for part in parts:
 		var btn = Button.new()
 		btn.text = part.part_name
+		btn.size_flags_vertical = Control.SIZE_EXPAND_FILL
 		btn.pressed.connect(func(): _on_body_part_pressed(part))
 		target_container.add_child(btn)
 
@@ -98,17 +113,11 @@ func show_filter_options():
 	target_container.add_child(b_btn)
 
 
-func _on_attack_pressed():
-	emit_signal("command_selected", "attack")
-
 func _on_target_pressed(target):
 	emit_signal("target_selected", target)
 
 func _on_body_part_pressed(part):
 	emit_signal("body_part_selected", part)
-
-func _on_change_lens_pressed():
-	emit_signal("command_selected", "lens")
 
 func _on_filter_pressed(channel):
 	emit_signal("filter_selected", channel)

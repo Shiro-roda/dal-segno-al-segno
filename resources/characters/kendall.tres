@@ -7,6 +7,7 @@
 [resource]
 script = ExtResource("2_mij0t")
 display_name = "Kendall"
-base_max_hp = 20
-base_attack = 5
+base_max_hp = 14
+base_attack = 8
+tempo = 14
 battle_scene = ExtResource("1_pm2yt")

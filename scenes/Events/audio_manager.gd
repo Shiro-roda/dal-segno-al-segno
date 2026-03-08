@@ -81,9 +81,60 @@ func _ready() -> void:
 
 
 
+# Stores the active dungeon track so it can be resumed after battle
+var _current_dungeon_track : BattleTrack = null
+
+# Dungeon ambient: muffled, distant, low volume
+# Applied to the BGM bus while dungeon music plays; restored when battle starts.
+const DUNGEON_VOLUME_DB   := -20.0   # faint overall level
+const DUNGEON_LOWPASS_HZ  := 800.0   # heavy muffle - sound through walls
+const DUNGEON_HIGHPASS_HZ := 400.0   # cut lows too, thin+hollow feel
+const DUNGEON_REVERB_SIZE := 0.75    # large diffuse tail
+const DUNGEON_DRIVE       := 0.0
+const DUNGEON_PRE_GAIN    := 0.4
+
+func _apply_dungeon_bus_state() -> void:
+	bgm_lowpass.cutoff_hz   = DUNGEON_LOWPASS_HZ
+	bgm_highpass.cutoff_hz  = DUNGEON_HIGHPASS_HZ
+	bgm_reverb.room_size    = DUNGEON_REVERB_SIZE
+	bgm_distortion.drive    = DUNGEON_DRIVE
+	bgm_distortion.pre_gain = DUNGEON_PRE_GAIN
+
+func _restore_battle_bus_state() -> void:
+	bgm_highpass.cutoff_hz  = 260.0
+	bgm_lowpass.cutoff_hz   = base_lowpass_cutoff
+	bgm_reverb.room_size    = 0.01
+	bgm_distortion.drive    = base_drive
+	bgm_distortion.pre_gain = base_pre_gain
+
+func play_dungeon_track(track: BattleTrack) -> void:
+	if track == null:
+		return
+	_current_dungeon_track = track
+	stop_bgm()
+	_apply_dungeon_bus_state()
+	bgm_base.stream = track.base
+	bgm_layers[1].stream = track.red
+	bgm_layers[2].stream = track.green
+	bgm_layers[4].stream = track.blue
+	bgm_base.volume_db = DUNGEON_VOLUME_DB
+	for player in bgm_layers.values():
+		player.volume_db = DUNGEON_VOLUME_DB
+	var t = AudioServer.get_time_since_last_mix()
+	if bgm_base.stream != null:
+		bgm_base.play(t)
+	for player in bgm_layers.values():
+		if player.stream != null:
+			player.play(t)
+
+func resume_dungeon_track() -> void:
+	if _current_dungeon_track != null:
+		play_dungeon_track(_current_dungeon_track)
+
 func play_battle_track(track: BattleTrack):
 
 	stop_bgm() # ensure clean state
+	_restore_battle_bus_state()
 
 	bgm_base.stream = track.base
 	bgm_layers[1].stream = track.red

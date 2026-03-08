@@ -8,7 +8,8 @@ enum RoomType {
 	SHOP,
 	REST,
 	SEGNO,
-	BOSS
+	BOSS,
+	RECRUIT
 }
 
 @export var room_name : String
