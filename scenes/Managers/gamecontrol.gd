@@ -130,26 +130,37 @@ func start_battle(encounter):
 
 
 
-func _on_battle_finished(victory):
+func _on_battle_finished(victory, exp_per_member: Dictionary = {}, level_up_events: Dictionary = {}):
 
 	clear_layer(battle_layer)
-
 	battle_layer.visible = false
-	event_layer.visible = false
-	dungeon_layer.visible = true
-	_set_dungeon_map_visible(true)
-	
+
+	AudioManagerAuto.reset_ambience()
 	AudioManagerAuto.fade_out_bgm()
-	# Resume dungeon ambient after battle BGM fades
-	var resume_tween = create_tween()
-	resume_tween.tween_callback(AudioManagerAuto.resume_dungeon_track).set_delay(0.7)
 
-	var dungeon_controller = get_tree().get_first_node_in_group("dungeon_controller")
+	# Show results screen on event_layer before returning to dungeon
+	var results_scene := preload("res://scenes/UI/menu/battle_results.tscn")
+	var results := results_scene.instantiate()
+	clear_layer(event_layer)
+	event_layer.visible = true
+	dungeon_layer.visible = false
+	event_layer.add_child(results)
+	results.setup(victory, current_run.party_members, exp_per_member, level_up_events)
 
-	if victory:
-		dungeon_controller.on_room_completed()
-	else:
-		dungeon_controller.on_party_defeated()
+	var _vic: bool = victory
+	results.results_dismissed.connect(func():
+		clear_layer(event_layer)
+		event_layer.visible = false
+		dungeon_layer.visible = true
+		_set_dungeon_map_visible(true)
+		var resume_tween = create_tween()
+		resume_tween.tween_callback(AudioManagerAuto.resume_dungeon_track).set_delay(0.7)
+		var dc = get_tree().get_first_node_in_group("dungeon_controller")
+		if _vic:
+			dc.on_room_completed()
+		else:
+			dc.on_party_defeated()
+	)
 
 
 
@@ -209,3 +220,71 @@ func start_dungeon(dungeon_data: DungeonData):
 	_set_dungeon_map_visible(true)
 
 	dungeon_controller.start_dungeon(current_run, dungeon_data)
+
+
+# Start a boss battle. On victory, shows the win screen. On defeat, calls on_party_defeated.
+func start_boss_battle(encounter: EncounterData) -> void:
+	dungeon_layer.visible = false
+	event_layer.visible = false
+	battle_layer.visible = true
+	_set_dungeon_map_visible(false)
+
+	clear_layer(battle_layer)
+	var battle_scene = preload("res://scenes/Events/battle_scene.tscn").instantiate()
+	battle_layer.add_child(battle_scene)
+
+	var manager = battle_scene.get_node("BattleManager")
+	var context = BattleContext.new()
+	context.encounter = encounter
+	context.run_state = current_run
+	manager.start_battle_with_context(context)
+	manager.battle_finished.connect(_on_boss_battle_finished)
+
+
+func _on_boss_battle_finished(victory: bool, exp_per_member: Dictionary = {}, level_up_events: Dictionary = {}):
+	clear_layer(battle_layer)
+	battle_layer.visible = false
+	AudioManagerAuto.reset_ambience()
+	AudioManagerAuto.fade_out_bgm()
+
+	if victory:
+		# Show results briefly, then the win screen
+		var results_scene := preload("res://scenes/UI/menu/battle_results.tscn")
+		var results := results_scene.instantiate()
+		clear_layer(event_layer)
+		event_layer.visible = true
+		dungeon_layer.visible = false
+		event_layer.add_child(results)
+		results.setup(true, current_run.party_members, exp_per_member, level_up_events)
+		results.results_dismissed.connect(func():
+			clear_layer(event_layer)
+			start_win_screen()
+		)
+	else:
+		# Defeat — show results then respawn/end run as normal
+		var results_scene := preload("res://scenes/UI/menu/battle_results.tscn")
+		var results := results_scene.instantiate()
+		clear_layer(event_layer)
+		event_layer.visible = true
+		dungeon_layer.visible = false
+		event_layer.add_child(results)
+		results.setup(false, current_run.party_members, exp_per_member, level_up_events)
+		results.results_dismissed.connect(func():
+			clear_layer(event_layer)
+			event_layer.visible = false
+			dungeon_layer.visible = true
+			_set_dungeon_map_visible(true)
+			var dc = get_tree().get_first_node_in_group("dungeon_controller")
+			dc.on_party_defeated()
+		)
+
+
+func start_win_screen() -> void:
+	clear_layer(event_layer)
+	event_layer.visible = true
+	dungeon_layer.visible = false
+	battle_layer.visible = false
+	_set_dungeon_map_visible(false)
+	var win_scene := preload("res://scenes/Events/win_screen.tscn")
+	var win := win_scene.instantiate()
+	event_layer.add_child(win)

@@ -18,6 +18,7 @@ var base_noise := 0.0
 var base_drive := 0.0
 var base_lowpass_cutoff := 0.0
 var base_pre_gain := 1.0
+var _original_noise := 0.0  # true resting value, never overwritten mid-battle
 
 # --- BGM STEM PLAYERS ---
 @onready var bgm_base: AudioStreamPlayer = $BGM_Base
@@ -69,6 +70,7 @@ func _ready() -> void:
 	bgm_distortion.pre_gain = 1.0
 	
 	base_noise = ambience_player.volume_db
+	_original_noise = base_noise
 	base_drive = bgm_distortion.drive
 	base_lowpass_cutoff = bgm_lowpass.cutoff_hz
 	
@@ -339,6 +341,11 @@ func set_glitch_intensity(amount: float, duration: float = 0.2):
 
 
 
+
+func reset_ambience() -> void:
+	ambience_player.volume_db = _original_noise
+	base_noise = _original_noise
+	signal_integrity = 1.0
 
 func play_sfx(stream: AudioStream):
 

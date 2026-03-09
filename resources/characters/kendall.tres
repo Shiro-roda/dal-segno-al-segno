@@ -4,10 +4,18 @@
 [ext_resource type="PackedScene" uid="uid://d3idossxkgtjh" path="res://scenes/Characters/battleactors/kendall_bactor.tscn" id="1_pm2yt"]
 [ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://resources/characters/characterdata.gd" id="2_mij0t"]
 
+[sub_resource type="Resource" id="Resource_pm2yt"]
+script = ExtResource("1_5d63v")
+part_name = "Skin"
+base_visible = true
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
 [resource]
 script = ExtResource("2_mij0t")
 display_name = "Kendall"
+description = "The agent of Apollo, the archer of causality. Yours is the duty of laying dreams to rest."
 base_max_hp = 14
 base_attack = 8
 tempo = 14
+body_parts = Array[ExtResource("1_5d63v")]([SubResource("Resource_pm2yt")])
 battle_scene = ExtResource("1_pm2yt")

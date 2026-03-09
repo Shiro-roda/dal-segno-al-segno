@@ -10,19 +10,24 @@ const AUGUR_DODGE_TURNS  = 2
 const AUGUR_TEMPO_BONUS  = 5.0  # flat tempo bonus to allies
 const EVADE_DODGE_TURNS  = 1
 const EVADE_TEMPO_BONUS  = 10.0  # larger personal tempo bonus
+const PISTOL_WHIP_MULT   = 0.4
 
 
 
 func get_skills() -> Array:
-	var has_ammo = run_state != null and run_state.ammo > 0
+	var has_ammo        = run_state != null and run_state.ammo > 0
 	var supports_have_will = _supports_have_will()
+	var augur_unlocked  = party_member != null and party_member.is_skill_unlocked("Augur")
+	var lens_unlocked   = party_member != null and party_member.is_skill_unlocked("Change Lens")
 
 	var skills = [
 		{"name": "Shoot" if has_ammo else "Pistol Whip", "key": "attack", "struggle": not has_ammo},
-		{"name": "Augur" if supports_have_will else "Evade", "key": "support", "aoe": true},
 	]
-	# Change Lens requires ally will (not ammo)
-	if supports_have_will:
+	# Support: Augur (unlocked + supports have will) > Evade (unlocked)
+	if augur_unlocked:
+		skills.append({"name": "Augur" if supports_have_will else "Evade", "key": "support", "aoe": true})
+	# Change Lens: unlocked and supports have will
+	if lens_unlocked and supports_have_will:
 		skills.insert(1, {"name": "Change Lens", "key": "special"})
 	return skills
 
@@ -62,7 +67,7 @@ func use_lens(channel: int) -> void:
 	spend_turn()
 
 
-func use_skill(command_key: String, targets: Array) -> void:
+func use_skill(command_key: String, targets: Array, part: BodyPartData = null) -> void:
 	match command_key:
 		"special":
 			# routing handled by battle_manager (lens filter UI)
@@ -93,6 +98,11 @@ func augur(all_actors: Array) -> void:
 		ally.apply_status(STATUS_DODGING, AUGUR_DODGE_TURNS)
 		ally.tempo_bonus += AUGUR_TEMPO_BONUS
 	say_random(CHATTER_AUGUR)
+	# Reveal enemy stats panel
+	var manager = get_tree().get_first_node_in_group("battle_manager")
+	if manager:
+		var enemies = manager.actors.filter(func(a): return a.team == Team.ENEMY and a.is_alive())
+		manager.battle_hud.show_augur_panel(enemies)
 	spend_turn()
 
 

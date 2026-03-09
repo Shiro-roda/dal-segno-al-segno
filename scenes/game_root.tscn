@@ -5,10 +5,51 @@
 [ext_resource type="Script" uid="uid://snhktyfrtb0v" path="res://scripts/UI/dungeonUI.gd" id="3_j7aru"]
 [ext_resource type="PackedScene" uid="uid://cawuaxeud518f" path="res://scenes/Maps/Dungeons/dungeon_map_3d.tscn" id="4_jb3nc"]
 [ext_resource type="Script" uid="uid://cmi4bl88a2kuc" path="res://scenes/UI/menu/party_menu.gd" id="6_a1rh6"]
+[ext_resource type="Shader" uid="uid://btm2rulspg8el" path="res://scripts/Shaders/battleglitch.gdshader" id="6_j7aru"]
+[ext_resource type="Shader" uid="uid://cow4hovotygtk" path="res://scripts/Shaders/main.gdshader" id="6_ylec3"]
+[ext_resource type="Shader" uid="uid://c7dhsbe1s7mgu" path="res://scripts/Shaders/post_processing.gdshader" id="7_6v30a"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_iusj4"]
 font_size = 10
 font_color = Color(0.48178947, 0.48178947, 0.48178947, 1)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ssq04"]
+render_priority = 0
+shader = ExtResource("6_ylec3")
+shader_parameter/vision_mode = 0
+shader_parameter/flash_pos = Vector3(0, 0, 0)
+shader_parameter/flash_dir = Vector3(0, 0, -1)
+shader_parameter/flash_angle = 0.5
+shader_parameter/cone_range = 20.0
+shader_parameter/edge_softness = 0.01
+shader_parameter/hue_boost = 100.0
+shader_parameter/resonance_tolerance = 0.15
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_1brn0"]
+render_priority = 0
+next_pass = SubResource("ShaderMaterial_ssq04")
+shader = ExtResource("7_6v30a")
+shader_parameter/dither_amount = 0.5
+
+[sub_resource type="QuadMesh" id="QuadMesh_melsq"]
+flip_faces = true
+size = Vector2(2, 2)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ylec3"]
+shader = ExtResource("6_j7aru")
+shader_parameter/curvature = 5.60000008344672
+shader_parameter/vignette_multiplier = 0.20000000298024
+shader_parameter/ca_strength = 3.0000000447036
+shader_parameter/blur_strength = 0.10000000149012
+shader_parameter/channel_strength = Vector3(1, 1, 1)
+shader_parameter/glitch_intensity = 0.0
+shader_parameter/noise_strength = 0.0
+shader_parameter/tear_intensity = 0.0
+shader_parameter/block_glitch = 0.0
+
+[sub_resource type="QuadMesh" id="QuadMesh_6v30a"]
+size = Vector2(1280, 960)
+center_offset = Vector3(640, 480, 0)
 
 [node name="GameRoot" type="Node" unique_id=1011693636]
 
@@ -45,9 +86,9 @@ grow_vertical = 2
 [node name="Label" type="Label" parent="DungeonLayer/DungeonUI" unique_id=399074236]
 layout_mode = 1
 offset_left = -7.0
-offset_top = -503.0
+offset_top = -460.0
 offset_right = 79.0
-offset_bottom = -480.0
+offset_bottom = -437.0
 text = "[TAB]menu"
 label_settings = SubResource("LabelSettings_iusj4")
 
@@ -61,3 +102,16 @@ visible = false
 
 [node name="PartyMenu" type="CanvasLayer" parent="." unique_id=2037623213]
 script = ExtResource("6_a1rh6")
+
+[node name="TVOverlay" type="CanvasLayer" parent="." unique_id=661082050]
+layer = 200
+
+[node name="ScreenQuad" type="MeshInstance3D" parent="TVOverlay" unique_id=569751528]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.4246502, 1.3194637, 5.2776985)
+material_override = SubResource("ShaderMaterial_1brn0")
+extra_cull_margin = 16384.0
+mesh = SubResource("QuadMesh_melsq")
+
+[node name="MeshInstance2D" type="MeshInstance2D" parent="TVOverlay" unique_id=761569184]
+material = SubResource("ShaderMaterial_ylec3")
+mesh = SubResource("QuadMesh_6v30a")

@@ -1,7 +1,7 @@
 extends Node
 
 
-signal battle_finished(victory: bool)
+signal battle_finished(victory: bool, exp_per_member: Dictionary, level_up_events: Dictionary)
 signal battle_manager_ready
 
 var current_state : Node = null
@@ -12,6 +12,7 @@ var context : BattleContext
 var battlefield_root : Node3D
 
 var actors : Array[BattleActor] = []
+var _exp_this_battle : int = 0  # accumulated exp from kills
 var turn_queue : Array[BattleActor] = []
 var current_index : int = 0
 
@@ -81,8 +82,8 @@ enum Channel {
 
 var removed_channels : int = 0
 
-@onready var ca_mesh: MeshInstance2D = $"../BattleUI/MeshInstance2D"
-@onready var ca_mesh_mat: ShaderMaterial = ca_mesh.material
+var ca_mesh: MeshInstance2D
+var ca_mesh_mat: ShaderMaterial
 
 var ca_defaults := {}
 
@@ -99,7 +100,9 @@ var ca_defaults := {}
 
 
 @onready var battle_ui = get_parent().get_node("BattleUI")
-@onready var battle_hud: BattleHUD = $"../BattleHUD"
+@onready var battle_hud       : BattleHUD          = $"../BattleHUD"
+@onready var dialogue_box = $"../DialogueLayer"
+
 
 
 
@@ -107,15 +110,20 @@ var ca_defaults := {}
 
 func _ready():
 	await get_tree().process_frame
-	
+	ca_mesh = get_tree().root.get_node("GameRoot/TVOverlay/MeshInstance2D")
 
 	add_to_group("battle_manager")
 	if ca_defaults.is_empty():
 		ca_mesh.material = ca_mesh.material.duplicate()
 		ca_mesh_mat = ca_mesh.material
-		cache_ca_defaults()
 	else:
-		reset_ca_material()
+		# Re-assign the duplicate so ca_mesh_mat points to the live material
+		ca_mesh.material = ca_mesh.material.duplicate()
+		ca_mesh_mat = ca_mesh.material
+		# Carry user's current ca_strength preference into the fresh duplicate
+		ca_mesh_mat.set_shader_parameter("ca_strength", ca_defaults.get("ca_strength", 2.5))
+	# Always re-cache from current material so user slider changes are preserved
+	cache_ca_defaults()
 	
 	active_cam.set_follow_target(active_anchor)
 	target_cam.set_follow_target(target_anchor)
@@ -195,6 +203,7 @@ func start_battle_with_context(battle_context : BattleContext):
 	print("STARTING BATTLE")
 
 	context = battle_context
+	_exp_this_battle = 0
 	
 	removed_channels = context.encounter.forced_removed_channels
 
@@ -234,6 +243,7 @@ func start_battle_with_context(battle_context : BattleContext):
 		target_anchor_source = first_enemy[0].camera_anchor
 		battlefield_center = (battlefield_center + first_enemy[0].camera_anchor.global_position) * 0.5
 	idle_orbit_pivot.global_position = battlefield_center
+	focus_idle_orbit()
 
 	battle_hud.setup(actors)
 	battle_hud.refresh_queue(self)
@@ -247,8 +257,18 @@ func start_battle_with_context(battle_context : BattleContext):
 		update_enemy_visibility()
 
 	build_turn_queue()
-
 	current_index = 0
+
+	# Play intro dialogue before the first turn if the encounter has any.
+	# Hide BattleUI so player can't act, await all lines, then start normally.
+	if context.encounter.intro_dialogue != null:
+		var battle_ui = get_node("../BattleUI")
+		if battle_ui:
+			battle_ui.hide()
+		await dialogue_box.play_lines(context.encounter.intro_dialogue, context.run_state)
+		if battle_ui:
+			battle_ui.show()
+
 	next_turn()
 
 func spawn_players():
@@ -298,14 +318,17 @@ func spawn_enemies():
 		actor.max_hp = char_data.base_max_hp
 		actor.attack_power = char_data.base_attack
 		actor.hp = actor.max_hp
+		actor.tempo_stat = char_data.tempo
 		actor.body_parts = char_data.body_parts
-		
+		if char_data.boss_party_member != null:
+			actor.party_member = char_data.boss_party_member
 
 		enemy_slots[i].add_child(actor)
 
 		actors.append(actor)
 		actor.died.connect(_on_actor_died)
-		actor.turn_finished.connect(_on_turn_finished)
+		# Enemies do NOT connect to _on_turn_finished.
+		# Their turn flow is driven by handle_enemy_turn's await, not the signal.
 		actor.hp_changed.connect(func(): _on_hp_changed(actor))
 
 
@@ -321,10 +344,10 @@ func setup_battlefield():
 # Default action tempo costs - subtracted from tempo_pool when an actor acts.
 # Costs are large relative to tempo_stat (~10-15) so acting creates real debt.
 # A stat difference of 2-3 produces occasional double-turns; bonuses are scarce.
-const TEMPO_COST_ATTACK  = 50
-const TEMPO_COST_SPECIAL = 100
-const TEMPO_COST_SUPPORT = 30
-const TEMPO_COST_DEFAULT = 50
+const TEMPO_COST_ATTACK  = 100
+const TEMPO_COST_SPECIAL = 110
+const TEMPO_COST_SUPPORT = 90
+const TEMPO_COST_DEFAULT = 100
 
 func build_turn_queue():
 	# Seed with a random offset in [0, tempo_stat) so starting order is shuffled
@@ -397,11 +420,20 @@ func handle_enemy_turn(actor: BattleActor) -> void:
 	target_cam.set_follow_damping_value(Vector3(.25, .25, .15))
 	target_cam.set_follow_offset(Vector3(-1.25, 0, .55))
 	target_cam.set_look_at_offset(Vector3(0, 0, -.2))
-	await actor.take_turn(target)
+	# Use enemy_take_turn for skill-aware AI (boss enemies), plain take_turn otherwise
+	if actor.get_skills().is_empty():
+		await actor.take_turn(target)
+	else:
+		await actor.enemy_take_turn(target)
+	# Guard: battle may have ended during the enemy's animation
+	if battle_ending or not is_inside_tree():
+		return
 	# Deduct tempo cost and reset bonus for enemy
-	actor.tempo_pool -= TEMPO_COST_ATTACK
-	actor.reset_tempo_bonus()
+	if is_instance_valid(actor):
+		actor.tempo_pool -= TEMPO_COST_ATTACK
+		actor.reset_tempo_bonus()
 	battle_hud.refresh_queue(self)
+	next_turn()
 
 
 
@@ -463,21 +495,24 @@ func get_projected_queue(steps: int = 8) -> Array:
 
 	var result : Array = []
 	for _i in range(steps):
-		# Tick every actor
-		for a in living:
-			if a.has_status(BattleActor.STATUS_FROZEN):
-				continue
-			var gain = float(a.tempo_stat)
-			if a.has_status(BattleActor.STATUS_SLOW):
-				gain *= BattleActor.SLOW_TEMPO_MULT
-			pools[a] += gain
-		# Find who acts next
+		# Mirror _pick_next_actor: keep ticking until someone reaches 100
 		var top : BattleActor = living[0]
 		for a in living:
 			if pools[a] > pools[top]:
 				top = a
+		while pools[top] < 100.0:
+			for a in living:
+				if a.has_status(BattleActor.STATUS_FROZEN):
+					continue
+				var gain = float(a.tempo_stat)
+				if a.has_status(BattleActor.STATUS_SLOW):
+					gain *= BattleActor.SLOW_TEMPO_MULT
+				pools[a] += gain
+			top = living[0]
+			for a in living:
+				if pools[a] > pools[top]:
+					top = a
 		result.append({"actor": top, "tempo": pools[top]})
-		# Deduct standard attack cost from their shadow pool
 		pools[top] -= TEMPO_COST_ATTACK
 
 	return result
@@ -485,6 +520,12 @@ func get_projected_queue(steps: int = 8) -> Array:
 
 
 func _on_actor_died(actor: BattleActor):
+	if actor.team == BattleActor.Team.ENEMY:
+		# Look up exp_yield from encounter enemy CharacterData
+		for cd in context.encounter.enemies:
+			if cd.display_name == actor.name:
+				_exp_this_battle += cd.exp_yield
+				break
 	actors.erase(actor)
 
 
@@ -527,7 +568,36 @@ func end_battle(victory: bool):
 
 	battle_ending = true
 
+	reset_ca_material()
+	battle_hud.reset_augur_panel()
 	save_party_state()
+
+	# Award exp randomly distributed among surviving party members (victory only)
+	var exp_per_member  : Dictionary = {}  # display_name -> int exp share
+	var level_up_events : Dictionary = {}  # display_name -> Array of event dicts
+	if victory and _exp_this_battle > 0:
+		var survivors : Array = context.run_state.party_members.filter(
+			func(m): return m.current_hp > 0)
+		if not survivors.is_empty():
+			var weights : Array = []
+			var total_w : float = 0.0
+			for _s in survivors:
+				var w := randf_range(0.5, 1.5)
+				weights.append(w)
+				total_w += w
+			var remaining := _exp_this_battle
+			for i in survivors.size():
+				var share : int
+				if i == survivors.size() - 1:
+					share = remaining
+				else:
+					share = max(1, int(float(_exp_this_battle) * weights[i] / total_w))
+					remaining -= share
+				var member: PartyMemberData = survivors[i]
+				exp_per_member[member.character.display_name] = share
+				var events = member.add_exp(share)
+				if not events.is_empty():
+					level_up_events[member.character.display_name] = events
 
 	if battlefield_root:
 		battlefield_root.queue_free()
@@ -537,7 +607,7 @@ func end_battle(victory: bool):
 
 	await get_tree().process_frame
 
-	emit_signal("battle_finished", victory)
+	emit_signal("battle_finished", victory, exp_per_member, level_up_events)
 
 	battle_ending = false
 
@@ -688,6 +758,7 @@ func cache_ca_defaults():
 	ca_defaults["noise_strength"] = ca_mesh_mat.get_shader_parameter("noise_strength")
 	ca_defaults["tear_intensity"] = ca_mesh_mat.get_shader_parameter("tear_intensity")
 	ca_defaults["block_glitch"] = ca_mesh_mat.get_shader_parameter("block_glitch")
+	ca_defaults["ca_strength"] = ca_mesh_mat.get_shader_parameter("ca_strength")
 
 func follow_anchor(anchor: Node3D, source: Node3D):
 
@@ -778,19 +849,25 @@ func _on_confirm_pressed():
 
 	match selected_command:
 		"attack":
-			if is_ammo_user and not selected_is_struggle:
-				# Hidden (cognitohazard) parts cost 2 ammo; normal parts cost 1
-				var ammo_cost = 2 if (selected_body_part != null and not selected_body_part.base_visible) else 1
-				if not free_shot_pending and not context.run_state.spend_ammo(ammo_cost):
-					print("Not enough ammo!")
-					input_locked = false
-					input_stage = InputStage.COMMAND
-					update_ui_state()
-					return
-				free_shot_pending = false
-			await_actor_turn(active_player_actor, func():
-				active_player_actor.take_turn(selected_target, selected_body_part)
-			)
+			if selected_is_struggle:
+				# Struggle (e.g. Pistol Whip): random target, no ammo cost
+				await_actor_turn(active_player_actor, func():
+					active_player_actor.struggle_attack(actors, active_player_actor.attack_power)
+				)
+			else:
+				if is_ammo_user:
+					# Hidden (cognitohazard) parts cost 2 ammo; normal parts cost 1
+					var ammo_cost = 2 if (selected_body_part != null and not selected_body_part.base_visible) else 1
+					if not free_shot_pending and not context.run_state.spend_ammo(ammo_cost):
+						print("Not enough ammo!")
+						input_locked = false
+						input_stage = InputStage.COMMAND
+						update_ui_state()
+						return
+					free_shot_pending = false
+				await_actor_turn(active_player_actor, func():
+					active_player_actor.take_turn(selected_target, selected_body_part)
+				)
 
 		"special":
 			if is_ammo_user:  # Kendall: Change Lens — costs ally will, not ammo
@@ -799,8 +876,9 @@ func _on_confirm_pressed():
 				)
 			else:
 				var _special_targets = [selected_target] if selected_target != null else []
+				var _special_part = selected_body_part
 				await_actor_turn(active_player_actor, func():
-					active_player_actor.use_skill("special", _special_targets)
+					active_player_actor.use_skill("special", _special_targets, _special_part)
 				)
 
 		"support":
@@ -834,11 +912,13 @@ func _on_cancel_pressed():
 					else:
 						input_stage = InputStage.PART
 				"special":
-					# Targeted specials (Calcify) go back to target pick;
-					# AoE/lens specials go back to command
 					var _skills = active_player_actor.get_skills() if active_player_actor else []
 					var _sd = _skills.filter(func(s): return s["key"] == "special")
-					if not _sd.is_empty() and _sd[0].get("targeted", false):
+					if not _sd.is_empty() and _sd[0].get("part_targeted", false):
+						# Part-targeted specials (Calcify): back to body part pick
+						input_stage = InputStage.PART
+					elif not _sd.is_empty() and _sd[0].get("targeted", false):
+						# Target-only specials: back to target pick
 						input_stage = InputStage.TARGET
 					else:
 						input_stage = InputStage.COMMAND
@@ -873,6 +953,7 @@ func _on_command_selected(command):
 			elif not skill_data.is_empty() and skill_data[0].get("targeted", false):
 				# Special that needs an enemy target (e.g. Calcify)
 				support_targeting = false
+				selected_body_part = null
 				input_stage = InputStage.TARGET
 			else:
 				# AoE special: no target needed

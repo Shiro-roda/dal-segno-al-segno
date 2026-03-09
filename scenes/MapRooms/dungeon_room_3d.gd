@@ -1,5 +1,4 @@
 extends Node3D
-class_name DungeonRoom3D
 
 var grid_pos : Vector2i
 var room_instance : RoomInstance
@@ -47,8 +46,12 @@ func update_visual():
 
 func _on_area_3d_input_event(camera, event, position, normal, shape_idx):
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		print("Clicked room at: ", grid_pos, " has_instance=", room_instance != null)
 		if room_instance != null:
 			controller.move_to_room(grid_pos)
 		else:
-			controller.build_room(grid_pos, null)  # null signals UI to ask which room type
+			# Ghost cube clicked — ask map to show choices near click position
+			var map_ui : Node3D = get_tree().get_first_node_in_group("dungeon_map_3d")
+			if map_ui == null:
+				return
+			var choices := controller.get_room_choices(grid_pos)
+			map_ui.show_choices_at(grid_pos, choices, event.position)

@@ -46,62 +46,63 @@ func show_rest_screen():
 	for child in room_list.get_children():
 		child.queue_free()
 
-	var members = controller.dungeon.run_state.party_members
-	var run_state = controller.dungeon.run_state
+	var room : RoomInstance = controller.dungeon.grid.get(controller.dungeon.current_pos)
+	if room == null:
+		return
 
-	# Precompute values — both "percentage" and "flat" are RNG, anchored to different baselines
-	var avg_hp_lost : int = 0
-	for m in members:
-		avg_hp_lost += m.character.base_max_hp - m.current_hp
-	avg_hp_lost /= max(1, members.size())
-	var avg_max_hp : int = 0
-	for m in members:
-		avg_max_hp += m.character.base_max_hp
-	avg_max_hp /= max(1, members.size())
-	# Pct-style: anchored to avg hp lost, wide margin
-	var pct_hp = randi_range(int(avg_hp_lost * 0.4), int(avg_hp_lost * 1.6) + 1)
-	# Flat-style: anchored to avg max hp, narrower band around half
-	var flat_hp = randi_range(int(avg_max_hp * 0.3), int(avg_max_hp * 0.7))
+	# Generate options once and cache them on the room so re-entry shows the same choices
+	if room.rest_options.is_empty():
+		var members = controller.dungeon.run_state.party_members
+		var run_state = controller.dungeon.run_state
 
-	var avg_will_lost : int = 0
-	var will_members : int = 0
-	for m in members:
-		if m.has_will():
-			avg_will_lost += m.max_will - m.will
-			will_members += 1
-	var avg_max_will : int = 0
-	var flat_will : int = 0
-	var pct_will : int = 0
-	if will_members > 0:
-		avg_will_lost /= will_members
+		var avg_hp_lost : int = 0
 		for m in members:
-			if m.has_will(): avg_max_will += m.max_will
-		avg_max_will /= will_members
-		pct_will = randi_range(int(avg_will_lost * 0.4), int(avg_will_lost * 1.6) + 1)
-		flat_will = randi_range(int(avg_max_will * 0.3), int(avg_max_will * 0.7))
+			avg_hp_lost += m.character.base_max_hp - m.current_hp
+		avg_hp_lost /= max(1, members.size())
+		var avg_max_hp : int = 0
+		for m in members:
+			avg_max_hp += m.character.base_max_hp
+		avg_max_hp /= max(1, members.size())
+		var pct_hp  = randi_range(int(avg_hp_lost * 0.4), int(avg_hp_lost * 1.6) + 1)
+		var flat_hp = randi_range(int(avg_max_hp  * 0.3), int(avg_max_hp  * 0.7))
 
-	var ammo_spent : int = run_state.max_ammo - run_state.ammo
-	var pct_ammo = randi_range(int(ammo_spent * 0.4), int(ammo_spent * 1.6) + 1)
-	var flat_ammo = randi_range(int(run_state.max_ammo * 0.3), int(run_state.max_ammo * 0.7))
+		var avg_will_lost : int = 0
+		var will_members  : int = 0
+		for m in members:
+			if m.has_will():
+				avg_will_lost += m.max_will - m.will
+				will_members  += 1
+		var flat_will : int = 0
+		var pct_will  : int = 0
+		if will_members > 0:
+			avg_will_lost /= will_members
+			var avg_max_will : int = 0
+			for m in members:
+				if m.has_will(): avg_max_will += m.max_will
+			avg_max_will /= will_members
+			pct_will  = randi_range(int(avg_will_lost * 0.4), int(avg_will_lost * 1.6) + 1)
+			flat_will = randi_range(int(avg_max_will  * 0.3), int(avg_max_will  * 0.7))
 
-	# Build all six options as plain data dicts
-	var all_options : Array = [
-		{"text": "Rest (restore ~%d HP each)" % pct_hp,       "type": "hp",   "val": pct_hp},
-		{"text": "Collapse (restore ~%d HP each)" % flat_hp,  "type": "hp",   "val": flat_hp},
-		{"text": "Meditate (restore ~%d Will each)" % pct_will, "type": "will", "val": pct_will},
-		{"text": "Trance (restore ~%d Will each)" % flat_will,  "type": "will", "val": flat_will},
-		{"text": "Scavenge (restore ~%d Ammo)" % pct_ammo,    "type": "ammo", "val": pct_ammo},
-		{"text": "Loot (restore ~%d Ammo)" % flat_ammo,       "type": "ammo", "val": flat_ammo},
-	]
+		var ammo_spent : int = run_state.max_ammo - run_state.ammo
+		var pct_ammo  = randi_range(int(ammo_spent           * 0.4), int(ammo_spent           * 1.6) + 1)
+		var flat_ammo = randi_range(int(run_state.max_ammo   * 0.3), int(run_state.max_ammo   * 0.7))
 
-	all_options.shuffle()
-	var chosen = all_options.slice(0, 3)
+		var all_options : Array = [
+			{"text": "Rest (restore ~%d HP each)"       % pct_hp,   "type": "hp",   "val": pct_hp},
+			{"text": "Slumber (restore ~%d HP each)"    % flat_hp,  "type": "hp",   "val": flat_hp},
+			{"text": "Ruminate (restore ~%d Will each)" % pct_will, "type": "will", "val": pct_will},
+			{"text": "Pray (restore ~%d Will each)"     % flat_will,"type": "will", "val": flat_will},
+			{"text": "Scavenge (restore ~%d Ammo)"      % pct_ammo, "type": "ammo", "val": pct_ammo},
+			{"text": "Desecrate (restore ~%d Ammo)"     % flat_ammo,"type": "ammo", "val": flat_ammo},
+		]
+		all_options.shuffle()
+		room.rest_options = all_options.slice(0, 3)
 
 	var label = Label.new()
 	label.text = "Choose how to rest:"
 	room_list.add_child(label)
 
-	for option in chosen:
+	for option in room.rest_options:
 		var btn = Button.new()
 		btn.text = option["text"]
 		var t = option["type"]
@@ -127,6 +128,7 @@ func _do_rest(rest_type: String, val: int) -> void:
 		"ammo":
 			rs.restore_ammo(val)
 
+	clear_room_list()
 	controller.on_room_completed()
 
 

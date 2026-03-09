@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="DialogueLine" format=3 uid="uid://d1hsuvjevwft7"]
+
+[ext_resource type="Script" uid="uid://divs34wkweat7" path="res://resources/encounters/dialogue_line.gd" id="1_sh8m7"]
+
+[resource]
+script = ExtResource("1_sh8m7")
+speaker = "Hue"
+text = "[br]Why didn't you go with me? Why did you just leave me all alone?? I was so scared!"
+metadata/_custom_type_script = "uid://divs34wkweat7"

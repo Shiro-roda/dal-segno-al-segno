@@ -11,58 +11,61 @@ const C_TEXT      := Color(0.88, 0.83, 0.74, 1.0)
 const C_DIM       := Color(0.55, 0.50, 0.43, 1.0)
 const C_SELECTED  := Color(0.72, 0.18, 0.18, 0.22)
 
+const CARD_W := 260
+const CARD_H := 340
+
 var _selected_index : int = -1
-var _cards : Array = []
-var _confirm_btn : Button
-var _available : Array = []  # CharacterData entries
+var _cards          : Array = []
+var _confirm_btn    : Button
+var _available      : Array = []
+
+@onready var _bg    : ColorRect     = $BG
+@onready var _outer : VBoxContainer = $CenterContainer/Outer
+
 
 func _ready() -> void:
+	GlobalTheme.apply(self)
+	set_anchors_preset(Control.PRESET_FULL_RECT)
+	_bg.color = C_BG
 	var run := GameController.current_run
 	if run == null or run.available_supports.is_empty():
-		emit_signal("event_finished")
+		# Defer so the caller has time to connect event_finished
+		call_deferred("emit_signal", "event_finished")
 		return
 	_available = run.available_supports.duplicate()
-	_build_ui()
+	_populate_outer()
 
 
-func _build_ui() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
-
-	var bg := ColorRect.new()
-	bg.color = C_BG
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(bg)
-
-	var outer := VBoxContainer.new()
-	outer.set_anchors_preset(Control.PRESET_FULL_RECT)
-	outer.add_theme_constant_override("separation", 0)
-	add_child(outer)
+func _populate_outer() -> void:
+	# Clear anything already in Outer from the editor
+	for c in _outer.get_children():
+		c.queue_free()
+	_outer.add_theme_constant_override("separation", 0)
 
 	var top_space := Control.new()
-	top_space.custom_minimum_size = Vector2(0, 80)
-	outer.add_child(top_space)
+	top_space.custom_minimum_size = Vector2(0, 32)
+	_outer.add_child(top_space)
 
 	var prompt := Label.new()
 	prompt.text = "SOMEONE IS WAITING"
 	prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	prompt.add_theme_font_size_override("font_size", 14)
+	prompt.add_theme_font_size_override("font_size", 16)
 	prompt.add_theme_color_override("font_color", C_DIM)
-	outer.add_child(prompt)
+	_outer.add_child(prompt)
 
 	var prompt_div := ColorRect.new()
 	prompt_div.color = C_ACCENT
 	prompt_div.custom_minimum_size = Vector2(0, 1)
-	outer.add_child(prompt_div)
+	_outer.add_child(prompt_div)
 
 	var spacer1 := Control.new()
-	spacer1.custom_minimum_size = Vector2(0, 40)
-	outer.add_child(spacer1)
+	spacer1.custom_minimum_size = Vector2(0, 32)
+	_outer.add_child(spacer1)
 
 	var card_row := HBoxContainer.new()
 	card_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	card_row.add_theme_constant_override("separation", 24)
-	card_row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	outer.add_child(card_row)
+	card_row.add_theme_constant_override("separation", 28)
+	_outer.add_child(card_row)
 
 	for i in _available.size():
 		var card := _make_card(_available[i], i)
@@ -70,17 +73,17 @@ func _build_ui() -> void:
 		_cards.append(card)
 
 	var spacer2 := Control.new()
-	spacer2.custom_minimum_size = Vector2(0, 48)
-	outer.add_child(spacer2)
+	spacer2.custom_minimum_size = Vector2(0, 36)
+	_outer.add_child(spacer2)
 
 	var btn_row := HBoxContainer.new()
 	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	outer.add_child(btn_row)
+	_outer.add_child(btn_row)
 
 	_confirm_btn = Button.new()
 	_confirm_btn.text = "RECRUIT"
-	_confirm_btn.custom_minimum_size = Vector2(160, 44)
-	_confirm_btn.add_theme_font_size_override("font_size", 14)
+	_confirm_btn.custom_minimum_size = Vector2(180, 48)
+	_confirm_btn.add_theme_font_size_override("font_size", 16)
 	_confirm_btn.add_theme_color_override("font_color", C_TEXT)
 	_confirm_btn.add_theme_color_override("font_hover_color", C_TEXT)
 	_confirm_btn.add_theme_color_override("font_pressed_color", C_TEXT)
@@ -89,12 +92,12 @@ func _build_ui() -> void:
 	sbox.bg_color = C_ACCENT
 	sbox.border_color = C_BORDER
 	sbox.set_border_width_all(1)
-	sbox.set_content_margin_all(8)
+	sbox.set_content_margin_all(10)
 	var sbox_dis := StyleBoxFlat.new()
 	sbox_dis.bg_color = Color(0.18, 0.15, 0.12, 1.0)
 	sbox_dis.border_color = C_BORDER
 	sbox_dis.set_border_width_all(1)
-	sbox_dis.set_content_margin_all(8)
+	sbox_dis.set_content_margin_all(10)
 	_confirm_btn.add_theme_stylebox_override("normal",   sbox)
 	_confirm_btn.add_theme_stylebox_override("hover",    sbox)
 	_confirm_btn.add_theme_stylebox_override("pressed",  sbox)
@@ -104,11 +107,10 @@ func _build_ui() -> void:
 	_confirm_btn.pressed.connect(_on_confirm)
 	btn_row.add_child(_confirm_btn)
 
-	# Leave button (skip)
 	var leave_btn := Button.new()
-	leave_btn.text = "LEAVE"
-	leave_btn.custom_minimum_size = Vector2(100, 44)
-	leave_btn.add_theme_font_size_override("font_size", 12)
+	leave_btn.text = "LEAVE (You may not choose again.)"
+	leave_btn.custom_minimum_size = Vector2(100, 48)
+	leave_btn.add_theme_font_size_override("font_size", 13)
 	leave_btn.add_theme_color_override("font_color", C_DIM)
 	leave_btn.add_theme_color_override("font_hover_color", C_TEXT)
 	leave_btn.add_theme_color_override("font_focus_color", C_DIM)
@@ -116,27 +118,31 @@ func _build_ui() -> void:
 	leave_sbox.bg_color = Color(0, 0, 0, 0)
 	leave_sbox.border_color = C_BORDER
 	leave_sbox.set_border_width_all(1)
-	leave_sbox.set_content_margin_all(8)
+	leave_sbox.set_content_margin_all(10)
 	leave_btn.add_theme_stylebox_override("normal",  leave_sbox)
 	leave_btn.add_theme_stylebox_override("hover",   leave_sbox)
 	leave_btn.add_theme_stylebox_override("pressed", leave_sbox)
 	leave_btn.add_theme_stylebox_override("focus",   leave_sbox)
 	leave_btn.pressed.connect(_on_leave)
 	var leave_margin := MarginContainer.new()
-	leave_margin.add_theme_constant_override("margin_left", 16)
+	leave_margin.add_theme_constant_override("margin_left", 20)
 	leave_margin.add_child(leave_btn)
 	btn_row.add_child(leave_margin)
+
+	var bot_space := Control.new()
+	bot_space.custom_minimum_size = Vector2(0, 24)
+	_outer.add_child(bot_space)
 
 
 func _make_card(char_data: CharacterData, idx: int) -> PanelContainer:
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(220, 300)
+	card.custom_minimum_size = Vector2(CARD_W, CARD_H)
 
 	var normal_style := StyleBoxFlat.new()
 	normal_style.bg_color = Color(0.12, 0.10, 0.09, 1.0)
 	normal_style.border_color = C_BORDER
 	normal_style.set_border_width_all(2)
-	normal_style.set_content_margin_all(20)
+	normal_style.set_content_margin_all(22)
 	card.add_theme_stylebox_override("panel", normal_style)
 
 	var inner := VBoxContainer.new()
@@ -146,7 +152,7 @@ func _make_card(char_data: CharacterData, idx: int) -> PanelContainer:
 	var name_lbl := Label.new()
 	name_lbl.text = char_data.display_name.to_upper()
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_lbl.add_theme_font_size_override("font_size", 18)
+	name_lbl.add_theme_font_size_override("font_size", 20)
 	name_lbl.add_theme_color_override("font_color", C_TEXT)
 	inner.add_child(name_lbl)
 
@@ -156,7 +162,7 @@ func _make_card(char_data: CharacterData, idx: int) -> PanelContainer:
 	inner.add_child(div)
 
 	var stats := VBoxContainer.new()
-	stats.add_theme_constant_override("separation", 4)
+	stats.add_theme_constant_override("separation", 5)
 	inner.add_child(stats)
 
 	var stat_lines := [
@@ -171,13 +177,13 @@ func _make_card(char_data: CharacterData, idx: int) -> PanelContainer:
 		stats.add_child(row)
 		var key := Label.new()
 		key.text = sl[0]
-		key.custom_minimum_size = Vector2(70, 0)
-		key.add_theme_font_size_override("font_size", 11)
+		key.custom_minimum_size = Vector2(80, 0)
+		key.add_theme_font_size_override("font_size", 13)
 		key.add_theme_color_override("font_color", C_DIM)
 		row.add_child(key)
 		var val := Label.new()
 		val.text = sl[1]
-		val.add_theme_font_size_override("font_size", 11)
+		val.add_theme_font_size_override("font_size", 13)
 		val.add_theme_color_override("font_color", C_TEXT)
 		row.add_child(val)
 
@@ -187,9 +193,9 @@ func _make_card(char_data: CharacterData, idx: int) -> PanelContainer:
 	inner.add_child(div2)
 
 	var desc := Label.new()
-	desc.text = ""
+	desc.text = char_data.description
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc.add_theme_font_size_override("font_size", 11)
+	desc.add_theme_font_size_override("font_size", 12)
 	desc.add_theme_color_override("font_color", C_DIM)
 	desc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	inner.add_child(desc)
@@ -214,10 +220,10 @@ func _select_card(idx: int) -> void:
 		var card : PanelContainer = _cards[i]
 		var sel := (i == idx)
 		var sbox := StyleBoxFlat.new()
-		sbox.bg_color = C_SELECTED if sel else Color(0.12, 0.10, 0.09, 1.0)
+		sbox.bg_color    = C_SELECTED if sel else Color(0.12, 0.10, 0.09, 1.0)
 		sbox.border_color = C_ACCENT if sel else C_BORDER
 		sbox.set_border_width_all(2)
-		sbox.set_content_margin_all(20)
+		sbox.set_content_margin_all(22)
 		card.add_theme_stylebox_override("panel", sbox)
 	_confirm_btn.disabled = false
 
@@ -231,6 +237,9 @@ func _on_confirm() -> void:
 	member.init_from_character(chosen)
 	run.party_members.append(member)
 	run.available_supports.erase(chosen)
+	# Pick a random unchosen support as the boss target
+	if not run.available_supports.is_empty() and run.boss_target == null:
+		run.boss_target = run.available_supports[randi() % run.available_supports.size()]
 	emit_signal("event_finished")
 
 

@@ -93,6 +93,8 @@ shader_parameter/flicker_speed = 1.00000004424012
 shader_parameter/uv_aspect = 10.0
 shader_parameter/pixel_size = 5.00000019
 shader_parameter/flicker_intensity = 0.14000000665
+shader_parameter/shadow_color = Color(0, 0, 0, 1)
+shader_parameter/shadow_pixel_steps = Vector2(0, 0)
 
 [sub_resource type="TextMesh" id="TextMesh_37tiq"]
 material = SubResource("ShaderMaterial_tm6lv")
@@ -113,17 +115,8 @@ line_spacing = 10.0
 justification_flags = 171
 depth = 0.0
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_u3lff"]
-render_priority = 1
-shader = ExtResource("13_3qhpo")
-shader_parameter/text_color = Color(0.98441774, 0.8946011, 0, 1)
-shader_parameter/flicker_speed = 1.00000004424012
-shader_parameter/uv_aspect = 75.08
-shader_parameter/pixel_size = 3.7150001289625
-shader_parameter/flicker_intensity = 0.2050000097375
-
 [sub_resource type="TextMesh" id="TextMesh_3qhpo"]
-material = SubResource("ShaderMaterial_u3lff")
+material = SubResource("ShaderMaterial_tm6lv")
 add_uv2 = true
 text = "Prismatic schism has torn the world bare. I ask that you do what you mustn't, Dear Cassandra."
 font = ExtResource("12_u3lff")
@@ -132,55 +125,19 @@ line_spacing = 10.0
 justification_flags = 171
 depth = 0.0
 
-[sub_resource type="Shader" id="Shader_u3lff"]
-code = "shader_type spatial;
-render_mode unshaded, cull_disabled;
-
-uniform vec3 text_color : source_color = vec3(1.0); // COLOR PICKER
-uniform float flicker_speed : hint_range(0.1, 20.0) = 4.0;
-uniform float uv_aspect = 1.0; // corrects stretched pixels
-uniform float pixel_size : hint_range(1.0, 50.0) = 8.0;
-uniform float flicker_intensity : hint_range(0.0, 1.0) = 0.6;
-
-// Stable random hash
-float hash(vec2 p) {
-    return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453123);
-}
-
-
-
-void fragment() {
-	// Pixelize UV with aspect fix
-    vec2 pix_uv = floor(vec2(UV.x * pixel_size * uv_aspect,
-                             UV.y * pixel_size));
-
-    float rnd = hash(pix_uv);
-
-    // Time flicker
-    float flicker = sin(TIME * flicker_speed + rnd * 20.0);
-
-    // Normalize 0–1
-    flicker = (flicker * 0.5) + 0.5;
-
-    // Visible threshold
-    float alpha = step(flicker_intensity, flicker);
-
-    ALBEDO = text_color;
-    ALPHA = alpha;
-}
-"
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_3qhpo"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_8rc2h"]
 render_priority = 1
-shader = SubResource("Shader_u3lff")
-shader_parameter/text_color = Color(0.95686275, 0.8745098, 0, 1)
-shader_parameter/flicker_speed = 0.60500002547762
-shader_parameter/uv_aspect = 8.23
-shader_parameter/pixel_size = 13.798000607905
-shader_parameter/flicker_intensity = 0.2050000097375
+shader = ExtResource("13_3qhpo")
+shader_parameter/text_color = Color(0.95599824, 0.8682595, 0, 1)
+shader_parameter/flicker_speed = 1.5040000681801202
+shader_parameter/uv_aspect = 10.0
+shader_parameter/pixel_size = 5.00000019
+shader_parameter/flicker_intensity = 0.14000000665
+shader_parameter/shadow_color = Color(0, 0, 0, 1)
+shader_parameter/shadow_pixel_steps = Vector2(0, 0)
 
 [sub_resource type="TextMesh" id="TextMesh_8rc2h"]
-material = SubResource("ShaderMaterial_3qhpo")
+material = SubResource("ShaderMaterial_8rc2h")
 add_uv2 = true
 text = "I trust you are prepared 
 for the journey?"
@@ -190,17 +147,8 @@ line_spacing = 10.0
 justification_flags = 171
 depth = 0.0
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_8rc2h"]
-render_priority = 1
-shader = SubResource("Shader_u3lff")
-shader_parameter/text_color = Color(0.9999997, 0.9324009, 0.3595721, 1)
-shader_parameter/flicker_speed = 0.60500002547762
-shader_parameter/uv_aspect = 8.23
-shader_parameter/pixel_size = 13.798000607905
-shader_parameter/flicker_intensity = 0.2050000097375
-
 [sub_resource type="TextMesh" id="TextMesh_yusxf"]
-material = SubResource("ShaderMaterial_8rc2h")
+material = SubResource("ShaderMaterial_tm6lv")
 add_uv2 = true
 text = "Though I must remain among the waves, 
 	                             you may carry my eyes and ears 
@@ -211,17 +159,8 @@ line_spacing = 10.0
 justification_flags = 171
 depth = 0.0
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_yusxf"]
-render_priority = 1
-shader = SubResource("Shader_u3lff")
-shader_parameter/text_color = Color(0.9999997, 0.9324009, 0.3595721, 1)
-shader_parameter/flicker_speed = 0.15000000386512
-shader_parameter/uv_aspect = 8.23
-shader_parameter/pixel_size = 13.798000607905
-shader_parameter/flicker_intensity = 0.02700000128249999
-
 [sub_resource type="TextMesh" id="TextMesh_tm6lv"]
-material = SubResource("ShaderMaterial_yusxf")
+material = SubResource("ShaderMaterial_tm6lv")
 add_uv2 = true
 text = "You have slept long. 
 	                      You must sharpen your eyes once again."
@@ -231,17 +170,19 @@ line_spacing = 10.0
 justification_flags = 171
 depth = 0.0
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_37tiq"]
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_yusxf"]
 render_priority = 1
-shader = SubResource("Shader_u3lff")
-shader_parameter/text_color = Color(0.9323184, 0.8528785, 0, 1)
-shader_parameter/flicker_speed = 1.16200005193512
-shader_parameter/uv_aspect = 8.23
-shader_parameter/pixel_size = 8.400000351500001
-shader_parameter/flicker_intensity = 0.2850000135375
+shader = ExtResource("13_3qhpo")
+shader_parameter/text_color = Color(0.95599824, 0.8682595, 0, 1)
+shader_parameter/flicker_speed = 1.05600004690012
+shader_parameter/uv_aspect = 10.0
+shader_parameter/pixel_size = 5.00000019
+shader_parameter/flicker_intensity = 0.14000000665
+shader_parameter/shadow_color = Color(0, 0, 0, 1)
+shader_parameter/shadow_pixel_steps = Vector2(0, 0)
 
 [sub_resource type="TextMesh" id="TextMesh_1whc8"]
-material = SubResource("ShaderMaterial_37tiq")
+material = SubResource("ShaderMaterial_yusxf")
 add_uv2 = true
 text = "This beacon will bring you back to me. "
 font = ExtResource("12_u3lff")
@@ -250,17 +191,8 @@ line_spacing = 10.0
 justification_flags = 171
 depth = 0.0
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_sv1al"]
-render_priority = 1
-shader = SubResource("Shader_u3lff")
-shader_parameter/text_color = Color(0.9323184, 0.8528785, 0, 1)
-shader_parameter/flicker_speed = 1.16200005193512
-shader_parameter/uv_aspect = 8.23
-shader_parameter/pixel_size = 8.400000351500001
-shader_parameter/flicker_intensity = 0.2850000135375
-
 [sub_resource type="TextMesh" id="TextMesh_fypm3"]
-material = SubResource("ShaderMaterial_sv1al")
+material = SubResource("ShaderMaterial_tm6lv")
 add_uv2 = true
 text = "Do not lose sight of paradise, Dearest Cassandra. 
 This place is ours. 
@@ -295,7 +227,7 @@ mesh = SubResource("QuadMesh_85g3d")
 
 [node name="RunnerCam" type="Camera3D" parent="Main" unique_id=1414285473]
 physics_interpolation_mode = 1
-transform = Transform3D(0.99999976, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 690.2307, 33.468887, 10.000001)
+transform = Transform3D(0.99999976, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 0, 2, 10.000001)
 
 [node name="PhantomCameraHost" type="Node" parent="Main/RunnerCam" unique_id=2117520764]
 process_priority = 300
@@ -304,7 +236,7 @@ script = ExtResource("2_42w07")
 metadata/_custom_type_script = "uid://bd046eokvcnu2"
 
 [node name="PhantomCamera3D" type="Node3D" parent="Main" unique_id=2102426851 node_paths=PackedStringArray("follow_target")]
-transform = Transform3D(0.99999976, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 690.2307, 33.468887, 10.000001)
+transform = Transform3D(0.99999976, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 0, 2, 10.000001)
 top_level = true
 script = ExtResource("3_ssq04")
 priority = 1
@@ -323,7 +255,6 @@ spring_length = 10.0
 metadata/_custom_type_script = "uid://csjccrhj5wnx7"
 
 [node name="Player" parent="Main" unique_id=1201495616 instance=ExtResource("6_8rc2h")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 690.2307, 31.468887, 0)
 
 [node name="Footstep" type="AudioStreamPlayer3D" parent="Main/Player" unique_id=1152693671]
 stream = ExtResource("8_42w07")

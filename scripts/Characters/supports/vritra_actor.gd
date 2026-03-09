@@ -20,7 +20,7 @@ const LEECH_WILL_RESTORE_RATIO  = 0.5
 const LEECH_CHANCE_NORMAL       = 0.6
 const DEVOUR_WILL_COST          = 3
 const DEVOUR_DMG_MULT           = 1.8
-const DEVOUR_MAX_HP_BONUS       = 4    # gained per kill
+const DEVOUR_MAX_HP_BONUS       = 1    # gained per kill
 const WITHER_WILL_COST          = 2
 const WITHER_ATK_REDUCTION      = 2
 const WITHER_SIPHON_HP          = 3
@@ -101,15 +101,19 @@ var constrict_turn_count : int = 0   # how many constrict turns have elapsed
 
 
 func get_skills() -> Array:
-	var has_will = party_member != null and party_member.will > 0
-	var can_devour = party_member != null and party_member.will >= DEVOUR_WILL_COST
-	var can_wither = party_member != null and party_member.will >= WITHER_WILL_COST
+	var has_will     = party_member != null and party_member.will > 0
+	var can_devour   = party_member != null and party_member.will >= DEVOUR_WILL_COST
+	var can_wither   = party_member != null and party_member.will >= WITHER_WILL_COST
+	var wither_unlocked = party_member != null and party_member.is_skill_unlocked("Wither")
+	var devour_unlocked = party_member != null and party_member.is_skill_unlocked("Devour")
 	var skills = [
 		{"name": "Vice" if has_will else "Strangulate", "key": "attack", "struggle": not has_will},
-		{"name": "Wither" if can_wither else "Waste", "key": "support", "enemy_target": can_wither, "aoe": not can_wither},
 	]
-	# Devour only appears when affordable
-	if can_devour:
+	# Support: Wither (unlocked + affordable) > Waste (unlocked) > nothing shown
+	if wither_unlocked:
+		skills.append({"name": "Wither" if can_wither else "Waste", "key": "support", "enemy_target": can_wither, "aoe": not can_wither})
+	# Special: Devour only when unlocked and affordable
+	if devour_unlocked and can_devour:
 		skills.insert(1, {"name": "Devour", "key": "special"})
 	return skills
 
@@ -139,7 +143,7 @@ func take_turn(target: BattleActor, part: BodyPartData = null) -> void:
 		await _strangulate_start()
 
 
-func use_skill(command_key: String, targets: Array) -> void:
+func use_skill(command_key: String, targets: Array, part: BodyPartData = null) -> void:
 	match command_key:
 		"special":
 			var t = targets[0] if not targets.is_empty() else null
@@ -166,14 +170,17 @@ func _vice(target: BattleActor, part: BodyPartData) -> void:
 	if not party_member.spend_will(1):
 		await _strangulate_start()
 		return
-	var damage := int(attack_power * part.damage_multiplier)
-	if part.is_cognitohazard:
+	var damage := int(attack_power * (part.damage_multiplier if part != null else 1.0))
+	if part != null and part.is_cognitohazard:
 		perishing = true
-	if randf() < LEECH_CHANCE_NORMAL:
-		target.apply_status(STATUS_LEECHED, LEECH_DURATION)
-		log_msg("%s is leeched." % target.name)
 	say_random(CHATTER_VICE)
+	log_msg("%s sinks their teeth into %s." % [name, target.name])
 	await play_attack_animation(target, attack_power, 2.0, damage)
+	# Apply leech AFTER the hit so it takes effect on future attacks, not this one
+	if randf() < LEECH_CHANCE_NORMAL:
+		if target:
+			target.apply_status(STATUS_LEECHED, LEECH_DURATION)
+			log_msg("%s is leeched." % target.name)
 	emit_signal("turn_finished")
 
 
@@ -232,14 +239,16 @@ func _end_constrict() -> void:
 
 func _devour(target: BattleActor) -> void:
 	party_member.spend_will(DEVOUR_WILL_COST)
+	var victim = target.name
 	var damage := int(attack_power * DEVOUR_DMG_MULT)
 	say_random(CHATTER_DEVOUR)
+	log_msg("The beast grows voracious." % [name, target.name])
 	await play_attack_animation(target, 3.0, 3.0, damage)
-	if not target.is_alive():
+	if not target:
 		max_hp += DEVOUR_MAX_HP_BONUS
 		if party_member:
 			party_member.bonus_max_hp += DEVOUR_MAX_HP_BONUS
-		log_msg("%s was devoured — the beast yet grows voracious." % [target.name, name])
+		log_msg("%s was devoured — the beast yet grows voracious." % [victim])
 	emit_signal("turn_finished")
 
 

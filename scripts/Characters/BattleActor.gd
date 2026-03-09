@@ -6,7 +6,7 @@ signal died
 signal hp_changed
 signal status_applied(effect_id: String)
 signal battle_log(message: String)  # general battle narration
-signal chatter(message: String)      # character voice line
+signal chatter(message: String, speaker: String)  # character voice line
 
 # --- Status effect IDs ---
 const STATUS_FROZEN   = "frozen"   # tempo stops accumulating
@@ -50,8 +50,14 @@ func _ready():
 
 func take_turn(target: BattleActor, part: BodyPartData = null) -> void:
 	await get_tree().create_timer(0.1).timeout
+	if not is_inside_tree():
+		return
 	tick_status_effects()
-	if not is_alive():
+	if not is_alive() or not is_inside_tree():
+		emit_signal("turn_finished")
+		return
+	if not is_instance_valid(target) or not target.is_alive():
+		# Target already dead; skip attack, still end turn
 		emit_signal("turn_finished")
 		return
 	if has_status(STATUS_FROZEN):
@@ -155,7 +161,7 @@ func log_msg(msg: String) -> void:
 	emit_signal("battle_log", msg)
 
 func say(msg: String) -> void:
-	emit_signal("chatter", msg)
+	emit_signal("chatter", msg, self.name)
 
 func say_random(lines: Array) -> void:
 	if lines.is_empty(): return
@@ -197,10 +203,12 @@ func tick_status_effects() -> void:
 func tick_tempo() -> void:
 	if has_status(STATUS_FROZEN):
 		return  # no tempo gain while frozen
-	var gain = tempo_stat
+	var gain : float = float(tempo_stat)
 	if has_status(STATUS_SLOW):
 		gain *= SLOW_TEMPO_MULT
-	tempo_pool += randf_range(0, gain) + randf_range(0, tempo_bonus) 
+	# Small jitter breaks ties between equal-stat actors without distorting the scale.
+	# Full gain is deterministic; randf_range adds at most +/-5% of one stat point.
+	tempo_pool += gain + randf_range(-0.5, 0.5) + tempo_bonus
 
 func reset_tempo_bonus() -> void:
 	tempo_bonus = 0.0
@@ -217,8 +225,102 @@ func get_skills() -> Array:
 	return []
 
 # Dispatch a skill by command key. Override or extend in subclasses.
-func use_skill(command_key: String, targets: Array) -> void:
+func use_skill(command_key: String, targets: Array, part: BodyPartData = null) -> void:
 	spend_turn()
+
+# AI turn entry point for enemies that have skills (e.g. boss enemies).
+# Consults get_skills(), picks an action, and executes it.
+# Falls back to take_turn(target) if no skills are available.
+func enemy_take_turn(target: BattleActor) -> void:
+	var skills := get_skills()
+	if skills.is_empty():
+		await take_turn(target)
+		return
+
+	var opponents : Array = get_opponents()
+	var allies    : Array = get_allies()
+
+	var attacks  : Array = skills.filter(func(s): return s.get("key") == "attack")
+	var specials : Array = skills.filter(func(s): return s.get("key") == "special")
+	# Only include ally-support skills when there are living allies to use them on
+	var supports : Array = skills.filter(func(s):
+		if s.get("key") != "support": return false
+		if s.get("ally_target", false): return not allies.is_empty()
+		return true
+	)
+
+	# Build a weighted pool: specials 30%, supports 20%, attacks fill the rest
+	var pool := []
+	for s in attacks:  pool.append({"skill": s, "weight": 3})
+	for s in specials: pool.append({"skill": s, "weight": 1})
+	for s in supports: pool.append({"skill": s, "weight": 2})
+
+	if pool.is_empty():
+		await take_turn(target)
+		return
+
+	# Weighted random pick
+	var total := 0
+	for entry in pool: total += entry["weight"]
+	var roll := randi() % total
+	var chosen_skill : Dictionary = pool[0]["skill"]
+	var acc := 0
+	for entry in pool:
+		acc += entry["weight"]
+		if roll < acc:
+			chosen_skill = entry["skill"]
+			break
+
+	var key        : String = chosen_skill.get("key", "attack")
+	var is_aoe     : bool   = chosen_skill.get("aoe", false)
+	var is_ally_t  : bool   = chosen_skill.get("ally_target", false)
+	var is_enemy_t : bool   = chosen_skill.get("enemy_target", false)
+	var is_struggle: bool   = chosen_skill.get("struggle", false)
+
+	if is_struggle or key == "attack":
+		await take_turn(target)
+		return
+
+	# Determine targets for the chosen skill
+	var skill_targets : Array = []
+	if is_ally_t:
+		# Support skill targeting an ally — pick the ally with the lowest HP ratio
+		if allies.is_empty():
+			await take_turn(target)
+			return
+		var neediest : BattleActor = allies[0]
+		for a in allies:
+			if float(a.hp) / float(a.max_hp) < float(neediest.hp) / float(neediest.max_hp):
+				neediest = a
+		skill_targets = [neediest]
+	elif is_aoe:
+		skill_targets = opponents
+	elif is_enemy_t:
+		if not opponents.is_empty():
+			skill_targets = [opponents[randi() % opponents.size()]]
+		else:
+			await take_turn(target)
+			return
+	else:
+		if not opponents.is_empty():
+			skill_targets = [opponents[randi() % opponents.size()]]
+		else:
+			await take_turn(target)
+			return
+
+	await use_skill(key, skill_targets)
+
+# Returns all living actors on the opposing team.
+func get_opponents() -> Array:
+	var manager = get_tree().get_first_node_in_group("battle_manager")
+	if manager == null: return []
+	return manager.actors.filter(func(a): return a.team != team and a.is_alive())
+
+# Returns all living actors on the same team (excluding self).
+func get_allies() -> Array:
+	var manager = get_tree().get_first_node_in_group("battle_manager")
+	if manager == null: return []
+	return manager.actors.filter(func(a): return a.team == team and a.is_alive() and a != self)
 
 # Convenience: pick a random living enemy/ally from a list
 func random_living(actors: Array) -> BattleActor:
@@ -234,13 +336,24 @@ func struggle_attack(all_actors: Array, base_damage: int) -> void:
 		return
 	var target = enemies[randi() % enemies.size()]
 	if randf() < STRUGGLE_MISS_CHANCE:
-		print(name, " swings wildly and misses!")
+		log_msg("%s lacked the will to strike true." % name)
 		spend_turn()
 		return
-	await play_attack_animation(target, 1.0, 1.0, base_damage)
+	# Randomly hit a visible body part if one exists, otherwise hit the actor directly
+	var manager = get_tree().get_first_node_in_group("battle_manager")
+	var visible_parts = target.get_visible_parts(manager.removed_channels if manager else 0)
+	var hit_part: bool = not visible_parts.is_empty()
+	if hit_part:
+		var part = visible_parts[randi() % visible_parts.size()]
+		log_msg("%s found the will to strike %s's %s." % [name, target.name, part.part_name])
+		await play_attack_animation(target, 1.0, 1.0, int((base_damage * 0.5) * part.damage_multiplier))
+		if part.is_cognitohazard:
+			perishing = true
+	else:
+		await play_attack_animation(target, 1.0, 1.0, base_damage)
 	if randf() < STRUGGLE_SELF_CHANCE:
 		var self_dmg = max(1, base_damage / 2)
-		print(name, " hurts themselves for ", self_dmg, " in the struggle!")
+		log_msg("%s struggles in vain." % name)
 		take_damage(self_dmg)
 	emit_signal("turn_finished")
 
@@ -298,13 +411,17 @@ func play_attack_animation(target: BattleActor, player_mult, enemy_mult, damage 
 
 	back_tween.tween_property(self, "global_position", original_pos, 0.3)
 	await back_tween.finished
-	
-	target.take_damage(damage, self)
-	if perishing:
+
+	# Guard: target or self may have been freed if battle ended mid-animation
+	if not is_instance_valid(target) or not is_inside_tree():
+		return
+	if target.is_alive():
+		target.take_damage(damage, self)
+	if perishing and is_inside_tree():
 		print("You saw something you shouldn't have.")
 		emit_signal("turn_finished")
 		take_damage(damage)
 		perishing = false
 
-	
-	await get_tree().create_timer(1.0).timeout
+	if is_inside_tree():
+		await get_tree().create_timer(1.0).timeout

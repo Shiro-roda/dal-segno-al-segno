@@ -29,7 +29,7 @@ const SELF_HARM_WILL_RESTORE = 2
 const EMBRACE_DURATION       = 2
 
 const CHATTER_REBUKE = [
-	"Stay back.",
+	"Stay back!!",
 	"Go away!",
 	"Don't come any closer!",
 	"I think that got 'em!",
@@ -57,7 +57,7 @@ const CHATTER_CALCIFY = [
 	" ",
 ]
 const CHATTER_SHELTER = [
-	"I won't let them hurt you.",
+	"They can't hurt you now!",
 	"Are you alright?",
 	" ",
 	" ",
@@ -83,16 +83,20 @@ const CHATTER_HURT = [
 
 
 func get_skills() -> Array:
-	var has_will  = party_member != null and party_member.will > 0
-	var can_calc  = party_member != null and party_member.will >= CALCIFY_WILL_COST
-	var can_shelt = party_member != null and party_member.will >= SHELTER_WILL_COST
+	var has_will      = party_member != null and party_member.will > 0
+	var can_calc      = party_member != null and party_member.will >= CALCIFY_WILL_COST
+	var can_shelt     = party_member != null and party_member.will >= SHELTER_WILL_COST
+	var shelt_unlocked = party_member != null and party_member.is_skill_unlocked("Shelter")
+	var calc_unlocked  = party_member != null and party_member.is_skill_unlocked("Calcify")
 	var skills = [
 		{"name": "Rebuke" if has_will else "Cling", "key": "attack", "aoe": has_will, "struggle": not has_will},
-		{"name": "Shelter" if can_shelt else "Embrace", "key": "support", "ally_target": true},
 	]
-	# Calcify needs a single enemy target
-	if can_calc:
-		skills.insert(1, {"name": "Calcify", "key": "special", "targeted": true})
+	# Support: Shelter (unlocked + affordable) > Embrace (unlocked)
+	if shelt_unlocked:
+		skills.append({"name": "Shelter" if can_shelt else "Embrace", "key": "support", "ally_target": true})
+	# Special: Calcify only when unlocked and affordable
+	if calc_unlocked and can_calc:
+		skills.insert(1, {"name": "Calcify", "key": "special", "targeted": true, "part_targeted": true})
 	return skills
 
 
@@ -112,14 +116,14 @@ func take_turn(target: BattleActor, part: BodyPartData = null) -> void:
 		await _cling()
 
 
-func use_skill(command_key: String, targets: Array) -> void:
+func use_skill(command_key: String, targets: Array, part: BodyPartData = null) -> void:
 	match command_key:
 		"special":
 			var t = targets[0] if not targets.is_empty() else null
 			if t == null:
 				spend_turn()
 				return
-			await _calcify(t)
+			await _calcify(t, part)
 		"support":
 			var ally = targets[0] if not targets.is_empty() else self
 			if party_member != null and party_member.will >= SHELTER_WILL_COST:
@@ -136,10 +140,9 @@ func _rebuke(target: BattleActor, part: BodyPartData) -> void:
 	if not party_member.spend_will(REBUKE_WILL_COST):
 		await _cling()
 		return
-	var manager = get_tree().get_first_node_in_group("battle_manager")
-	var enemies = manager.actors.filter(func(a): return a.team == Team.ENEMY and a.is_alive())
 	say_random(CHATTER_REBUKE)
-	for enemy in enemies:
+	log_msg("%s wards off your foes." % [name])
+	for enemy in get_opponents():
 		var dmg = int(attack_power * REBUKE_DMG_MULT)
 		enemy.take_damage(dmg, self)
 		if randf() < REBUKE_SLOW_CHANCE:
@@ -150,8 +153,7 @@ func _rebuke(target: BattleActor, part: BodyPartData) -> void:
 
 
 func _cling() -> void:
-	var manager = get_tree().get_first_node_in_group("battle_manager")
-	var enemies = manager.actors.filter(func(a): return a.team == Team.ENEMY and a.is_alive())
+	var enemies = get_opponents()
 	if enemies.is_empty():
 		spend_turn()
 		return
@@ -170,13 +172,17 @@ func _cling() -> void:
 	emit_signal("turn_finished")
 
 
-func _calcify(target: BattleActor) -> void:
+func _calcify(target: BattleActor, part: BodyPartData = null) -> void:
 	party_member.spend_will(CALCIFY_WILL_COST)
 	var turns = randi_range(CALCIFY_MIN_TURNS, CALCIFY_MAX_TURNS)
 	target.apply_status(STATUS_FROZEN, turns)
 	target.apply_status("encased", turns)
+	if part != null:
+		part.apply_status("encased", turns)
+		log_msg("%s's %s is encased in ice for %d turns." % [target.name, part.part_name, turns])
+	else:
+		log_msg("%s is encased in ice for %d turns." % [target.name, turns])
 	say_random(CHATTER_CALCIFY)
-	log_msg("%s is encased in ice for %d turns." % [target.name, turns])
 	# Drain tempo heavily each turn of encasement via the manager
 	var manager = get_tree().get_first_node_in_group("battle_manager")
 	for i in range(turns):
@@ -188,6 +194,7 @@ func _calcify(target: BattleActor) -> void:
 func _shelter(ally: BattleActor) -> void:
 	party_member.spend_will(SHELTER_WILL_COST)
 	ally.shield_hp += SHELTER_HP_AMOUNT
+	ally.emit_signal("hp_changed")
 	ally.apply_status(STATUS_SHIELD, 999)
 	say_random(CHATTER_SHELTER)
 	log_msg("%s shields %s (+%d temp HP)." % [name, ally.name, SHELTER_HP_AMOUNT])

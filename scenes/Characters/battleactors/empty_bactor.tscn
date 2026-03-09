@@ -1,0 +1,22 @@
+[gd_scene format=3 uid="uid://dwirbrql1ih84"]
+
+[ext_resource type="Script" uid="uid://c8fvcb046bf6m" path="res://scripts/Characters/BattleActor.gd" id="1_xe1la"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_xe1la"]
+emission_enabled = true
+emission = Color(1, 1, 1, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_26nwy"]
+material = SubResource("StandardMaterial3D_xe1la")
+radius = 1.0
+height = 2.0
+
+[node name="BattleActor" type="Node3D" unique_id=620316433]
+script = ExtResource("1_xe1la")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=149806810]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3, 0)
+mesh = SubResource("SphereMesh_26nwy")
+
+[node name="CameraAnchor" type="Node3D" parent="." unique_id=413819805]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4098005, 0)

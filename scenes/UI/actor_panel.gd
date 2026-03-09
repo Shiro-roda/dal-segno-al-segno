@@ -13,7 +13,7 @@ var actor : BattleActor
 
 # Overlay ColorRect drawn on top of the HP bar to show temp (shield) HP
 var _shield_overlay : ColorRect
-const SHIELD_COLOR := Color(0.55, 0.85, 0.2, 0.72)  # yellow-green
+const SHIELD_COLOR := Color(0.49, 0.918, 0.024, 1.0)  # yellow-green
 
 
 
@@ -62,7 +62,11 @@ func _apply_setup():
 func update_display():
 	hp_bar.value = actor.hp
 	var shield: int = actor.shield_hp if actor.shield_hp > 0 else 0
-	hp_text.text = "%d / %d" % [actor.hp + shield, actor.max_hp]
+	# HP text shows real hp / max_hp; temp HP shown separately in overlay
+	if shield > 0:
+		hp_text.text = "%d (+%d) / %d" % [actor.hp, shield, actor.max_hp]
+	else:
+		hp_text.text = "%d / %d" % [actor.hp, actor.max_hp]
 	if actor.party_member != null and actor.party_member.has_will():
 		will_bar.value = actor.party_member.will
 		will_label.text = "%d / %d" % [actor.party_member.will, actor.party_member.max_will]
@@ -82,9 +86,14 @@ func _update_shield_overlay() -> void:
 	# Size the overlay proportionally to shield_hp / max_hp, right-aligned
 	var bar_w := hp_bar.size.x
 	var bar_h := hp_bar.size.y
-	var shield_w: Variant = min(bar_w, bar_w * float(shield) / float(actor.max_hp))
-	_shield_overlay.size = Vector2(shield_w, bar_h)
-	_shield_overlay.position = Vector2(bar_w - shield_w, 0.0)
+	# Overlay starts where the real HP fill ends, extends rightward by the shield amount.
+	# This means it sits adjacent to the HP fill rather than overlapping it.
+	var hp_ratio     : float = clampf(float(actor.hp) / float(actor.max_hp), 0.0, 1.0)
+	var shield_ratio : float = clampf(float(shield) / float(actor.max_hp), 0.0, 1.0 - hp_ratio)
+	var hp_x         : float = bar_w * hp_ratio
+	var shield_w     : float = bar_w * shield_ratio
+	_shield_overlay.size     = Vector2(shield_w, bar_h)
+	_shield_overlay.position = Vector2(hp_x, 0.0)
 
 
 func _on_status_applied(_effect_id: String) -> void:

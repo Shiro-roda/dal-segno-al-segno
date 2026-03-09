@@ -1,10 +1,12 @@
 extends Node
 class_name DungeonController
 
+const BossBuilder = preload("res://resources/characters/bosses/boss_builder.gd")
+
 var dungeon : DungeonRunState
 
 var dungeon_ui: Control
-var map_ui: DungeonMap3D
+var map_ui: Node3D  # DungeonMap3D (class_name removed to avoid cache conflicts)
 
 
 
@@ -45,8 +47,10 @@ func start_dungeon(run_state: RunState, dungeon_data: DungeonData):
 		recruit_data.allows_segno = false
 	var recruit_instance := RoomInstance.new()
 	recruit_instance.room_data = recruit_data
+#	recruit_instance.position = Vector2i(-4, -3)
+#	dungeon.grid[Vector2i(-4, -3)] = recruit_instance
 	recruit_instance.position = Vector2i(0, -1)
-	dungeon.grid[Vector2i(-3, -5)] = recruit_instance
+	dungeon.grid[Vector2i(0, -1)] = recruit_instance
 
 	map_ui.setup(dungeon, self)
 
@@ -72,6 +76,7 @@ func move_to_room(pos : Vector2i):
 		return
 
 	dungeon.current_pos = pos
+	dungeon_ui.clear_room_list()  # clear rest/event UI from previous room
 
 	map_ui.redraw_map()
 
@@ -116,62 +121,79 @@ func enter_current_room():
 		RoomData.RoomType.RECRUIT:
 			if not room.cleared:
 				load_recruit_event()
-			# If already cleared (recruited), fall through silently
+			# Already cleared - nothing to do
+
+		RoomData.RoomType.BOSS:
+			if not room.cleared:
+				_trigger_boss_battle()
 
 
 func on_room_completed():
 
 	var room : RoomInstance = dungeon.grid[dungeon.current_pos]
 	room.cleared = true
-	dungeon_ui.clear_room_list()
+
+	# If the recruit room was just cleared, place the boss room on the map now.
+	if room.room_data != null and room.room_data.room_type == RoomData.RoomType.RECRUIT:
+		_place_boss_room()
 
 	map_ui.redraw_map()
 
 
-func get_available_positions():
+func _place_boss_room() -> void:
+	var boss_room_data := RoomData.new()
+	boss_room_data.room_name = "The Threshold"
+	boss_room_data.room_type = RoomData.RoomType.BOSS
+	boss_room_data.danger_level = 5
+	boss_room_data.allows_segno = false
+	boss_room_data.connections = [Vector2i(0, 0)]  # no exits
+	var boss_instance := RoomInstance.new()
+	boss_instance.room_data = boss_room_data
+#	boss_instance.position = Vector2i(-9, -8)
+#	dungeon.grid[Vector2i(-9, -11)] = boss_instance
+	boss_instance.position = Vector2i(-1, -1)
+	dungeon.grid[Vector2i(-1, -1)] = boss_instance
 
-	var dirs = [
-		Vector2i.UP,
-		Vector2i.DOWN,
-		Vector2i.LEFT,
-		Vector2i.RIGHT
-	]
+func get_available_positions() -> Array:
+	var room : RoomInstance = dungeon.grid.get(dungeon.current_pos)
+	if room == null:
+		return []
 
-	var positions = []
+	var dirs : Array = room.room_data.get_exit_dirs() if room.room_data != null else []
 
+	var positions : Array = []
 	for d in dirs:
-
 		var pos = dungeon.current_pos + d
-
 		if not dungeon.grid.has(pos):
 			positions.append(pos)
-
 	return positions
 
 
-func show_build_choices():
-	dungeon_ui.clear_room_list()
+# Returns 3 random room choices for a given grid position (cached per pos).
+var _room_choice_cache : Dictionary = {}  # Vector2i -> Array[RoomData]
+
+func get_room_choices(pos: Vector2i) -> Array:
+	if not _room_choice_cache.has(pos):
+		var choices : Array[RoomData] = []
+		var pool : Array = dungeon.dungeon_data.rooms.duplicate()
+		pool.shuffle()
+		for r in pool:
+			if choices.size() >= 3:
+				break
+			if r not in choices:
+				choices.append(r)
+		_room_choice_cache[pos] = choices
+	return _room_choice_cache.get(pos, [])
 
 
-var pending_build_pos : Vector2i = Vector2i(-999, -999)
-var pending_room_choices : Dictionary = {}  # Vector2i -> Array[RoomData]
+func cancel_build():
+	# Called when the player dismisses the choice panel without picking
+	# Don't erase the cache so re-clicking shows the same choices
+	pass
+
 
 func build_room(pos: Vector2i, room_data: RoomData):
-	if room_data == null:
-		# Generate choices once per position, reuse on repeated clicks
-		if not pending_room_choices.has(pos):
-			var choices : Array[RoomData] = []
-			while choices.size() < 3:
-				var choice = dungeon.dungeon_data.rooms.pick_random()
-				if choice not in choices:
-					choices.append(choice)
-			pending_room_choices[pos] = choices
-		pending_build_pos = pos
-		dungeon_ui.show_room_choices(dungeon, self)
-		return
-
-	pending_room_choices.erase(pos)
-	pending_build_pos = Vector2i(-999, -999)
+	_room_choice_cache.erase(pos)
 
 	var instance = RoomInstance.new()
 	instance.room_data = room_data
@@ -188,6 +210,32 @@ func build_room(pos: Vector2i, room_data: RoomData):
 func load_recruit_event() -> void:
 	var scene := preload("res://scenes/Events/companion_select/recruit_event.tscn")
 	GameController.start_event(scene)
+
+
+const BOSS_ENCOUNTERS := {
+	"Hue":    preload("res://resources/encounters/boss_battles/boss_hue.tres"),
+	"Indra":  preload("res://resources/encounters/boss_battles/boss_indra.tres"),
+	"Vritra": preload("res://resources/encounters/boss_battles/boss_vritra.tres"),
+}
+
+func _trigger_boss_battle() -> void:
+	var run := dungeon.run_state
+	if run.boss_target == null:
+		if run.available_supports.is_empty():
+			on_room_completed()
+			return
+		run.boss_target = run.available_supports[randi() % run.available_supports.size()]
+	var encounter : EncounterData = BOSS_ENCOUNTERS.get(run.boss_target.display_name)
+	if encounter == null:
+		push_error("No boss encounter found for: " + run.boss_target.display_name)
+		on_room_completed()
+		return
+	# Attach a synthetic PartyMemberData to each enemy CharacterData in the encounter
+	# so the support actor scripts have will and skill unlocks available.
+	for char_data in encounter.enemies:
+		if char_data.boss_party_member == null:
+			char_data.boss_party_member = BossBuilder.make_party_member(char_data)
+	GameController.start_boss_battle(encounter)
 
 
 func load_event(event_scene: PackedScene):
@@ -211,8 +259,7 @@ func place_segno():
 	on_room_completed()
 
 func on_party_defeated():
-
-	if dungeon.last_segno_pos != null:
+	if dungeon.last_segno_pos != Vector2i(-999, -999):
 		respawn_at_segno()
 	else:
 		end_run()

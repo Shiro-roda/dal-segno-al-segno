@@ -12,6 +12,13 @@ var active_support : CharacterData = null
 # Each entry is a CharacterData resource.
 var available_supports : Array = []
 
+# The support who was NOT chosen and will appear as the boss after the recruit room.
+# Picked randomly from available_supports when the recruit event completes.
+var boss_target : CharacterData = null
+
+# Set true once the boss battle has been triggered so it only fires once.
+var boss_battle_triggered : bool = false
+
 var ammo : int = 8
 var max_ammo : int = 16
 

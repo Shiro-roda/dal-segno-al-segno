@@ -4,9 +4,9 @@
 [ext_resource type="FontFile" uid="uid://c8q52n0ssb7w3" path="res://assets/Fonts/TerminalVector.ttf" id="2_p0etj"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_p0etj"]
-content_margin_left = 6.0
+content_margin_left = 8.0
 content_margin_top = 6.0
-content_margin_right = 6.0
+content_margin_right = 8.0
 content_margin_bottom = 6.0
 bg_color = Color(0.09803922, 0.09803922, 0.09803922, 0.7411765)
 border_width_left = 4
@@ -24,7 +24,7 @@ corner_detail = 5
 
 [sub_resource type="LabelSettings" id="LabelSettings_h3ar0"]
 font = ExtResource("2_p0etj")
-font_size = 24
+font_size = 20
 outline_color = Color(0, 0, 0, 1)
 shadow_size = 2
 shadow_color = Color(0, 0, 0, 0.52156866)
@@ -49,7 +49,7 @@ gradient = SubResource("Gradient_itxmc")
 
 [sub_resource type="LabelSettings" id="LabelSettings_h8jys"]
 font = ExtResource("2_p0etj")
-font_size = 26
+font_size = 22
 outline_color = Color(0, 0, 0, 1)
 shadow_size = 2
 shadow_color = Color(0, 0, 0, 0.52156866)
@@ -75,26 +75,29 @@ gradient = SubResource("Gradient_h8jys")
 
 [sub_resource type="LabelSettings" id="LabelSettings_ci0dn"]
 font = ExtResource("2_p0etj")
-font_size = 24
+font_size = 20
 outline_size = 3
 outline_color = Color(0.0142752165, 0.014275218, 0.014275218, 1)
 shadow_size = 2
 shadow_color = Color(0.0048998436, 0.0048998194, 0.0048998287, 0.39607844)
 
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_p0etj"]
+content_margin_top = 32.0
+
 [sub_resource type="FontVariation" id="FontVariation_p0etj"]
 base_font = ExtResource("2_p0etj")
-variation_transform = Transform2D(0.745, 0, 0, 1, 0, 0)
+variation_transform = Transform2D(0.745, 0, 0, 3, 0, 0)
 spacing_glyph = -2
 
 [sub_resource type="LabelSettings" id="LabelSettings_p0etj"]
 font = SubResource("FontVariation_p0etj")
-font_size = 22
+font_size = 18
 font_color = Color(0.83137256, 0.6862745, 0.21568628, 1)
 outline_size = 8
 outline_color = Color(0, 0, 0, 1)
 
 [node name="ActorPanel" type="PanelContainer" unique_id=1593661217]
-custom_minimum_size = Vector2(120, 100)
+custom_minimum_size = Vector2(80, 100)
 offset_right = 156.0
 offset_bottom = 120.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_p0etj")
@@ -108,7 +111,7 @@ alignment = 1
 
 [node name="NameLabel" type="Label" parent="ActorPanelVBox" unique_id=1775829427]
 layout_mode = 2
-text = "Name"
+text = "Kendall"
 label_settings = SubResource("LabelSettings_h3ar0")
 
 [node name="HPBar" type="TextureProgressBar" parent="ActorPanelVBox" unique_id=1404490146]
@@ -126,7 +129,7 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="WillBar" type="TextureProgressBar" parent="ActorPanelVBox" unique_id=65937750]
-custom_minimum_size = Vector2(0, 22)
+custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
 size_flags_vertical = 3
 nine_patch_stretch = true
@@ -143,6 +146,7 @@ vertical_alignment = 3
 [node name="AmmoLabel" type="Label" parent="ActorPanelVBox" unique_id=1991943165]
 layout_mode = 2
 size_flags_vertical = 6
+theme_override_styles/normal = SubResource("StyleBoxEmpty_p0etj")
 text = "AMMO: 20/20"
 label_settings = SubResource("LabelSettings_p0etj")
 horizontal_alignment = 1

@@ -1,0 +1,64 @@
+[gd_resource type="Resource" script_class="CharacterData" format=3 uid="uid://c2hfbcmlpd3bi"]
+
+[ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://resources/bodyparts/BodyPartData.gd" id="1_8o661"]
+[ext_resource type="PackedScene" uid="uid://dwirbrql1ih84" path="res://scenes/Characters/battleactors/empty_bactor.tscn" id="1_mi7yb"]
+[ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://resources/characters/characterdata.gd" id="2_cupcf"]
+
+[sub_resource type="Resource" id="Resource_yn853"]
+script = ExtResource("1_8o661")
+part_name = "Shell"
+base_visible = true
+damage_multiplier = 0.3
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[sub_resource type="Resource" id="Resource_mi7yb"]
+script = ExtResource("1_8o661")
+part_name = "Cerulean Void"
+required_removed_mask = 1
+damage_multiplier = 0.6
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[sub_resource type="Resource" id="Resource_wnm8g"]
+script = ExtResource("1_8o661")
+part_name = "Alien Void"
+required_removed_mask = 2
+damage_multiplier = 0.9
+is_cognitohazard = true
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[sub_resource type="Resource" id="Resource_3jjjy"]
+script = ExtResource("1_8o661")
+part_name = "Gilded Void"
+required_removed_mask = 4
+damage_multiplier = 2.0
+is_cognitohazard = true
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[sub_resource type="Resource" id="Resource_crdkm"]
+script = ExtResource("1_8o661")
+part_name = "Dull Peace"
+required_removed_mask = 3
+damage_multiplier = 2.0
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[sub_resource type="Resource" id="Resource_dthue"]
+script = ExtResource("1_8o661")
+part_name = "Verdant Aching"
+required_removed_mask = 5
+damage_multiplier = 2.5
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[sub_resource type="Resource" id="Resource_mtr2k"]
+script = ExtResource("1_8o661")
+part_name = "Corporeal Agony"
+required_removed_mask = 6
+damage_multiplier = 3.0
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[resource]
+script = ExtResource("2_cupcf")
+display_name = "Empty One"
+base_max_hp = 50
+base_attack = 6
+body_parts = Array[ExtResource("1_8o661")]([SubResource("Resource_yn853"), SubResource("Resource_mi7yb"), SubResource("Resource_wnm8g"), SubResource("Resource_3jjjy"), SubResource("Resource_crdkm"), SubResource("Resource_dthue"), SubResource("Resource_mtr2k")])
+battle_scene = ExtResource("1_mi7yb")

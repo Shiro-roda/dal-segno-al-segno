@@ -27,7 +27,7 @@ metadata/_custom_type_script = "uid://bewuwngi8x4ad"
 
 [resource]
 script = ExtResource("2_rwi5t")
-display_name = "Shadow1"
+display_name = "Banal Shadow"
 base_max_hp = 15
 base_attack = 3
 body_parts = Array[ExtResource("1_bc0hm")]([SubResource("Resource_xeo3c"), SubResource("Resource_3wasn"), SubResource("Resource_7j282")])

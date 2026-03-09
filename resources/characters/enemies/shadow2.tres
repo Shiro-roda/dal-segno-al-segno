@@ -27,8 +27,8 @@ metadata/_custom_type_script = "uid://bewuwngi8x4ad"
 
 [resource]
 script = ExtResource("2_v3wxi")
-display_name = "Shadow2"
-base_max_hp = 10
+display_name = "Sturdy Shadow"
+base_max_hp = 18
 base_attack = 2
 body_parts = Array[ExtResource("1_tpfi6")]([SubResource("Resource_l101s"), SubResource("Resource_1b2at"), SubResource("Resource_vuso0")])
 battle_scene = ExtResource("1_v3wxi")

@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="CharacterData" format=3 uid="uid://ds3k10sa11r3j"]
+
+[ext_resource type="PackedScene" uid="uid://433fpucnuqkf" path="res://scenes/Characters/battleactors/shadow_bactor.tscn" id="1_hkca0"]
+[ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://resources/bodyparts/BodyPartData.gd" id="2_y585m"]
+[ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://resources/characters/characterdata.gd" id="3_7uloq"]
+
+[sub_resource type="Resource" id="Resource_t2pf7"]
+script = ExtResource("2_y585m")
+part_name = "Torso"
+base_visible = true
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[sub_resource type="Resource" id="Resource_irf0e"]
+script = ExtResource("2_y585m")
+part_name = "Head"
+required_removed_mask = 1
+damage_multiplier = 2.0
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[sub_resource type="Resource" id="Resource_f87ha"]
+script = ExtResource("2_y585m")
+part_name = "Heart"
+required_removed_mask = 4
+damage_multiplier = 2.5
+is_cognitohazard = true
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[resource]
+script = ExtResource("3_7uloq")
+display_name = "Tall Shadow"
+base_max_hp = 50
+base_attack = 10
+exp_yield = 15
+body_parts = Array[ExtResource("2_y585m")]([SubResource("Resource_t2pf7"), SubResource("Resource_irf0e"), SubResource("Resource_f87ha")])
+battle_scene = ExtResource("1_hkca0")
+metadata/_custom_type_script = "uid://b2t1syvrybco8"

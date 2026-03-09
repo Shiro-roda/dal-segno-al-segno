@@ -4,5 +4,27 @@
 
 [node name="CompanionSelect" type="Control" unique_id=515573183]
 layout_mode = 3
-anchors_preset = 0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 script = ExtResource("1_q34dm")
+
+[node name="BG" type="ColorRect" parent="." unique_id=1043678757]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CenterContainer" type="CenterContainer" parent="." unique_id=2082115563]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Outer" type="VBoxContainer" parent="CenterContainer" unique_id=1915432810]
+layout_mode = 2
+alignment = 1

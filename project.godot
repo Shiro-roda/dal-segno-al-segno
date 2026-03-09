@@ -29,6 +29,7 @@ Dialogic="*res://addons/dialogic/Core/DialogicGameHandler.gd"
 PhantomCameraManager="*uid://duq6jhf6unyis"
 AudioManagerAuto="*uid://cx2gw1tu0rxpi"
 GameController="*uid://e0k6d8aob0l7"
+GlobalTheme="*res://scenes/Managers/global_theme.gd"
 
 [dialogic]
 
@@ -42,9 +43,16 @@ layout/style_directory={}
 
 [display]
 
-window/size/viewport_width=1400
-window/size/viewport_height=1050
+window/size/viewport_width=1280
+window/size/viewport_height=960
+window/size/initial_position_type=0
+window/size/window_width_override=1680
+window/size/window_height_override=1260
 window/stretch/mode="viewport"
+
+[editor]
+
+movie_writer/movie_file="/Recordings/Video Recordings/dsas.ogv"
 
 [editor_plugins]
 
@@ -56,6 +64,10 @@ dungeon_layer=""
 battle_layer=""
 event_layer=""
 world_layer=""
+
+[gui]
+
+theme/custom_font="uid://c8q52n0ssb7w3"
 
 [input]
 
@@ -130,7 +142,7 @@ anti_aliasing/screen_space_roughness_limiter/enabled=false
 
 resolution={
 "type": "vec2",
-"value": Vector2(640, 360)
+"value": Vector2(640, 480)
 }
 color_depth={
 "type": "float",

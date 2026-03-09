@@ -28,6 +28,7 @@ func _ready() -> void:
 
 func _build_ui() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
+	GlobalTheme.apply(self)
 
 	# Full-screen dark backdrop
 	var bg := ColorRect.new()
@@ -42,7 +43,7 @@ func _build_ui() -> void:
 
 	# Top spacer
 	var top_space := Control.new()
-	top_space.custom_minimum_size = Vector2(0, 80)
+	top_space.custom_minimum_size = Vector2(0, 72)
 	outer.add_child(top_space)
 
 	# Prompt label
@@ -59,7 +60,7 @@ func _build_ui() -> void:
 	outer.add_child(prompt_div)
 
 	var spacer1 := Control.new()
-	spacer1.custom_minimum_size = Vector2(0, 40)
+	spacer1.custom_minimum_size = Vector2(0, 36)
 	outer.add_child(spacer1)
 
 	# Card row
@@ -75,7 +76,7 @@ func _build_ui() -> void:
 		_cards.append(card)
 
 	var spacer2 := Control.new()
-	spacer2.custom_minimum_size = Vector2(0, 48)
+	spacer2.custom_minimum_size = Vector2(0, 44)
 	outer.add_child(spacer2)
 
 	# Confirm button
@@ -85,7 +86,7 @@ func _build_ui() -> void:
 
 	_confirm_btn = Button.new()
 	_confirm_btn.text = "CONFIRM"
-	_confirm_btn.custom_minimum_size = Vector2(160, 44)
+	_confirm_btn.custom_minimum_size = Vector2(146, 40)
 	_confirm_btn.add_theme_font_size_override("font_size", 14)
 	_confirm_btn.add_theme_color_override("font_color", C_TEXT)
 	_confirm_btn.add_theme_color_override("font_hover_color", C_TEXT)
@@ -113,7 +114,7 @@ func _build_ui() -> void:
 
 func _make_card(char_data: CharacterData, idx: int) -> PanelContainer:
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(220, 320)
+	card.custom_minimum_size = Vector2(400, 492)
 
 	var normal_style := StyleBoxFlat.new()
 	normal_style.bg_color = Color(0.12, 0.10, 0.09, 1.0)
@@ -130,7 +131,7 @@ func _make_card(char_data: CharacterData, idx: int) -> PanelContainer:
 	var name_lbl := Label.new()
 	name_lbl.text = char_data.display_name.to_upper()
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_lbl.add_theme_font_size_override("font_size", 18)
+	name_lbl.add_theme_font_size_override("font_size", 20)
 	name_lbl.add_theme_color_override("font_color", C_TEXT)
 	inner.add_child(name_lbl)
 
@@ -156,26 +157,26 @@ func _make_card(char_data: CharacterData, idx: int) -> PanelContainer:
 		stats.add_child(row)
 		var key := Label.new()
 		key.text = sl[0]
-		key.custom_minimum_size = Vector2(70, 0)
-		key.add_theme_font_size_override("font_size", 11)
+		key.custom_minimum_size = Vector2(64, 0)
+		key.add_theme_font_size_override("font_size", 16)
 		key.add_theme_color_override("font_color", C_DIM)
 		row.add_child(key)
 		var val := Label.new()
 		val.text = sl[1]
-		val.add_theme_font_size_override("font_size", 11)
+		val.add_theme_font_size_override("font_size", 14)
 		val.add_theme_color_override("font_color", C_TEXT)
 		row.add_child(val)
 
 	var div2 := ColorRect.new()
 	div2.color = C_BORDER
-	div2.custom_minimum_size = Vector2(0, 1)
+	div2.custom_minimum_size = Vector2(0, 2)
 	inner.add_child(div2)
 
-	# Description placeholder
+	# Description
 	var desc := Label.new()
-	desc.text = ""
+	desc.text = char_data.description
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc.add_theme_font_size_override("font_size", 11)
+	desc.add_theme_font_size_override("font_size", 20)
 	desc.add_theme_color_override("font_color", C_DIM)
 	desc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	inner.add_child(desc)

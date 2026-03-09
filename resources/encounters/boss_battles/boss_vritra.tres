@@ -1,0 +1,41 @@
+[gd_resource type="Resource" script_class="EncounterData" format=3 uid="uid://ljaoqojvx8xf"]
+
+[ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://resources/characters/characterdata.gd" id="1_1bdla"]
+[ext_resource type="PackedScene" uid="uid://qythxyqix8sw" path="res://scenes/Maps/battle_field_test.tscn" id="1_cuhss"]
+[ext_resource type="Script" uid="uid://coeqyvqijtkns" path="res://resources/encounters/encounterdata.gd" id="2_05knp"]
+[ext_resource type="PackedScene" uid="uid://btqwkbg0gpxtt" path="res://scenes/Characters/battleactors/vritra_bactor.tscn" id="3_j6k45"]
+[ext_resource type="Resource" uid="uid://d3s71movk40pc" path="res://audio/tracks/magenta.tres" id="4_5ksbt"]
+[ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://resources/bodyparts/BodyPartData.gd" id="4_nja34"]
+[ext_resource type="Resource" uid="uid://c2hfbcmlpd3bi" path="res://resources/characters/enemies/empty_one.tres" id="5_5ksbt"]
+[ext_resource type="Script" uid="uid://divs34wkweat7" path="res://resources/encounters/dialogue_line.gd" id="6_mq8nr"]
+[ext_resource type="Resource" uid="uid://c8f0t2l2bx8wx" path="res://resources/dialogue/encounter lines/boss_lines/vritra_intro.tres" id="7_27hgn"]
+[ext_resource type="Script" uid="uid://cxogdp046hrx2" path="res://resources/encounters/encounter_dialogue.gd" id="8_54crs"]
+
+[sub_resource type="Resource" id="Resource_l3fpx"]
+script = ExtResource("4_nja34")
+part_name = "Skin"
+base_visible = true
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[sub_resource type="Resource" id="Resource_nja34"]
+script = ExtResource("1_1bdla")
+display_name = "Vritra"
+description = "An omnivorous serpent who hungers always for their next conflict; they relish in being spited, for little else do they have, are they capable in sharing with their fellow creature. You know them well, and they have seen the end of eternity alongside you. Their war with life is unending, and they wait for your hands alone to deliver their doom."
+base_max_hp = 40
+base_attack = 9
+base_max_will = 999
+tempo = 16
+body_parts = Array[ExtResource("4_nja34")]([SubResource("Resource_l3fpx")])
+battle_scene = ExtResource("3_j6k45")
+
+[sub_resource type="Resource" id="Resource_x5b4n"]
+script = ExtResource("8_54crs")
+lines = Array[ExtResource("6_mq8nr")]([ExtResource("7_27hgn")])
+metadata/_custom_type_script = "uid://cxogdp046hrx2"
+
+[resource]
+script = ExtResource("2_05knp")
+battlefield_scene = ExtResource("1_cuhss")
+enemies = Array[ExtResource("1_1bdla")]([SubResource("Resource_nja34"), ExtResource("5_5ksbt"), ExtResource("5_5ksbt")])
+intro_dialogue = SubResource("Resource_x5b4n")
+override_music = ExtResource("4_5ksbt")

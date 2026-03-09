@@ -8,34 +8,11 @@
 [ext_resource type="Script" uid="uid://b8hhnqsugykly" path="res://addons/phantom_camera/scripts/resources/camera_3d_resource.gd" id="9_58qkj"]
 [ext_resource type="Script" uid="uid://dy7nm6c7r8ulp" path="res://scenes/Events/BattleUI.gd" id="10_dg68v"]
 [ext_resource type="Script" uid="uid://qre1hxk7lxh4" path="res://scenes/Events/idle_orbit_pivot.gd" id="10_xhnwx"]
-[ext_resource type="Shader" uid="uid://cow4hovotygtk" path="res://scripts/Shaders/main.gdshader" id="11_26idg"]
 [ext_resource type="FontFile" uid="uid://c8q52n0ssb7w3" path="res://assets/Fonts/TerminalVector.ttf" id="11_xhnwx"]
 [ext_resource type="Script" uid="uid://r12gfink2342" path="res://scenes/Events/battle_hud.gd" id="12_26idg"]
-[ext_resource type="Shader" uid="uid://c7dhsbe1s7mgu" path="res://scripts/Shaders/post_processing.gdshader" id="12_xhnwx"]
-[ext_resource type="Shader" uid="uid://btm2rulspg8el" path="res://scripts/Shaders/battleglitch.gdshader" id="15_itxmc"]
+[ext_resource type="Shader" uid="uid://btm2rulspg8el" path="res://scripts/Shaders/battleglitch.gdshader" id="13_xhnwx"]
+[ext_resource type="Script" uid="uid://cyhiqc5tsl2mm" path="res://scenes/UI/battle_dialogue_box.gd" id="14_xhnwx"]
 [ext_resource type="PackedScene" uid="uid://cx2gw1tu0rxpi" path="res://scenes/Managers/audio_manager.tscn" id="16_hq6gs"]
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_ssq04"]
-render_priority = 0
-shader = ExtResource("11_26idg")
-shader_parameter/vision_mode = 0
-shader_parameter/flash_pos = Vector3(0, 0, 0)
-shader_parameter/flash_dir = Vector3(0, 0, -1)
-shader_parameter/flash_angle = 0.5
-shader_parameter/cone_range = 20.0
-shader_parameter/edge_softness = 0.01
-shader_parameter/hue_boost = 100.0
-shader_parameter/resonance_tolerance = 0.15
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_itxmc"]
-render_priority = 0
-next_pass = SubResource("ShaderMaterial_ssq04")
-shader = ExtResource("12_xhnwx")
-shader_parameter/dither_amount = 0.5
-
-[sub_resource type="QuadMesh" id="QuadMesh_hq6gs"]
-flip_faces = true
-size = Vector2(2, 2)
 
 [sub_resource type="Resource" id="Resource_26idg"]
 script = ExtResource("8_b48sr")
@@ -60,6 +37,16 @@ sky_material = SubResource("ProceduralSkyMaterial_wfe2u")
 background_mode = 2
 sky = SubResource("Sky_dg68v")
 
+[sub_resource type="StyleBoxLine" id="StyleBoxLine_xhnwx"]
+content_margin_left = 0.0
+content_margin_top = 4.0
+content_margin_right = 0.0
+content_margin_bottom = 4.0
+grow_begin = 0.0
+grow_end = 0.0
+thickness = 4
+vertical = true
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xhnwx"]
 content_margin_left = 15.0
 content_margin_top = 10.0
@@ -68,17 +55,11 @@ content_margin_bottom = 10.0
 bg_color = Color(0.07815654, 0.078156434, 0.07815645, 0.73333335)
 border_width_left = 4
 border_width_top = 4
-border_width_right = 4
-border_width_bottom = 4
 border_color = Color(0.0048998194, 0.00489983, 0.004899827, 1)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
 
 [sub_resource type="LabelSettings" id="LabelSettings_itxmc"]
 font = ExtResource("11_xhnwx")
-font_size = 24
+font_size = 22
 
 [sub_resource type="Gradient" id="Gradient_itxmc"]
 colors = PackedColorArray(1, 1, 1, 1, 0, 0, 0, 1)
@@ -94,7 +75,7 @@ gradient = SubResource("Gradient_hq6gs")
 
 [sub_resource type="LabelSettings" id="LabelSettings_hq6gs"]
 font = ExtResource("11_xhnwx")
-font_size = 26
+font_size = 24
 
 [sub_resource type="Theme" id="Theme_itxmc"]
 default_font = ExtResource("11_xhnwx")
@@ -119,25 +100,24 @@ content_margin_bottom = 4.0
 bg_color = Color(0.1, 0.1, 0.1, 0.6)
 border_width_left = 4
 border_width_top = 4
-border_width_right = 4
 border_width_bottom = 4
 border_color = Color(0.067437805, 0.06743773, 0.06743767, 1)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-corner_detail = 5
+expand_margin_left = 4.0
+expand_margin_top = 4.0
+expand_margin_bottom = 4.0
 
 [sub_resource type="Theme" id="Theme_xhnwx"]
 default_font = ExtResource("11_xhnwx")
-default_font_size = 21
+default_font_size = 19
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_hq6gs"]
-shader = ExtResource("15_itxmc")
+shader = ExtResource("13_xhnwx")
 shader_parameter/curvature = 5.60000008344672
 shader_parameter/vignette_multiplier = 0.20000000298024
 shader_parameter/ca_strength = 3.0000000447036
 shader_parameter/blur_strength = 0.10000000149012
+shader_parameter/brightness = 1.0
+shader_parameter/contrast = 1.0
 shader_parameter/channel_strength = Vector3(1, 1, 1)
 shader_parameter/glitch_intensity = 0.0
 shader_parameter/noise_strength = 0.0
@@ -145,8 +125,8 @@ shader_parameter/tear_intensity = 0.0
 shader_parameter/block_glitch = 0.0
 
 [sub_resource type="QuadMesh" id="QuadMesh_ohpiy"]
-size = Vector2(1400, 1050)
-center_offset = Vector3(700, 525, 0)
+size = Vector2(1280, 960)
+center_offset = Vector3(640, 480, 0)
 
 [node name="BattleScene" type="Node3D" unique_id=259883929]
 
@@ -168,12 +148,6 @@ script = ExtResource("10_xhnwx")
 
 [node name="IdleOrbiter" type="Node3D" parent="CameraRig/IdleOrbitPivot" unique_id=1216574263]
 transform = Transform3D(1, 0, 0, 0, 0.9999998, 0, 0, 0, 0.9999998, 0, 5.2470794, 5.168442)
-
-[node name="ScreenQuad" type="MeshInstance3D" parent="CameraRig" unique_id=48743744]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.4246502, 1.3194637, 5.2776985)
-material_override = SubResource("ShaderMaterial_itxmc")
-extra_cull_margin = 16384.0
-mesh = SubResource("QuadMesh_hq6gs")
 
 [node name="active_cam" type="Node3D" parent="CameraRig" unique_id=2025165075]
 transform = Transform3D(1, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, -1.3915569, 2.0777407, 3.37666)
@@ -212,16 +186,18 @@ metadata/_custom_type_script = "uid://csjccrhj5wnx7"
 environment = SubResource("Environment_b48sr")
 
 [node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=130250288]
-offset_right = 40.0
-offset_bottom = 40.0
+offset_right = 1280.0
+offset_bottom = 960.0
+theme_override_constants/separation = 0
+alignment = 1
 
 [node name="Left_Container" type="SubViewportContainer" parent="HBoxContainer" unique_id=1776021748]
 layout_mode = 2
-size_flags_horizontal = 3
+size_flags_horizontal = 2
 
 [node name="Left" type="SubViewport" parent="HBoxContainer/Left_Container" unique_id=1840474016]
 handle_input_locally = false
-size = Vector2i(700, 850)
+size = Vector2i(638, 760)
 size_2d_override_stretch = true
 render_target_update_mode = 4
 
@@ -234,12 +210,22 @@ process_priority = 300
 process_physics_priority = 300
 script = ExtResource("6_wfe2u")
 
+[node name="VBoxContainer" type="VBoxContainer" parent="HBoxContainer/Left_Container" unique_id=1888404380]
+layout_mode = 2
+
+[node name="VSeparator" type="VSeparator" parent="HBoxContainer" unique_id=1852598101]
+layout_mode = 2
+size_flags_horizontal = 2
+theme_override_constants/separation = 0
+theme_override_styles/separator = SubResource("StyleBoxLine_xhnwx")
+
 [node name="Right_Container" type="SubViewportContainer" parent="HBoxContainer" unique_id=1715034904]
 layout_mode = 2
+size_flags_horizontal = 10
 
 [node name="Right" type="SubViewport" parent="HBoxContainer/Right_Container" unique_id=249572341]
 handle_input_locally = false
-size = Vector2i(700, 1050)
+size = Vector2i(638, 960)
 render_target_update_mode = 4
 
 [node name="TargetCam" type="Camera3D" parent="HBoxContainer/Right_Container/Right" unique_id=30126024]
@@ -273,10 +259,10 @@ anchor_left = 1.0
 anchor_top = 0.5
 anchor_right = 1.0
 anchor_bottom = 0.5
-offset_left = -864.0
-offset_top = 213.0
-offset_right = -704.0
-offset_bottom = 322.0
+offset_left = -800.0
+offset_top = 170.0
+offset_right = -642.0
+offset_bottom = 280.0
 grow_horizontal = 0
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_xhnwx")
@@ -307,9 +293,10 @@ label_settings = SubResource("LabelSettings_hq6gs")
 anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
-offset_left = -250.0
-offset_right = 250.0
-offset_bottom = 120.0
+offset_left = -456.3125
+offset_top = -3.0
+offset_right = 456.3125
+offset_bottom = 136.0
 grow_horizontal = 2
 theme = SubResource("Theme_itxmc")
 theme_override_styles/panel = SubResource("StyleBoxFlat_hq6gs")
@@ -328,20 +315,25 @@ layout_mode = 2
 size_flags_horizontal = 3
 alignment = 2
 
+[node name="Audio Manager" parent="." unique_id=2102780936 instance=ExtResource("16_hq6gs")]
+
 [node name="BattleUI" type="CanvasLayer" parent="." unique_id=100288458]
 script = ExtResource("10_dg68v")
 
 [node name="Panel" type="Panel" parent="BattleUI" unique_id=650984837]
 anchors_preset = -1
-anchor_top = 0.81333333
+anchor_top = 0.790625
 anchor_right = 0.5007143
 anchor_bottom = 1.0
-offset_right = -1.0
-offset_bottom = 4.0
+offset_left = 4.0
+offset_top = 5.0
+offset_right = -2.9143066
+offset_bottom = -4.0
 grow_horizontal = 2
-grow_vertical = 2
+grow_vertical = 0
+size_flags_horizontal = 3
+size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_itxmc")
-metadata/_edit_use_anchors_ = true
 
 [node name="HBoxContainer" type="HBoxContainer" parent="BattleUI/Panel" unique_id=900893671]
 layout_mode = 1
@@ -376,8 +368,10 @@ text = "Confirm"
 layout_mode = 2
 text = "Back"
 
-[node name="MeshInstance2D" type="MeshInstance2D" parent="BattleUI" unique_id=319291248]
+[node name="MeshInstance2D" type="MeshInstance2D" parent="BattleUI" unique_id=1311925908]
+visible = false
 material = SubResource("ShaderMaterial_hq6gs")
 mesh = SubResource("QuadMesh_ohpiy")
 
-[node name="Audio Manager" parent="." unique_id=2102780936 instance=ExtResource("16_hq6gs")]
+[node name="DialogueLayer" type="CanvasLayer" parent="." unique_id=1724695061]
+script = ExtResource("14_xhnwx")

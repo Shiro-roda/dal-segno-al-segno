@@ -24,6 +24,7 @@ script = ExtResource("1_amtgv")
 [node name="CameraPivot" type="Node3D" parent="." unique_id=229720238]
 
 [node name="Camera3D" type="Camera3D" parent="CameraPivot" unique_id=1809252166]
+transform = Transform3D(1, 0, 0, 0, 0.64279, 0.76604, 0, -0.76604, 0.64279, 0, 18, 15)
 current = true
 
 [node name="PhantomCameraHost" type="Node" parent="CameraPivot/Camera3D" unique_id=1305866611]
@@ -34,8 +35,8 @@ script = ExtResource("2_8thfu")
 [node name="PhantomCamera3D" type="Node3D" parent="CameraPivot" unique_id=1386511273]
 transform = Transform3D(1, 0, 0, 0, 0.64279, 0.76604, 0, -0.76604, 0.64279, 0, 18, 15)
 script = ExtResource("3_wcoir")
-tween_resource = SubResource("Resource_ggc5a")
 priority = 1
+tween_resource = SubResource("Resource_ggc5a")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=54701972]
 transform = Transform3D(1, 0, 0, 0, 0.70711, -0.70711, 0, 0.70711, 0.70711, 0, 0, 0)

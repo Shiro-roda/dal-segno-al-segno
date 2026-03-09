@@ -5,6 +5,8 @@ uniform float curvature : hint_range(0.0, 10.0, 0.1) = 6.0;
 uniform float vignette_multiplier : hint_range(0.0, 10.0, 0.1) = 2.0;
 uniform float ca_strength : hint_range(0.0, 20.0, 0.1) = 2.5;
 uniform float blur_strength : hint_range(0.0, 3.0, 0.1) = 0.5;
+uniform float brightness : hint_range(0.0, 2.0, 0.01) = 1.0;
+uniform float contrast : hint_range(0.0, 2.0, 0.01) = 1.0;
 
 uniform vec3 channel_strength = vec3(1.0);
 
@@ -119,6 +121,10 @@ void fragment() {
 	vec3 final_color = (filtered * scanlines * cutoff_mask)
 		- vignette * vignette_dynamic;
 
+
+	// Brightness and contrast applied globally over the full screen
+	final_color = (final_color - 0.5) * contrast + 0.5;
+	final_color = clamp(final_color * brightness, 0.0, 1.0);
 
 	COLOR = vec4(final_color, 1.0);
 }

@@ -33,36 +33,47 @@ var _skill_list_vbox   : VBoxContainer
 var _skill_btns        : Array = []
 
 # Options page node refs
-var _master_slider : HSlider
-var _bgm_slider    : HSlider
-var _sfx_slider    : HSlider
+var _master_slider    : HSlider
+var _bgm_slider       : HSlider
+var _sfx_slider       : HSlider
+var _ca_slider        : HSlider
+var _brightness_slider : HSlider
+var _contrast_slider   : HSlider
+var _ssao_check       : CheckButton
+var _ssil_check       : CheckButton
+var _glow_check       : CheckButton
+# Last-applied settings — used to revert on menu close and detect dirty state
+var _committed : Dictionary = {}
+# Live-edited settings while the options page is open
+var _pending : Dictionary = {}
+# Reference to Apply button so we can grey it out
+var _apply_btn : Button
 
 # -----------------------------------------------------------------------
 # Skill descriptions - fill these in yourself.
 # Keys match skill "name" strings from each actor's get_skills().
 # -----------------------------------------------------------------------
 const SKILL_DESCRIPTIONS : Dictionary = {
-	"Shoot":        "",
-	"Pistol Whip":  "",
-	"Change Lens":  "",
-	"Augur":        "",
+	"Shoot":        "Blasphemous lethality lies in your hands. Take aim and dispel the fantasias that take refuge here.",
+	"Pistol Whip":  "Short of arms, yet not devoid of alternatives.",
+	"Change Lens":  "Strip away the layers of perception itself to expose your foe's most intimate and fragile disfigurements. \nUnderstand that the price of understanding may be more than you can afford.",
+	"Augur":        "Portentious signs only you can see are all around you, and your companions may benefit from your discernment. Grants dodge chance and heightened tempo to all allies.",
 	"Evade":        "",
-	"Rebuke":       "",
+	"Rebuke":       "Hue stymies the enemy with a chilling mist and admonishment.",
 	"Cling":        "",
-	"Calcify":      "",
-	"Shelter":      "",
+	"Calcify":      "Hue buries the foe in a glacial tomb, leaving them unable to act but guarded from harm.",
+	"Shelter":      "Hue shields a companion with a wall of ice.",
 	"Embrace":      "",
-	"Crucify":      "",
+	"Crucify":      "The zealot lunges forth to assail the enemy with a nail-adorned baton. \nHas a chance to perforate your foe's flesh, spilling their ichor for two turns.",
 	"Clobber":      "",
-	"Fulminate":    "",
-	"Galvanize":    "",
+	"Fulminate":    "The mountains quake before him, and the hills melt away.",
+	"Galvanize":    "Indra fills his comrades with the electric pride of leading the charge, restoring their will to fight and invigorating their attacks. Also grants you an additional bullet.",
 	"Martyr":       "",
-	"Vice":         "",
+	"Vice":         "Vritra envenoms the foe with worldly delights. Has a chance to transmutate the enemy's flesh into ambrosia, restoring vitality to allies who feast upon them.",
 	"Strangulate":  "",
-	"Devour":       "",
-	"Wither":       "",
+	"Devour":       "The serpent unfetters its yawning maw, and swallows their banquet whole. Strengthens Vritra permanently if the enemy is left without a trace.",
+	"Wither":       "Vritra inflicts the enemy with unbearable famine, lessening their strength and siphoning their vitality.",
 	"Waste":        "",
-	"Drain Ally":   "",
 }
 
 # -----------------------------------------------------------------------
@@ -76,10 +87,10 @@ const C_DIM       := Color(0.55, 0.50, 0.43, 1.0)    # muted label
 const C_TAB_ACT   := Color(0.72, 0.18, 0.18, 1.0)    # active tab = accent
 const C_TAB_INACT := Color(0.18, 0.15, 0.12, 1.0)    # inactive tab
 
-const W := 1400
-const H := 1050
-const MENU_W := 820
-const MENU_H := 560
+const W := 1280
+const H := 960
+const MENU_W := 920
+const MENU_H := 620
 
 # -----------------------------------------------------------------------
 func _ready() -> void:
@@ -100,7 +111,7 @@ func _ready() -> void:
 	ev_i.keycode = KEY_I
 	InputMap.action_add_event("open_menu", ev_i)
 
-	layer = 128   # above everything
+	layer = 127   # above everything
 	_build_ui()
 	hide_menu()
 
@@ -117,6 +128,36 @@ func _input(event: InputEvent) -> void:
 func show_menu() -> void:
 	_open = true
 	_root_panel.visible = true
+	# Seed _committed from live systems on first open (deferred so scene tree is ready)
+	if _committed.is_empty():
+		var master_bus := AudioServer.get_bus_index("Master")
+		var bgm_bus    := AudioServer.get_bus_index("BGM")
+		var sfx_bus    := AudioServer.get_bus_index("SFX")
+		var mat0 := _get_crt_mat()
+		var env0  := _get_env()
+		_committed = {
+			"master":     db_to_linear(AudioServer.get_bus_volume_db(master_bus)) if master_bus >= 0 else 1.0,
+			"bgm":        db_to_linear(AudioServer.get_bus_volume_db(bgm_bus))    if bgm_bus    >= 0 else 1.0,
+			"sfx":        db_to_linear(AudioServer.get_bus_volume_db(sfx_bus))    if sfx_bus    >= 0 else 1.0,
+			"ca":         _shader_param(mat0, "ca_strength", OPT_DEFAULTS.ca),
+			"brightness": _shader_param(mat0, "brightness",  OPT_DEFAULTS.brightness),
+			"contrast":   _shader_param(mat0, "contrast",    OPT_DEFAULTS.contrast),
+			"ssao": env0.ssao_enabled if env0 else false,
+			"ssil": env0.ssil_enabled if env0 else false,
+			"glow": env0.glow_enabled if env0 else false,
+		}
+	# Sync sliders and _pending to committed every time menu opens
+	_pending = _committed.duplicate()
+	if _master_slider:     _master_slider.set_value_no_signal(_committed.master)
+	if _bgm_slider:        _bgm_slider.set_value_no_signal(_committed.bgm)
+	if _sfx_slider:        _sfx_slider.set_value_no_signal(_committed.sfx)
+	if _ca_slider:         _ca_slider.set_value_no_signal(_committed.ca)
+	if _brightness_slider: _brightness_slider.set_value_no_signal(_committed.brightness)
+	if _contrast_slider:   _contrast_slider.set_value_no_signal(_committed.contrast)
+	if _ssao_check: _ssao_check.set_pressed_no_signal(_committed.ssao)
+	if _ssil_check: _ssil_check.set_pressed_no_signal(_committed.ssil)
+	if _glow_check: _glow_check.set_pressed_no_signal(_committed.glow)
+	_refresh_apply_btn()
 	_refresh_party()
 	_switch_tab(_active_tab)
 	emit_signal("menu_opened")
@@ -124,6 +165,21 @@ func show_menu() -> void:
 func hide_menu() -> void:
 	_open = false
 	_root_panel.visible = false
+	# Revert any uncommitted preview changes back to last applied state
+	if not _committed.is_empty():
+		_apply_options(_committed)
+		_pending = _committed.duplicate()
+		# Reset sliders/toggles to match committed values
+		if _master_slider:     _master_slider.set_value_no_signal(_committed.master)
+		if _bgm_slider:        _bgm_slider.set_value_no_signal(_committed.bgm)
+		if _sfx_slider:        _sfx_slider.set_value_no_signal(_committed.sfx)
+		if _ca_slider:         _ca_slider.set_value_no_signal(_committed.ca)
+		if _brightness_slider: _brightness_slider.set_value_no_signal(_committed.brightness)
+		if _contrast_slider:   _contrast_slider.set_value_no_signal(_committed.contrast)
+		if _ssao_check: _ssao_check.set_pressed_no_signal(_committed.ssao)
+		if _ssil_check: _ssil_check.set_pressed_no_signal(_committed.ssil)
+		if _glow_check: _glow_check.set_pressed_no_signal(_committed.glow)
+		_refresh_apply_btn(_pending)
 	emit_signal("menu_closed")
 
 # -----------------------------------------------------------------------
@@ -150,6 +206,7 @@ func _build_ui() -> void:
 	style.set_content_margin_all(0)
 	_root_panel.add_theme_stylebox_override("panel", style)
 	add_child(_root_panel)
+	GlobalTheme.apply(_root_panel)
 
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 0)
@@ -157,7 +214,7 @@ func _build_ui() -> void:
 
 	# --- Tab bar ---
 	_tab_bar = HBoxContainer.new()
-	_tab_bar.custom_minimum_size = Vector2(MENU_W, 36)
+	_tab_bar.custom_minimum_size = Vector2(MENU_W, 32)
 	_tab_bar.add_theme_constant_override("separation", 0)
 	vbox.add_child(_tab_bar)
 
@@ -165,7 +222,7 @@ func _build_ui() -> void:
 	for i in tab_names.size():
 		var btn := Button.new()
 		btn.text = tab_names[i]
-		btn.custom_minimum_size = Vector2(120, 36)
+		btn.custom_minimum_size = Vector2(110, 32)
 		btn.add_theme_font_size_override("font_size", 13)
 		btn.add_theme_color_override("font_color", C_TEXT)
 		btn.add_theme_color_override("font_focus_color", C_TEXT)
@@ -184,7 +241,7 @@ func _build_ui() -> void:
 
 	# --- Content area ---
 	var content := Control.new()
-	content.custom_minimum_size = Vector2(MENU_W, MENU_H - 38)
+	content.custom_minimum_size = Vector2(MENU_W, MENU_H - 34)
 	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.add_child(content)
 
@@ -212,6 +269,7 @@ func _build_ui() -> void:
 func _build_party_page() -> Control:
 	var page := ScrollContainer.new()
 	page.name = "PartyPage"
+	page.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 
 	var vbox := VBoxContainer.new()
 	vbox.name = "PartyVBox"
@@ -245,19 +303,20 @@ func _make_member_header() -> Control:
 	row.add_theme_constant_override("separation", 0)
 
 	var cols := [
-		["NAME",       200, HORIZONTAL_ALIGNMENT_LEFT],
+		["NAME",       190, HORIZONTAL_ALIGNMENT_LEFT],
+		["LV",          50, HORIZONTAL_ALIGNMENT_CENTER],
 		["HP",          90, HORIZONTAL_ALIGNMENT_CENTER],
 		["WILL / AMMO", 90, HORIZONTAL_ALIGNMENT_CENTER],
 		["ATK",         70, HORIZONTAL_ALIGNMENT_CENTER],
 		["TEMPO",       70, HORIZONTAL_ALIGNMENT_CENTER],
-		["STATUS",     260, HORIZONTAL_ALIGNMENT_LEFT],
+		["STATUS",     220, HORIZONTAL_ALIGNMENT_LEFT],
 	]
 
 	for c in cols:
 		var lbl := Label.new()
 		lbl.text = c[0]
 		lbl.custom_minimum_size = Vector2(c[1], 28)
-		lbl.add_theme_font_size_override("font_size", 10)
+		lbl.add_theme_font_size_override("font_size", 12)
 		lbl.add_theme_color_override("font_color", C_DIM)
 		lbl.horizontal_alignment = c[2]
 		lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
@@ -268,24 +327,29 @@ func _make_member_header() -> Control:
 
 
 func _make_member_row_placeholder() -> Control:
-	# A pre-built row with named labels we update in _refresh_party
+	# Outer VBox holds the stat row + a small description line
+	var outer_row := VBoxContainer.new()
+	outer_row.add_theme_constant_override("separation", 0)
+
 	var row := HBoxContainer.new()
-	row.custom_minimum_size = Vector2(0, 52)
+	row.custom_minimum_size = Vector2(0, 56)
 	row.add_theme_constant_override("separation", 0)
+	outer_row.add_child(row)
 
 	var cols := [
-		["name_lbl",   200, HORIZONTAL_ALIGNMENT_LEFT,   16, C_TEXT],
+		["name_lbl",   190, HORIZONTAL_ALIGNMENT_LEFT,   16, C_TEXT],
+		["level_lbl",   50, HORIZONTAL_ALIGNMENT_CENTER, 13, C_DIM],
 		["hp_lbl",      90, HORIZONTAL_ALIGNMENT_CENTER, 13, C_TEXT],
 		["will_lbl",    90, HORIZONTAL_ALIGNMENT_CENTER, 13, C_TEXT],
 		["atk_lbl",     70, HORIZONTAL_ALIGNMENT_CENTER, 13, C_TEXT],
 		["tempo_lbl",   70, HORIZONTAL_ALIGNMENT_CENTER, 13, C_TEXT],
-		["status_lbl", 260, HORIZONTAL_ALIGNMENT_LEFT,   11, C_DIM],
+		["status_lbl", 220, HORIZONTAL_ALIGNMENT_LEFT,   12, C_DIM],
 	]
 
 	for c in cols:
 		var lbl := Label.new()
 		lbl.name = c[0]
-		lbl.custom_minimum_size = Vector2(c[1], 52)
+		lbl.custom_minimum_size = Vector2(c[1], 56)
 		lbl.add_theme_font_size_override("font_size", c[3])
 		lbl.add_theme_color_override("font_color", c[4])
 		lbl.horizontal_alignment = c[2]
@@ -294,14 +358,24 @@ func _make_member_row_placeholder() -> Control:
 		var pad := _padded(lbl, 12, 0)
 		row.add_child(pad)
 
+	# Description line beneath stats
+	var desc_lbl := Label.new()
+	desc_lbl.name = "desc_lbl"
+	desc_lbl.text = ""
+	desc_lbl.add_theme_font_size_override("font_size", 12)
+	desc_lbl.add_theme_color_override("font_color", C_DIM)
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var desc_pad := _padded(desc_lbl, 24, 4)
+	outer_row.add_child(desc_pad)
+
 	# Bottom border
 	var sep := ColorRect.new()
 	sep.color = C_BORDER
 	sep.custom_minimum_size = Vector2(0, 1)
-	sep.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	row.add_child(sep)
+	outer_row.add_child(sep)
 
-	return row
+	return outer_row
 
 
 func _refresh_party() -> void:
@@ -323,7 +397,9 @@ func _refresh_party() -> void:
 		var max_hp := char_data.base_max_hp + m.bonus_max_hp
 		var dead := m.current_hp <= 0
 
-		_set_row_label(row, "name_lbl", char_data.display_name)
+		_set_row_label(row, "name_lbl",  char_data.display_name)
+		_set_row_label(row, "level_lbl", str(m.level))
+		_set_row_label(row, "desc_lbl",  char_data.description)
 		_set_row_label(row, "hp_lbl",   "%d / %d" % [m.current_hp, max_hp])
 		_set_row_label(row, "atk_lbl",  str(char_data.base_attack + m.bonus_attack))
 		_set_row_label(row, "tempo_lbl", str(char_data.tempo))
@@ -353,12 +429,9 @@ func _refresh_party() -> void:
 
 
 func _set_row_label(row: Control, lbl_name: String, value: String) -> void:
-	# Labels are wrapped in a margin container - find them by name recursively
-	for child in row.get_children():
-		var lbl := child.get_node_or_null(lbl_name)
-		if lbl:
-			lbl.text = value
-			return
+	var lbl := row.find_child(lbl_name, true, false)
+	if lbl:
+		lbl.text = value
 
 # -----------------------------------------------------------------------
 # SKILLS PAGE
@@ -373,7 +446,7 @@ func _build_skills_page() -> Control:
 
 	# --- Left: character + skill list ---
 	var left := ScrollContainer.new()
-	left.custom_minimum_size = Vector2(320, 0)
+	left.custom_minimum_size = Vector2(292, 0)
 	left.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	left.size_flags_vertical   = Control.SIZE_EXPAND_FILL
 	page.add_child(left)
@@ -407,7 +480,7 @@ func _build_skills_page() -> Control:
 	# Skill name
 	_skill_detail_name = Label.new()
 	_skill_detail_name.text = "Select a skill"
-	_skill_detail_name.add_theme_font_size_override("font_size", 20)
+	_skill_detail_name.add_theme_font_size_override("font_size", 18)
 	_skill_detail_name.add_theme_color_override("font_color", C_TEXT)
 	detail.add_child(_skill_detail_name)
 
@@ -462,7 +535,7 @@ func _populate_skill_list() -> void:
 			{"name": "Change Lens", "type": "SPECIAL", "cost": "2 Will (allies)"},
 		]},
 		{"character": "Hue", "skills": [
-			{"name": "Rebuke",  "type": "ATTACK",  "cost": "1 Will"},
+			{"name": "Rebuke",  "type": "ATTACK (AoE)",  "cost": "1 Will"},
 			{"name": "Cling",   "type": "ATTACK",  "cost": "Unwilling"},
 			{"name": "Shelter", "type": "SUPPORT", "cost": "2 Will"},
 			{"name": "Embrace", "type": "SUPPORT", "cost": "Unwilling"},
@@ -473,7 +546,7 @@ func _populate_skill_list() -> void:
 			{"name": "Clobber",   "type": "ATTACK",  "cost": "Unwilling"},
 			{"name": "Galvanize", "type": "SUPPORT", "cost": "2 Will"},
 			{"name": "Martyr",    "type": "SUPPORT", "cost": "Unwilling"},
-			{"name": "Fulminate", "type": "SPECIAL", "cost": "3 Will"},
+			{"name": "Fulminate", "type": "SPECIAL (AoE)", "cost": "3 Will"},
 		]},
 		{"character": "Vritra", "skills": [
 			{"name": "Vice",        "type": "ATTACK",  "cost": "1 Will"},
@@ -490,7 +563,7 @@ func _populate_skill_list() -> void:
 		char_lbl.text = entry["character"].to_upper()
 		char_lbl.add_theme_font_size_override("font_size", 10)
 		char_lbl.add_theme_color_override("font_color", C_DIM)
-		char_lbl.custom_minimum_size = Vector2(0, 28)
+		char_lbl.custom_minimum_size = Vector2(0, 24)
 		char_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		var char_pad := MarginContainer.new()
 		char_pad.add_theme_constant_override("margin_left", 16)
@@ -506,9 +579,9 @@ func _populate_skill_list() -> void:
 			var skill_data : Dictionary = skill
 			var btn := Button.new()
 			btn.text = skill["name"]
-			btn.custom_minimum_size = Vector2(0, 36)
+			btn.custom_minimum_size = Vector2(0, 32)
 			btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-			btn.add_theme_font_size_override("font_size", 13)
+			btn.add_theme_font_size_override("font_size", 12)
 			btn.add_theme_color_override("font_color", C_TEXT)
 			btn.add_theme_color_override("font_hover_color", C_TEXT)
 			btn.add_theme_color_override("font_pressed_color", C_TEXT)
@@ -546,6 +619,73 @@ func _show_skill_detail(skill: Dictionary) -> void:
 # -----------------------------------------------------------------------
 # OPTIONS PAGE
 # -----------------------------------------------------------------------
+# Defaults used by both _build_options_page and Apply
+const OPT_DEFAULTS := {
+	"master": 1.0, "bgm": 1.0, "sfx": 1.0,
+	"ca": 3.0, "brightness": 1.0, "contrast": 1.0,
+	"ssao": false, "ssil": false, "glow": false,
+}
+
+# Helper: read a shader parameter, falling back to a default if null/missing
+func _shader_param(mat: ShaderMaterial, key: String, default_val: Variant) -> Variant:
+	if mat == null: return default_val
+	var v = mat.get_shader_parameter(key)
+	return v if v != null else default_val
+
+# Helper: get the battleglitch ShaderMaterial from GameRoot/TVOverlay/MeshInstance2D
+# This canvas_item shader runs over everything: world, battle, and UI
+func _get_crt_mat() -> ShaderMaterial:
+	var mesh := get_tree().root.get_node_or_null("GameRoot/TVOverlay/MeshInstance2D") as MeshInstance2D
+	return mesh.material as ShaderMaterial if (mesh and mesh.material) else null
+
+# Helper: get live Environment — checks battle scene, dungeon, and world scene
+func _get_env() -> Environment:
+	var candidates := [
+		"GameRoot/BattleLayer/BattleScene/WorldEnvironment",
+		"GameRoot/DungeonMap3D/WorldEnvironment",
+		"White_Test/Main/Level/WorldEnvironment",
+	]
+	for path in candidates:
+		var node := get_tree().root.get_node_or_null(path)
+		if node and node.environment:
+			return node.environment
+	return null
+
+# Update Apply button appearance based on whether pending differs from committed
+func _refresh_apply_btn(_p: Dictionary = {}) -> void:
+	if _apply_btn == null: return
+	var dirty := (_pending != _committed)
+	_apply_btn.disabled = not dirty
+	_apply_btn.modulate = Color(1, 1, 1, 1.0) if dirty else Color(1, 1, 1, 0.4)
+
+# Commit a settings dict to all live systems
+func _apply_options(s: Dictionary) -> void:
+	var master_bus := AudioServer.get_bus_index("Master")
+	var bgm_bus    := AudioServer.get_bus_index("BGM")
+	var sfx_bus    := AudioServer.get_bus_index("SFX")
+	for pair in [[master_bus, s.master], [bgm_bus, s.bgm], [sfx_bus, s.sfx]]:
+		var bus : int = pair[0]
+		var v   : float = pair[1]
+		if bus >= 0:
+			AudioServer.set_bus_volume_db(bus, linear_to_db(v) if v > 0.0 else -80.0)
+	var mat := _get_crt_mat()
+	if mat:
+		mat.set_shader_parameter("ca_strength", s.ca)
+		mat.set_shader_parameter("brightness",  s.brightness)
+		mat.set_shader_parameter("contrast",    s.contrast)
+	# Apply to all active environments (battle + dungeon may both exist)
+	var env_paths := [
+		"GameRoot/BattleLayer/BattleScene/WorldEnvironment",
+		"GameRoot/DungeonMap3D/WorldEnvironment",
+		"White_Test/Main/Level/WorldEnvironment",
+	]
+	for ep in env_paths:
+		var enode := get_tree().root.get_node_or_null(ep)
+		if enode and enode.environment:
+			enode.environment.ssao_enabled = s.ssao
+			enode.environment.ssil_enabled = s.ssil
+			enode.environment.glow_enabled = s.glow
+
 func _build_options_page() -> Control:
 	var page := VBoxContainer.new()
 	page.name = "OptionsPage"
@@ -564,6 +704,10 @@ func _build_options_page() -> Control:
 	inner.add_theme_constant_override("separation", 24)
 	pad.add_child(inner)
 
+	# _pending starts as OPT_DEFAULTS at build time; resynced in show_menu once live systems are ready
+	if _pending.is_empty():
+		_pending = OPT_DEFAULTS.duplicate()
+
 	# Section label
 	var sec_lbl := Label.new()
 	sec_lbl.text = "AUDIO"
@@ -576,23 +720,17 @@ func _build_options_page() -> Control:
 	audio_div.custom_minimum_size = Vector2(0, 1)
 	inner.add_child(audio_div)
 
-	# Sliders
-	var master_bus := AudioServer.get_bus_index("Master")
-	var bgm_bus    := AudioServer.get_bus_index("BGM")
-	var sfx_bus    := AudioServer.get_bus_index("SFX")
-
 	var slider_data := [
-		["MASTER VOLUME", master_bus],
-		["MUSIC VOLUME",  bgm_bus],
-		["SFX VOLUME",    sfx_bus],
+		["MASTER VOLUME", "master", _pending.master],
+		["MUSIC VOLUME",  "bgm",    _pending.bgm],
+		["SFX VOLUME",    "sfx",    _pending.sfx],
 	]
 
 	var slider_refs := []
 	for entry in slider_data:
 		var label_text : String = entry[0]
-		var bus_idx : int = entry[1]
-		var current_db := AudioServer.get_bus_volume_db(bus_idx) if bus_idx >= 0 else 0.0
-		var current_pct := db_to_linear(current_db)
+		var pkey       : String = entry[1]
+		var cur        : float  = float(entry[2])
 
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 16)
@@ -608,15 +746,11 @@ func _build_options_page() -> Control:
 
 		var slider := HSlider.new()
 		slider.min_value = 0.0
-		slider.max_value = 1.0
+		slider.max_value = 2.0  # 1.0 = 100%, slider midpoint
 		slider.step      = 0.01
-		slider.value     = clampf(current_pct, 0.0, 1.0)
+		slider.value     = clampf(cur, 0.0, 2.0)
 		slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var b := bus_idx
-		slider.value_changed.connect(func(v: float):
-			if b >= 0:
-				AudioServer.set_bus_volume_db(b, linear_to_db(v) if v > 0.0 else -80.0)
-		)
+		var k := pkey
 		row.add_child(slider)
 
 		var val_lbl := Label.new()
@@ -625,12 +759,14 @@ func _build_options_page() -> Control:
 		val_lbl.add_theme_color_override("font_color", C_DIM)
 		val_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		val_lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
-		val_lbl.text = "%d%%" % int(current_pct * 100)
+		val_lbl.text = "%d%%" % int(cur * 100)
 		row.add_child(val_lbl)
 
-		# Keep val_lbl synced
 		slider.value_changed.connect(func(v: float):
+			_pending[k] = v
 			val_lbl.text = "%d%%" % int(v * 100)
+			_apply_options(_pending)
+			_refresh_apply_btn(_pending)
 		)
 
 		slider_refs.append(slider)
@@ -640,10 +776,245 @@ func _build_options_page() -> Control:
 		_bgm_slider    = slider_refs[1]
 		_sfx_slider    = slider_refs[2]
 
+	# --- DISPLAY section ---
+	var disp_lbl := Label.new()
+	disp_lbl.text = "DISPLAY"
+	disp_lbl.add_theme_font_size_override("font_size", 10)
+	disp_lbl.add_theme_color_override("font_color", C_DIM)
+	inner.add_child(disp_lbl)
+
+	var disp_div := ColorRect.new()
+	disp_div.color = C_BORDER
+	disp_div.custom_minimum_size = Vector2(0, 1)
+	inner.add_child(disp_div)
+
+	# Chromatic aberration slider
+	var ca_default: float = _pending.ca
+
+	var ca_row := HBoxContainer.new()
+	ca_row.add_theme_constant_override("separation", 16)
+	inner.add_child(ca_row)
+
+	var ca_label := Label.new()
+	ca_label.text = "CHROMATIC ABERRATION"
+	ca_label.custom_minimum_size = Vector2(180, 0)
+	ca_label.add_theme_font_size_override("font_size", 13)
+	ca_label.add_theme_color_override("font_color", C_TEXT)
+	ca_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	ca_row.add_child(ca_label)
+
+	_ca_slider = HSlider.new()
+	_ca_slider.min_value = 0.0
+	_ca_slider.max_value = 10.0
+	_ca_slider.step      = 0.1
+	_ca_slider.value     = ca_default
+	_ca_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ca_row.add_child(_ca_slider)
+
+	var ca_val_lbl := Label.new()
+	ca_val_lbl.custom_minimum_size = Vector2(42, 0)
+	ca_val_lbl.add_theme_font_size_override("font_size", 12)
+	ca_val_lbl.add_theme_color_override("font_color", C_DIM)
+	ca_val_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	ca_val_lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+	ca_val_lbl.text = "%.1f" % ca_default
+	ca_row.add_child(ca_val_lbl)
+
+	_ca_slider.value_changed.connect(func(v: float):
+		_pending.ca = v
+		ca_val_lbl.text = "%.1f" % v
+		_apply_options(_pending)
+		_refresh_apply_btn(_pending)
+	)
+
+	# --- Brightness slider ---
+	var bright_default: float = _pending.brightness
+
+	var bright_row := HBoxContainer.new()
+	bright_row.add_theme_constant_override("separation", 16)
+	inner.add_child(bright_row)
+
+	var bright_lbl := Label.new()
+	bright_lbl.text = "BRIGHTNESS"
+	bright_lbl.custom_minimum_size = Vector2(180, 0)
+	bright_lbl.add_theme_font_size_override("font_size", 13)
+	bright_lbl.add_theme_color_override("font_color", C_TEXT)
+	bright_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	bright_row.add_child(bright_lbl)
+
+	_brightness_slider = HSlider.new()
+	_brightness_slider.min_value = 0.5
+	_brightness_slider.max_value = 2.0
+	_brightness_slider.step      = 0.01
+	_brightness_slider.value     = bright_default
+	_brightness_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bright_row.add_child(_brightness_slider)
+
+	var bright_val := Label.new()
+	bright_val.custom_minimum_size = Vector2(42, 0)
+	bright_val.add_theme_font_size_override("font_size", 12)
+	bright_val.add_theme_color_override("font_color", C_DIM)
+	bright_val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	bright_val.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+	bright_val.text = "%.2f" % bright_default
+	bright_row.add_child(bright_val)
+
+	_brightness_slider.value_changed.connect(func(v: float):
+		_pending.brightness = v
+		bright_val.text = "%.2f" % v
+		_apply_options(_pending)
+		_refresh_apply_btn(_pending)
+	)
+
+	# --- Contrast slider ---
+	var contrast_default: float = _pending.contrast
+
+	var contrast_row := HBoxContainer.new()
+	contrast_row.add_theme_constant_override("separation", 16)
+	inner.add_child(contrast_row)
+
+	var contrast_lbl := Label.new()
+	contrast_lbl.text = "CONTRAST"
+	contrast_lbl.custom_minimum_size = Vector2(180, 0)
+	contrast_lbl.add_theme_font_size_override("font_size", 13)
+	contrast_lbl.add_theme_color_override("font_color", C_TEXT)
+	contrast_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	contrast_row.add_child(contrast_lbl)
+
+	_contrast_slider = HSlider.new()
+	_contrast_slider.min_value = 0.5
+	_contrast_slider.max_value = 2.0
+	_contrast_slider.step      = 0.01
+	_contrast_slider.value     = contrast_default
+	_contrast_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	contrast_row.add_child(_contrast_slider)
+
+	var contrast_val := Label.new()
+	contrast_val.custom_minimum_size = Vector2(42, 0)
+	contrast_val.add_theme_font_size_override("font_size", 12)
+	contrast_val.add_theme_color_override("font_color", C_DIM)
+	contrast_val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	contrast_val.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+	contrast_val.text = "%.2f" % contrast_default
+	contrast_row.add_child(contrast_val)
+
+	_contrast_slider.value_changed.connect(func(v: float):
+		_pending.contrast = v
+		contrast_val.text = "%.2f" % v
+		_apply_options(_pending)
+		_refresh_apply_btn(_pending)
+	)
+
+	# --- Rendering toggles section header ---
+	var render_lbl := Label.new()
+	render_lbl.text = "RENDERING"
+	render_lbl.add_theme_font_size_override("font_size", 10)
+	render_lbl.add_theme_color_override("font_color", C_DIM)
+	inner.add_child(render_lbl)
+
+	var render_div := ColorRect.new()
+	render_div.color = C_BORDER
+	render_div.custom_minimum_size = Vector2(0, 1)
+	inner.add_child(render_div)
+
+	# Helper to build a toggle row
+	var _make_toggle := func(label_text: String, current: bool) -> CheckButton:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 16)
+		inner.add_child(row)
+		var lbl := Label.new()
+		lbl.text = label_text
+		lbl.custom_minimum_size = Vector2(180, 0)
+		lbl.add_theme_font_size_override("font_size", 13)
+		lbl.add_theme_color_override("font_color", C_TEXT)
+		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		row.add_child(lbl)
+		var check := CheckButton.new()
+		check.button_pressed = current
+		check.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(check)
+		return check
+
+	_ssao_check = _make_toggle.call("SSAO", _pending.ssao)
+	_ssil_check = _make_toggle.call("SSIL", _pending.ssil)
+	_glow_check = _make_toggle.call("GLOW", _pending.glow)
+
+	_ssao_check.toggled.connect(func(on: bool): _pending.ssao = on; _apply_options(_pending); _refresh_apply_btn(_pending))
+	_ssil_check.toggled.connect(func(on: bool): _pending.ssil = on; _apply_options(_pending); _refresh_apply_btn(_pending))
+	_glow_check.toggled.connect(func(on: bool): _pending.glow = on; _apply_options(_pending); _refresh_apply_btn(_pending))
+
 	# Spacer
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	inner.add_child(spacer)
+
+	# --- Apply / Restore Defaults buttons ---
+	var btn_row := HBoxContainer.new()
+	btn_row.add_theme_constant_override("separation", 12)
+	inner.add_child(btn_row)
+
+	var btn_spacer := Control.new()
+	btn_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn_row.add_child(btn_spacer)
+
+	var _make_btn := func(label: String) -> Button:
+		var btn := Button.new()
+		btn.text = label
+		btn.add_theme_font_size_override("font_size", 12)
+		var sbox := StyleBoxFlat.new()
+		sbox.bg_color = C_TAB_INACT
+		sbox.border_color = C_BORDER
+		sbox.set_border_width_all(1)
+		sbox.set_content_margin_all(8)
+		btn.add_theme_stylebox_override("normal", sbox)
+		var sbox_hov := sbox.duplicate()
+		sbox_hov.bg_color = C_TAB_ACT
+		sbox_hov.border_color = C_ACCENT
+		btn.add_theme_stylebox_override("hover", sbox_hov)
+		btn.add_theme_stylebox_override("pressed", sbox_hov)
+		btn.add_theme_stylebox_override("focus", sbox)
+		return btn
+
+	var defaults_btn: Variant = _make_btn.call("RESTORE DEFAULTS")
+	btn_row.add_child(defaults_btn)
+
+	_apply_btn = _make_btn.call("APPLY") as Button
+	var sbox_apply := StyleBoxFlat.new()
+	sbox_apply.bg_color = C_ACCENT
+	sbox_apply.border_color = C_ACCENT
+	sbox_apply.set_border_width_all(1)
+	sbox_apply.set_content_margin_all(8)
+	_apply_btn.add_theme_stylebox_override("normal", sbox_apply)
+	_apply_btn.add_theme_stylebox_override("hover", sbox_apply)
+	_apply_btn.add_theme_stylebox_override("pressed", sbox_apply)
+	_apply_btn.add_theme_stylebox_override("focus", sbox_apply)
+	btn_row.add_child(_apply_btn)
+
+	# Apply: save _pending as committed
+	_apply_btn.pressed.connect(func():
+		_committed = _pending.duplicate()
+		_refresh_apply_btn(_pending)
+	)
+
+	# Restore Defaults: reset controls and _pending to OPT_DEFAULTS, preview live
+	defaults_btn.pressed.connect(func():
+		for k in OPT_DEFAULTS:
+			_pending[k] = OPT_DEFAULTS[k]
+		if _master_slider:     _master_slider.set_value_no_signal(OPT_DEFAULTS.master)
+		if _bgm_slider:        _bgm_slider.set_value_no_signal(OPT_DEFAULTS.bgm)
+		if _sfx_slider:        _sfx_slider.set_value_no_signal(OPT_DEFAULTS.sfx)
+		if _ca_slider:         _ca_slider.set_value_no_signal(OPT_DEFAULTS.ca)
+		if _brightness_slider: _brightness_slider.set_value_no_signal(OPT_DEFAULTS.brightness)
+		if _contrast_slider:   _contrast_slider.set_value_no_signal(OPT_DEFAULTS.contrast)
+		if _ssao_check: _ssao_check.set_pressed_no_signal(OPT_DEFAULTS.ssao)
+		if _ssil_check: _ssil_check.set_pressed_no_signal(OPT_DEFAULTS.ssil)
+		if _glow_check: _glow_check.set_pressed_no_signal(OPT_DEFAULTS.glow)
+		_apply_options(_pending)
+		_refresh_apply_btn(_pending)
+	)
+
+	# Set initial Apply button state
+	_refresh_apply_btn(_pending)
 
 	# Close hint
 	var hint := Label.new()
