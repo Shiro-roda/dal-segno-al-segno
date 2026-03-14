@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://f74jgjm6lh34"]
+
+[ext_resource type="Script" uid="uid://386i583xxq24" path="res://scripts/UI/battle_radial_ui.gd" id="1_5twjn"]
+
+[node name="BattleRadialUI" type="Control" unique_id=1011815465]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_5twjn")

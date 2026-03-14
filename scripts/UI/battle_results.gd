@@ -65,7 +65,7 @@ func _build_ui() -> void:
 	table.add_theme_constant_override("separation", 8)
 	vbox.add_child(table)
 
-	table.add_child(_make_row(["NAME", "HP"], [C_DIM, C_DIM], 12, true))
+	table.add_child(_make_row(["NAME", "CORP"], [C_DIM, C_DIM], 12, true))
 
 	for m_raw in _party:
 		var m := m_raw as PartyMemberData

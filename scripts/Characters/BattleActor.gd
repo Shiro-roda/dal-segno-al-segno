@@ -16,11 +16,20 @@ const STATUS_LEECHED  = "leeched"  # heals attacker on hit
 const STATUS_DODGING  = "dodging"  # chance to dodge incoming attacks
 const STATUS_SHIELD   = "shield"   # has temporary HP buffer
 const STATUS_COVERED  = "covered"  # damage redirected to another actor
+const STATUS_LIFESTEAL = "lifesteal"
+const STATUS_MALICE = "malice"
+const STATUS_MARTYR = "martyr"
+
+
+
 
 const DODGE_CHANCE          = 0.5
 const STRUGGLE_MISS_CHANCE  = 0.35
 const STRUGGLE_SELF_CHANCE  = 0.25
 const SLOW_TEMPO_MULT       = 0.4  # slowed actors gain 40% of normal tempo
+const LIFESTEAL_RATIO = 0.5
+const WITHER_DRAIN_CHANCE = 0.6
+
 
 # Active effects: Array of {id, duration} dictionaries
 var active_effects : Array = []
@@ -42,10 +51,18 @@ var tempo_pool : float = 0.0          # accumulated tempo
 var tempo_bonus : float = 0.0         # temporary flat bonus (e.g. from Evade/Augur)
 var cover_source : BattleActor = null # actor absorbing damage on our behalf
 var shield_hp : int = 0               # temporary HP from Shelter
+var malice_source : BattleActor = null
+var martyr_bonus_damage : int = 0
+var martyr_tempo_bonus : float = 0.0
+
+
 
 func _ready():
 	print(hp)
 	add_to_group("battle_actor")
+	var panel = find_child("WorldSpacePanel", true, false)
+	if panel and panel.has_method("setup"):
+		panel.setup(self)
 
 
 func take_turn(target: BattleActor, part: BodyPartData = null) -> void:
@@ -53,6 +70,8 @@ func take_turn(target: BattleActor, part: BodyPartData = null) -> void:
 	if not is_inside_tree():
 		return
 	tick_status_effects()
+	# Encasement breaks the moment the actor takes a turn.
+	active_effects = active_effects.filter(func(e): return e["id"] != "encased")
 	if not is_alive() or not is_inside_tree():
 		emit_signal("turn_finished")
 		return
@@ -97,12 +116,17 @@ func attack_part(target: BattleActor, part: BodyPartData) -> void:
 
 
 func take_damage(amount: int, attacker: BattleActor = null) -> void:
+	if has_status("encased"):
+		amount = int(amount * 0.6)
 	if has_status(STATUS_DODGING) and randf() < DODGE_CHANCE:
 		log_msg("%s dodges!" % name)
 		return
 	# Cover redirect: another actor is absorbing damage for us
 	if cover_source != null and cover_source.is_alive() and cover_source != attacker:
-		cover_source.take_damage(int(amount * 0.85), attacker)  # 15% reduction
+		amount *= 0.65
+		cover_source.take_damage(int(amount), attacker)  # 15% reduction
+		cover_source.party_member.will += int(amount)
+		log_msg("Hue takes the blow for %s." % [name])
 		return
 	# Shield: absorb with temporary HP first
 	if shield_hp > 0:
@@ -118,7 +142,35 @@ func take_damage(amount: int, attacker: BattleActor = null) -> void:
 			active_effects = active_effects.filter(func(e): return e["id"] != STATUS_SHIELD)
 	hp -= amount
 	emit_signal("hp_changed")
-	log_msg("%s takes %d damage. (%d HP)" % [name, amount, max(0, hp)])
+	log_msg("%s takes %d damage. (%d CORP)" % [name, amount, max(0, hp)])
+		# Martyr pain conversion
+	if has_status(STATUS_MARTYR):
+
+		var stored = int(amount * 0.5)
+
+		martyr_bonus_damage += stored
+
+		log_msg("%s drinks deeply from the cup of wrath. (+%d stored damage)" % [name, stored])
+
+		# Malice counter
+	if has_status(STATUS_MALICE) and attacker != null and is_alive():
+		var counter_damage = max(1, attack_power)
+
+		log_msg("%s returns the blow." % name)
+		
+		await get_tree().create_timer(0.15).timeout
+		await play_attack_animation(attacker, 1.0, 1.0, counter_damage)
+
+		# Reward Vritra
+		if malice_source != null and malice_source.party_member:
+			var will_gain = max(1, int(counter_damage * 0.5))
+			malice_source.party_member.restore_will(will_gain)
+
+			malice_source.log_msg(
+				"%s feeds on the spite — restores %d AP."
+				% [malice_source.name, will_gain]
+			)
+
 
 	# Leech: any attacker hitting a leeched target regains HP.
 	# on_leech_proc also fires so characters like Vritra can restore will on top.
@@ -126,14 +178,15 @@ func take_damage(amount: int, attacker: BattleActor = null) -> void:
 		var heal = max(1, amount / 2)
 		attacker.hp = min(attacker.hp + heal, attacker.max_hp)
 		attacker.emit_signal("hp_changed")
-		log_msg("%s leeches %d HP from %s." % [attacker.name, heal, name])
+		log_msg("%s leeches %d CORP from %s." % [attacker.name, heal, name])
 		attacker.on_leech_proc(heal)
 
 	if hp <= 0:
 		hp = 0
 		log_msg("%s has fallen." % name)
 		emit_signal("died", self)
-		queue_free()
+		# Do NOT queue_free here — manager handles cleanup in _on_actor_died
+		# so that any in-progress coroutines don't access freed nodes
 
 func is_alive() -> bool:
 	return hp > 0
@@ -185,6 +238,9 @@ func has_status(effect_id: String) -> bool:
 func tick_status_effects() -> void:
 	var to_remove := []
 	for effect in active_effects:
+		# "encased" has no duration -- it persists until cleared by take_turn.
+		if effect["id"] == "encased":
+			continue
 		match effect["id"]:
 			STATUS_BLEEDING:
 				var bleed_dmg = max(1, max_hp / 10)
@@ -197,6 +253,9 @@ func tick_status_effects() -> void:
 	# Clear cover reference if STATUS_COVERED expired
 	if not has_status(STATUS_COVERED):
 		cover_source = null
+	if not has_status(STATUS_MALICE):
+		malice_source = null
+
 
 # Called each round by battle_manager before picking the next actor.
 # Adds tempo based on stat, modified by slow/freeze.
@@ -208,7 +267,13 @@ func tick_tempo() -> void:
 		gain *= SLOW_TEMPO_MULT
 	# Small jitter breaks ties between equal-stat actors without distorting the scale.
 	# Full gain is deterministic; randf_range adds at most +/-5% of one stat point.
-	tempo_pool += gain + randf_range(-0.5, 0.5) + tempo_bonus
+	var martyr_bonus := 0.0
+
+	if has_status(STATUS_MARTYR):
+		martyr_bonus = martyr_tempo_bonus
+
+	tempo_pool += gain + randf_range(-0.5, 0.5) + tempo_bonus + martyr_bonus
+
 
 func reset_tempo_bonus() -> void:
 	tempo_bonus = 0.0
@@ -400,7 +465,37 @@ func play_attack_animation(target: BattleActor, player_mult, enemy_mult, damage 
 	
 	manager.screen_shake(self, target, impact_dir, player_mult, enemy_mult)
 
-	
+
+	if is_instance_valid(target) and is_inside_tree():
+		if target.is_alive():
+			
+			var final_damage = damage
+
+			if has_status(STATUS_MARTYR) and martyr_bonus_damage > 0:
+
+				
+
+				final_damage += martyr_bonus_damage
+
+				martyr_bonus_damage = 0
+
+			# Lifesteal buff (Vice)
+			if has_status(STATUS_LIFESTEAL):
+				target.take_damage(damage * (1 - LIFESTEAL_RATIO), self)
+				var heal = max(1, int(damage * LIFESTEAL_RATIO))
+				hp = min(hp + heal, max_hp)
+				log_msg("%s drinks %d CORP from the wound." % [name, heal])
+				if has_status(STATUS_MARTYR):
+					martyr_bonus_damage = max(0, martyr_bonus_damage - heal)
+					log_msg("The cup passes from Indra. (-%d damage)" % [heal])
+				emit_signal("hp_changed")
+
+				
+			else:
+				if has_status(STATUS_MARTYR) and martyr_bonus_damage > 0:
+					log_msg("%s pours out the cup of wrath. (+%d damage)" % [name, martyr_bonus_damage])
+				target.take_damage(final_damage, self)
+
 
 	
 
@@ -415,11 +510,13 @@ func play_attack_animation(target: BattleActor, player_mult, enemy_mult, damage 
 	# Guard: target or self may have been freed if battle ended mid-animation
 	if not is_instance_valid(target) or not is_inside_tree():
 		return
-	if target.is_alive():
-		target.take_damage(damage, self)
 	if perishing and is_inside_tree():
 		print("You saw something you shouldn't have.")
 		emit_signal("turn_finished")
+		if damage >= hp:
+			log_msg("%s understood the price all too well." % [name])
+		else:
+			log_msg("%s underestimated the price of understanding." % [name])
 		take_damage(damage)
 		perishing = false
 

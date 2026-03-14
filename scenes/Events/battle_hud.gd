@@ -1,34 +1,30 @@
 extends CanvasLayer
 class_name BattleHUD
 
-@onready var player_container = $PlayerPanels
+@onready var player_container: HBoxContainer = $"Player Status/PlayerContainer"
 @onready var target_info = $TargetInfo/TargetInfoBox
-@onready var _queue_panel: PanelContainer = $TurnQueue
 @onready var _queue_vbox: VBoxContainer = $BattleLog/HBoxContainer/TurnQueue
 @onready var vbox: VBoxContainer = $BattleLog/HBoxContainer/Log
 
 
 const ACTOR_PANEL = preload("res://scenes/UI/actor_panel.tscn")
 
-const LOG_MAX_LINES      = 5
+const LOG_MAX_LINES      = 6
 const LOG_FADE_DURATION  = 0.4   # seconds each log entry fades in
 const LOG_LINE_SPACING   = 6     # extra pixels between log entries
-const CHATTER_DURATION        = 3.0    # seconds a chatter line stays visible after typing
-const CHATTER_CHARS_PER_SEC   = 32.0   # typewriter speed for chatter
-const CHATTER_INTERLACE_PEAK  = 3.5    # max interlace jitter in pixels on arrival
-const CHATTER_INTERLACE_DECAY = 1.2    # seconds to decay jitter to zero
-const QUEUE_STEPS = 8                  # how many acts ahead to project
+const CHATTER_DURATION = 2.6   # seconds a chatter line stays visible
+const QUEUE_STEPS = 6                  # how many acts ahead to project
 
 var player_panels := {}
 var enemy_panels := {}
 
 # Log node refs - created at runtime if not found in scene
-var _log_panel     : PanelContainer
-var _log_label     : RichTextLabel  # kept for compatibility, unused after refactor
-var _log_vbox      : VBoxContainer
-var _chatter_label : RichTextLabel  # RichTextLabel so visible_characters works
-var _chatter_mat   : ShaderMaterial  # flicker_text_2d with interlace_jitter
-var _log_lines     : Array = []
+var _log_panel      : PanelContainer
+var _log_label      : RichTextLabel
+var _log_vbox       : VBoxContainer
+var _chatter_label  : Label
+var _chatter_mat    : ShaderMaterial
+var _log_lines      : Array = []
 
 # Turn order queue strip
 var _queue_labels : Array = []
@@ -42,44 +38,31 @@ func _ready_log() -> void:
 	# Only build once - guard against multiple setup() calls
 	if _log_vbox != null:
 		return
-
-	# Find or create the panel
-	_log_panel = get_node_or_null("BattleLog")
-	if _log_panel == null:
-		_log_panel = PanelContainer.new()
-		_log_panel.name = "BattleLog"
-		add_child(_log_panel)
-
-
-
+	# vbox is already in the scene ($BattleLog/HBoxContainer/Log); just configure it
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.size_flags_vertical   = Control.SIZE_EXPAND_FILL
-	_log_panel.add_child(vbox)
 
-	_chatter_label = RichTextLabel.new()
+	_chatter_label = Label.new()
 	_chatter_label.name = "ChatterLabel"
-	_chatter_label.bbcode_enabled = false
-	_chatter_label.scroll_active = false
-	_chatter_label.fit_content = true
-	_chatter_label.add_theme_font_size_override("normal_font_size", 16)
-	_chatter_label.modulate = Color(1, 1, 1, 1)
+	_chatter_label.add_theme_font_size_override("font_size", 18)
+	_chatter_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_chatter_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_chatter_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_chatter_label.text = ""
-	# Attach flicker shader so interlace_jitter can be driven per-chatter
 	_chatter_mat = ShaderMaterial.new()
-	_chatter_mat.shader = load("res://scripts/Shaders/flicker_text_2d.gdshader")
-	_chatter_mat.set_shader_parameter("flicker_speed", 0.0)       # no flicker for chatter
-	_chatter_mat.set_shader_parameter("flicker_intensity", 1.0)   # always on (0 flicker = steady)
-	_chatter_mat.set_shader_parameter("pixel_size", 1.0)
-	_chatter_mat.set_shader_parameter("interlace_jitter", 0.0)
+	_chatter_mat.shader = load("res://scripts/Shaders/chatter_crt.gdshader")
 	_chatter_label.material = _chatter_mat
 	vbox.add_child(_chatter_label)
-
+	
 	_log_vbox = VBoxContainer.new()
 	_log_vbox.name = "LogVBox"
 	_log_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_log_vbox.add_theme_constant_override("separation", LOG_LINE_SPACING)
 	vbox.add_child(_log_vbox)
+	
+
+
+	
 
 
 func _ready_queue() -> void:
@@ -87,7 +70,6 @@ func _ready_queue() -> void:
 		return  # already built
 
 	_queue_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_queue_vbox.size_flags_vertical   = Control.SIZE_EXPAND_FILL
 	_queue_vbox.add_theme_constant_override("separation", 2)
 
 	for i in range(QUEUE_STEPS):
@@ -130,13 +112,16 @@ func push_log(msg: String) -> void:
 		_log_lines.resize(LOG_MAX_LINES)
 	if _log_vbox == null:
 		return
-	# Remove excess children (oldest entries at the bottom)
+	# Remove oldest entries immediately (free(), not queue_free()) so
+	# get_child_count() reflects the removal right away — queue_free() is
+	# deferred and would cause an infinite loop here.
 	while _log_vbox.get_child_count() >= LOG_MAX_LINES:
-		_log_vbox.get_child(_log_vbox.get_child_count() - 1).queue_free()
+		_log_vbox.get_child(_log_vbox.get_child_count() - 1).free()
 	# Create new label, insert at top
 	var lbl := Label.new()
 	lbl.text = msg
 	lbl.add_theme_font_size_override("font_size", 14)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	lbl.modulate = Color(1, 1, 1, 0)
@@ -148,70 +133,106 @@ func push_log(msg: String) -> void:
 
 
 const CHATTER_COLORS : Dictionary = {
-	"Hue":    Color(1.0,  0.92, 0.2,  1.0),  # yellow
-	"Indra":  Color(0.2,  0.85, 1.0,  1.0),  # cerulean
-	"Vritra": Color(0.85, 0.15, 0.75, 1.0),  # magenta-purple
+	"Hue":    Color(3.337, 3.085, 0.765, 1.0),  # yellow
+	"Indra":  Color(0.613, 2.318, 2.708, 1.0),  # cerulean
+	"Vritra": Color(2.871, 0.0, 0.904, 1.0),
 }
 const CHATTER_DEFAULT := Color(0.88, 0.83, 0.74, 1.0)
 
-var _chatter_tween  : Tween
-var _chatter_type_tween : Tween   # drives visible_characters for typewriter
-var _jitter_tween   : Tween   # decays interlace_jitter back to 0
+var _chatter_gen : int = 0  # incremented each push; callbacks ignore stale gens
 
 func push_chatter(msg: String, speaker: String = "") -> void:
 	if _chatter_label == null:
 		return
-
-	# Kill all active chatter tweens so new message starts clean
-	if _chatter_tween:      _chatter_tween.kill()
-	if _chatter_type_tween: _chatter_type_tween.kill()
-	if _jitter_tween:       _jitter_tween.kill()
-
-	# Set colour for this speaker, full opacity
+	# Bump generation — any timer from a previous call will see a stale gen
+	# and do nothing when it fires.  SceneTreeTimer has no cancel().
+	_chatter_gen += 1
+	var my_gen := _chatter_gen
 	var col : Color = CHATTER_COLORS.get(speaker, CHATTER_DEFAULT)
-	col.a = 1.0
-	_chatter_label.modulate = col
+	_chatter_mat.set_shader_parameter("font_color", col)
+	_chatter_label.text = " " + msg
+	get_tree().create_timer(CHATTER_DURATION, false).timeout.connect(func():
+		if my_gen == _chatter_gen and is_instance_valid(_chatter_label):
+			_chatter_label.text = ""
+	, CONNECT_ONE_SHOT)
 
-	# --- Interlace jitter burst on arrival ---
-	if _chatter_mat:
-		_chatter_mat.set_shader_parameter("interlace_jitter", CHATTER_INTERLACE_PEAK)
-		_jitter_tween = create_tween()
-		_jitter_tween.tween_method(
-			func(v: float): if _chatter_mat: _chatter_mat.set_shader_parameter("interlace_jitter", v),
-			CHATTER_INTERLACE_PEAK, 0.0, CHATTER_INTERLACE_DECAY
-		)
+const HUD_BG     := Color(0.08, 0.07, 0.06, 0.96)
+const HUD_BORDER := Color(0.35, 0.28, 0.22, 1.0)
+const HUD_ACCENT := Color(0.52, 0.42, 0.28, 1.0)
+const HUD_TEXT   := Color(0.88, 0.83, 0.74, 1.0)
+const HUD_DIM    := Color(0.45, 0.40, 0.35, 1.0)
+const HUD_FONT   := "res://assets/Fonts/TerminalVector.ttf"
 
-	# --- Typewriter reveal via visible_characters ---
-	_chatter_label.text = msg
-	_chatter_label.visible_ratio = 0.0
-	var total_chars : int = _chatter_label.get_total_character_count()
-	if total_chars > 0:
-		var type_duration := float(total_chars) / CHATTER_CHARS_PER_SEC
-		_chatter_type_tween = create_tween()
-		_chatter_type_tween.tween_method(
-			func(c: int): if _chatter_label: _chatter_label.visible_characters = c,
-			0, total_chars, type_duration
-		)
-		_chatter_type_tween.tween_callback(
-			func(): if _chatter_label: _chatter_label.visible_ratio = 1.0
-		)
+func _make_hud_panel_style(accent_bottom: bool = false, accent_top: bool = false) -> StyleBoxFlat:
+	var s := StyleBoxFlat.new()
+	s.bg_color = HUD_BG
+	s.set_border_width_all(0)
+	if accent_bottom:
+		s.border_width_bottom = 2
+		s.border_color = HUD_ACCENT
+	elif accent_top:
+		s.border_width_top = 2
+		s.border_color = HUD_ACCENT
+	s.set_content_margin_all(10)
+	return s
 
-	# --- Schedule fade-out after CHATTER_DURATION ---
-	_chatter_tween = create_tween()
-	_chatter_tween.tween_interval(CHATTER_DURATION)
-	_chatter_tween.tween_property(_chatter_label, "modulate:a", 0.0, 0.4)
-	_chatter_tween.tween_callback(func():
-		if _chatter_label: _chatter_label.text = ""
-	)
+func _apply_hud_style() -> void:
+	var font : Font = load(HUD_FONT) if ResourceLoader.exists(HUD_FONT) else ThemeDB.fallback_font
+
+	# Player Status: accent on bottom (the seam)
+	var player_status = get_node_or_null("Player Status")
+	if player_status is PanelContainer:
+		player_status.add_theme_stylebox_override("panel", _make_hud_panel_style(true, false))
+
+	# BattleLog: accent on top (the seam)
+	var battle_log = get_node_or_null("BattleLog")
+	if battle_log is PanelContainer:
+		battle_log.add_theme_stylebox_override("panel", _make_hud_panel_style(false, true))
+
+	# TargetInfo: left accent border (floating card)
+	var target_info_panel = get_node_or_null("TargetInfo")
+	if target_info_panel is PanelContainer:
+		var ti_sbox := StyleBoxFlat.new()
+		ti_sbox.bg_color = HUD_BG
+		ti_sbox.set_border_width_all(0)
+		ti_sbox.border_width_left = 2
+		ti_sbox.border_color = HUD_ACCENT
+		ti_sbox.set_content_margin_all(10)
+		target_info_panel.add_theme_stylebox_override("panel", ti_sbox)
+		target_info_panel.add_theme_stylebox_override("panel", _make_hud_panel_style(false, true))
+
+	# Style all labels in the HUD
+	for lbl in _find_labels(get_children()):
+		lbl.add_theme_color_override("font_color", HUD_TEXT)
+		lbl.add_theme_font_override("font", font)
+
+	# Queue labels use dim colour
+	for lbl in _queue_labels:
+		lbl.add_theme_font_override("font", font)
+		lbl.add_theme_color_override("font_color", HUD_DIM)
+
+	# TargetInfo HPBar tinted accent
+	var hpbar = get_node_or_null("TargetInfo/TargetInfoBox/HPBar")
+	if hpbar:
+		hpbar.modulate = HUD_ACCENT
+
+
+func _find_labels(nodes: Array) -> Array:
+	var out := []
+	for n in nodes:
+		if n is Label: out.append(n)
+		out.append_array(_find_labels(n.get_children()))
+	return out
 
 func setup(actor_list : Array):
 	_ready_log()
 	_ready_queue()
+	_apply_hud_style()
 	# Clear log entries and state from any previous battle
 	_log_lines.clear()
 	if _log_vbox:
 		for c in _log_vbox.get_children():
-			c.queue_free()
+			c.free()  # free() not queue_free() — must be synchronous
 
 	for c in player_container.get_children():
 		c.queue_free()

@@ -1,0 +1,354 @@
+extends Node3D
+# AmmoStaff — musical staff showing Kendall's battle ammo as notes.
+# Layout: 4 staff lines, time signature at left, notes filling right.
+#
+# Time signature logic (default 8/8):
+#   - Whole note   = 8 bullets  (open circle, no stem)
+#   - Half note    = 4 bullets  (open circle + stem)
+#   - Eighth notes = 1 bullet each, max 3 hanging from a shared beam bar
+#     (4 eighth notes would become a half note instead)
+#
+# When a bullet is fired, the rightmost eighth note "falls" (animates down
+# and fades, then is freed). Other note types dim when spent.
+
+# ── Exports ───────────────────────────────────────────────────────────────────
+@export var time_sig_top    : int   = 8    # bullets per "measure"
+@export var time_sig_bottom : int   = 8    # denominator (display only for now)
+@export var staff_width     : float = 0.70
+@export var staff_height    : float = 0.18  # total vertical span of 4 lines
+@export var note_spacing    : float = 0.10  # horizontal gap between note groups
+
+# ── Colours ───────────────────────────────────────────────────────────────────
+const C_STAFF   := Color(0.75, 0.68, 0.50, 1.0)
+const C_NOTE    := Color(0.90, 0.85, 0.60, 1.0)
+const C_SPENT   := Color(0.25, 0.23, 0.20, 0.45)
+const C_SIG     := Color(0.85, 0.78, 0.50, 1.0)
+const C_BEAM    := Color(0.80, 0.73, 0.48, 1.0)
+
+# ── Dimensions ────────────────────────────────────────────────────────────────
+const LINE_H    := 0.004   # staff line thickness
+const LINE_D    := 0.003
+const NOTE_R    := 0.022   # note head radius
+const NOTE_D    := 0.006   # note depth (flat disc)
+const STEM_W    := 0.005
+const STEM_H    := 0.06
+const BEAM_H    := 0.008   # connecting bar for eighth notes
+const BEAM_D    := 0.006
+
+# ── Internal ──────────────────────────────────────────────────────────────────
+var _actor      = null
+var _run_state  = null
+var _ammo       : int = 0
+var _max_ammo   : int = 8   # capped to time_sig_top per battle
+
+# Note node records
+var _note_nodes : Array = []  # [{node, value, spent, falling}]
+
+# Fall animation state
+var _falling    : Array = []  # [{node, vel, timer}]
+
+# Camera for billboarding
+var _camera : Node3D
+
+
+func setup(actor) -> void:
+	_actor     = actor
+	_run_state = actor.get("run_state")
+	_max_ammo  = time_sig_top
+	_ammo      = mini(_run_state.ammo if _run_state else time_sig_top, _max_ammo)
+	_build()
+	_refresh()
+	# Connect to ammo signal if RunState has it
+	if _run_state and _run_state.has_signal("battle_ammo_changed"):
+		_run_state.battle_ammo_changed.connect(_on_ammo_changed)
+
+
+func _process(delta: float) -> void:
+	_update_billboard()
+	_tick_falling(delta)
+
+
+func _update_billboard() -> void:
+	if not _camera and _actor != null:
+		_camera = _find_phantom_cam()
+	if not _camera:
+		return
+	var dx := _camera.global_position.x - global_position.x
+	var dz := _camera.global_position.z - global_position.z
+	if dx * dx + dz * dz > 0.0001:
+		rotation.y = atan2(dx, dz) - PI * 0.5
+
+
+func _find_phantom_cam() -> Node3D:
+	# Ammo staff is always player-side
+	var scene_root := get_tree().get_first_node_in_group("battle_scene")
+	if scene_root:
+		return scene_root.get_node_or_null("CameraRig/active_cam")
+	var node : Node = self
+	while node:
+		var rig := node.get_node_or_null("CameraRig")
+		if rig:
+			return rig.get_node_or_null("active_cam")
+		node = node.get_parent()
+	return null
+
+
+# ── Build ─────────────────────────────────────────────────────────────────────
+
+func _build() -> void:
+	_build_staff_lines()
+	_build_time_sig()
+	_build_notes(_ammo, _max_ammo)
+
+
+func _build_staff_lines() -> void:
+	var line_gap := staff_height / 3.0  # 4 lines = 3 gaps
+	for i in 4:
+		var y := (i - 1.5) * line_gap
+		var mi  := MeshInstance3D.new()
+		var mesh := BoxMesh.new()
+		mesh.size = Vector3(staff_width, LINE_H, LINE_D)
+		var mat  := StandardMaterial3D.new()
+		mat.albedo_color  = C_STAFF
+		mat.shading_mode  = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.no_depth_test = false
+		mesh.material = mat
+		mi.mesh = mesh
+		mi.position = Vector3(0, y, 0)
+		add_child(mi)
+
+
+func _build_time_sig() -> void:
+	var font_path := "res://assets/Fonts/TerminalVector.ttf"
+	var font : Font = load(font_path) if ResourceLoader.exists(font_path) else null
+	var x_pos := -(staff_width * 0.5) + 0.04
+
+	for i in 2:
+		var lbl := Label3D.new()
+		lbl.text       = str(time_sig_top) if i == 0 else str(time_sig_bottom)
+		lbl.pixel_size = 0.004
+		lbl.font_size  = 22
+		lbl.modulate   = C_SIG
+		lbl.no_depth_test = true
+		lbl.billboard  = BaseMaterial3D.BILLBOARD_DISABLED
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		if font:
+			lbl.font = font
+		lbl.position = Vector3(x_pos, (0.045 if i == 0 else -0.045), 0.01)
+		add_child(lbl)
+
+
+func _build_notes(current_ammo: int, max_ammo: int) -> void:
+	# Clear old notes
+	for n in _note_nodes:
+		if is_instance_valid(n.node):
+			n.node.queue_free()
+	_note_nodes.clear()
+
+	if max_ammo <= 0:
+		return
+
+	# Decompose max into note slots using time signature logic
+	var slots : Array = _decompose(max_ammo)
+	var x_start := -(staff_width * 0.5) + 0.12  # leave room for time sig
+	var x := x_start
+
+	for slot in slots:
+		var note_node : Node3D
+		if slot.value == 8:
+			note_node = _make_whole_note()
+		elif slot.value == 4:
+			note_node = _make_half_note()
+		else:
+			# Group of eighth notes (1-pt each), share a beam
+			note_node = _make_eighth_group(slot.count)
+
+		note_node.position = Vector3(x, 0, 0)
+		add_child(note_node)
+		_note_nodes.append({node = note_node, value = slot.value, spent = false})
+		x += note_spacing * (1.5 if slot.value == 8 else (1.2 if slot.value == 4 else 0.8 + 0.15 * (slot.count - 1)))
+
+	_apply_note_states(current_ammo)
+
+
+func _decompose(total: int) -> Array:
+	# Break total ammo into note slots: 8-pt whole, 4-pt half, 1-pt eighths (max 3)
+	var slots : Array = []
+	var rem   := total
+	while rem >= 8:
+		slots.append({value = 8, count = 1})
+		rem -= 8
+	if rem >= 4:
+		slots.append({value = 4, count = 1})
+		rem -= 4
+	# Remaining 1-3 become an eighth group
+	if rem > 0:
+		slots.append({value = 1, count = rem})
+	return slots
+
+
+func _apply_note_states(current: int) -> void:
+	var remaining := current
+	for n in _note_nodes:
+		var spent : bool = remaining < n.value
+		n.spent = spent
+		_set_note_color(n.node, spent)
+		if not spent:
+			remaining -= n.value
+
+
+func _set_note_color(node: Node3D, spent: bool) -> void:
+	var color := C_SPENT if spent else C_NOTE
+	if node is MeshInstance3D:
+		var mat : Material = node.get_active_material(0)
+		if mat is StandardMaterial3D:
+			(mat as StandardMaterial3D).albedo_color = color
+	for child in node.get_children():
+		_set_note_color(child, spent)
+
+
+# ── Note constructors ─────────────────────────────────────────────────────────
+
+func _make_whole_note() -> MeshInstance3D:
+	# Open circle (torus-like): use a flat CylinderMesh with hole approximation
+	# For now: slightly squashed sphere
+	var mi   := MeshInstance3D.new()
+	var mesh := SphereMesh.new()
+	mesh.radius = NOTE_R * 1.3
+	mesh.height = NOTE_D * 2.0
+	mi.mesh    = mesh
+	mi.scale   = Vector3(1.0, 0.45, 0.3)
+	_apply_note_mat(mi, C_NOTE)
+	return mi
+
+
+func _make_half_note() -> Node3D:
+	var root := Node3D.new()
+	# Head
+	var head := MeshInstance3D.new()
+	var mesh := SphereMesh.new()
+	mesh.radius = NOTE_R
+	mesh.height = NOTE_D * 2.0
+	head.mesh  = mesh
+	head.scale = Vector3(1.0, 0.45, 0.3)
+	_apply_note_mat(head, C_NOTE)
+	root.add_child(head)
+	# Stem up
+	var stem := _make_stem(STEM_H)
+	stem.position = Vector3(NOTE_R * 0.8, STEM_H * 0.5, 0)
+	root.add_child(stem)
+	return root
+
+
+func _make_eighth_group(count: int) -> Node3D:
+	var root  := Node3D.new()
+	var x_gap := 0.055
+
+	# Beam bar across the top
+	var beam_w := x_gap * (count - 1) + NOTE_R * 2.0
+	var beam   := MeshInstance3D.new()
+	var bm     := BoxMesh.new()
+	bm.size    = Vector3(beam_w, BEAM_H, BEAM_D)
+	var bmat   := StandardMaterial3D.new()
+	bmat.albedo_color  = C_BEAM
+	bmat.shading_mode  = BaseMaterial3D.SHADING_MODE_UNSHADED
+	bmat.no_depth_test = true
+	bm.material = bmat
+	beam.mesh   = bm
+	var beam_y  := STEM_H
+	beam.position = Vector3(x_gap * (count - 1) * 0.5, beam_y, 0)
+	root.add_child(beam)
+
+	for i in count:
+		var x := i * x_gap
+		# Head
+		var head := MeshInstance3D.new()
+		var mesh := SphereMesh.new()
+		mesh.radius = NOTE_R
+		mesh.height = NOTE_D * 2.0
+		head.mesh  = mesh
+		head.scale = Vector3(1.0, 0.45, 0.3)
+		_apply_note_mat(head, C_NOTE)
+		head.position = Vector3(x, 0, 0)
+		root.add_child(head)
+		# Stem up to beam
+		var stem := _make_stem(STEM_H)
+		stem.position = Vector3(x + NOTE_R * 0.8, STEM_H * 0.5, 0)
+		root.add_child(stem)
+
+	return root
+
+
+func _make_stem(height: float) -> MeshInstance3D:
+	var mi   := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(STEM_W, height, STEM_W)
+	_apply_note_mat(mi, C_NOTE)
+	mi.mesh = mesh
+	return mi
+
+
+func _apply_note_mat(mi: MeshInstance3D, color: Color) -> void:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color  = color
+	mat.shading_mode  = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.no_depth_test = true
+	mat.transparency  = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mi.mesh.material  = mat
+
+
+# ── Ammo change / fall animation ──────────────────────────────────────────────
+
+func _on_ammo_changed(new_ammo: int) -> void:
+	var old_ammo := _ammo
+	_ammo = mini(new_ammo, _max_ammo)
+	if _ammo < old_ammo:
+		# A bullet was spent — animate the last eighth note falling off
+		_animate_fall()
+	else:
+		# Ammo restored — rebuild cleanly
+		_refresh()
+
+
+func _animate_fall() -> void:
+	# Find the rightmost un-spent eighth note and detach it
+	# For simplicity: find the last note group and decrement its visible count
+	# Full implementation: track individual note heads per group
+	_refresh()  # For now just refresh; fall animation is a polish pass
+
+
+func _tick_falling(delta: float) -> void:
+	for i in range(_falling.size() - 1, -1, -1):
+		var f = _falling[i]
+		f.timer  -= delta
+		f.vel.y  -= 2.0 * delta   # gravity
+		f.node.position += f.vel * delta
+		# Fade out
+		var alpha := clampf(f.timer / 0.4, 0.0, 1.0)
+		_set_note_alpha(f.node, alpha)
+		if f.timer <= 0.0:
+			f.node.queue_free()
+			_falling.remove_at(i)
+
+
+func _set_note_alpha(node: Node3D, alpha: float) -> void:
+	if node is MeshInstance3D:
+		var mat : Material = node.get_active_material(0)
+		if mat is StandardMaterial3D:
+			var c := (mat as StandardMaterial3D).albedo_color
+			c.a = alpha
+			(mat as StandardMaterial3D).albedo_color = c
+	for child in node.get_children():
+		_set_note_alpha(child, alpha)
+
+
+# ── Refresh ───────────────────────────────────────────────────────────────────
+
+func _refresh(_ignored = null) -> void:
+	if _run_state:
+		_ammo = mini(_run_state.ammo, _max_ammo)
+	# Full rebuild if note count changed, else just recolour
+	if _note_nodes.size() == 0:
+		_build_notes(_ammo, _max_ammo)
+	else:
+		_apply_note_states(_ammo)

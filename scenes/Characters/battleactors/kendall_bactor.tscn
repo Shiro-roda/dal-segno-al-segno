@@ -2,13 +2,37 @@
 
 [ext_resource type="Script" uid="uid://bvemdwbw77sji" path="res://scripts/Characters/kendall_actor.gd" id="1_u31kg"]
 [ext_resource type="PackedScene" uid="uid://dhu0qxbwinbyv" path="res://scenes/Characters/ken_model_test_11.tscn" id="2_u31kg"]
-[ext_resource type="Script" uid="uid://d2keok0ggm4q7" path="res://scripts/Characters/ken_model.gd" id="3_8y4ch"]
+[ext_resource type="PackedScene" uid="uid://bl3aftctvygxl" path="res://scenes/UI/battle_panels/hp_display.tscn" id="4_uskna"]
+[ext_resource type="PackedScene" uid="uid://0b058ymoagc" path="res://scenes/UI/battle_panels/ammo_staff.tscn" id="5_6ydus"]
+[ext_resource type="Script" uid="uid://jtnowsj7i172" path="res://scripts/UI/actor_panel_3d.gd" id="5_uskna"]
+[ext_resource type="PackedScene" uid="uid://du3suh71satyp" path="res://scenes/UI/ring nodes/large_flesh_orb.tscn" id="6_em4st"]
+[ext_resource type="Script" uid="uid://cyrjmvijvkbgi" path="res://scripts/UI/battle_panels/blood_globe.gd" id="6_lav5c"]
+[ext_resource type="PackedScene" uid="uid://dfksmgwfvhs8y" path="res://scenes/UI/ring nodes/small_flesh_orb.tscn" id="7_wn7n2"]
 
 [node name="BattleActor" type="Node3D" unique_id=620316433]
 script = ExtResource("1_u31kg")
 
-[node name="ken_model_test11" type="Node3D" parent="." unique_id=2005524327 instance=ExtResource("2_u31kg")]
-script = ExtResource("3_8y4ch")
+[node name="ken_model_test11" parent="." unique_id=2005524327 instance=ExtResource("2_u31kg")]
 
 [node name="CameraAnchor" type="Node3D" parent="." unique_id=836785041]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5532758, 0)
+
+[node name="WorldSpacePanel" type="Node3D" parent="." unique_id=1416870058]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.0850544, 0)
+script = ExtResource("5_uskna")
+
+[node name="HpDisplay" parent="WorldSpacePanel" unique_id=1429397145 instance=ExtResource("4_uskna")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3309796, 0)
+script = ExtResource("6_lav5c")
+token_large_scene = ExtResource("6_em4st")
+token_small_scene = ExtResource("7_wn7n2")
+ring_radius = 0.32
+ring_y = 0.0
+rotate_speed = 0.45
+spring_strength = 52.0
+spring_damping = 0.95
+repel_strength = 6.0
+repel_distance = 0.09
+
+[node name="AmmoStaff" parent="WorldSpacePanel" unique_id=506551254 instance=ExtResource("5_6ydus")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02578497, 0)

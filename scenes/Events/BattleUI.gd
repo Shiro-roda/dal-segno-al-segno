@@ -16,8 +16,6 @@ signal cancel_pressed
 var current_targets : Array = []
 
 func _ready():
-	confirm_button.pressed.connect(func(): emit_signal("confirm_pressed"))
-	cancel_button.pressed.connect(func(): emit_signal("cancel_pressed"))
 	hide()
 
 
@@ -48,19 +46,19 @@ func hide_commands():
 func hide_target_container():
 	target_container.hide()
 
-func hide_confirmation():
-	set_confirm_enabled(false)
-
-
-func set_confirm_enabled(enabled: bool):
-	confirm_button.disabled = not enabled
-
-func set_back_enabled(enabled: bool):
-	cancel_button.disabled = not enabled
 
 
 
 
+
+
+
+
+
+func clear_targets():
+	for child in target_container.get_children():
+		child.queue_free()
+	target_container.hide()
 
 func show_targets(targets: Array):
 	current_targets = targets

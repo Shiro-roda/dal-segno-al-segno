@@ -90,6 +90,8 @@ var ca_defaults := {}
 
 @onready var active_cam: PhantomCamera3D = $"../CameraRig/active_cam"
 @onready var target_cam: PhantomCamera3D = $"../CameraRig/target_cam"
+@onready var player_cam : Camera3D = $"../HBoxContainer/Left_Container/Left/PlayerActorCam"
+@onready var enemy_cam  : Camera3D = $"../HBoxContainer/Right_Container/Right/TargetCam"
 
 
 
@@ -100,6 +102,7 @@ var ca_defaults := {}
 
 
 @onready var battle_ui = get_parent().get_node("BattleUI")
+@onready var radial_ui = get_parent().get_node("BattleRadialUI")
 @onready var battle_hud       : BattleHUD          = $"../BattleHUD"
 @onready var dialogue_box = $"../DialogueLayer"
 
@@ -109,6 +112,7 @@ var ca_defaults := {}
 @onready var states = $States
 
 func _ready():
+	get_parent().add_to_group("battle_scene")
 	await get_tree().process_frame
 	ca_mesh = get_tree().root.get_node("GameRoot/TVOverlay/MeshInstance2D")
 
@@ -126,6 +130,7 @@ func _ready():
 	cache_ca_defaults()
 	
 	active_cam.set_follow_target(active_anchor)
+	active_cam.set_look_at_target(active_look_anchor)
 	target_cam.set_follow_target(target_anchor)
 	target_cam.set_look_at_target(target_look_anchor)
 
@@ -138,7 +143,15 @@ func _ready():
 	battle_ui.filter_selected.connect(_on_filter_selected)
 	battle_ui.confirm_pressed.connect(_on_confirm_pressed)
 	battle_ui.cancel_pressed.connect(_on_cancel_pressed)
-	
+
+	radial_ui.skill_chosen.connect(_on_radial_skill_chosen)
+	radial_ui.target_chosen.connect(_on_radial_target_chosen)
+	radial_ui.part_chosen.connect(_on_radial_part_chosen)
+	radial_ui.filter_chosen.connect(_on_radial_filter_chosen)
+	radial_ui.confirmed.connect(_on_radial_confirmed)
+	radial_ui.cancelled.connect(_on_radial_cancelled)
+	radial_ui._manager = self
+
 	emit_signal("battle_manager_ready")
 	
 
@@ -258,18 +271,24 @@ func start_battle_with_context(battle_context : BattleContext):
 
 	build_turn_queue()
 	current_index = 0
-
-	# Play intro dialogue before the first turn if the encounter has any.
-	# Hide BattleUI so player can't act, await all lines, then start normally.
-	if context.encounter.intro_dialogue != null:
-		var battle_ui = get_node("../BattleUI")
+	next_turn()
+	# Play intro splash (big centred CRT text) then intro dialogue before first turn.
+	# BattleUI is hidden for the entire pre-battle sequence.
+	var battle_ui = get_node_or_null("../BattleUI")
+	var has_splash   := context.encounter.intro_splash != null and not context.encounter.intro_splash.is_empty()
+	var has_dialogue := context.encounter.intro_dialogue != null
+	if has_splash or has_dialogue:
 		if battle_ui:
 			battle_ui.hide()
-		await dialogue_box.play_lines(context.encounter.intro_dialogue, context.run_state)
+		if has_splash:
+			var splash := BattleIntroSplash.new()
+			add_child(splash)
+			await splash.play(context.encounter.intro_splash, context.run_state)
+			splash.queue_free()
+		if has_dialogue:
+			await dialogue_box.play_lines(context.encounter.intro_dialogue, context.run_state)
 		if battle_ui:
 			battle_ui.show()
-
-	next_turn()
 
 func spawn_players():
 	var player_slots = battlefield_root.get_node("PlayerSlots").get_children()
@@ -303,7 +322,7 @@ func spawn_players():
 		actor.died.connect(_on_actor_died)
 		actor.turn_finished.connect(_on_turn_finished)
 		actor.hp_changed.connect(func(): _on_hp_changed(actor))
-	
+
 
 func spawn_enemies():
 	var enemy_slots = battlefield_root.get_node("EnemySlots").get_children()
@@ -356,7 +375,6 @@ func build_turn_queue():
 		actor.tempo_pool = randf_range(0.0, float(actor.tempo_stat))
 
 func _pick_next_actor() -> BattleActor:
-	# Tick tempo for all living actors, then return whoever has the most
 	var living = actors.filter(func(a): return a.is_alive())
 	if living.is_empty(): return null
 	for actor in living:
@@ -400,8 +418,6 @@ func handle_player_turn(actor: BattleActor) -> void:
 	print("handle_player_turn: active_anchor_source=", active_anchor_source, " pos=", active_anchor.global_position)
 
 	input_stage = InputStage.COMMAND
-	battle_ui.show_commands(actor)
-
 	update_ui_state()
 
 
@@ -412,6 +428,9 @@ func handle_enemy_turn(actor: BattleActor) -> void:
 	await get_tree().process_frame
 	var target = choose_target(actor)
 	if target == null:
+		# No valid targets — check for victory/defeat and continue
+		if not check_victory():
+			next_turn()
 		return
 	battle_hud.show_target(actor)
 	await get_tree().process_frame
@@ -521,12 +540,13 @@ func get_projected_queue(steps: int = 8) -> Array:
 
 func _on_actor_died(actor: BattleActor):
 	if actor.team == BattleActor.Team.ENEMY:
-		# Look up exp_yield from encounter enemy CharacterData
 		for cd in context.encounter.enemies:
 			if cd.display_name == actor.name:
 				_exp_this_battle += cd.exp_yield
 				break
 	actors.erase(actor)
+	# Defer free so any coroutines still referencing the actor finish this frame
+	actor.call_deferred("queue_free")
 
 
 
@@ -805,7 +825,6 @@ func update_ui_state():
 	if input_locked:
 		return
 
-	battle_ui.set_back_enabled(input_stage != InputStage.COMMAND)
 
 	match input_stage:
 
@@ -813,10 +832,12 @@ func update_ui_state():
 			if active_player_actor:
 				focus_actor(active_player_actor)
 			focus_idle_orbit()
-			battle_ui.show_commands(active_player_actor)
-			battle_ui.set_confirm_enabled(false)
+			battle_ui.hide()  # hide legacy panel during radial
+			_open_radial_for_actor(active_player_actor)
 
 		InputStage.TARGET:
+			if is_instance_valid(radial_ui): radial_ui.close(true)
+			battle_ui.show()
 			var targets: Array
 			if support_targeting:
 				targets = actors.filter(func(a): return a.team == active_player_actor.team and a.is_alive())
@@ -831,11 +852,16 @@ func update_ui_state():
 			battle_ui.set_confirm_enabled(false)
 
 		InputStage.FILTER:
+			battle_ui.show()  # restore legacy panel for filter/confirm stages
 			focus_idle_orbit()
 			battle_ui.show_filter_options()
 			battle_ui.set_confirm_enabled(false)
 
 		InputStage.CONFIRM:
+			battle_ui.show()
+			if selected_attack_skips_targeting:
+				battle_ui.clear_targets()
+				focus_idle_orbit()
 			battle_ui.set_confirm_enabled(true)
 
 
@@ -892,6 +918,67 @@ func _on_confirm_pressed():
 
 
 
+# ── Radial UI signal handlers ─────────────────────────────────────────────────
+
+# skill_chosen fires when a skill is selected (and confirmed for AoE).
+# For skills needing a target the radial handles target selection and fires
+# both skill_chosen + target_chosen together.
+func _on_radial_skill_chosen(skill_key: String) -> void:
+	# Set selected_command and all derived flags exactly as _on_command_selected
+	# does, but WITHOUT calling update_ui_state — the radial owns the UI here.
+	selected_command = skill_key
+	var skills     = active_player_actor.get_skills() if active_player_actor else []
+	var skill_data = skills.filter(func(s): return s["key"] == skill_key)
+	var is_aoe      = not skill_data.is_empty() and skill_data[0].get("aoe", false)
+	var is_struggle = not skill_data.is_empty() and skill_data[0].get("struggle", false)
+	selected_attack_skips_targeting = is_aoe or is_struggle
+	selected_is_struggle            = is_struggle
+	if is_aoe or is_struggle:
+		selected_target    = null
+		selected_body_part = null
+
+
+func _on_radial_target_chosen(target: BattleActor) -> void:
+	# Set target + camera only. The radial owns all further UI from here.
+	selected_target = target
+	target_cam.set_follow_damping_value(Vector3(.25, .25, .15))
+	target_cam.set_follow_offset(Vector3(-1.25, 0, .55))
+	target_cam.set_look_at_offset(Vector3(0, 0, -.2))
+	focus_target(target)
+	battle_hud.show_target(selected_target)
+	support_targeting = false
+
+
+func _on_radial_part_chosen(part: BodyPartData) -> void:
+	selected_body_part = part
+
+
+func _on_radial_filter_chosen(channel: int) -> void:
+	selected_filter = channel
+
+
+func _on_radial_confirmed() -> void:
+	input_stage = InputStage.CONFIRM
+	_on_confirm_pressed()
+
+func _on_radial_cancelled() -> void:
+	# Radial dismissed without selection — stay on COMMAND, just re-open radial
+	if input_stage == InputStage.COMMAND:
+		_open_radial_for_actor(active_player_actor)
+
+# Open the radial skill ring for a player actor.
+# Centred in the left viewport (active character side).
+func _open_radial_for_actor(actor: BattleActor) -> void:
+	if radial_ui == null or actor == null:
+		return
+	var skills  := actor.get_skills()
+	var enemies := actors.filter(func(a): return a.team != actor.team and a.is_alive())
+	var allies  := actors.filter(func(a): return a.team == actor.team and a.is_alive())
+	# Centre of the left sub-viewport in screen space
+	var vp_size  := get_viewport().get_visible_rect().size
+	var origin   := Vector2(vp_size.x * 0.5, vp_size.y * 0.3)
+	radial_ui.open(origin, skills, enemies, allies, actor)
+
 func _on_cancel_pressed():
 	match input_stage:
 		InputStage.TARGET:
@@ -912,16 +999,12 @@ func _on_cancel_pressed():
 					else:
 						input_stage = InputStage.PART
 				"special":
-					var _skills = active_player_actor.get_skills() if active_player_actor else []
-					var _sd = _skills.filter(func(s): return s["key"] == "special")
-					if not _sd.is_empty() and _sd[0].get("part_targeted", false):
-						# Part-targeted specials (Calcify): back to body part pick
-						input_stage = InputStage.PART
-					elif not _sd.is_empty() and _sd[0].get("targeted", false):
-						# Target-only specials: back to target pick
-						input_stage = InputStage.TARGET
+					var _is_ammo_user = active_player_actor.party_member == null \
+							or not active_player_actor.party_member.has_will()
+					if _is_ammo_user:
+						input_stage = InputStage.COMMAND  # Change Lens: back to command
 					else:
-						input_stage = InputStage.COMMAND
+						input_stage = InputStage.PART  # all other specials: back to parts
 				"support":  input_stage = InputStage.COMMAND
 				_:          input_stage = InputStage.COMMAND
 
@@ -950,14 +1033,11 @@ func _on_command_selected(command):
 			var _is_ammo_user = active_player_actor.party_member == null or not active_player_actor.party_member.has_will()
 			if _is_ammo_user:
 				input_stage = InputStage.FILTER  # Kendall: choose lens channel
-			elif not skill_data.is_empty() and skill_data[0].get("targeted", false):
-				# Special that needs an enemy target (e.g. Calcify)
-				support_targeting = false
+			else:
+				var _is_ally_special = not skill_data.is_empty() and skill_data[0].get("ally_target", false)
+				support_targeting = _is_ally_special
 				selected_body_part = null
 				input_stage = InputStage.TARGET
-			else:
-				# AoE special: no target needed
-				input_stage = InputStage.CONFIRM
 		"support":
 			var _is_aoe_support    = not skill_data.is_empty() and skill_data[0].get("aoe", false)
 			var _is_ally_target    = not skill_data.is_empty() and skill_data[0].get("ally_target", false)

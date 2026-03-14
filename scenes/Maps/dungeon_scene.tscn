@@ -1,8 +1,8 @@
 [gd_scene format=3 uid="uid://cprbg06xivaq4"]
 
 [ext_resource type="Script" uid="uid://bt4xwltdukunr" path="res://dungeon_scene.gd" id="1_e8fv0"]
-[ext_resource type="Script" uid="uid://cv0b5qovvw88e" path="res://scenes/Managers/dungeon_controller.gd" id="2_swt46"]
-[ext_resource type="Script" uid="uid://c2gidpo1ajqk3" path="res://scripts/UI/dungeonUI.gd" id="3_ifq1p"]
+[ext_resource type="Script" uid="uid://dx8r5yikyemjr" path="res://scenes/Managers/dungeon_controller.gd" id="2_swt46"]
+[ext_resource type="Script" uid="uid://snhktyfrtb0v" path="res://scripts/UI/dungeonUI.gd" id="3_ifq1p"]
 
 [node name="DungeonScene" type="Node3D" unique_id=1132002358]
 script = ExtResource("1_e8fv0")

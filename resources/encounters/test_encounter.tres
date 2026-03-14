@@ -6,23 +6,17 @@
 [ext_resource type="Resource" uid="uid://c7inm1j3nh7i4" path="res://resources/characters/enemies/shadow2.tres" id="4_7y7tb"]
 [ext_resource type="Resource" uid="uid://bwmbdd8ixs5kf" path="res://resources/characters/enemies/shadow3.tres" id="5_g1efg"]
 [ext_resource type="Resource" uid="uid://d3s71movk40pc" path="res://audio/tracks/magenta.tres" id="5_xqpoj"]
-[ext_resource type="Script" uid="uid://divs34wkweat7" path="res://resources/encounters/dialogue_line.gd" id="6_7y7tb"]
+[ext_resource type="Script" uid="uid://b57cevaydtkqm" path="res://resources/encounters/splash_line.gd" id="6_g1efg"]
 [ext_resource type="Script" uid="uid://coeqyvqijtkns" path="res://resources/encounters/encounterdata.gd" id="6_nvxc5"]
-[ext_resource type="Script" uid="uid://cxogdp046hrx2" path="res://resources/encounters/encounter_dialogue.gd" id="7_xqpoj"]
 
-[sub_resource type="Resource" id="Resource_nvxc5"]
-script = ExtResource("6_7y7tb")
+[sub_resource type="Resource" id="Resource_7y7tb"]
+script = ExtResource("6_g1efg")
 text = "Three same faces appear such a bore."
-metadata/_custom_type_script = "uid://divs34wkweat7"
-
-[sub_resource type="Resource" id="Resource_s55yo"]
-script = ExtResource("7_xqpoj")
-lines = Array[ExtResource("6_7y7tb")]([SubResource("Resource_nvxc5")])
-metadata/_custom_type_script = "uid://cxogdp046hrx2"
+metadata/_custom_type_script = "uid://b57cevaydtkqm"
 
 [resource]
 script = ExtResource("6_nvxc5")
 battlefield_scene = ExtResource("1_rtlx1")
 enemies = Array[ExtResource("2_rtlx1")]([ExtResource("3_g1efg"), ExtResource("4_7y7tb"), ExtResource("5_g1efg")])
-intro_dialogue = SubResource("Resource_s55yo")
+intro_splash = Array[ExtResource("6_g1efg")]([SubResource("Resource_7y7tb")])
 override_music = ExtResource("5_xqpoj")

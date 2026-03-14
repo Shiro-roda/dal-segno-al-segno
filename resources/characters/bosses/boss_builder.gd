@@ -8,7 +8,7 @@ const SUPPORT_SKILLS := {
 	"Vritra": ["Wither", "Waste", "Devour"],
 }
 
-const BOSS_WILL := 999
+const BOSS_WILL := 20
 
 static func make_party_member(char_data: CharacterData) -> PartyMemberData:
 	var pm := PartyMemberData.new()

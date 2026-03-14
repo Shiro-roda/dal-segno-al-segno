@@ -8,8 +8,8 @@
 [ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://resources/bodyparts/BodyPartData.gd" id="4_nja34"]
 [ext_resource type="Resource" uid="uid://c2hfbcmlpd3bi" path="res://resources/characters/enemies/empty_one.tres" id="5_5ksbt"]
 [ext_resource type="Script" uid="uid://divs34wkweat7" path="res://resources/encounters/dialogue_line.gd" id="6_mq8nr"]
-[ext_resource type="Resource" uid="uid://c8f0t2l2bx8wx" path="res://resources/dialogue/encounter lines/boss_lines/vritra_intro.tres" id="7_27hgn"]
 [ext_resource type="Script" uid="uid://cxogdp046hrx2" path="res://resources/encounters/encounter_dialogue.gd" id="8_54crs"]
+[ext_resource type="Script" uid="uid://b57cevaydtkqm" path="res://resources/encounters/splash_line.gd" id="8_mq8nr"]
 
 [sub_resource type="Resource" id="Resource_l3fpx"]
 script = ExtResource("4_nja34")
@@ -30,12 +30,24 @@ battle_scene = ExtResource("3_j6k45")
 
 [sub_resource type="Resource" id="Resource_x5b4n"]
 script = ExtResource("8_54crs")
-lines = Array[ExtResource("6_mq8nr")]([ExtResource("7_27hgn")])
 metadata/_custom_type_script = "uid://cxogdp046hrx2"
+
+[sub_resource type="Resource" id="Resource_27hgn"]
+script = ExtResource("8_mq8nr")
+text = "Ohhh I've been ~ waiting ~ for this!"
+speaker = "Vritra"
+metadata/_custom_type_script = "uid://b57cevaydtkqm"
+
+[sub_resource type="Resource" id="Resource_54crs"]
+script = ExtResource("8_mq8nr")
+text = "Come get me, KK!"
+speaker = "Vritra"
+metadata/_custom_type_script = "uid://b57cevaydtkqm"
 
 [resource]
 script = ExtResource("2_05knp")
 battlefield_scene = ExtResource("1_cuhss")
 enemies = Array[ExtResource("1_1bdla")]([SubResource("Resource_nja34"), ExtResource("5_5ksbt"), ExtResource("5_5ksbt")])
+intro_splash = Array[ExtResource("8_mq8nr")]([SubResource("Resource_27hgn"), SubResource("Resource_54crs")])
 intro_dialogue = SubResource("Resource_x5b4n")
 override_music = ExtResource("4_5ksbt")

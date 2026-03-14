@@ -1,6 +1,8 @@
 extends Resource
 class_name RunState
 
+signal battle_ammo_changed(new_ammo: int)
+
 @export var party_members : Array[PartyMemberData] = []
 @export var inventory : Array[ItemInstance] = []
 
@@ -29,6 +31,7 @@ func spend_ammo(amount: int) -> bool:
 	if ammo < amount:
 		return false
 	ammo -= amount
+	battle_ammo_changed.emit(ammo)
 	return true
 
 func restore_ammo(amount: int) -> void:

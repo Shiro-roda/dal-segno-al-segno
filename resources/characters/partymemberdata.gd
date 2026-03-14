@@ -60,18 +60,20 @@ func add_exp(amount: int) -> Array:
 			break
 		level += 1
 		var rewards := LevelTable.get_rewards_for(character.display_name)
-		var reward : Dictionary = rewards[level] if level < rewards.size() else {}
-		var stat   : String = reward.get("stat",   "")
-		var amt    : int    = reward.get("amount",  0)
-		var unlock : String = reward.get("unlock", "")
-		# Apply stat bonus
-		match stat:
-			"hp":    bonus_max_hp  += amt; current_hp = min(current_hp + amt, character.base_max_hp + bonus_max_hp)
-			"atk":   bonus_attack  += amt
-			"will":  max_will      += amt; will = min(will + amt, max_will)
-			"tempo": pass  # tempo handled per-actor at battle start
-		# Apply skill unlock
-		if unlock != "" and unlock not in skill_unlocks:
-			skill_unlocks.append(unlock)
-		events.append({"level": level, "stat": stat, "amount": amt, "unlock": unlock})
+		var entry = rewards[level] if level < rewards.size() else []
+		# Support both old single-dict format and new array-of-dicts format
+		var reward_list : Array = entry if entry is Array else ([entry] if not entry.is_empty() else [])
+		for reward in reward_list:
+			var stat   : String = reward.get("stat",   "")
+			var amt    : int    = reward.get("amount",  0)
+			var unlock : String = reward.get("unlock", "")
+			match stat:
+				"hp":    bonus_max_hp += amt; current_hp = min(current_hp + amt, character.base_max_hp + bonus_max_hp)
+				"atk":   bonus_attack += amt
+				"will":  max_will += amt; will = min(will + amt, max_will)
+				"tempo": pass
+			if unlock != "" and unlock not in skill_unlocks:
+				skill_unlocks.append(unlock)
+			if stat != "" or unlock != "":
+				events.append({"level": level, "stat": stat, "amount": amt, "unlock": unlock})
 	return events

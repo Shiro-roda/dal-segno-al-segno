@@ -146,8 +146,8 @@ func _make_card(char_data: CharacterData, idx: int) -> PanelContainer:
 	inner.add_child(stats)
 
 	var stat_lines := [
-		["HP",    str(char_data.base_max_hp)],
-		["WILL",  str(char_data.base_max_will)],
+		["CORP",    str(char_data.base_max_hp)],
+		["AP",  str(char_data.base_max_will)],
 		["ATK",   str(char_data.base_attack)],
 		["TEMPO", str(char_data.tempo)],
 	]

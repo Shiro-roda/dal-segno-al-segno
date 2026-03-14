@@ -17,18 +17,15 @@ const PISTOL_WHIP_MULT   = 0.4
 func get_skills() -> Array:
 	var has_ammo        = run_state != null and run_state.ammo > 0
 	var supports_have_will = _supports_have_will()
-	var augur_unlocked  = party_member != null and party_member.is_skill_unlocked("Augur")
 	var lens_unlocked   = party_member != null and party_member.is_skill_unlocked("Change Lens")
 
 	var skills = [
-		{"name": "Shoot" if has_ammo else "Pistol Whip", "key": "attack", "struggle": not has_ammo},
+		SkillDirectory.get_dict("Shoot" if has_ammo else "Pistol Whip"),
 	]
-	# Support: Augur (unlocked + supports have will) > Evade (unlocked)
-	if augur_unlocked:
-		skills.append({"name": "Augur" if supports_have_will else "Evade", "key": "support", "aoe": true})
-	# Change Lens: unlocked and supports have will
+
+	skills.append(SkillDirectory.get_dict("Augur" if supports_have_will else "Evade"))
 	if lens_unlocked and supports_have_will:
-		skills.insert(1, {"name": "Change Lens", "key": "special"})
+		skills.insert(1, SkillDirectory.get_dict("Change Lens"))
 	return skills
 
 

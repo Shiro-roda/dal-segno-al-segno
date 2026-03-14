@@ -1,0 +1,17 @@
+[gd_scene format=3 uid="uid://ddc4g52fcpi5n"]
+
+[ext_resource type="Script" uid="uid://y3orrcxip4lc" path="res://scripts/UI/cam_space_panel.gd" id="1_csp"]
+
+[sub_resource type="QuadMesh" id="QuadMesh_1"]
+size = Vector2(0.3, 0.275)
+
+[node name="CamSpacePanel" type="Node3D" unique_id=1177374962]
+script = ExtResource("1_csp")
+
+[node name="SubViewport" type="SubViewport" parent="." unique_id=1809667857]
+transparent_bg = true
+size = Vector2i(256, 128)
+render_target_update_mode = 3
+
+[node name="Quad" type="MeshInstance3D" parent="." unique_id=370249449]
+mesh = SubResource("QuadMesh_1")

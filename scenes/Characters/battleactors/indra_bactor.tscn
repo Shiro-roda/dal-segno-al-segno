@@ -1,6 +1,13 @@
 [gd_scene format=3 uid="uid://d23jj42kvsjw"]
 
 [ext_resource type="Script" uid="uid://bvbmtqu5i3uvl" path="res://scripts/Characters/supports/indra_actor.gd" id="1_jan5a"]
+[ext_resource type="Script" uid="uid://jtnowsj7i172" path="res://scripts/UI/actor_panel_3d.gd" id="2_mkouj"]
+[ext_resource type="PackedScene" uid="uid://bl3aftctvygxl" path="res://scenes/UI/battle_panels/hp_display.tscn" id="3_mgr0d"]
+[ext_resource type="PackedScene" uid="uid://dm1a08supvq1i" path="res://scenes/UI/battle_panels/will_ring.tscn" id="4_mqn0j"]
+[ext_resource type="Script" uid="uid://cyrjmvijvkbgi" path="res://scripts/UI/battle_panels/blood_globe.gd" id="4_s20at"]
+[ext_resource type="PackedScene" uid="uid://dq3nb60aox4xs" path="res://scenes/UI/ring nodes/large_orb.tscn" id="5_s20at"]
+[ext_resource type="Script" uid="uid://dy0abpcnhagax" path="res://scripts/UI/battle_panels/will_ring.gd" id="6_16wdt"]
+[ext_resource type="PackedScene" uid="uid://40c4oy4sdeja" path="res://scenes/UI/ring nodes/small_orb.tscn" id="6_bl43k"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_jan5a"]
 albedo_color = Color(0.02745098, 0.8666667, 1, 1)
@@ -18,3 +25,17 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 0)
 [node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=401051072]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 mesh = SubResource("CapsuleMesh_mkouj")
+
+[node name="WorldSpacePanel" type="Node3D" parent="." unique_id=2110896591]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1475444, 0)
+script = ExtResource("2_mkouj")
+
+[node name="HpDisplay" type="Node3D" parent="WorldSpacePanel" unique_id=1429397145 instance=ExtResource("3_mgr0d")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.34747982, 0)
+script = ExtResource("4_s20at")
+
+[node name="WillRing" type="Node3D" parent="WorldSpacePanel" unique_id=887065047 instance=ExtResource("4_mqn0j")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.021168709, 0)
+script = ExtResource("6_16wdt")
+token_large_scene = ExtResource("5_s20at")
+token_small_scene = ExtResource("6_bl43k")

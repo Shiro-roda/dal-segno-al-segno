@@ -89,14 +89,12 @@ func get_skills() -> Array:
 	var shelt_unlocked = party_member != null and party_member.is_skill_unlocked("Shelter")
 	var calc_unlocked  = party_member != null and party_member.is_skill_unlocked("Calcify")
 	var skills = [
-		{"name": "Rebuke" if has_will else "Cling", "key": "attack", "aoe": has_will, "struggle": not has_will},
+		SkillDirectory.get_dict("Rebuke" if has_will else "Cling"),
 	]
-	# Support: Shelter (unlocked + affordable) > Embrace (unlocked)
 	if shelt_unlocked:
-		skills.append({"name": "Shelter" if can_shelt else "Embrace", "key": "support", "ally_target": true})
-	# Special: Calcify only when unlocked and affordable
+		skills.append(SkillDirectory.get_dict("Shelter" if can_shelt else "Embrace"))
 	if calc_unlocked and can_calc:
-		skills.insert(1, {"name": "Calcify", "key": "special", "targeted": true, "part_targeted": true})
+		skills.insert(1, SkillDirectory.get_dict("Calcify"))
 	return skills
 
 
@@ -142,14 +140,21 @@ func _rebuke(target: BattleActor, part: BodyPartData) -> void:
 		return
 	say_random(CHATTER_REBUKE)
 	log_msg("%s wards off your foes." % [name])
-	for enemy in get_opponents():
-		var dmg = int(attack_power * REBUKE_DMG_MULT)
+	# Snapshot before damage loop — enemies may die and be freed mid-loop
+	var targets := get_opponents()
+	for enemy in targets:
+		if not is_instance_valid(enemy) or not enemy.is_alive():
+			continue
+		var dmg := int(attack_power * REBUKE_DMG_MULT)
 		enemy.take_damage(dmg, self)
-		if randf() < REBUKE_SLOW_CHANCE:
+		if is_instance_valid(enemy) and enemy.is_alive() and randf() < REBUKE_SLOW_CHANCE:
 			enemy.apply_status(STATUS_SLOW, 2)
 			log_msg("%s is slowed." % enemy.name)
+	if not is_inside_tree():
+		return
 	await get_tree().create_timer(0.5).timeout
-	emit_signal("turn_finished")
+	if is_inside_tree():
+		emit_signal("turn_finished")
 
 
 func _cling() -> void:
@@ -175,18 +180,16 @@ func _cling() -> void:
 func _calcify(target: BattleActor, part: BodyPartData = null) -> void:
 	party_member.spend_will(CALCIFY_WILL_COST)
 	var turns = randi_range(CALCIFY_MIN_TURNS, CALCIFY_MAX_TURNS)
-	target.apply_status(STATUS_FROZEN, turns)
-	target.apply_status("encased", turns)
-	if part != null:
-		part.apply_status("encased", turns)
-		log_msg("%s's %s is encased in ice for %d turns." % [target.name, part.part_name, turns])
-	else:
-		log_msg("%s is encased in ice for %d turns." % [target.name, turns])
-	say_random(CHATTER_CALCIFY)
-	# Drain tempo heavily each turn of encasement via the manager
 	var manager = get_tree().get_first_node_in_group("battle_manager")
-	for i in range(turns):
-		manager.delay_actor_turn(target)
+	var tempo_penalty : float = turns * manager.TEMPO_COST_ATTACK
+	target.tempo_pool -= tempo_penalty
+	target.apply_status("encased", 0)
+	if part != null:
+		part.apply_status("encased", 0)
+		log_msg("Hue encases %s's %s in ice, guarding them from harm until it melts. (-%s TEMPO)" % [target.name, part.part_name, tempo_penalty])
+	else:
+		log_msg("Hue encases %s in ice, guarding them from harm until it melts. (-%s TEMPO)" % [target.name, tempo_penalty])
+	say_random(CHATTER_CALCIFY)
 	await get_tree().create_timer(0.5).timeout
 	emit_signal("turn_finished")
 
@@ -221,10 +224,7 @@ func _desperate_grasp() -> void:
 	spend_turn()
 
 
-# Encased enemies take reduced damage; Hue reacts when hit
 func take_damage(amount: int, attacker: BattleActor = null) -> void:
-	if has_status("encased"):
-		amount = int(amount * CALCIFY_DMG_REDUCTION)
 	super.take_damage(amount, attacker)
 	if is_alive():
 		say_random(CHATTER_HURT)

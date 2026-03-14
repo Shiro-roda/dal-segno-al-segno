@@ -30,6 +30,7 @@ script = ExtResource("3_wyblm")
 display_name = "Deadly Shadow"
 base_max_hp = 9
 base_attack = 5
+exp_yield = 9
 body_parts = Array[ExtResource("2_oaxon")]([SubResource("Resource_5ghe2"), SubResource("Resource_3nniw"), SubResource("Resource_6wgkd")])
 battle_scene = ExtResource("1_mb5vk")
 metadata/_custom_type_script = "uid://b2t1syvrybco8"

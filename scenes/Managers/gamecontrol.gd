@@ -1,4 +1,3 @@
-
 extends Node
 class_name GameControl
 
@@ -14,6 +13,7 @@ var battle_manager
 var dungeon_controller
 
 
+
 func _ready():
 
 	await _wait_for_layers()
@@ -23,8 +23,7 @@ func _ready():
 	event_layer.visible = false
 
 	await _wait_for_controllers()
-	
-	
+
 	start_new_game()
 
 
@@ -45,7 +44,6 @@ func _wait_for_controllers():
 	while dungeon_controller == null:
 		await get_tree().process_frame
 		dungeon_controller = get_tree().get_first_node_in_group("dungeon_controller")
-
 
 
 func start_new_game():
@@ -79,6 +77,7 @@ func _start_companion_select(select_scene: PackedScene, dungeon_data: DungeonDat
 	event_layer.add_child(select)
 	dungeon_layer.visible = false
 	battle_layer.visible = false
+	world_layer.visible = false
 	event_layer.visible = true
 	select.event_finished.connect(func():
 		clear_layer(event_layer)
@@ -87,15 +86,14 @@ func _start_companion_select(select_scene: PackedScene, dungeon_data: DungeonDat
 	)
 
 
-
 func start_new_run(run : RunState):
 	current_run = run
+
 
 func _set_dungeon_map_visible(visible: bool):
 	var map_3d = get_tree().get_first_node_in_group("dungeon_map_3d")
 	if map_3d:
 		map_3d.visible = visible
-		# Disable/enable the phantom camera host so no main viewport camera is active during battle
 		var host = map_3d.get_node_or_null("CameraPivot/Camera3D/PhantomCameraHost")
 		if host:
 			host.set_process(visible)
@@ -103,6 +101,7 @@ func _set_dungeon_map_visible(visible: bool):
 		var cam = map_3d.get_node_or_null("CameraPivot/Camera3D")
 		if cam:
 			cam.current = visible
+
 
 func start_battle(encounter):
 
@@ -128,8 +127,6 @@ func start_battle(encounter):
 	manager.battle_finished.connect(_on_battle_finished)
 
 
-
-
 func _on_battle_finished(victory, exp_per_member: Dictionary = {}, level_up_events: Dictionary = {}):
 
 	clear_layer(battle_layer)
@@ -138,7 +135,6 @@ func _on_battle_finished(victory, exp_per_member: Dictionary = {}, level_up_even
 	AudioManagerAuto.reset_ambience()
 	AudioManagerAuto.fade_out_bgm()
 
-	# Show results screen on event_layer before returning to dungeon
 	var results_scene := preload("res://scenes/UI/menu/battle_results.tscn")
 	var results := results_scene.instantiate()
 	clear_layer(event_layer)
@@ -150,26 +146,24 @@ func _on_battle_finished(victory, exp_per_member: Dictionary = {}, level_up_even
 	var _vic: bool = victory
 	results.results_dismissed.connect(func():
 		clear_layer(event_layer)
+		if not _vic:
+			# Defeat: reset the entire run and return to companion select
+			start_new_game()
+			return
+		# Victory: return to dungeon
 		event_layer.visible = false
 		dungeon_layer.visible = true
 		_set_dungeon_map_visible(true)
 		var resume_tween = create_tween()
 		resume_tween.tween_callback(AudioManagerAuto.resume_dungeon_track).set_delay(0.7)
 		var dc = get_tree().get_first_node_in_group("dungeon_controller")
-		if _vic:
-			dc.on_room_completed()
-		else:
-			dc.on_party_defeated()
+		dc.on_room_completed()
 	)
 
 
-
 func clear_layer(layer):
-
 	for child in layer.get_children():
 		child.queue_free()
-
-
 
 
 func start_event(event_scene: PackedScene):
@@ -187,7 +181,6 @@ func start_event(event_scene: PackedScene):
 	event.event_finished.connect(_on_event_finished)
 
 
-
 func _on_event_finished():
 
 	clear_layer(event_layer)
@@ -195,9 +188,9 @@ func _on_event_finished():
 	dungeon_layer.visible = true
 	_set_dungeon_map_visible(true)
 
-	var dungeon_controller = get_tree().get_first_node_in_group("dungeon_controller")
+	var dc = get_tree().get_first_node_in_group("dungeon_controller")
+	dc.on_room_completed()
 
-	dungeon_controller.on_room_completed()
 
 func start_world(scene: PackedScene):
 
@@ -213,6 +206,7 @@ func start_world(scene: PackedScene):
 	world_layer.visible = true
 	_set_dungeon_map_visible(false)
 
+
 func start_dungeon(dungeon_data: DungeonData):
 
 	dungeon_layer.visible = true
@@ -222,7 +216,6 @@ func start_dungeon(dungeon_data: DungeonData):
 	dungeon_controller.start_dungeon(current_run, dungeon_data)
 
 
-# Start a boss battle. On victory, shows the win screen. On defeat, calls on_party_defeated.
 func start_boss_battle(encounter: EncounterData) -> void:
 	dungeon_layer.visible = false
 	event_layer.visible = false
@@ -247,35 +240,23 @@ func _on_boss_battle_finished(victory: bool, exp_per_member: Dictionary = {}, le
 	AudioManagerAuto.reset_ambience()
 	AudioManagerAuto.fade_out_bgm()
 
+	var results_scene := preload("res://scenes/UI/menu/battle_results.tscn")
+	var results := results_scene.instantiate()
+	clear_layer(event_layer)
+	event_layer.visible = true
+	dungeon_layer.visible = false
+	event_layer.add_child(results)
+	results.setup(victory, current_run.party_members, exp_per_member, level_up_events)
+
 	if victory:
-		# Show results briefly, then the win screen
-		var results_scene := preload("res://scenes/UI/menu/battle_results.tscn")
-		var results := results_scene.instantiate()
-		clear_layer(event_layer)
-		event_layer.visible = true
-		dungeon_layer.visible = false
-		event_layer.add_child(results)
-		results.setup(true, current_run.party_members, exp_per_member, level_up_events)
 		results.results_dismissed.connect(func():
 			clear_layer(event_layer)
 			start_win_screen()
 		)
 	else:
-		# Defeat — show results then respawn/end run as normal
-		var results_scene := preload("res://scenes/UI/menu/battle_results.tscn")
-		var results := results_scene.instantiate()
-		clear_layer(event_layer)
-		event_layer.visible = true
-		dungeon_layer.visible = false
-		event_layer.add_child(results)
-		results.setup(false, current_run.party_members, exp_per_member, level_up_events)
 		results.results_dismissed.connect(func():
 			clear_layer(event_layer)
-			event_layer.visible = false
-			dungeon_layer.visible = true
-			_set_dungeon_map_visible(true)
-			var dc = get_tree().get_first_node_in_group("dungeon_controller")
-			dc.on_party_defeated()
+			start_new_game()
 		)
 
 

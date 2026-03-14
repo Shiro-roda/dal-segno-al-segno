@@ -1,0 +1,409 @@
+extends Control
+## BattleRadialUI — radial ring UI for battle command input.
+##
+## Phase 1 (this script): skill ring + target ring, visual feedback cards.
+## Part ring and double-click confirm are stubbed for later.
+##
+## Usage:
+##   call open(origin, skills, targets, support_targets) to show the skill ring.
+##   Listen to signals: skill_chosen, target_chosen, part_chosen, cancelled.
+##   call close() to dismiss everything.
+
+signal skill_chosen(skill_key: String)
+signal target_chosen(target: BattleActor)
+signal part_chosen(part: BodyPartData)
+signal confirmed
+signal cancelled
+
+# ── Visual constants (match dungeon_map_3d palette) ───────────────────────────
+const FONT_PATH      := "res://assets/Fonts/TerminalVector.ttf"
+const C_BG           := Color(0.08, 0.07, 0.06, 0.96)
+const C_BORDER       := Color(0.35, 0.28, 0.22, 1.0)
+const C_ACCENT       := Color(0.52, 0.42, 0.28, 1.0)
+const C_TEXT         := Color(0.88, 0.83, 0.74, 1.0)
+const C_DIM          := Color(0.45, 0.40, 0.35, 1.0)
+const C_SEL          := Color(0.52, 0.42, 0.28, 0.28)
+const C_ENEMY        := Color(0.72, 0.22, 0.18, 1.0)   # red tint for enemy targets
+const C_ALLY         := Color(0.22, 0.55, 0.38, 1.0)   # green tint for ally targets
+
+# ── Ring geometry ─────────────────────────────────────────────────────────────
+const RADIAL_RADIUS      := 110.0
+const RADIAL_START_ANGLE := -90.0
+const RING_BTN_W         := 130.0
+const RING_BTN_H         := 80.0
+const RING_ROLL_TIME     := 0.38
+const RING_POP_TIME      := 0.18
+
+# Evenly-spaced angles for up to 6 buttons; first always at the top.
+func _angles_for(n: int) -> Array:
+	var out := []
+	for i in n:
+		out.append(RADIAL_START_ANGLE + i * (360.0 / n))
+	return out
+
+# ── State ─────────────────────────────────────────────────────────────────────
+var _root_layer   : CanvasLayer = null   # inner layer so we can nuke everything cleanly
+var _origin       : Vector2     = Vector2.ZERO
+
+var _skill_btns   : Array = []   # Button nodes for skill ring
+var _target_btns  : Array = []   # Button nodes for target ring
+var _part_btns    : Array = []   # Button nodes for part ring (future)
+var _info_card    : Control = null
+
+var _skills       : Array = []   # Array[Dictionary]  — full skill dicts
+var _targets      : Array = []   # Array[BattleActor] — enemy targets
+var _ally_targets : Array = []   # Array[BattleActor] — ally targets (support)
+
+var _sel_skill        : Dictionary = {}
+var _sel_target       : BattleActor = null
+var _sel_skill_center : Vector2 = Vector2.ZERO  # screen pos of the pressed skill btn
+
+# Which actor's skills are we showing (for "already attacked" part memory — future)
+var _active_actor : BattleActor = null
+
+# ── Entry point ───────────────────────────────────────────────────────────────
+
+## Show the skill ring centred on `origin` (screen coords).
+## skills      = actor.get_skills() filtered to the keys you want shown
+## targets     = enemy BattleActors
+## ally_targets = friendly BattleActors  
+func open(origin: Vector2, skills: Array, targets: Array,
+		ally_targets: Array, actor: BattleActor = null) -> void:
+	close(true)  # silent — re-opening is not a cancellation
+	_origin       = origin
+	_skills       = skills
+	_targets      = targets
+	_ally_targets = ally_targets
+	_active_actor = actor
+
+	_root_layer       = CanvasLayer.new()
+	_root_layer.layer = 20   # above BattleUI (layer 0 default)
+	add_child(_root_layer)
+
+	_build_skill_ring()
+
+
+## Dismiss everything and emit cancelled.
+func close(silent: bool = false) -> void:
+	if is_instance_valid(_root_layer):
+		_root_layer.queue_free()
+		_root_layer = null
+	_skill_btns.clear()
+	_target_btns.clear()
+	_part_btns.clear()
+	_info_card = null
+	_sel_skill = {}
+	_sel_target = null
+	if not silent:
+		emit_signal("cancelled")
+
+# ── Skill ring ────────────────────────────────────────────────────────────────
+
+func _build_skill_ring() -> void:
+	_skill_btns.clear()
+	var angles := _angles_for(_skills.size())
+	for i in _skills.size():
+		var skill : Dictionary = _skills[i]
+		var wrapper := _make_wrapper()
+		_root_layer.add_child(wrapper)
+		var btn := _make_ring_btn("")
+		btn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		wrapper.add_child(btn)
+		btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE)
+		_skill_btns.append(btn)
+		var cap_skill := skill
+		var cap_i     := i
+		btn.pressed.connect(func(): _on_skill_pressed(cap_skill, cap_i))
+		_animate_arc(wrapper, btn, _origin, RADIAL_START_ANGLE, angles[i],
+				true, skill.get("name", skill.get("key", "?")))
+
+
+func _on_skill_pressed(skill: Dictionary, idx: int) -> void:
+	var is_support : bool = str(skill.get("key", "")) == "support"
+	var is_aoe     : bool = bool(skill.get("aoe", false))
+	var is_struggle: bool = bool(skill.get("struggle", false))
+	var pool       : Array = _ally_targets if is_support else _targets
+	var has_children : bool = not (is_aoe or is_struggle) and not pool.is_empty()
+
+	if _sel_skill == skill:
+		# Second press on same skill.
+		# Only confirm here if the first press produced no children — i.e. the
+		# target ring is not showing. If children are visible the second press
+		# on the skill button is just a re-select; do nothing.
+		if not has_children:
+			var key : String = str(skill.get("key", ""))
+			close(true)
+			emit_signal("skill_chosen", key)
+			emit_signal("confirmed")
+		return
+
+	# ── First press ───────────────────────────────────────────────────────────
+	_sel_skill  = skill
+	_sel_target = null
+	_clear_info_card()
+	_clear_target_ring()
+
+	# Record the screen centre of the pressed button as the target ring origin
+	if idx < _skill_btns.size():
+		var w := _skill_btns[idx].get_parent() as Control
+		if is_instance_valid(w):
+			_sel_skill_center = w.position + w.size * 0.5
+
+	for i in _skill_btns.size():
+		_set_btn_selected(_skill_btns[i], i == idx)
+
+	_show_skill_card(skill)
+
+	if not has_children:
+		# No target ring to show — second press will confirm.
+		# (AoE, struggle, or empty pool.)
+		return
+
+	_build_target_ring(pool, is_support)
+
+# ── Target ring ───────────────────────────────────────────────────────────────
+
+func _build_target_ring(pool: Array, is_ally: bool) -> void:
+	_target_btns.clear()
+	# Target ring radiates out from the pressed skill button's position
+	var target_origin := _sel_skill_center
+	var angles        := _angles_for(pool.size())
+
+	for i in pool.size():
+		var actor : BattleActor = pool[i]
+		var wrapper := _make_wrapper()
+		_root_layer.add_child(wrapper)
+		var btn := _make_ring_btn("", is_ally)
+		btn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		wrapper.add_child(btn)
+		btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE)
+		_target_btns.append(btn)
+		var cap_actor := actor
+		var cap_i     := i
+		btn.pressed.connect(func(): _on_target_pressed(cap_actor, cap_i))
+		_animate_arc(wrapper, btn, target_origin, RADIAL_START_ANGLE, angles[i],
+				true, actor.name)
+
+
+func _on_target_pressed(actor: BattleActor, idx: int) -> void:
+	if _sel_target == actor:
+		# Second press — target confirmed. Emit skill + target; the manager
+		# decides whether to proceed to part selection or confirm directly.
+		var key : String = _sel_skill.get("key", "")
+		close(true)
+		emit_signal("skill_chosen", key)
+		emit_signal("target_chosen", actor)
+		# Do NOT emit confirmed here — manager's _on_radial_target_chosen
+		# will advance the stage correctly based on the skill type.
+		return
+
+	_sel_target = actor
+	_clear_info_card()
+	_show_target_card(actor)
+
+	# Highlight selected target, dim others
+	for i in _target_btns.size():
+		_set_btn_selected(_target_btns[i], i == idx)
+
+	# ── Part ring stub ────────────────────────────────────────────────────────
+	# If the skill is part-targeted, build part ring here (future).
+	# For now, emit target_chosen and let battle_manager handle the rest.
+	var is_part_targeted : bool = _sel_skill.get("part_targeted", false)
+	if not is_part_targeted:
+		# Nothing further needed — double-press or battle_manager confirm
+		pass
+
+# ── Info cards ────────────────────────────────────────────────────────────────
+
+func _show_skill_card(skill: Dictionary) -> void:
+	_clear_info_card()
+	var card := _make_card(Vector2(180, 70))
+	card.position = _origin + Vector2(-90, 20)
+
+	var vbox := VBoxContainer.new()
+	vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE)
+	card.add_child(vbox)
+
+	var skill_name : String = str(skill.get("name", skill.get("key", "?")))
+	var name_lbl := _make_label(skill_name, 13, C_TEXT)
+	vbox.add_child(name_lbl)
+
+	var desc : String = str(skill.get("description", ""))
+	if desc != "":
+		var desc_lbl := _make_label(desc, 10, C_DIM)
+		desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		vbox.add_child(desc_lbl)
+
+	_root_layer.add_child(card)
+	_info_card = card
+
+
+func _show_target_card(actor: BattleActor) -> void:
+	_clear_info_card()
+	var card := _make_card(Vector2(180, 80))
+	# Place card near origin but offset toward the target ring side
+	card.position = _origin + Vector2(20, 20)
+
+	var vbox := VBoxContainer.new()
+	vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE)
+	card.add_child(vbox)
+
+	var name_lbl := _make_label(actor.name, 13, C_TEXT)
+	vbox.add_child(name_lbl)
+
+	var hp_lbl := _make_label("HP  %d / %d" % [actor.hp, actor.max_hp], 10, C_DIM)
+	vbox.add_child(hp_lbl)
+
+	_root_layer.add_child(card)
+	_info_card = card
+
+
+func _clear_info_card() -> void:
+	if is_instance_valid(_info_card):
+		_info_card.queue_free()
+		_info_card = null
+
+
+func _clear_target_ring() -> void:
+	for b in _target_btns:
+		if is_instance_valid(b):
+			var w : Control = b.get_parent()
+			if is_instance_valid(w):
+				w.queue_free()
+	_target_btns.clear()
+
+# ── Dismiss on click-outside ──────────────────────────────────────────────────
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not is_instance_valid(_root_layer):
+		return
+	if event is InputEventMouseButton and event.pressed:
+		close()
+
+# ── Ring animation (same machinery as dungeon_map_3d) ─────────────────────────
+
+func _animate_arc(wrapper: Control, btn: Button, origin: Vector2,
+		start_deg: float, final_deg: float,
+		was_revealed: bool, label: String) -> void:
+	var tw := create_tween()
+	tw.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	var arc_cb := _ring_arc_cb.bind(wrapper, origin, start_deg, final_deg)
+	tw.tween_method(arc_cb, 0.0, 1.0, RING_ROLL_TIME)
+	await tw.finished
+	if not is_instance_valid(btn):
+		return
+	if was_revealed:
+		btn.text = label
+		var center := wrapper.position + Vector2(RING_BTN_H * 0.5, RING_BTN_H * 0.5)
+		await _pop_ring_btn(wrapper, btn, center)
+		return
+	btn.mouse_filter = Control.MOUSE_FILTER_STOP
+
+
+func _ring_arc_cb(t: float, wrapper: Control, origin: Vector2,
+		start_deg: float, final_deg: float) -> void:
+	if not is_instance_valid(wrapper):
+		return
+	var angle_rad : float = deg_to_rad(lerpf(start_deg, final_deg, t))
+	var radius    : float = RADIAL_RADIUS * t
+	var center    : Vector2 = origin + Vector2(cos(angle_rad), sin(angle_rad)) * radius
+	var sz        : Vector2 = Vector2(RING_BTN_H, RING_BTN_H)
+	wrapper.custom_minimum_size = sz
+	wrapper.size                = sz
+	wrapper.position            = center - sz * 0.5
+
+
+func _pop_ring_btn(wrapper: Control, btn: Button, final_center: Vector2) -> void:
+	if not is_instance_valid(wrapper):
+		return
+	btn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var tw := create_tween()
+	tw.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.set_parallel(true)
+	var pop_cb := _ring_pop_cb.bind(wrapper, btn, final_center)
+	tw.tween_method(pop_cb, 0.0, 1.0, RING_POP_TIME)
+	await tw.finished
+	if is_instance_valid(btn):
+		btn.mouse_filter = Control.MOUSE_FILTER_STOP
+
+
+func _ring_pop_cb(t: float, wrapper: Control, btn: Button, center: Vector2) -> void:
+	if not is_instance_valid(wrapper):
+		return
+	var w      : float = lerpf(RING_BTN_H, RING_BTN_W, t)
+	var radius : float = lerpf(RING_BTN_H * 0.5, 14.0, t)
+	wrapper.custom_minimum_size = Vector2(w, RING_BTN_H)
+	wrapper.size                = Vector2(w, RING_BTN_H)
+	wrapper.position            = center - Vector2(w * 0.5, RING_BTN_H * 0.5)
+	btn.size                    = Vector2(w, RING_BTN_H)
+	for key in ["normal", "hover", "pressed", "focus"]:
+		var s : StyleBoxFlat = btn.get_theme_stylebox(key)
+		if s is StyleBoxFlat:
+			s.set_corner_radius_all(int(radius))
+
+# ── Factory helpers ───────────────────────────────────────────────────────────
+
+func _make_wrapper() -> Control:
+	var w := Control.new()
+	w.clip_contents       = true
+	w.custom_minimum_size = Vector2(RING_BTN_H, RING_BTN_H)
+	w.size                = Vector2(RING_BTN_H, RING_BTN_H)
+	return w
+
+
+func _make_ring_btn(label_text: String, ally: bool = false) -> Button:
+	var btn := Button.new()
+	btn.text          = label_text
+	btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	btn.add_theme_font_size_override("font_size", 11)
+
+	var border_col  := C_ENEMY if not ally else C_ALLY
+	var sbox        := StyleBoxFlat.new()
+	sbox.bg_color     = C_BG
+	sbox.border_color = C_BORDER
+	sbox.set_border_width_all(2)
+	sbox.set_corner_radius_all(int(RING_BTN_H * 0.5))
+	sbox.set_content_margin_all(8)
+
+	var sbox_h := StyleBoxFlat.new()
+	sbox_h.bg_color     = C_SEL
+	sbox_h.border_color = border_col
+	sbox_h.set_border_width_all(2)
+	sbox_h.set_corner_radius_all(int(RING_BTN_H * 0.5))
+	sbox_h.set_content_margin_all(8)
+
+	btn.add_theme_stylebox_override("normal",  sbox)
+	btn.add_theme_stylebox_override("hover",   sbox_h)
+	btn.add_theme_stylebox_override("pressed", sbox_h)
+	btn.add_theme_stylebox_override("focus",   sbox)
+	return btn
+
+
+func _make_card(sz: Vector2) -> PanelContainer:
+	var card := PanelContainer.new()
+	card.custom_minimum_size = sz
+	var sbox := StyleBoxFlat.new()
+	sbox.bg_color     = C_BG
+	sbox.border_color = C_BORDER
+	sbox.set_border_width_all(2)
+	sbox.set_corner_radius_all(6)
+	sbox.set_content_margin_all(10)
+	card.add_theme_stylebox_override("panel", sbox)
+	return card
+
+
+func _make_label(text: String, size: int, color: Color) -> Label:
+	var lbl       := Label.new()
+	lbl.text       = text
+	lbl.add_theme_font_size_override("font_size", size)
+	lbl.add_theme_color_override("font_color", color)
+	return lbl
+
+
+func _set_btn_selected(btn: Button, selected: bool) -> void:
+	var wrapper := btn.get_parent() as Control
+	if not is_instance_valid(wrapper):
+		return
+	var target_alpha := 1.0 if selected else 0.45
+	var tw := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tw.tween_property(wrapper, "modulate:a", target_alpha, 0.12)

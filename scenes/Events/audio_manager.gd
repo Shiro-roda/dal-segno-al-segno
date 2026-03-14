@@ -57,7 +57,7 @@ func _ready() -> void:
 	
 	# Narrow band
 	bgm_highpass.cutoff_hz = 260.0
-	bgm_lowpass.cutoff_hz = 4200.0
+	bgm_lowpass.cutoff_hz = 8200.0
 
 	# Compression
 	bgm_compressor.threshold = -10

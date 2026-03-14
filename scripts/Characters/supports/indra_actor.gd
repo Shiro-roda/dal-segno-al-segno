@@ -20,6 +20,8 @@ const GALVANIZE_ATK_BONUS     = 2
 const GALVANIZE_WILL_BONUS    = 1
 const MARTYR_HP_COST          = 4
 const MARTYR_WILL_RESTORE     = 3
+const MARTYR_DURATION = 3
+const MARTYR_TEMPO_BONUS = 3
 
 const CHATTER_CRUCIFY = [
 	"Hold out your arms.",
@@ -69,14 +71,12 @@ func get_skills() -> Array:
 	var galv_unlocked   = party_member != null and party_member.is_skill_unlocked("Galvanize")
 	var fulm_unlocked   = party_member != null and party_member.is_skill_unlocked("Fulminate")
 	var skills = [
-		{"name": "Crucify" if has_will else "Clobber", "key": "attack", "struggle": not has_will},
+		SkillDirectory.get_dict("Crucify" if has_will else "Clobber"),
 	]
-	# Support: Galvanize (unlocked + affordable) > Martyr (unlocked)
 	if galv_unlocked:
-		skills.append({"name": "Galvanize" if can_galvanize else "Martyr", "key": "support", "aoe": true})
-	# Special: Fulminate only when unlocked and affordable
+		skills.append(SkillDirectory.get_dict("Galvanize" if can_galvanize else "Martyr"))
 	if fulm_unlocked and can_fulminate:
-		skills.insert(1, {"name": "Fulminate", "key": "special", "aoe": true})
+		skills.insert(1, SkillDirectory.get_dict("Fulminate"))
 	return skills
 
 
@@ -135,10 +135,14 @@ func _fulminate(all_actors: Array) -> void:
 	party_member.spend_will(FULMINATE_WILL_COST)
 	say_random(CHATTER_FULMINATE)
 	log_msg("The earth is laid waste before him, the world and all who dwell in it." % [name])
-	for enemy in get_opponents():
-		var dmg = int(attack_power * FULMINATE_DMG_MULT) + (randi() % attack_power)
+	var targets := get_opponents()
+	for enemy in targets:
+		if not is_instance_valid(enemy) or not enemy.is_alive():
+			continue
+		var dmg := int(attack_power * FULMINATE_DMG_MULT) + (randi() % attack_power)
 		enemy.take_damage(dmg, self)
-	emit_signal("turn_finished")
+	if is_inside_tree():
+		emit_signal("turn_finished")
 
 
 func _galvanize(all_actors: Array) -> void:
@@ -155,16 +159,29 @@ func _galvanize(all_actors: Array) -> void:
 	spend_turn()
 
 
+
+
 func _martyr() -> void:
-	if hp <= MARTYR_HP_COST:
-		log_msg("%s has nothing left to give." % name)
-		spend_turn()
-		return
-	take_damage(MARTYR_HP_COST)
+
+
 	party_member.restore_will(MARTYR_WILL_RESTORE)
+
+	apply_status(STATUS_BLEEDING, BLEED_DURATION)
+
+	apply_status(STATUS_MARTYR, MARTYR_DURATION)
+
+	martyr_tempo_bonus = MARTYR_TEMPO_BONUS
+	martyr_bonus_damage = 0
+
 	say_random(CHATTER_MARTYR)
-	log_msg("%s offers up %d HP to restore %d will." % [name, MARTYR_HP_COST, MARTYR_WILL_RESTORE])
+
+	log_msg(
+		"%s prepares a cup of wrath."
+		% name
+	)
+
 	spend_turn()
+
 
 
 func take_damage(amount: int, attacker: BattleActor = null) -> void:

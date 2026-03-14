@@ -88,12 +88,12 @@ func show_rest_screen():
 		var flat_ammo = randi_range(int(run_state.max_ammo   * 0.3), int(run_state.max_ammo   * 0.7))
 
 		var all_options : Array = [
-			{"text": "Rest (restore ~%d HP each)"       % pct_hp,   "type": "hp",   "val": pct_hp},
-			{"text": "Slumber (restore ~%d HP each)"    % flat_hp,  "type": "hp",   "val": flat_hp},
-			{"text": "Ruminate (restore ~%d Will each)" % pct_will, "type": "will", "val": pct_will},
-			{"text": "Pray (restore ~%d Will each)"     % flat_will,"type": "will", "val": flat_will},
-			{"text": "Scavenge (restore ~%d Ammo)"      % pct_ammo, "type": "ammo", "val": pct_ammo},
-			{"text": "Desecrate (restore ~%d Ammo)"     % flat_ammo,"type": "ammo", "val": flat_ammo},
+			{"text": "Rest (restore ~%d CORP each)"       % pct_hp,   "type": "hp",   "val": pct_hp},
+			{"text": "Slumber (restore ~%d CORP each)"    % flat_hp,  "type": "hp",   "val": flat_hp},
+			{"text": "Ruminate (restore ~%d AP each)" % pct_will, "type": "will", "val": pct_will},
+			{"text": "Pray (restore ~%d AP each)"     % flat_will,"type": "will", "val": flat_will},
+			{"text": "Scavenge (restore ~%d BB)"      % pct_ammo, "type": "ammo", "val": pct_ammo},
+			{"text": "Desecrate (restore ~%d BB)"     % flat_ammo,"type": "ammo", "val": flat_ammo},
 		]
 		all_options.shuffle()
 		room.rest_options = all_options.slice(0, 3)
@@ -109,6 +109,14 @@ func show_rest_screen():
 		var v = option["val"]
 		btn.pressed.connect(func(): _do_rest(t, v))
 		room_list.add_child(btn)
+
+	# Segno option: available in any room with allows_segno = true (e.g. Chapel)
+	if room.room_data != null and room.room_data.allows_segno:
+		var segno_btn = Button.new()
+		var has_segno := controller.dungeon.last_segno_pos != Vector2i(-999, -999)
+		segno_btn.text = "Move Segno here" if has_segno else "Place Segno here"
+		segno_btn.pressed.connect(func(): controller.place_segno(true))
+		room_list.add_child(segno_btn)
 
 
 func _do_rest(rest_type: String, val: int) -> void:

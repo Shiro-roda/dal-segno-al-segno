@@ -1,0 +1,317 @@
+extends Node3D
+# BloodGlobe — transparent red sphere containing rolling blood balls.
+#
+# PHYSICS DESIGN:
+#   - Shell is AnimatableBody3D with sync_to_physics=true
+#   - Shell position is set in _physics_process (same thread as physics)
+#   - This ensures the physics engine sees the wall at the correct position
+#     every step, so balls cannot tunnel through between frames
+#
+# LAYERS:
+#   GLOBE_LAYER (128) — outer shell <-> large balls + small balls
+#   DOT_LAYER   (64)  — inner ball shells <-> dots inside large balls
+#
+# DECOMPOSITION:
+#   large = hp / 5   each large ball has 5 dots rolling inside it
+#   small = hp % 5   loose 1-pt balls
+
+# ── Exports ───────────────────────────────────────────────────────────────────
+@export var globe_radius       : float   = 0.45
+@export var globe_offset       : Vector3 = Vector3(-0.5, 0.0, 0.0)
+@export var large_ball_r       : float   = 0.10
+@export var small_ball_r       : float   = 0.040
+@export var dot_r              : float   = 0.018
+@export var shake_strength     : float   = 3.0
+
+# ── Colours ───────────────────────────────────────────────────────────────────
+const C_GLOBE := Color(0.60, 0.05, 0.04, 0.40)
+const C_LARGE := Color(0.80, 0.12, 0.10, 1.0)
+const C_SMALL := Color(0.92, 0.20, 0.16, 1.0)
+const C_DOT   := Color(0.35, 0.02, 0.02, 1.0)
+const C_BLOOD := Color(0.70, 0.04, 0.02, 1.0)
+
+# ── Layers ────────────────────────────────────────────────────────────────────
+const GLOBE_LAYER : int = 128
+const DOT_LAYER   : int = 64
+
+# ── Internal ──────────────────────────────────────────────────────────────────
+var _actor       = null
+var _hp          : int = 1
+
+var _shell       : AnimatableBody3D
+var _globe_mesh  : MeshInstance3D
+var _ball_root   : Node3D
+var _particles   : CPUParticles3D
+var _balls       : Array = []
+var _inner_pairs : Array = []   # [{shell, body}] for large ball inner shells
+
+var _shake_timer : float = 0.0
+var _ring_angle  : float = 0.0
+var _built       : bool  = false
+
+
+# ── Lifecycle ─────────────────────────────────────────────────────────────────
+
+func _exit_tree() -> void:
+	for pair in _inner_pairs:
+		if is_instance_valid(pair.shell):
+			pair.shell.queue_free()
+	if is_instance_valid(_ball_root):
+		_ball_root.queue_free()
+	if is_instance_valid(_shell):
+		_shell.queue_free()
+
+
+func setup(actor) -> void:
+	_actor = actor
+	_hp    = actor.hp
+	actor.hp_changed.connect(_on_hp_changed)
+	call_deferred("_deferred_build")
+
+
+func _deferred_build() -> void:
+	# Wait two frames: one for actor placement, one for physics server init
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_build_shell()
+	_build_balls_root()
+	_build_particles()
+	_rebuild_balls()
+	_built = true
+
+
+# ── Per-frame (render) ────────────────────────────────────────────────────────
+
+func _process(delta: float) -> void:
+	if _shake_timer > 0.0:
+		_shake_timer -= delta
+		if _shake_timer < 0.0:
+			_shake_timer = 0.0
+	_ring_angle += 0.3 * delta
+	if _globe_mesh:
+		_globe_mesh.rotation.y = _ring_angle
+
+
+# ── Per-physics-step ──────────────────────────────────────────────────────────
+# Shell positions MUST be set here so the physics server sees them each step.
+
+func _physics_process(_delta: float) -> void:
+	if not _built:
+		return
+	# Outer shell tracks actor
+	if _shell:
+		_shell.global_position = _target_pos() + _shake_offset()
+	# Inner shells track their large ball
+	for pair in _inner_pairs:
+		if is_instance_valid(pair.shell) and is_instance_valid(pair.body):
+			pair.shell.global_position = pair.body.global_position
+
+
+func _target_pos() -> Vector3:
+	# self.global_position already reflects the node's position in the scene
+	# hierarchy (actor pos + WorldSpacePanel offset + HpDisplay offset).
+	# globe_offset is an additional world-space nudge on top of that.
+	return global_position + globe_offset
+
+
+func _shake_offset() -> Vector3:
+	if _shake_timer <= 0.0:
+		return Vector3.ZERO
+	var t   := _shake_timer
+	var mag := t * 0.05
+	return Vector3(sin(t * 48.0) * mag, cos(t * 37.0) * mag * 0.5, sin(t * 29.0) * mag * 0.7)
+
+
+# ── Build ─────────────────────────────────────────────────────────────────────
+
+func _make_concave_shell(radius: float, segs: int, rings: int) -> ConcavePolygonShape3D:
+	var sm := SphereMesh.new()
+	sm.radius          = radius
+	sm.height          = radius * 2.0
+	sm.radial_segments = segs
+	sm.rings           = rings
+	var out_f := sm.get_faces()
+	var in_f  := PackedVector3Array()
+	in_f.resize(out_f.size())
+	for i in range(0, out_f.size(), 3):
+		in_f[i + 0] = out_f[i + 0]
+		in_f[i + 1] = out_f[i + 2]   # flip winding -> normals inward
+		in_f[i + 2] = out_f[i + 1]
+	var shape := ConcavePolygonShape3D.new()
+	shape.set_faces(in_f)
+	return shape
+
+
+func _build_shell() -> void:
+	var scene_root = get_tree().get_first_node_in_group("battle_scene")
+
+	_shell = AnimatableBody3D.new()
+	_shell.collision_layer = GLOBE_LAYER
+	_shell.collision_mask  = GLOBE_LAYER
+	_shell.sync_to_physics = true
+
+	var shell_col   := CollisionShape3D.new()
+	shell_col.shape  = _make_concave_shell(globe_radius * 0.97, 32, 16)
+	_shell.add_child(shell_col)
+
+	_globe_mesh = MeshInstance3D.new()
+	var gm      := SphereMesh.new()
+	gm.radius   = globe_radius
+	gm.height   = globe_radius * 2.0
+	gm.radial_segments = 32
+	gm.rings    = 16
+	_globe_mesh.mesh = gm
+	var gmat    := StandardMaterial3D.new()
+	gmat.albedo_color = C_GLOBE
+	gmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	gmat.cull_mode    = BaseMaterial3D.CULL_FRONT
+	gmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_globe_mesh.set_surface_override_material(0, gmat)
+	_shell.add_child(_globe_mesh)
+
+	# Place immediately before adding to tree so first physics step is correct
+	_shell.global_position = _target_pos()
+
+	if scene_root:
+		scene_root.add_child(_shell)
+	else:
+		add_child(_shell)
+
+
+func _build_balls_root() -> void:
+	_ball_root      = Node3D.new()
+	_ball_root.name = "BloodGlobeBalls"
+	var scene_root  = get_tree().get_first_node_in_group("battle_scene")
+	if scene_root:
+		scene_root.add_child(_ball_root)
+	else:
+		add_child(_ball_root)
+
+
+func _build_particles() -> void:
+	_particles = CPUParticles3D.new()
+	_particles.emitting             = false
+	_particles.one_shot             = true
+	_particles.amount               = 18
+	_particles.lifetime             = 0.6
+	_particles.explosiveness        = 0.9
+	_particles.direction            = Vector3(0, -1, 0)
+	_particles.spread               = 55.0
+	_particles.gravity              = Vector3(0, -6.0, 0)
+	_particles.initial_velocity_min = 0.4
+	_particles.initial_velocity_max = 1.2
+	_particles.scale_amount_min     = 0.015
+	_particles.scale_amount_max     = 0.035
+	_particles.color                = C_BLOOD
+	add_child(_particles)
+
+
+# ── Balls ─────────────────────────────────────────────────────────────────────
+
+func _rebuild_balls() -> void:
+	for b in _balls:
+		if is_instance_valid(b): b.queue_free()
+	_balls.clear()
+	for pair in _inner_pairs:
+		if is_instance_valid(pair.shell): pair.shell.queue_free()
+	_inner_pairs.clear()
+
+	var large := _hp / 5
+	var small  := _hp % 5
+	for _i in large: _spawn_ball(large_ball_r, true)
+	for _i in small:  _spawn_ball(small_ball_r, false)
+
+
+func _make_rigid_ball(radius: float, color: Color, layer: int) -> RigidBody3D:
+	var body        := RigidBody3D.new()
+	body.collision_layer = layer
+	body.collision_mask  = layer
+	body.mass            = clamp(radius * 10.0, 0.05, 2.0)
+	body.linear_damp     = 0.5
+	body.angular_damp    = 0.6
+	body.gravity_scale   = 1.0
+	var col  := CollisionShape3D.new()
+	var csph := SphereShape3D.new()
+	csph.radius = radius
+	col.shape   = csph
+	body.add_child(col)
+	var mi   := MeshInstance3D.new()
+	var mesh := SphereMesh.new()
+	mesh.radius = radius
+	mesh.height = radius * 2.0
+	mi.mesh     = mesh
+	var mat     := StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+	mi.set_surface_override_material(0, mat)
+	body.add_child(mi)
+	return body
+
+
+func _spawn_ball(radius: float, is_large: bool) -> void:
+	var color := C_LARGE if is_large else C_SMALL
+	var body       := _make_rigid_ball(radius, color, GLOBE_LAYER)
+
+	var max_r  := globe_radius - radius - 0.02
+	var dir    := Vector3(randf_range(-1,1), randf_range(-1,1), randf_range(-1,1)).normalized()
+	body.global_position = _shell.global_position + dir * randf_range(0.0, max_r)
+	body.linear_velocity = Vector3(randf_range(-0.2,0.2), randf_range(0.1,0.4), randf_range(-0.2,0.2))
+
+	_ball_root.add_child(body)
+	_balls.append(body)
+
+	if not is_large:
+		return
+
+	# Inner AnimatableBody3D shell for this large ball
+	var inner       := AnimatableBody3D.new()
+	inner.collision_layer = DOT_LAYER
+	inner.collision_mask  = DOT_LAYER
+	inner.sync_to_physics = true
+	var inner_col         := CollisionShape3D.new()
+	inner_col.shape        = _make_concave_shell(radius * 0.88, 16, 8)
+	inner.add_child(inner_col)
+	inner.global_position = body.global_position
+	var sr = get_tree().get_first_node_in_group("battle_scene")
+	if sr:
+		sr.add_child(inner)
+	else:
+		_ball_root.add_child(inner)
+	_inner_pairs.append({"shell": inner, "body": body})
+
+	# 5 dots rolling inside the large ball
+	var dot_max := radius * 0.88 - dot_r - 0.002
+	for _j in 5:
+		var dot  := _make_rigid_ball(dot_r, C_DOT, DOT_LAYER)
+		var ddir := Vector3(randf_range(-1,1), randf_range(-1,1), randf_range(-1,1)).normalized()
+		dot.global_position = body.global_position + ddir * randf_range(0.0, dot_max)
+		_ball_root.add_child(dot)
+
+
+# ── HP change ─────────────────────────────────────────────────────────────────
+
+func _on_hp_changed(_ignored = null) -> void:
+	var old_hp := _hp
+	_hp = _actor.hp
+	if _hp < old_hp:
+		_do_shake(old_hp - _hp)
+		_emit_blood()
+	if _built:
+		_rebuild_balls()
+
+
+func _do_shake(damage: int) -> void:
+	_shake_timer = 0.20 + damage * 0.025
+	var mag      := shake_strength * (1.0 + damage * 0.08)
+	for b in _balls:
+		if is_instance_valid(b):
+			var d := Vector3(randf_range(-1,1), randf_range(-1,1), randf_range(-1,1)).normalized()
+			(b as RigidBody3D).apply_central_impulse(d * mag)
+
+
+func _emit_blood() -> void:
+	if _particles:
+		if _shell:
+			_particles.global_position = _shell.global_position
+		_particles.restart()

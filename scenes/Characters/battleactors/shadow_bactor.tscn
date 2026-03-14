@@ -2,11 +2,23 @@
 
 [ext_resource type="Script" uid="uid://c8fvcb046bf6m" path="res://scripts/Characters/BattleActor.gd" id="1_65ug8"]
 [ext_resource type="PackedScene" uid="uid://6kmv2ko6w15m" path="res://scenes/Characters/ken_model.tscn" id="2_33l1f"]
+[ext_resource type="Script" uid="uid://d2keok0ggm4q7" path="res://scripts/Characters/ken_model.gd" id="3_1gdyb"]
+[ext_resource type="Script" uid="uid://jtnowsj7i172" path="res://scripts/UI/actor_panel_3d.gd" id="3_33l1f"]
+[ext_resource type="PackedScene" uid="uid://bl3aftctvygxl" path="res://scenes/UI/battle_panels/hp_display.tscn" id="4_aw60n"]
+[ext_resource type="Script" uid="uid://cyrjmvijvkbgi" path="res://scripts/UI/battle_panels/blood_globe.gd" id="6_scve4"]
 
 [node name="BattleActor" type="Node3D" unique_id=620316433]
 script = ExtResource("1_65ug8")
 
-[node name="ken_model_test9" parent="." unique_id=515500204 instance=ExtResource("2_33l1f")]
+[node name="ken_model_test9" type="Node3D" parent="." unique_id=515500204 instance=ExtResource("2_33l1f")]
+script = ExtResource("3_1gdyb")
 
 [node name="CameraAnchor" type="Node3D" parent="." unique_id=631189047]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3882167, 0)
+
+[node name="WorldSpacePanel" type="Node3D" parent="." unique_id=1766206424]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1034403, 0)
+script = ExtResource("3_33l1f")
+
+[node name="HpDisplay" type="Node3D" parent="WorldSpacePanel" unique_id=1429397145 instance=ExtResource("4_aw60n")]
+script = ExtResource("6_scve4")

@@ -28,6 +28,7 @@ var _party_rows   : Array = []  # VBoxContainers, one per member
 var _skill_detail_name : Label
 var _skill_detail_type : Label
 var _skill_detail_cost : Label
+var _skill_detail_summary : Label
 var _skill_detail_desc : Label
 var _skill_list_vbox   : VBoxContainer
 var _skill_btns        : Array = []
@@ -50,32 +51,6 @@ var _pending : Dictionary = {}
 var _apply_btn : Button
 
 # -----------------------------------------------------------------------
-# Skill descriptions - fill these in yourself.
-# Keys match skill "name" strings from each actor's get_skills().
-# -----------------------------------------------------------------------
-const SKILL_DESCRIPTIONS : Dictionary = {
-	"Shoot":        "Blasphemous lethality lies in your hands. Take aim and dispel the fantasias that take refuge here.",
-	"Pistol Whip":  "Short of arms, yet not devoid of alternatives.",
-	"Change Lens":  "Strip away the layers of perception itself to expose your foe's most intimate and fragile disfigurements. \nUnderstand that the price of understanding may be more than you can afford.",
-	"Augur":        "Portentious signs only you can see are all around you, and your companions may benefit from your discernment. Grants dodge chance and heightened tempo to all allies.",
-	"Evade":        "",
-	"Rebuke":       "Hue stymies the enemy with a chilling mist and admonishment.",
-	"Cling":        "",
-	"Calcify":      "Hue buries the foe in a glacial tomb, leaving them unable to act but guarded from harm.",
-	"Shelter":      "Hue shields a companion with a wall of ice.",
-	"Embrace":      "",
-	"Crucify":      "The zealot lunges forth to assail the enemy with a nail-adorned baton. \nHas a chance to perforate your foe's flesh, spilling their ichor for two turns.",
-	"Clobber":      "",
-	"Fulminate":    "The mountains quake before him, and the hills melt away.",
-	"Galvanize":    "Indra fills his comrades with the electric pride of leading the charge, restoring their will to fight and invigorating their attacks. Also grants you an additional bullet.",
-	"Martyr":       "",
-	"Vice":         "Vritra envenoms the foe with worldly delights. Has a chance to transmutate the enemy's flesh into ambrosia, restoring vitality to allies who feast upon them.",
-	"Strangulate":  "",
-	"Devour":       "The serpent unfetters its yawning maw, and swallows their banquet whole. Strengthens Vritra permanently if the enemy is left without a trace.",
-	"Wither":       "Vritra inflicts the enemy with unbearable famine, lessening their strength and siphoning their vitality.",
-	"Waste":        "",
-}
-
 # -----------------------------------------------------------------------
 # Colours / style constants
 # -----------------------------------------------------------------------
@@ -305,8 +280,8 @@ func _make_member_header() -> Control:
 	var cols := [
 		["NAME",       190, HORIZONTAL_ALIGNMENT_LEFT],
 		["LV",          50, HORIZONTAL_ALIGNMENT_CENTER],
-		["HP",          90, HORIZONTAL_ALIGNMENT_CENTER],
-		["WILL / AMMO", 90, HORIZONTAL_ALIGNMENT_CENTER],
+		["CORP",          90, HORIZONTAL_ALIGNMENT_CENTER],
+		["AP / BB", 90, HORIZONTAL_ALIGNMENT_CENTER],
 		["ATK",         70, HORIZONTAL_ALIGNMENT_CENTER],
 		["TEMPO",       70, HORIZONTAL_ALIGNMENT_CENTER],
 		["STATUS",     220, HORIZONTAL_ALIGNMENT_LEFT],
@@ -498,6 +473,12 @@ func _build_skills_page() -> Control:
 	_skill_detail_cost.add_theme_font_size_override("font_size", 11)
 	_skill_detail_cost.add_theme_color_override("font_color", C_DIM)
 	meta_row.add_child(_skill_detail_cost)
+	
+	_skill_detail_summary = Label.new()
+	_skill_detail_summary.add_theme_font_size_override("font_size", 12)
+	_skill_detail_summary.add_theme_color_override("font_color", C_DIM)
+	meta_row.add_child(_skill_detail_summary)
+
 
 	# Divider under meta
 	var detail_div := ColorRect.new()
@@ -528,32 +509,32 @@ func _populate_skill_list() -> void:
 	# key: "attack" | "special" | "support"   cost: shown in detail panel
 	var roster : Array = [
 		{"character": "Kendall", "skills": [
-			{"name": "Shoot",       "type": "ATTACK",  "cost": "1 Ammo"},
-			{"name": "Pistol Whip", "type": "ATTACK",  "cost": "No Ammo"},
-			{"name": "Augur",       "type": "SUPPORT", "cost": "2 Will (allies)"},
+			{"name": "Shoot",       "type": "ATTACK",  "cost": "X BB [1]"},
+			{"name": "Pistol Whip", "type": "ATTACK",  "cost": "Beatless"},
+			{"name": "Augur",       "type": "SUPPORT", "cost": "2 AP (allies)"},
 			{"name": "Evade",       "type": "SUPPORT", "cost": "Ally Unwilling"},
-			{"name": "Change Lens", "type": "SPECIAL", "cost": "2 Will (allies)"},
+			{"name": "Change Lens", "type": "SPECIAL", "cost": "2 AP (allies)"},
 		]},
 		{"character": "Hue", "skills": [
-			{"name": "Rebuke",  "type": "ATTACK (AoE)",  "cost": "1 Will"},
+			{"name": "Rebuke",  "type": "ATTACK (AoE)",  "cost": "1 AP"},
 			{"name": "Cling",   "type": "ATTACK",  "cost": "Unwilling"},
-			{"name": "Shelter", "type": "SUPPORT", "cost": "2 Will"},
+			{"name": "Shelter", "type": "SUPPORT", "cost": "2 AP"},
 			{"name": "Embrace", "type": "SUPPORT", "cost": "Unwilling"},
-			{"name": "Calcify", "type": "SPECIAL", "cost": "3 Will"},
+			{"name": "Calcify", "type": "SPECIAL", "cost": "3 AP"},
 		]},
 		{"character": "Indra", "skills": [
-			{"name": "Crucify",   "type": "ATTACK",  "cost": "1 Will"},
+			{"name": "Crucify",   "type": "ATTACK",  "cost": "1 AP"},
 			{"name": "Clobber",   "type": "ATTACK",  "cost": "Unwilling"},
-			{"name": "Galvanize", "type": "SUPPORT", "cost": "2 Will"},
+			{"name": "Galvanize", "type": "SUPPORT", "cost": "2 AP"},
 			{"name": "Martyr",    "type": "SUPPORT", "cost": "Unwilling"},
-			{"name": "Fulminate", "type": "SPECIAL (AoE)", "cost": "3 Will"},
+			{"name": "Fulminate", "type": "SPECIAL (AoE)", "cost": "3 AP"},
 		]},
 		{"character": "Vritra", "skills": [
-			{"name": "Vice",        "type": "ATTACK",  "cost": "1 Will"},
-			{"name": "Strangulate", "type": "ATTACK",  "cost": "Unwilling"},
-			{"name": "Wither",      "type": "SUPPORT", "cost": "2 Will"},
-			{"name": "Waste",       "type": "SUPPORT", "cost": "Unwilling"},
-			{"name": "Devour",      "type": "SPECIAL", "cost": "3 Will"},
+			{"name": "Wither",      "type": "ATTACK", "cost": "1 AP"},
+			{"name": "Waste",       "type": "ATTACK", "cost": "Unwilling"},
+			{"name": "Vice",        "type": "SUPPORT",  "cost": "2 AP"},
+			{"name": "Malice", "type": "SUPPORT",  "cost": "Unwilling"},
+			{"name": "Devour",      "type": "SPECIAL", "cost": "3 AP"},
 		]},
 	]
 
@@ -613,7 +594,10 @@ func _show_skill_detail(skill: Dictionary) -> void:
 	_skill_detail_name.text = skill["name"]
 	_skill_detail_type.text = skill["type"]
 	_skill_detail_cost.text = skill["cost"]
-	_skill_detail_desc.text = SKILL_DESCRIPTIONS.get(skill["name"], "")
+	
+	var _sd := SkillDirectory.get_skill(skill["name"])
+	_skill_detail_summary.text = _sd.summary if _sd else ""
+	_skill_detail_desc.text = _sd.description if _sd else ""
 
 
 # -----------------------------------------------------------------------

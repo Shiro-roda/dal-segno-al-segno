@@ -180,7 +180,7 @@ func _show_line(line: DialogueLine) -> void:
 func _input(event: InputEvent) -> void:
 	if not is_playing or not _waiting:
 		return
-	var confirmed := event.is_action_pressed("ui_accept") \
+	var confirmed : bool = event.is_action_pressed("ui_accept") \
 		or event.is_action_pressed("ui_select") \
 		or (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT)
 	if not confirmed:

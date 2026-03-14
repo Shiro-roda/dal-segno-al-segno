@@ -1,0 +1,18 @@
+[gd_scene format=3 uid="uid://du3suh71satyp"]
+
+[ext_resource type="Texture2D" uid="uid://bsssy66fbm0va" path="res://assets/Noise Textures/flesh_texture.tres" id="1_sc1p8"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_6v32d"]
+albedo_texture = ExtResource("1_sc1p8")
+emission_enabled = true
+emission = Color(0.34901962, 0.03529412, 0, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_apfei"]
+material = SubResource("StandardMaterial3D_6v32d")
+radius = 0.06
+height = 0.12
+
+[node name="LargeOrb" type="Node3D" unique_id=1633102697]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1837306829]
+mesh = SubResource("SphereMesh_apfei")

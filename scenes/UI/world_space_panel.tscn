@@ -1,0 +1,15 @@
+[gd_scene format=3 uid="uid://df6ql1sskvnh1"]
+
+[sub_resource type="QuadMesh" id="QuadMesh_1"]
+size = Vector2(0.3, 0.3)
+
+[node name="WorldSpacePanel" type="Node3D" unique_id=1412689955]
+
+[node name="SubViewport" type="SubViewport" parent="." unique_id=1928406257]
+transparent_bg = true
+size = Vector2i(256, 128)
+render_target_update_mode = 3
+
+[node name="Quad" type="MeshInstance3D" parent="." unique_id=446454924]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.25484675, 1.8308702, 0.35311127)
+mesh = SubResource("QuadMesh_1")

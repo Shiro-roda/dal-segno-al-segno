@@ -4,15 +4,16 @@
 [ext_resource type="Script" uid="uid://b3i3n6lphwajh" path="res://resources/rooms/room_data.gd" id="2_gacfb"]
 [ext_resource type="PackedScene" uid="uid://cchf02irgj4hp" path="res://resources/characters/recruit_event.tscn" id="2_vit4c"]
 [ext_resource type="Script" uid="uid://2pqfqk1bjeam" path="res://resources/dungeons/dungeondata.gd" id="2_xmptu"]
+[ext_resource type="Script" uid="uid://c85hdsihevf3n" path="res://resources/rooms/rest_option.gd" id="3_1man1"]
 [ext_resource type="Texture2D" uid="uid://d1lr8w2d7rryn" path="res://icon.svg" id="3_cjxev"]
 [ext_resource type="PackedScene" uid="uid://qythxyqix8sw" path="res://scenes/Maps/battle_field_test.tscn" id="4_4oxoh"]
+[ext_resource type="Script" uid="uid://cahb38n4bk3e1" path="res://resources/rooms/room_effect.gd" id="4_w5o4c"]
 [ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://resources/characters/characterdata.gd" id="5_cqasl"]
 [ext_resource type="Resource" uid="uid://cqcjsnswptvk8" path="res://resources/characters/enemies/shadow1.tres" id="6_vit4c"]
 [ext_resource type="Script" uid="uid://coeqyvqijtkns" path="res://resources/encounters/encounterdata.gd" id="7_75ucp"]
-[ext_resource type="Script" uid="uid://divs34wkweat7" path="res://resources/encounters/dialogue_line.gd" id="8_1man1"]
+[ext_resource type="Script" uid="uid://b57cevaydtkqm" path="res://resources/encounters/splash_line.gd" id="8_1man1"]
 [ext_resource type="Resource" uid="uid://c7inm1j3nh7i4" path="res://resources/characters/enemies/shadow2.tres" id="8_oveqs"]
 [ext_resource type="Resource" uid="uid://d3s71movk40pc" path="res://audio/tracks/magenta.tres" id="9_1man1"]
-[ext_resource type="Script" uid="uid://cxogdp046hrx2" path="res://resources/encounters/encounter_dialogue.gd" id="9_w5o4c"]
 [ext_resource type="Resource" uid="uid://br73gevor1yrr" path="res://resources/encounters/test_encounter.tres" id="10_vit4c"]
 [ext_resource type="Resource" uid="uid://ds3k10sa11r3j" path="res://resources/characters/enemies/tall_shadow.tres" id="11_cqasl"]
 [ext_resource type="Resource" uid="uid://csg2bw5kmgf41" path="res://audio/tracks/cyan.tres" id="13_vit4c"]
@@ -31,27 +32,22 @@ script = ExtResource("2_gacfb")
 room_name = "Chapel"
 room_type = 4
 icon = ExtResource("3_cjxev")
-description = "A place to rest."
+description = "A place to rest. Your only respite, but there are no paths from here other than the way you came. [+0 Connection(s)]"
 danger_level = 0
 allows_segno = false
-connections = Array[Vector2i]([Vector2i(0, 0)])
+max_connections = 1
 metadata/_custom_type_script = "uid://b3i3n6lphwajh"
 
 [sub_resource type="Resource" id="Resource_t2pf7"]
 script = ExtResource("8_1man1")
 text = "A lone shadow approaches."
-metadata/_custom_type_script = "uid://divs34wkweat7"
-
-[sub_resource type="Resource" id="Resource_irf0e"]
-script = ExtResource("9_w5o4c")
-lines = Array[ExtResource("8_1man1")]([SubResource("Resource_t2pf7")])
-metadata/_custom_type_script = "uid://cxogdp046hrx2"
+metadata/_custom_type_script = "uid://b57cevaydtkqm"
 
 [sub_resource type="Resource" id="Resource_0evoc"]
 script = ExtResource("7_75ucp")
 battlefield_scene = ExtResource("4_4oxoh")
 enemies = Array[ExtResource("5_cqasl")]([ExtResource("6_vit4c")])
-intro_dialogue = SubResource("Resource_irf0e")
+intro_splash = Array[ExtResource("8_1man1")]([SubResource("Resource_t2pf7")])
 override_music = ExtResource("9_1man1")
 metadata/_custom_type_script = "uid://coeqyvqijtkns"
 
@@ -59,103 +55,115 @@ metadata/_custom_type_script = "uid://coeqyvqijtkns"
 script = ExtResource("2_gacfb")
 room_name = "Morning's Fodder"
 icon = ExtResource("3_cjxev")
-description = "A single foe."
+description = "A single, banal foe. [+1 Connection(s)]"
 encounter = SubResource("Resource_0evoc")
 allows_segno = false
-connections = Array[Vector2i]([Vector2i(0, 1), Vector2i(1, 0)])
+max_connections = 2
 metadata/_custom_type_script = "uid://b3i3n6lphwajh"
 
-[sub_resource type="Resource" id="Resource_f87ha"]
+[sub_resource type="Resource" id="Resource_irf0e"]
 script = ExtResource("8_1man1")
-text = "You disturb a peaceful pair of shadows."
-metadata/_custom_type_script = "uid://divs34wkweat7"
-
-[sub_resource type="Resource" id="Resource_iy6lp"]
-script = ExtResource("9_w5o4c")
-lines = Array[ExtResource("8_1man1")]([SubResource("Resource_f87ha")])
-metadata/_custom_type_script = "uid://cxogdp046hrx2"
+text = "You would disturb a peaceful pair of shadows."
+metadata/_custom_type_script = "uid://b57cevaydtkqm"
 
 [sub_resource type="Resource" id="Resource_gyugg"]
 script = ExtResource("7_75ucp")
 battlefield_scene = ExtResource("4_4oxoh")
 enemies = Array[ExtResource("5_cqasl")]([ExtResource("6_vit4c"), ExtResource("8_oveqs")])
-intro_dialogue = SubResource("Resource_iy6lp")
+intro_splash = Array[ExtResource("8_1man1")]([SubResource("Resource_irf0e")])
 override_music = ExtResource("9_1man1")
 
 [sub_resource type="Resource" id="Resource_1man1"]
 script = ExtResource("2_gacfb")
 room_name = "Twice your Afternoon"
 icon = ExtResource("3_cjxev")
-description = "Twice as many."
+description = "Two suns cast two shadows. [+2 Connection(s)]"
 encounter = SubResource("Resource_gyugg")
 danger_level = 2
 allows_segno = false
-connections = Array[Vector2i]([Vector2i(1, 0), Vector2i(0, -1)])
+max_connections = 3
 metadata/_custom_type_script = "uid://b3i3n6lphwajh"
 
 [sub_resource type="Resource" id="Resource_plsdk"]
 script = ExtResource("2_gacfb")
 room_name = "Insipid Evening"
 icon = ExtResource("3_cjxev")
-description = "Many foes."
+description = "The greatest of the least of your challenges. [+2 Connection(s)]"
 encounter = ExtResource("10_vit4c")
 danger_level = 3
+max_connections = 3
 connections = Array[Vector2i]([Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, 1)])
 metadata/_custom_type_script = "uid://b3i3n6lphwajh"
+
+[sub_resource type="Resource" id="Resource_7g1jr"]
+script = ExtResource("4_w5o4c")
+allow_event = false
+allow_shop = false
+allow_rest = false
+allow_segno = false
+metadata/_custom_type_script = "uid://cahb38n4bk3e1"
 
 [sub_resource type="Resource" id="Resource_job2v"]
 script = ExtResource("2_gacfb")
 room_name = "Crossroads"
 room_type = 5
 icon = ExtResource("3_cjxev")
-description = "A place for your signpost."
+description = "A place for your signpost. Can only lead to trials by combat; all other build options are forbidden. [+3 Connection(s)]"
 danger_level = 0
-allows_segno = false
+room_effects = Array[ExtResource("4_w5o4c")]([SubResource("Resource_7g1jr")])
 connections = Array[Vector2i]([Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)])
 metadata/_custom_type_script = "uid://b3i3n6lphwajh"
 
-[sub_resource type="Resource" id="Resource_1uv21"]
+[sub_resource type="Resource" id="Resource_f87ha"]
 script = ExtResource("8_1man1")
-text = "The Sun is high, yet your shadow stretches long before you."
-metadata/_custom_type_script = "uid://divs34wkweat7"
+text = "The Sun is high,"
+metadata/_custom_type_script = "uid://b57cevaydtkqm"
 
-[sub_resource type="Resource" id="Resource_8tmfl"]
-script = ExtResource("9_w5o4c")
-lines = Array[ExtResource("8_1man1")]([SubResource("Resource_1uv21")])
-metadata/_custom_type_script = "uid://cxogdp046hrx2"
+[sub_resource type="Resource" id="Resource_iy6lp"]
+script = ExtResource("8_1man1")
+text = "yet your shadow stretches long before you."
+metadata/_custom_type_script = "uid://b57cevaydtkqm"
 
 [sub_resource type="Resource" id="Resource_bx1x4"]
 script = ExtResource("7_75ucp")
 battlefield_scene = ExtResource("4_4oxoh")
 enemies = Array[ExtResource("5_cqasl")]([ExtResource("11_cqasl")])
-intro_dialogue = SubResource("Resource_8tmfl")
+intro_splash = Array[ExtResource("8_1man1")]([SubResource("Resource_f87ha"), SubResource("Resource_iy6lp")])
 metadata/_custom_type_script = "uid://coeqyvqijtkns"
+
+[sub_resource type="Resource" id="Resource_q4u41"]
+script = ExtResource("4_w5o4c")
+effect_type = 1
+ammo_amount = 6
+ammo_chance = 0.8
+metadata/_custom_type_script = "uid://cahb38n4bk3e1"
 
 [sub_resource type="Resource" id="Resource_fg3e6"]
 script = ExtResource("2_gacfb")
 room_name = "High Noon"
 room_type = 1
 icon = ExtResource("3_cjxev")
-description = "A stronger foe approaches."
+description = "You might find some ammo while passing through, but there will be a reckoning for the empty shells you've left behind.  [+3 Connection(s)]"
 encounter = SubResource("Resource_bx1x4")
-connections = Array[Vector2i]([Vector2i(0, 1), Vector2i(0, -1)])
+room_effects = Array[ExtResource("4_w5o4c")]([SubResource("Resource_q4u41")])
+connections = Array[Vector2i]([Vector2i(0, 1), Vector2i(0, -1), Vector2i(-1, 0), Vector2i(1, 0)])
 metadata/_custom_type_script = "uid://b3i3n6lphwajh"
 
-[sub_resource type="Resource" id="Resource_7g1jr"]
+[sub_resource type="Resource" id="Resource_1uv21"]
 script = ExtResource("8_1man1")
-text = "Gaze upon the world and everything in it."
-metadata/_custom_type_script = "uid://divs34wkweat7"
+text = "Gaze upon the earth and everything in it."
+metadata/_custom_type_script = "uid://b57cevaydtkqm"
 
-[sub_resource type="Resource" id="Resource_q4u41"]
-script = ExtResource("9_w5o4c")
-lines = Array[ExtResource("8_1man1")]([SubResource("Resource_7g1jr")])
-metadata/_custom_type_script = "uid://cxogdp046hrx2"
+[sub_resource type="Resource" id="Resource_8tmfl"]
+script = ExtResource("8_1man1")
+text = "The World, and they that dwell therein."
+metadata/_custom_type_script = "uid://b57cevaydtkqm"
 
 [sub_resource type="Resource" id="Resource_vit4c"]
 script = ExtResource("7_75ucp")
 battlefield_scene = ExtResource("4_4oxoh")
 enemies = Array[ExtResource("5_cqasl")]([ExtResource("14_75ucp")])
-intro_dialogue = SubResource("Resource_q4u41")
+intro_splash = Array[ExtResource("8_1man1")]([SubResource("Resource_1uv21"), SubResource("Resource_8tmfl")])
 override_music = ExtResource("13_vit4c")
 metadata/_custom_type_script = "uid://coeqyvqijtkns"
 
@@ -163,7 +171,7 @@ metadata/_custom_type_script = "uid://coeqyvqijtkns"
 script = ExtResource("2_gacfb")
 room_name = "The Empty One"
 room_type = 1
-description = "Gaze upon the world and everything in it."
+description = "There is nothing of substance to be found here. [+3 Connection(s)]"
 encounter = SubResource("Resource_vit4c")
 connections = Array[Vector2i]([Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)])
 metadata/_custom_type_script = "uid://b3i3n6lphwajh"
@@ -171,7 +179,7 @@ metadata/_custom_type_script = "uid://b3i3n6lphwajh"
 [sub_resource type="Resource" id="Resource_75ucp"]
 script = ExtResource("2_gacfb")
 room_name = "Atrium"
-room_type = 5
+room_type = 2
 description = "The mouth of the dungeon."
 danger_level = 0
 allows_segno = false

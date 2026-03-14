@@ -1,0 +1,7 @@
+[gd_scene format=3 uid="uid://bl3aftctvygxl"]
+
+[ext_resource type="Script" uid="uid://mh86sef8w38w" path="res://scripts/UI/battle_panels/hp_display.gd" id="1_71d1s"]
+
+[node name="HpDisplay" type="Node3D" unique_id=1429397145]
+script = ExtResource("1_71d1s")
+max_visible = 50

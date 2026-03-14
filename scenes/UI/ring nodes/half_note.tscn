@@ -1,0 +1,30 @@
+[gd_scene format=3 uid="uid://328n2hquvc48"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_olmce"]
+albedo_color = Color(0.83137256, 0.6862745, 0.21568628, 1)
+metallic = 1.0
+
+[sub_resource type="TorusMesh" id="TorusMesh_ca32g"]
+material = SubResource("StandardMaterial3D_olmce")
+inner_radius = 0.02
+outer_radius = 0.04
+rings = 5
+ring_segments = 5
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_02kn3"]
+albedo_color = Color(0.83137256, 0.6862745, 0.21568628, 1)
+metallic = 1.0
+
+[sub_resource type="BoxMesh" id="BoxMesh_grawc"]
+material = SubResource("StandardMaterial3D_02kn3")
+size = Vector3(0.012, 0.009, 0.12)
+
+[node name="HalfNote" type="Node3D" unique_id=1727077987]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1828547010]
+transform = Transform3D(-0.9999999, 1.280277e-08, -2.7818125e-08, -2.7818125e-08, 3.0908613e-08, 0.9999999, 1.2802771e-08, 1, -3.0908616e-08, 0, 0, 0)
+mesh = SubResource("TorusMesh_ca32g")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="MeshInstance3D" unique_id=1675189462]
+transform = Transform3D(0.9605562, -1.6744458e-08, -0.27808592, 1.4403325e-08, 1, -1.0461722e-08, 0.27808592, 6.043649e-09, 0.9605562, 0.04422824, 0.000500409, -0.06286092)
+mesh = SubResource("BoxMesh_grawc")

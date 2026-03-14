@@ -12,6 +12,7 @@
 [ext_resource type="Script" uid="uid://r12gfink2342" path="res://scenes/Events/battle_hud.gd" id="12_26idg"]
 [ext_resource type="Shader" uid="uid://btm2rulspg8el" path="res://scripts/Shaders/battleglitch.gdshader" id="13_xhnwx"]
 [ext_resource type="Script" uid="uid://cyhiqc5tsl2mm" path="res://scenes/UI/battle_dialogue_box.gd" id="14_xhnwx"]
+[ext_resource type="Script" uid="uid://jy5srbcn1jd4" path="res://scripts/UI/battle_radial_ui.gd" id="15_itxmc"]
 [ext_resource type="PackedScene" uid="uid://cx2gw1tu0rxpi" path="res://scenes/Managers/audio_manager.tscn" id="16_hq6gs"]
 
 [sub_resource type="Resource" id="Resource_26idg"]
@@ -47,6 +48,16 @@ grow_end = 0.0
 thickness = 4
 vertical = true
 
+[sub_resource type="Theme" id="Theme_itxmc"]
+default_font = ExtResource("11_xhnwx")
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hq6gs"]
+content_margin_left = 8.0
+content_margin_top = 10.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(0.1, 0.1, 0.1, 0.6)
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xhnwx"]
 content_margin_left = 15.0
 content_margin_top = 10.0
@@ -76,39 +87,6 @@ gradient = SubResource("Gradient_hq6gs")
 [sub_resource type="LabelSettings" id="LabelSettings_hq6gs"]
 font = ExtResource("11_xhnwx")
 font_size = 24
-
-[sub_resource type="Theme" id="Theme_itxmc"]
-default_font = ExtResource("11_xhnwx")
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hq6gs"]
-content_margin_left = 8.0
-content_margin_top = 10.0
-content_margin_right = 4.0
-content_margin_bottom = 4.0
-bg_color = Color(0.1, 0.1, 0.1, 0.6)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-corner_detail = 5
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_itxmc"]
-content_margin_left = 4.0
-content_margin_top = 4.0
-content_margin_right = 4.0
-content_margin_bottom = 4.0
-bg_color = Color(0.1, 0.1, 0.1, 0.6)
-border_width_left = 4
-border_width_top = 4
-border_width_bottom = 4
-border_color = Color(0.067437805, 0.06743773, 0.06743767, 1)
-expand_margin_left = 4.0
-expand_margin_top = 4.0
-expand_margin_bottom = 4.0
-
-[sub_resource type="Theme" id="Theme_xhnwx"]
-default_font = ExtResource("11_xhnwx")
-default_font_size = 19
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_hq6gs"]
 shader = ExtResource("13_xhnwx")
@@ -150,18 +128,20 @@ script = ExtResource("10_xhnwx")
 transform = Transform3D(1, 0, 0, 0, 0.9999998, 0, 0, 0, 0.9999998, 0, 5.2470794, 5.168442)
 
 [node name="active_cam" type="Node3D" parent="CameraRig" unique_id=2025165075]
-transform = Transform3D(1, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, -1.3915569, 2.0777407, 3.37666)
+transform = Transform3D(1, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, -1.3915569, 7.385764, 3.37666)
 top_level = true
 script = ExtResource("7_dg68v")
 follow_mode = 2
+look_at_mode = 2
 tween_resource = SubResource("Resource_26idg")
 camera_3d_resource = SubResource("Resource_xhnwx")
-follow_offset = Vector3(0.15, 0, 1)
+follow_offset = Vector3(0.2, 0, 1.5)
 follow_damping = true
 follow_damping_value = Vector3(0.2, 0.2, 0.2)
+look_at_offset = Vector3(0.2, 0, 0)
 
 [node name="target_cam" type="Node3D" parent="CameraRig" unique_id=1804288770]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.9518425, 0.88769054, 1.2990618)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.9518425, 7.48166, 1.2990618)
 top_level = true
 script = ExtResource("7_dg68v")
 follow_mode = 2
@@ -177,10 +157,12 @@ metadata/_custom_type_script = "uid://csjccrhj5wnx7"
 [node name="ActiveAnchor" type="Node3D" parent="CameraRig" unique_id=655453041]
 
 [node name="ActiveLookAnchor" type="Node3D" parent="CameraRig" unique_id=1582796026]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.264618, 3.6070132, 0)
 
 [node name="TargetAnchor" type="Node3D" parent="CameraRig" unique_id=1572926252]
 
 [node name="TargetLookAnchor" type="Node3D" parent="CameraRig" unique_id=1898894596]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.356731, 4.459252, 0)
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1340271938]
 environment = SubResource("Environment_b48sr")
@@ -194,15 +176,16 @@ alignment = 1
 [node name="Left_Container" type="SubViewportContainer" parent="HBoxContainer" unique_id=1776021748]
 layout_mode = 2
 size_flags_horizontal = 2
+size_flags_vertical = 8
 
 [node name="Left" type="SubViewport" parent="HBoxContainer/Left_Container" unique_id=1840474016]
 handle_input_locally = false
-size = Vector2i(638, 760)
+size = Vector2i(638, 960)
 size_2d_override_stretch = true
 render_target_update_mode = 4
 
 [node name="PlayerActorCam" type="Camera3D" parent="HBoxContainer/Left_Container/Left" unique_id=1335861594]
-transform = Transform3D(1, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, -1.3915569, 2.0777407, 3.37666)
+transform = Transform3D(1, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, -1.3915569, 7.385764, 3.37666)
 fov = 100.418106
 
 [node name="PhantomCameraHost" type="Node" parent="HBoxContainer/Left_Container/Left/PlayerActorCam" unique_id=774086878]
@@ -222,14 +205,15 @@ theme_override_styles/separator = SubResource("StyleBoxLine_xhnwx")
 [node name="Right_Container" type="SubViewportContainer" parent="HBoxContainer" unique_id=1715034904]
 layout_mode = 2
 size_flags_horizontal = 10
+size_flags_vertical = 0
 
 [node name="Right" type="SubViewport" parent="HBoxContainer/Right_Container" unique_id=249572341]
 handle_input_locally = false
-size = Vector2i(638, 960)
+size = Vector2i(638, 760)
 render_target_update_mode = 4
 
 [node name="TargetCam" type="Camera3D" parent="HBoxContainer/Right_Container/Right" unique_id=30126024]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.9518425, 0.88769054, 1.2990618)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.9518425, 7.48166, 1.2990618)
 fov = 100.418106
 
 [node name="PhantomCameraHost" type="Node" parent="HBoxContainer/Right_Container/Right/TargetCam" unique_id=1124316229]
@@ -241,28 +225,29 @@ host_layers = 2
 [node name="BattleHUD" type="CanvasLayer" parent="." unique_id=1441720760]
 script = ExtResource("12_26idg")
 
-[node name="PlayerPanels" type="HBoxContainer" parent="BattleHUD" unique_id=489023876]
-anchors_preset = 2
-anchor_top = 1.0
-anchor_bottom = 1.0
-offset_left = 5.0
-offset_top = -285.0
-offset_right = 45.0
-offset_bottom = -200.0
-grow_vertical = 0
+[node name="Player Status" type="PanelContainer" parent="BattleHUD" unique_id=1050170975]
+visible = false
+offset_right = 638.0
+offset_bottom = 200.0
+theme = SubResource("Theme_itxmc")
+theme_override_styles/panel = SubResource("StyleBoxFlat_hq6gs")
+
+[node name="PlayerContainer" type="HBoxContainer" parent="BattleHUD/Player Status" unique_id=489023876]
+layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 10
 
 [node name="TargetInfo" type="PanelContainer" parent="BattleHUD" unique_id=828853757]
+visible = false
 anchors_preset = 6
 anchor_left = 1.0
 anchor_top = 0.5
 anchor_right = 1.0
 anchor_bottom = 0.5
 offset_left = -800.0
-offset_top = 170.0
+offset_top = -392.0
 offset_right = -642.0
-offset_bottom = 280.0
+offset_bottom = -282.0
 grow_horizontal = 0
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_xhnwx")
@@ -290,19 +275,21 @@ layout_mode = 2
 label_settings = SubResource("LabelSettings_hq6gs")
 
 [node name="BattleLog" type="PanelContainer" parent="BattleHUD" unique_id=1305430076]
-anchors_preset = 5
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -456.3125
-offset_top = -3.0
-offset_right = 456.3125
-offset_bottom = 136.0
-grow_horizontal = 2
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -638.0
+offset_top = -200.0
+grow_horizontal = 0
+grow_vertical = 0
 theme = SubResource("Theme_itxmc")
 theme_override_styles/panel = SubResource("StyleBoxFlat_hq6gs")
 
 [node name="HBoxContainer" type="HBoxContainer" parent="BattleHUD/BattleLog" unique_id=11488190]
 layout_mode = 2
+theme_override_constants/separation = 0
 
 [node name="TurnQueue" type="VBoxContainer" parent="BattleHUD/BattleLog/HBoxContainer" unique_id=1190694953]
 custom_minimum_size = Vector2(100, 0)
@@ -313,6 +300,7 @@ alignment = 2
 [node name="Log" type="VBoxContainer" parent="BattleHUD/BattleLog/HBoxContainer" unique_id=142707975]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
 alignment = 2
 
 [node name="Audio Manager" parent="." unique_id=2102780936 instance=ExtResource("16_hq6gs")]
@@ -320,58 +308,13 @@ alignment = 2
 [node name="BattleUI" type="CanvasLayer" parent="." unique_id=100288458]
 script = ExtResource("10_dg68v")
 
-[node name="Panel" type="Panel" parent="BattleUI" unique_id=650984837]
-anchors_preset = -1
-anchor_top = 0.790625
-anchor_right = 0.5007143
-anchor_bottom = 1.0
-offset_left = 4.0
-offset_top = 5.0
-offset_right = -2.9143066
-offset_bottom = -4.0
-grow_horizontal = 2
-grow_vertical = 0
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_itxmc")
-
-[node name="HBoxContainer" type="HBoxContainer" parent="BattleUI/Panel" unique_id=900893671]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-size_flags_vertical = 3
-theme = SubResource("Theme_xhnwx")
-
-[node name="VBoxContainer" type="VBoxContainer" parent="BattleUI/Panel/HBoxContainer" unique_id=1170081938]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-
-[node name="VBoxContainer2" type="VBoxContainer" parent="BattleUI/Panel/HBoxContainer" unique_id=1992375307]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-alignment = 2
-
-[node name="TargetContainer" type="VBoxContainer" parent="BattleUI/Panel/HBoxContainer/VBoxContainer2" unique_id=1606708148]
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="ConfirmButton" type="Button" parent="BattleUI/Panel/HBoxContainer/VBoxContainer2" unique_id=973170720]
-layout_mode = 2
-text = "Confirm"
-
-[node name="CancelButton" type="Button" parent="BattleUI/Panel/HBoxContainer/VBoxContainer2" unique_id=1288275422]
-layout_mode = 2
-text = "Back"
-
 [node name="MeshInstance2D" type="MeshInstance2D" parent="BattleUI" unique_id=1311925908]
 visible = false
 material = SubResource("ShaderMaterial_hq6gs")
 mesh = SubResource("QuadMesh_ohpiy")
+
+[node name="BattleRadialUI" type="CanvasLayer" parent="." unique_id=1313641014]
+script = ExtResource("15_itxmc")
 
 [node name="DialogueLayer" type="CanvasLayer" parent="." unique_id=1724695061]
 script = ExtResource("14_xhnwx")

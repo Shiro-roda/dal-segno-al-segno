@@ -32,8 +32,30 @@ func _ready():
 		_apply_setup()
 
 
+const _HUD_BG     := Color(0.08, 0.07, 0.06, 0.96)
+const _HUD_ACCENT := Color(0.52, 0.42, 0.28, 1.0)
+const _HUD_TEXT   := Color(0.88, 0.83, 0.74, 1.0)
+const _HUD_DIM    := Color(0.45, 0.40, 0.35, 1.0)
+const _HUD_FONT   := "res://assets/Fonts/TerminalVector.ttf"
+
 func _apply_setup():
 	_setup_done = true
+	# Panel style — dark bg, accent on top edge
+	var sbox := StyleBoxFlat.new()
+	sbox.bg_color = _HUD_BG
+	sbox.set_border_width_all(0)
+	sbox.border_width_top = 2
+	sbox.border_color = _HUD_ACCENT
+	sbox.set_content_margin_all(10)
+	add_theme_stylebox_override("panel", sbox)
+	# Font + colour on all labels
+	var font : Font = load(_HUD_FONT) if ResourceLoader.exists(_HUD_FONT) else ThemeDB.fallback_font
+	for lbl in [name_label, hp_text, will_label, ammo_label]:
+		lbl.add_theme_font_override("font", font)
+		lbl.add_theme_color_override("font_color", _HUD_TEXT)
+	# HP bar tinted to accent gold
+	hp_bar.modulate = _HUD_ACCENT
+	will_bar.modulate = _HUD_ACCENT
 	name_label.text = actor.name
 	hp_bar.max_value = actor.max_hp
 
