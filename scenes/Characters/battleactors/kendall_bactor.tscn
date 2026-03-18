@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://bvemdwbw77sji" path="res://scripts/Characters/kendall_actor.gd" id="1_u31kg"]
 [ext_resource type="PackedScene" uid="uid://dhu0qxbwinbyv" path="res://scenes/Characters/ken_model_test_11.tscn" id="2_u31kg"]
-[ext_resource type="PackedScene" uid="uid://bl3aftctvygxl" path="res://scenes/UI/battle_panels/hp_display.tscn" id="4_uskna"]
+[ext_resource type="PackedScene" uid="uid://bl3aftctvygxl" path="res://scenes/UI/battle_panels/temp_hp_display.tscn" id="4_uskna"]
 [ext_resource type="PackedScene" uid="uid://0b058ymoagc" path="res://scenes/UI/battle_panels/ammo_staff.tscn" id="5_6ydus"]
 [ext_resource type="Script" uid="uid://jtnowsj7i172" path="res://scripts/UI/actor_panel_3d.gd" id="5_uskna"]
 [ext_resource type="PackedScene" uid="uid://du3suh71satyp" path="res://scenes/UI/ring nodes/large_flesh_orb.tscn" id="6_em4st"]

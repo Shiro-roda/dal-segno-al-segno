@@ -8,9 +8,10 @@ extends CanvasLayer
 signal menu_opened
 signal menu_closed
 
-const TAB_PARTY   := 0
-const TAB_SKILLS  := 1
-const TAB_OPTIONS := 2
+const TAB_PARTY     := 0
+const TAB_SKILLS    := 1
+const TAB_INVENTORY := 2
+const TAB_OPTIONS   := 3
 
 var _open       := false
 var _active_tab := TAB_PARTY
@@ -22,7 +23,12 @@ var _tab_btns     : Array = []
 var _pages        : Array = []  # one Control per tab
 
 # Party page node refs
-var _party_rows   : Array = []  # VBoxContainers, one per member
+var _party_rows    : Array = []  # VBoxContainers, one per member
+var _party_cap_lbl : Label = null  # shows active level cap
+
+# Inventory page node refs
+var _inventory_vbox  : VBoxContainer
+var _inventory_money : Label
 
 # Skills page node refs
 var _skill_detail_name : Label
@@ -37,9 +43,10 @@ var _skill_btns        : Array = []
 var _master_slider    : HSlider
 var _bgm_slider       : HSlider
 var _sfx_slider       : HSlider
-var _ca_slider        : HSlider
+var _ca_slider         : HSlider
 var _brightness_slider : HSlider
 var _contrast_slider   : HSlider
+var _saturation_slider : HSlider
 var _ssao_check       : CheckButton
 var _ssil_check       : CheckButton
 var _glow_check       : CheckButton
@@ -49,6 +56,10 @@ var _committed : Dictionary = {}
 var _pending : Dictionary = {}
 # Reference to Apply button so we can grey it out
 var _apply_btn : Button
+
+# Dim overlay shown behind the menu when open.
+var _dim_layer  : CanvasLayer
+var _dim_rect   : ColorRect
 
 # -----------------------------------------------------------------------
 # -----------------------------------------------------------------------
@@ -87,7 +98,9 @@ func _ready() -> void:
 	InputMap.action_add_event("open_menu", ev_i)
 
 	layer = 127   # above everything
+	add_to_group("party_menu")
 	_build_ui()
+	_build_dim_overlay()
 	hide_menu()
 
 # -----------------------------------------------------------------------
@@ -100,9 +113,35 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 # -----------------------------------------------------------------------
+func _build_dim_overlay() -> void:
+	_dim_layer = CanvasLayer.new()
+	_dim_layer.layer = 126  # just below the menu panel at 127
+	get_tree().root.add_child(_dim_layer)
+	_dim_rect = ColorRect.new()
+	_dim_rect.color = Color(0.0, 0.0, 0.0, 0.55)
+	_dim_rect.mouse_filter = Control.MOUSE_FILTER_STOP
+	_dim_layer.add_child(_dim_rect)
+	_dim_layer.visible = false
+	# Size must be set after the viewport is ready.
+	call_deferred("_resize_dim_rect")
+
+func _resize_dim_rect() -> void:
+	if _dim_rect == null:
+		return
+	var vp := get_viewport()
+	if vp:
+		# CanvasLayer has no rect — anchors don't work. Set position + size directly.
+		_dim_rect.position = Vector2.ZERO
+		_dim_rect.size = vp.get_visible_rect().size
+		if not vp.size_changed.is_connected(_resize_dim_rect):
+			vp.size_changed.connect(_resize_dim_rect)
+
+
+# -----------------------------------------------------------------------
 func show_menu() -> void:
 	_open = true
 	_root_panel.visible = true
+	if _dim_layer: _dim_layer.visible = true
 	# Seed _committed from live systems on first open (deferred so scene tree is ready)
 	if _committed.is_empty():
 		var master_bus := AudioServer.get_bus_index("Master")
@@ -117,6 +156,7 @@ func show_menu() -> void:
 			"ca":         _shader_param(mat0, "ca_strength", OPT_DEFAULTS.ca),
 			"brightness": _shader_param(mat0, "brightness",  OPT_DEFAULTS.brightness),
 			"contrast":   _shader_param(mat0, "contrast",    OPT_DEFAULTS.contrast),
+			"saturation": _shader_param(mat0, "saturation",  OPT_DEFAULTS.saturation),
 			"ssao": env0.ssao_enabled if env0 else false,
 			"ssil": env0.ssil_enabled if env0 else false,
 			"glow": env0.glow_enabled if env0 else false,
@@ -129,6 +169,7 @@ func show_menu() -> void:
 	if _ca_slider:         _ca_slider.set_value_no_signal(_committed.ca)
 	if _brightness_slider: _brightness_slider.set_value_no_signal(_committed.brightness)
 	if _contrast_slider:   _contrast_slider.set_value_no_signal(_committed.contrast)
+	if _saturation_slider: _saturation_slider.set_value_no_signal(_committed.saturation)
 	if _ssao_check: _ssao_check.set_pressed_no_signal(_committed.ssao)
 	if _ssil_check: _ssil_check.set_pressed_no_signal(_committed.ssil)
 	if _glow_check: _glow_check.set_pressed_no_signal(_committed.glow)
@@ -140,6 +181,7 @@ func show_menu() -> void:
 func hide_menu() -> void:
 	_open = false
 	_root_panel.visible = false
+	if _dim_layer: _dim_layer.visible = false
 	# Revert any uncommitted preview changes back to last applied state
 	if not _committed.is_empty():
 		_apply_options(_committed)
@@ -151,6 +193,7 @@ func hide_menu() -> void:
 		if _ca_slider:         _ca_slider.set_value_no_signal(_committed.ca)
 		if _brightness_slider: _brightness_slider.set_value_no_signal(_committed.brightness)
 		if _contrast_slider:   _contrast_slider.set_value_no_signal(_committed.contrast)
+		if _saturation_slider: _saturation_slider.set_value_no_signal(_committed.saturation)
 		if _ssao_check: _ssao_check.set_pressed_no_signal(_committed.ssao)
 		if _ssil_check: _ssil_check.set_pressed_no_signal(_committed.ssil)
 		if _glow_check: _glow_check.set_pressed_no_signal(_committed.glow)
@@ -193,7 +236,7 @@ func _build_ui() -> void:
 	_tab_bar.add_theme_constant_override("separation", 0)
 	vbox.add_child(_tab_bar)
 
-	var tab_names := ["PARTY", "SKILLS", "OPTIONS"]
+	var tab_names := ["PARTY", "SKILLS", "ITEMS", "OPTIONS"]
 	for i in tab_names.size():
 		var btn := Button.new()
 		btn.text = tab_names[i]
@@ -218,6 +261,7 @@ func _build_ui() -> void:
 	var content := Control.new()
 	content.custom_minimum_size = Vector2(MENU_W, MENU_H - 34)
 	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content.clip_contents = true
 	vbox.add_child(content)
 
 	# Party page
@@ -232,6 +276,12 @@ func _build_ui() -> void:
 	content.add_child(skills_page)
 	_pages.append(skills_page)
 
+	# Inventory page
+	var inventory_page := _build_inventory_page()
+	inventory_page.set_anchors_preset(Control.PRESET_FULL_RECT)
+	content.add_child(inventory_page)
+	_pages.append(inventory_page)
+
 	# Options page
 	var options_page := _build_options_page()
 	options_page.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -245,12 +295,28 @@ func _build_party_page() -> Control:
 	var page := ScrollContainer.new()
 	page.name = "PartyPage"
 	page.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	page.vertical_scroll_mode   = ScrollContainer.SCROLL_MODE_AUTO
 
 	var vbox := VBoxContainer.new()
 	vbox.name = "PartyVBox"
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.add_theme_constant_override("separation", 1)
 	page.add_child(vbox)
+
+	# Cap info row — right-aligned, shows active level ceiling.
+	_party_cap_lbl = Label.new()
+	_party_cap_lbl.text = ""
+	_party_cap_lbl.add_theme_font_size_override("font_size", 11)
+	_party_cap_lbl.add_theme_color_override("font_color", C_DIM)
+	_party_cap_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_party_cap_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_party_cap_lbl.custom_minimum_size = Vector2(0, 20)
+	var cap_pad := MarginContainer.new()
+	cap_pad.add_theme_constant_override("margin_right", 14)
+	cap_pad.add_theme_constant_override("margin_top", 4)
+	cap_pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cap_pad.add_child(_party_cap_lbl)
+	vbox.add_child(cap_pad)
 
 	# Header row
 	var header := _make_member_header()
@@ -277,25 +343,31 @@ func _make_member_header() -> Control:
 	row.custom_minimum_size = Vector2(0, 28)
 	row.add_theme_constant_override("separation", 0)
 
+	# Must mirror data row col widths, padding, and expand flags exactly.
 	var cols := [
-		["NAME",       190, HORIZONTAL_ALIGNMENT_LEFT],
-		["LV",          50, HORIZONTAL_ALIGNMENT_CENTER],
-		["CORP",          90, HORIZONTAL_ALIGNMENT_CENTER],
-		["AP / BB", 90, HORIZONTAL_ALIGNMENT_CENTER],
-		["ATK",         70, HORIZONTAL_ALIGNMENT_CENTER],
-		["TEMPO",       70, HORIZONTAL_ALIGNMENT_CENTER],
-		["STATUS",     220, HORIZONTAL_ALIGNMENT_LEFT],
+		["NAME",    160, HORIZONTAL_ALIGNMENT_LEFT,   true],
+		["LV",       36, HORIZONTAL_ALIGNMENT_CENTER, false],
+		["CORP",     80, HORIZONTAL_ALIGNMENT_CENTER, false],
+		["AP / BB",  72, HORIZONTAL_ALIGNMENT_CENTER, false],
+		["SHARP",    48, HORIZONTAL_ALIGNMENT_CENTER, false],
+		["FLAT",     40, HORIZONTAL_ALIGNMENT_CENTER, false],
+		["TEMPO",    48, HORIZONTAL_ALIGNMENT_CENTER, false],
+		["STATUS",   60, HORIZONTAL_ALIGNMENT_LEFT,   true],
 	]
 
 	for c in cols:
 		var lbl := Label.new()
 		lbl.text = c[0]
 		lbl.custom_minimum_size = Vector2(c[1], 28)
-		lbl.add_theme_font_size_override("font_size", 12)
+		lbl.add_theme_font_size_override("font_size", 11)
 		lbl.add_theme_color_override("font_color", C_DIM)
 		lbl.horizontal_alignment = c[2]
 		lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
-		var pad := _padded(lbl, 12, 0)
+		if c[3]:
+			lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var pad := _padded(lbl, 8, 0)
+		if c[3]:
+			pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(pad)
 
 	return row
@@ -311,26 +383,33 @@ func _make_member_row_placeholder() -> Control:
 	row.add_theme_constant_override("separation", 0)
 	outer_row.add_child(row)
 
+	# Cols: [name, min_w, h_align, font_size, color, expand]
+	# expand=true uses SIZE_EXPAND_FILL so the column grows to fill spare space.
 	var cols := [
-		["name_lbl",   190, HORIZONTAL_ALIGNMENT_LEFT,   16, C_TEXT],
-		["level_lbl",   50, HORIZONTAL_ALIGNMENT_CENTER, 13, C_DIM],
-		["hp_lbl",      90, HORIZONTAL_ALIGNMENT_CENTER, 13, C_TEXT],
-		["will_lbl",    90, HORIZONTAL_ALIGNMENT_CENTER, 13, C_TEXT],
-		["atk_lbl",     70, HORIZONTAL_ALIGNMENT_CENTER, 13, C_TEXT],
-		["tempo_lbl",   70, HORIZONTAL_ALIGNMENT_CENTER, 13, C_TEXT],
-		["status_lbl", 220, HORIZONTAL_ALIGNMENT_LEFT,   12, C_DIM],
+		["name_lbl",  160, HORIZONTAL_ALIGNMENT_LEFT,   15, C_TEXT,  true],
+		["level_lbl",  36, HORIZONTAL_ALIGNMENT_CENTER, 12, C_DIM,   false],
+		["hp_lbl",     80, HORIZONTAL_ALIGNMENT_CENTER, 12, C_TEXT,  false],
+		["will_lbl",   72, HORIZONTAL_ALIGNMENT_CENTER, 12, C_TEXT,  false],
+		["sharp_lbl",  48, HORIZONTAL_ALIGNMENT_CENTER, 12, C_TEXT,  false],
+		["flat_lbl",   40, HORIZONTAL_ALIGNMENT_CENTER, 12, C_TEXT,  false],
+		["tempo_lbl",  48, HORIZONTAL_ALIGNMENT_CENTER, 12, C_TEXT,  false],
+		["status_lbl", 60, HORIZONTAL_ALIGNMENT_LEFT,   11, C_DIM,   true],
 	]
 
 	for c in cols:
 		var lbl := Label.new()
 		lbl.name = c[0]
-		lbl.custom_minimum_size = Vector2(c[1], 56)
+		lbl.custom_minimum_size = Vector2(c[1], 52)
 		lbl.add_theme_font_size_override("font_size", c[3])
 		lbl.add_theme_color_override("font_color", c[4])
 		lbl.horizontal_alignment = c[2]
 		lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
-		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		var pad := _padded(lbl, 12, 0)
+		lbl.autowrap_mode        = TextServer.AUTOWRAP_WORD_SMART
+		if c[5]:
+			lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var pad := _padded(lbl, 8, 0)
+		if c[5]:
+			pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(pad)
 
 	# Description line beneath stats
@@ -341,7 +420,9 @@ func _make_member_row_placeholder() -> Control:
 	desc_lbl.add_theme_color_override("font_color", C_DIM)
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	desc_lbl.custom_minimum_size = Vector2(0, 0)
 	var desc_pad := _padded(desc_lbl, 24, 4)
+	desc_pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	outer_row.add_child(desc_pad)
 
 	# Bottom border
@@ -357,6 +438,21 @@ func _refresh_party() -> void:
 	var run := GameController.current_run
 	if run == null:
 		return
+
+	# Update cap label.
+	if _party_cap_lbl:
+		var dr : DungeonRunState = GameController.current_dungeon_run
+		if dr != null:
+			var in_al : bool = dr.is_battle_reprimed_transit()
+			if in_al:
+				_party_cap_lbl.text = "  The Segno has been lifted : The party's growth is unbound."
+				_party_cap_lbl.add_theme_color_override("font_color",
+					Color(0.85, 0.60, 0.20, 1.0))
+			else:
+				_party_cap_lbl.text = "  The Segno is waiting : The party may not grow past Lv. %d." % dr.segno_level_ceiling
+				_party_cap_lbl.add_theme_color_override("font_color", C_DIM)
+		else:
+			_party_cap_lbl.text = ""
 
 	var members := run.party_members
 
@@ -376,7 +472,8 @@ func _refresh_party() -> void:
 		_set_row_label(row, "level_lbl", str(m.level))
 		_set_row_label(row, "desc_lbl",  char_data.description)
 		_set_row_label(row, "hp_lbl",   "%d / %d" % [m.current_hp, max_hp])
-		_set_row_label(row, "atk_lbl",  str(char_data.base_attack + m.bonus_attack))
+		_set_row_label(row, "sharp_lbl", str(char_data.base_attack + m.bonus_attack))
+		_set_row_label(row, "flat_lbl",  str(char_data.base_flat_defense + m.bonus_flat_defense))
 		_set_row_label(row, "tempo_lbl", str(char_data.tempo))
 
 		if m.has_will():
@@ -419,11 +516,12 @@ func _build_skills_page() -> Control:
 	page.name = "SkillsPage"
 	page.add_theme_constant_override("separation", 0)
 
-	# --- Left: character + skill list ---
+	# --- Left: character + skill list (fixed width column) ---
 	var left := ScrollContainer.new()
 	left.custom_minimum_size = Vector2(292, 0)
-	left.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	left.size_flags_horizontal = Control.SIZE_FILL  # fixed, don't expand
 	left.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+	left.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	page.add_child(left)
 
 	_skill_list_vbox = VBoxContainer.new()
@@ -439,16 +537,27 @@ func _build_skills_page() -> Control:
 	page.add_child(vdiv)
 
 	# --- Right: detail panel ---
+	# Give the right panel a concrete minimum width so labels can resolve
+	# their wrap width during the layout pass.
+	const RIGHT_W : int = MENU_W - 292 - 2  # total - left col - divider
+	var right_scroll := ScrollContainer.new()
+	right_scroll.custom_minimum_size   = Vector2(RIGHT_W, 0)
+	right_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right_scroll.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+	right_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	page.add_child(right_scroll)
+
 	var right := MarginContainer.new()
+	right.custom_minimum_size = Vector2(RIGHT_W, 0)
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	right.size_flags_vertical   = Control.SIZE_EXPAND_FILL
 	right.add_theme_constant_override("margin_left",   28)
 	right.add_theme_constant_override("margin_top",    28)
 	right.add_theme_constant_override("margin_right",  28)
 	right.add_theme_constant_override("margin_bottom", 28)
-	page.add_child(right)
+	right_scroll.add_child(right)
 
 	var detail := VBoxContainer.new()
+	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	detail.add_theme_constant_override("separation", 10)
 	right.add_child(detail)
 
@@ -474,10 +583,13 @@ func _build_skills_page() -> Control:
 	_skill_detail_cost.add_theme_color_override("font_color", C_DIM)
 	meta_row.add_child(_skill_detail_cost)
 	
+	# Summary lives below the meta row so it can wrap properly.
 	_skill_detail_summary = Label.new()
 	_skill_detail_summary.add_theme_font_size_override("font_size", 12)
 	_skill_detail_summary.add_theme_color_override("font_color", C_DIM)
-	meta_row.add_child(_skill_detail_summary)
+	_skill_detail_summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_skill_detail_summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail.add_child(_skill_detail_summary)
 
 
 	# Divider under meta
@@ -492,6 +604,7 @@ func _build_skills_page() -> Control:
 	_skill_detail_desc.add_theme_color_override("font_color", C_TEXT)
 	_skill_detail_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_skill_detail_desc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_skill_detail_desc.custom_minimum_size   = Vector2(0, 0)
 	detail.add_child(_skill_detail_desc)
 
 	# Populate list
@@ -606,7 +719,7 @@ func _show_skill_detail(skill: Dictionary) -> void:
 # Defaults used by both _build_options_page and Apply
 const OPT_DEFAULTS := {
 	"master": 1.0, "bgm": 1.0, "sfx": 1.0,
-	"ca": 3.0, "brightness": 1.0, "contrast": 1.0,
+	"ca": 3.0, "brightness": 1.0, "contrast": 1.0, "saturation": 1.0,
 	"ssao": false, "ssil": false, "glow": false,
 }
 
@@ -657,6 +770,7 @@ func _apply_options(s: Dictionary) -> void:
 		mat.set_shader_parameter("ca_strength", s.ca)
 		mat.set_shader_parameter("brightness",  s.brightness)
 		mat.set_shader_parameter("contrast",    s.contrast)
+		mat.set_shader_parameter("saturation",  s.saturation)
 	# Apply to all active environments (battle + dungeon may both exist)
 	var env_paths := [
 		"GameRoot/BattleLayer/BattleScene/WorldEnvironment",
@@ -670,10 +784,192 @@ func _apply_options(s: Dictionary) -> void:
 			enode.environment.ssil_enabled = s.ssil
 			enode.environment.glow_enabled = s.glow
 
+# -----------------------------------------------------------------------
+# INVENTORY PAGE
+# -----------------------------------------------------------------------
+func _build_inventory_page() -> Control:
+	var page := ScrollContainer.new()
+	page.name = "InventoryPage"
+	page.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+
+	var outer := VBoxContainer.new()
+	outer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	outer.add_theme_constant_override("separation", 0)
+	page.add_child(outer)
+
+	# Header row: title + money
+	var header := HBoxContainer.new()
+	header.custom_minimum_size = Vector2(0, 38)
+	header.add_theme_constant_override("separation", 0)
+	var pad := MarginContainer.new()
+	pad.add_theme_constant_override("margin_left", 16)
+	pad.add_theme_constant_override("margin_right", 16)
+	pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(pad)
+	outer.add_child(header)
+
+	var header_hbox := HBoxContainer.new()
+	header_hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pad.add_child(header_hbox)
+
+	var title_lbl := Label.new()
+	title_lbl.text = "Items"
+	title_lbl.add_theme_font_size_override("font_size", 16)
+	title_lbl.add_theme_color_override("font_color", C_TEXT)
+	title_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header_hbox.add_child(title_lbl)
+
+	_inventory_money = Label.new()
+	_inventory_money.add_theme_font_size_override("font_size", 14)
+	_inventory_money.add_theme_color_override("font_color", C_ACCENT)
+	_inventory_money.text = ""
+	header_hbox.add_child(_inventory_money)
+
+	var hdiv := ColorRect.new()
+	hdiv.color = C_ACCENT
+	hdiv.custom_minimum_size = Vector2(0, 1)
+	outer.add_child(hdiv)
+
+	# Item list — populated by _refresh_inventory()
+	_inventory_vbox = VBoxContainer.new()
+	_inventory_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_inventory_vbox.add_theme_constant_override("separation", 0)
+	outer.add_child(_inventory_vbox)
+
+	return page
+
+
+func _refresh_inventory() -> void:
+	if _inventory_vbox == null:
+		return
+	for c in _inventory_vbox.get_children():
+		c.queue_free()
+
+	var rs : RunState = GameController.current_run
+	if rs == null:
+		return
+
+	if _inventory_money:
+		_inventory_money.text = "%d\u20b8" % rs.money
+
+	if rs.inventory.is_empty():
+		var empty_lbl := Label.new()
+		empty_lbl.text = "Nothing here."
+		empty_lbl.add_theme_font_size_override("font_size", 13)
+		empty_lbl.add_theme_color_override("font_color", C_DIM)
+		empty_lbl.custom_minimum_size = Vector2(0, 40)
+		empty_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		empty_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_inventory_vbox.add_child(empty_lbl)
+		return
+
+	for inst in rs.inventory:
+		if inst == null or inst.item_data == null:
+			continue
+		_inventory_vbox.add_child(_build_inventory_row(inst, rs))
+
+
+## Build one row for an inventory item.
+func _build_inventory_row(inst: ItemInstance, rs: RunState) -> VBoxContainer:
+	var row := HBoxContainer.new()
+	row.custom_minimum_size = Vector2(0, 42)
+	row.add_theme_constant_override("separation", 12)
+
+	var pad := MarginContainer.new()
+	pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pad.add_theme_constant_override("margin_left", 16)
+	pad.add_theme_constant_override("margin_right", 8)
+	row.add_child(pad)
+
+	var inner := HBoxContainer.new()
+	inner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inner.add_theme_constant_override("separation", 10)
+	pad.add_child(inner)
+
+	# Name + stack count
+	var name_lbl := Label.new()
+	name_lbl.text = "%s  x%d" % [inst.item_data.item_name, inst.stacks]
+	name_lbl.add_theme_font_size_override("font_size", 14)
+	name_lbl.add_theme_color_override("font_color", C_TEXT)
+	name_lbl.custom_minimum_size = Vector2(180, 0)
+	inner.add_child(name_lbl)
+
+	# Description
+	var desc_lbl := Label.new()
+	desc_lbl.text = inst.item_data.description
+	desc_lbl.add_theme_font_size_override("font_size", 11)
+	desc_lbl.add_theme_color_override("font_color", C_DIM)
+	desc_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	inner.add_child(desc_lbl)
+
+	# Use buttons — context-gated.
+	var consumable := inst.item_data as ConsumableData
+	var in_battle : bool = get_tree().get_first_node_in_group("battle_layer") != null \
+		and (get_tree().get_first_node_in_group("battle_layer") as CanvasLayer).visible
+	var can_use : bool = consumable != null and \
+		(in_battle and consumable.usable_in_battle or
+		 not in_battle and consumable.usable_in_dungeon)
+	if can_use:
+		var btn_col := VBoxContainer.new()
+		btn_col.add_theme_constant_override("separation", 2)
+		var party_wide : bool = consumable.effect_type in ["corpus_all", "will_all",
+			"reroll", "road_tile"]
+		if party_wide:
+			# Single Use button for party-wide and utility effects.
+			var use_btn := Button.new()
+			use_btn.text = "Use"
+			use_btn.custom_minimum_size = Vector2(80, 0)
+			use_btn.add_theme_font_size_override("font_size", 11)
+			var captured_inst := inst
+			use_btn.pressed.connect(func():
+				ItemRegistry.use_item(rs, captured_inst)
+				_refresh_inventory())
+			btn_col.add_child(use_btn)
+		else:
+			# Per-member buttons for single-target corpus/will.
+			for member in rs.party_members:
+				var m := member as PartyMemberData
+				if m == null or m.character == null:
+					continue
+				var use_btn := Button.new()
+				use_btn.text = m.character.display_name
+				use_btn.custom_minimum_size = Vector2(80, 0)
+				use_btn.add_theme_font_size_override("font_size", 11)
+				match consumable.effect_type:
+					"corpus": use_btn.disabled = m.current_hp <= 0
+					"will":   use_btn.disabled = not m.has_will()
+				var captured_inst := inst
+				var captured_m    := m
+				use_btn.pressed.connect(func():
+					ItemRegistry.use_item(rs, captured_inst, captured_m)
+					_refresh_inventory())
+				btn_col.add_child(use_btn)
+		var right_pad := MarginContainer.new()
+		right_pad.add_theme_constant_override("margin_right", 16)
+		right_pad.add_child(btn_col)
+		row.add_child(right_pad)
+
+	# Bottom divider
+	var wrap := VBoxContainer.new()
+	wrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	wrap.add_child(row)
+	var div := ColorRect.new()
+	div.color = Color(C_BORDER.r, C_BORDER.g, C_BORDER.b, 0.4)
+	div.custom_minimum_size = Vector2(0, 1)
+	wrap.add_child(div)
+	return wrap
+
+
 func _build_options_page() -> Control:
+	var scroll := ScrollContainer.new()
+	scroll.name = "OptionsPage"
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+
 	var page := VBoxContainer.new()
-	page.name = "OptionsPage"
+	page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	page.add_theme_constant_override("separation", 0)
+	scroll.add_child(page)
 
 	var pad := MarginContainer.new()
 	pad.add_theme_constant_override("margin_left",  32)
@@ -681,7 +977,6 @@ func _build_options_page() -> Control:
 	pad.add_theme_constant_override("margin_right", 32)
 	pad.add_theme_constant_override("margin_bottom",32)
 	pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	pad.size_flags_vertical   = Control.SIZE_EXPAND_FILL
 	page.add_child(pad)
 
 	var inner := VBoxContainer.new()
@@ -889,6 +1184,45 @@ func _build_options_page() -> Control:
 		_refresh_apply_btn(_pending)
 	)
 
+	# --- Saturation slider ---
+	var sat_default : float = _pending.saturation
+
+	var sat_row := HBoxContainer.new()
+	sat_row.add_theme_constant_override("separation", 16)
+	inner.add_child(sat_row)
+
+	var sat_lbl := Label.new()
+	sat_lbl.text = "SATURATION"
+	sat_lbl.custom_minimum_size = Vector2(180, 0)
+	sat_lbl.add_theme_font_size_override("font_size", 13)
+	sat_lbl.add_theme_color_override("font_color", C_TEXT)
+	sat_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	sat_row.add_child(sat_lbl)
+
+	_saturation_slider = HSlider.new()
+	_saturation_slider.min_value = 0.0
+	_saturation_slider.max_value = 2.0
+	_saturation_slider.step      = 0.01
+	_saturation_slider.value     = sat_default
+	_saturation_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sat_row.add_child(_saturation_slider)
+
+	var sat_val := Label.new()
+	sat_val.custom_minimum_size = Vector2(42, 0)
+	sat_val.add_theme_font_size_override("font_size", 12)
+	sat_val.add_theme_color_override("font_color", C_DIM)
+	sat_val.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	sat_val.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+	sat_val.text = "%.2f" % sat_default
+	sat_row.add_child(sat_val)
+
+	_saturation_slider.value_changed.connect(func(v: float):
+		_pending.saturation = v
+		sat_val.text = "%.2f" % v
+		_apply_options(_pending)
+		_refresh_apply_btn(_pending)
+	)
+
 	# --- Rendering toggles section header ---
 	var render_lbl := Label.new()
 	render_lbl.text = "RENDERING"
@@ -990,6 +1324,7 @@ func _build_options_page() -> Control:
 		if _ca_slider:         _ca_slider.set_value_no_signal(OPT_DEFAULTS.ca)
 		if _brightness_slider: _brightness_slider.set_value_no_signal(OPT_DEFAULTS.brightness)
 		if _contrast_slider:   _contrast_slider.set_value_no_signal(OPT_DEFAULTS.contrast)
+		if _saturation_slider: _saturation_slider.set_value_no_signal(OPT_DEFAULTS.saturation)
 		if _ssao_check: _ssao_check.set_pressed_no_signal(OPT_DEFAULTS.ssao)
 		if _ssil_check: _ssil_check.set_pressed_no_signal(OPT_DEFAULTS.ssil)
 		if _glow_check: _glow_check.set_pressed_no_signal(OPT_DEFAULTS.glow)
@@ -1008,7 +1343,7 @@ func _build_options_page() -> Control:
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	inner.add_child(hint)
 
-	return page
+	return scroll
 
 # -----------------------------------------------------------------------
 # TAB SWITCHING
@@ -1017,6 +1352,8 @@ func _switch_tab(idx: int) -> void:
 	_active_tab = idx
 	for i in _pages.size():
 		_pages[i].visible = (i == idx)
+	if idx == TAB_INVENTORY:
+		_refresh_inventory()
 	for i in _tab_btns.size():
 		var btn : Button = _tab_btns[i]
 		var active := (i == idx)

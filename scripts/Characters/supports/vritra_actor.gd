@@ -321,7 +321,7 @@ func _wither(target: BattleActor) -> void:
 	if randf() < LEECH_CHANCE_NORMAL:
 		var siphon = int(attack_power * WITHER_SIPHON_HP)
 		target.take_damage(attack_power - siphon, self)
-		target.attack_power = max(0, target.attack_power - WITHER_ATK_REDUCTION)
+		target.modify_attack(-WITHER_ATK_REDUCTION)
 		hp = min(hp + siphon, max_hp)
 		emit_signal("hp_changed")
 

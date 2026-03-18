@@ -23,7 +23,8 @@ func get_skills() -> Array:
 		SkillDirectory.get_dict("Shoot" if has_ammo else "Pistol Whip"),
 	]
 
-	skills.append(SkillDirectory.get_dict("Augur" if supports_have_will else "Evade"))
+	if party_member != null and party_member.is_skill_unlocked("Augur"):
+		skills.append(SkillDirectory.get_dict("Augur" if supports_have_will else "Evade"))
 	if lens_unlocked and supports_have_will:
 		skills.insert(1, SkillDirectory.get_dict("Change Lens"))
 	return skills

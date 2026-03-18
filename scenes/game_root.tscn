@@ -8,6 +8,7 @@
 [ext_resource type="Shader" uid="uid://btm2rulspg8el" path="res://scripts/Shaders/battleglitch.gdshader" id="6_j7aru"]
 [ext_resource type="Shader" uid="uid://cow4hovotygtk" path="res://scripts/Shaders/main.gdshader" id="6_ylec3"]
 [ext_resource type="Shader" uid="uid://c7dhsbe1s7mgu" path="res://scripts/Shaders/post_processing.gdshader" id="7_6v30a"]
+[ext_resource type="Script" uid="uid://c5k3j7qe8qi0j" path="res://scripts/UI/inventory_bar.gd" id="10_1brn0"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_iusj4"]
 font_size = 10
@@ -43,6 +44,7 @@ shader_parameter/ca_strength = 3.0000000447036
 shader_parameter/blur_strength = 0.10000000149012
 shader_parameter/brightness = 1.0
 shader_parameter/contrast = 1.0
+shader_parameter/saturation = 1.0
 shader_parameter/channel_strength = Vector3(1, 1, 1)
 shader_parameter/glitch_intensity = 0.0
 shader_parameter/noise_strength = 0.0
@@ -95,6 +97,11 @@ text = "[TAB]menu"
 label_settings = SubResource("LabelSettings_iusj4")
 
 [node name="DungeonMap3D" parent="." unique_id=1533421829 instance=ExtResource("4_jb3nc")]
+
+[node name="PhaseHUD" type="CanvasLayer" parent="." unique_id=1928952715]
+layer = 50
+visible = false
+script = ExtResource("10_1brn0")
 
 [node name="BattleLayer" type="CanvasLayer" parent="." unique_id=529536140 groups=["battle_layer"]]
 visible = false

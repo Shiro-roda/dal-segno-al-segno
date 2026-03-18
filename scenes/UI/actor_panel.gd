@@ -13,7 +13,7 @@ var actor : BattleActor
 
 # Overlay ColorRect drawn on top of the HP bar to show temp (shield) HP
 var _shield_overlay : ColorRect
-const SHIELD_COLOR := Color(0.49, 0.918, 0.024, 1.0)  # yellow-green
+const SHIELD_COLOR := Color(0.49, 0.87, 0.98, 0.55)  # ice blue, semi-transparent
 
 
 

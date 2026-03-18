@@ -5,8 +5,9 @@ uniform float curvature : hint_range(0.0, 10.0, 0.1) = 6.0;
 uniform float vignette_multiplier : hint_range(0.0, 10.0, 0.1) = 2.0;
 uniform float ca_strength : hint_range(0.0, 20.0, 0.1) = 2.5;
 uniform float blur_strength : hint_range(0.0, 3.0, 0.1) = 0.5;
-uniform float brightness : hint_range(0.0, 2.0, 0.01) = 1.0;
-uniform float contrast : hint_range(0.0, 2.0, 0.01) = 1.0;
+uniform float brightness   : hint_range(0.0, 2.0, 0.01) = 1.0;
+uniform float contrast     : hint_range(0.0, 2.0, 0.01) = 1.0;
+uniform float saturation   : hint_range(0.0, 2.0, 0.01) = 1.0;
 
 uniform vec3 channel_strength = vec3(1.0);
 
@@ -89,11 +90,15 @@ void fragment() {
 	);
 
 	// ----------------------------
-	// 4️⃣ SUBTLE DESATURATION
+	// 4️⃣ DESATURATION / SATURATION
 	// ----------------------------
 	float grayscale = dot(filtered, vec3(0.299, 0.587, 0.114));
+	// Channel-removal desaturation (existing system)
 	float desat_amount = removed_count * 0.02;
 	filtered = mix(filtered, vec3(grayscale), desat_amount);
+	// User-controlled saturation: 1.0 = normal, 0.0 = grey, 2.0 = vivid
+	grayscale = dot(filtered, vec3(0.299, 0.587, 0.114));
+	filtered = mix(vec3(grayscale), filtered, saturation);
 
 	// ----------------------------
 	// 5️⃣ SCANLINES

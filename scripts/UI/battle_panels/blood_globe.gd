@@ -1,7 +1,8 @@
 extends Node3D
 
-@export var token_large_scene : PackedScene = preload("res://scenes/UI/ring nodes/large_flesh_orb.tscn")
-@export var token_small_scene : PackedScene = preload("res://scenes/UI/ring nodes/small_flesh_orb.tscn")
+@export var token_large_scene  : PackedScene = preload("res://scenes/UI/ring nodes/large_flesh_orb.tscn")
+@export var token_small_scene  : PackedScene = preload("res://scenes/UI/ring nodes/small_flesh_orb.tscn")
+@export var shield_orb_scene   : PackedScene = preload("res://scenes/UI/ring nodes/small_ice_orb.tscn")
 
 
 @export var ring_radius : float = 0.32
@@ -21,11 +22,14 @@ const SZ_LARGE := 0.06
 const SZ_SMALL := 0.035
 
 var _actor
-var _ring_root : Node3D
-var _num_label : Label3D
-var _tokens : Array = [] # [{node, target, vel}]
-var _ring_angle := 0.0
-var _camera : Node3D
+var _ring_root   : Node3D
+var _shield_root : Node3D  # separate ring for shield orbs
+var _num_label   : Label3D
+var _tokens         : Array = []  # [{node, target, vel}] for HP
+var _shield_tokens  : Array = []  # [{node}] for temp HP — simple, no spring
+var _ring_angle  := 0.0
+var _last_shield : int = -1
+var _camera      : Node3D
 
 
 func setup(actor):
@@ -42,6 +46,8 @@ func _process(delta):
 	if _ring_root:
 		_ring_angle += rotate_speed * delta
 		_ring_root.rotation.y = _ring_angle
+	if _shield_root and not _shield_tokens.is_empty():
+		_shield_root.rotation.y = -_ring_angle * 0.7
 
 	_update_label_billboard()
 
@@ -60,23 +66,22 @@ func _update_label_billboard() -> void:
 	var dz := _camera.global_position.z - global_position.z
 
 	if dx * dx + dz * dz > 0.0001:
-		_num_label.rotation.y = atan2(dx, dz) - PI * 0.5
+		var is_enemy : bool = _actor != null and _actor.get("team") == 1
+		var flip : float = PI if is_enemy else 0.0
+		_num_label.rotation.y = atan2(dx, dz) - PI * 0.5 + flip
 
 func _find_phantom_cam() -> Node3D:
-	var is_enemy : bool = _actor.get("team") == 1
+	var is_enemy : bool = _actor != null and _actor.get("team") == 1
 	var cam_name := "target_cam" if is_enemy else "active_cam"
-
 	var scene_root := get_tree().get_first_node_in_group("battle_scene")
 	if scene_root:
 		return scene_root.get_node_or_null("CameraRig/" + cam_name)
-
 	var node : Node = self
 	while node:
 		var rig := node.get_node_or_null("CameraRig")
 		if rig:
 			return rig.get_node_or_null(cam_name)
 		node = node.get_parent()
-
 	return null
 
 func _update_spring(delta):
@@ -162,13 +167,18 @@ func _slosh():
 func _build():
 
 	_ring_root = Node3D.new()
-	_ring_root.position = Vector3(0,ring_y,0)
+	_ring_root.position = Vector3(0, ring_y, 0)
 	add_child(_ring_root)
+
+	_shield_root = Node3D.new()
+	# Slightly above the HP ring so ice orbs are visually distinct
+	_shield_root.position = Vector3(0, ring_y + 0.12, 0)
+	add_child(_shield_root)
 
 	_num_label = Label3D.new()
 	_num_label.pixel_size = 0.006
 	_num_label.font_size = 28
-	_num_label.position = Vector3(0,ring_y,0)
+	_num_label.position = Vector3(0, ring_y, 0)
 	add_child(_num_label)
 
 
@@ -265,6 +275,44 @@ func _make_token(value:int) -> Node3D:
 
 
 # ----------------------------------------------------
+# SHIELD RING
+# ----------------------------------------------------
+
+func _rebuild_shield_tokens(shield: int) -> void:
+	for t in _shield_tokens:
+		if is_instance_valid(t): t.queue_free()
+	_shield_tokens.clear()
+	if shield <= 0 or _shield_root == null:
+		return
+	var count := mini(shield, 20)
+	for i in count:
+		var node : Node3D
+		if shield_orb_scene != null:
+			node = shield_orb_scene.instantiate() as Node3D
+		else:
+			# Fallback: small ice-coloured sphere
+			var mi := MeshInstance3D.new()
+			var mesh := SphereMesh.new()
+			mesh.radius = 0.025
+			mesh.height = 0.05
+			mi.mesh = mesh
+			var mat := StandardMaterial3D.new()
+			mat.albedo_color           = Color(0.72, 0.94, 1.00, 1.0)
+			mat.emission_enabled       = true
+			mat.emission               = Color(0.40, 0.75, 0.95, 1.0)
+			mat.emission_energy_multiplier = 0.8
+			mat.shading_mode           = BaseMaterial3D.SHADING_MODE_UNSHADED
+			mi.material_override       = mat
+			node = mi
+		var angle := (TAU / count) * i
+		node.position = Vector3(sin(angle) * ring_radius * 0.85,
+			0.0,
+			cos(angle) * ring_radius * 0.85)
+		_shield_root.add_child(node)
+		_shield_tokens.append(node)
+
+
+# ----------------------------------------------------
 # REFRESH
 # ----------------------------------------------------
 
@@ -273,8 +321,9 @@ func _refresh(_ignored=null):
 	if _actor == null:
 		return
 
-	var hp = _actor.hp
-	var mhp = _actor.max_hp
+	var hp     : int = _actor.hp
+	var mhp    : int = _actor.max_hp
+	var shield : int = _actor.get("shield_hp") if _actor.get("shield_hp") != null else 0
 
 	if _num_label:
 		_num_label.text = str(hp)
@@ -282,3 +331,7 @@ func _refresh(_ignored=null):
 
 	_rebuild_tokens(hp)
 	_slosh()
+
+	if shield != _last_shield:
+		_last_shield = shield
+		_rebuild_shield_tokens(shield)

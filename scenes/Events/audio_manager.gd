@@ -41,6 +41,11 @@ var _original_noise := 0.0  # true resting value, never overwritten mid-battle
 var sfx_index := 0
 var layer_fade_time := 0.3
 
+## How long the crossfade at loop point lasts (seconds).
+const LOOP_FADE_TIME := 0.35
+## True while a loop crossfade is in progress — prevents re-entrant triggers.
+var _looping := false
+
 func _ready() -> void:
 	bgm_bus = AudioServer.get_bus_index("BGM")
 	sfx_bus = AudioServer.get_bus_index("SFX")
@@ -75,12 +80,11 @@ func _ready() -> void:
 	base_lowpass_cutoff = bgm_lowpass.cutoff_hz
 	
 	bgm_reverb.room_size = 0.01
-	
-	
 
-
-
-
+	# Connect loop crossfade: any stem finishing triggers a bus fade + restart.
+	bgm_base.finished.connect(_on_bgm_finished)
+	for player in bgm_layers.values():
+		(player as AudioStreamPlayer).finished.connect(_on_bgm_finished)
 
 
 # Stores the active dungeon track so it can be resumed after battle
@@ -176,6 +180,35 @@ func fade_out_bgm(duration := 0.6):
 	stop_bgm()
 
 
+## Instantly reset all BGM stem volumes to 0 db with no tween.
+## Called before handing audio control to the battle track so no
+## dungeon fade tween can interfere with battle stem volumes.
+func reset_dungeon_stem_volumes() -> void:
+	for player in bgm_layers.values():
+		(player as AudioStreamPlayer).volume_db = 0.0
+	bgm_base.volume_db = 0.0
+
+
+## Dungeon-specific channel layer update.
+## Only mutes/unmutes stem players and adds relative degradation on top
+## of the dungeon bus state — does NOT overwrite dungeon filter settings.
+func update_dungeon_color_layers(removed_mask: int) -> void:
+	# Mute/unmute the R/G/B stem players at dungeon volume (-20 db).
+	for bit in bgm_layers.keys():
+		var muted : bool = (removed_mask & bit) != 0
+		_set_layer_volume(bgm_layers[bit], muted, DUNGEON_VOLUME_DB)
+
+	# Count removed channels for degradation.
+	var removed_count : int = 0
+	var mask : int = removed_mask
+	while mask > 0:
+		removed_count += mask & 1
+		mask >>= 1
+
+	# No bus degradation in dungeon mode — stem muting is the only effect.
+
+
+## Battle-mode channel layer update (full signal chain override).
 func update_color_layers(removed_mask: int):
 
 	for bit in bgm_layers.keys():
@@ -257,13 +290,10 @@ func update_color_layers(removed_mask: int):
 
 
 
-func _set_layer_volume(player: AudioStreamPlayer, muted: bool):
-
-	var target_db = -80 if muted else 0
-
-	if player.volume_db == target_db:
+func _set_layer_volume(player: AudioStreamPlayer, muted: bool, on_db: float = 0.0):
+	var target_db : float = -80.0 if muted else on_db
+	if is_equal_approx(player.volume_db, target_db):
 		return
-
 	var tween = create_tween()
 	tween.set_trans(Tween.TRANS_SINE)
 	tween.set_ease(Tween.EASE_IN_OUT)
@@ -340,6 +370,33 @@ func set_glitch_intensity(amount: float, duration: float = 0.2):
 
 
 
+
+
+func _on_bgm_finished() -> void:
+	if _looping:
+		return
+	_looping = true
+	var normal_vol : float = AudioServer.get_bus_volume_db(bgm_bus)
+	var tween := create_tween()
+	# Fade bus out
+	tween.tween_method(
+		func(v): AudioServer.set_bus_volume_db(bgm_bus, v),
+		normal_vol, -80.0, LOOP_FADE_TIME)
+	await tween.finished
+	# Restart all active streams from the top
+	var t := AudioServer.get_time_since_last_mix()
+	if bgm_base.stream != null:
+		bgm_base.play(t)
+	for player in bgm_layers.values():
+		if (player as AudioStreamPlayer).stream != null:
+			(player as AudioStreamPlayer).play(t)
+	# Fade bus back in
+	var tween2 := create_tween()
+	tween2.tween_method(
+		func(v): AudioServer.set_bus_volume_db(bgm_bus, v),
+		-80.0, normal_vol, LOOP_FADE_TIME)
+	await tween2.finished
+	_looping = false
 
 
 func reset_ambience() -> void:

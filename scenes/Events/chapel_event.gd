@@ -1,9 +1,13 @@
 extends Control
 class_name ChapelEvent
-# Chapel rest event. Shows rest options as cards with a name and description.
-# Supports fixed (RestOption.val_override) and random-rolled values.
-# Also shows a Segno button if the room's allows_segno is true.
-# Emits event_finished when the player picks an option or leaves.
+# Chapel rest event — phase-aware.
+#
+# DA_CAPO / AL_CODA:  Restore (full HP) | Compose (Semiosis) | [locked]
+# DAL_SEGNO:          Restore (full HP) | Transpose (pick 2-of-3 resources) | [locked]
+# AL_SEGNO / AL_FINE: Transpose benefits rolled and presented; pick up to 2.
+#                     If no Transpose was prepared, all three cards are locked.
+#
+# Emits event_finished when the player leaves or confirms.
 
 signal event_finished
 
@@ -13,17 +17,30 @@ const C_ACCENT   := Color(0.52, 0.42, 0.28, 1.0)
 const C_TEXT     := Color(0.88, 0.83, 0.74, 1.0)
 const C_DIM      := Color(0.55, 0.50, 0.43, 1.0)
 const C_SELECTED := Color(0.52, 0.42, 0.28, 0.22)
-const C_SEGNO    := Color(0.32, 0.44, 0.58, 1.0)   # muted blue for segno button
+const C_SEGNO    := Color(0.32, 0.44, 0.58, 1.0)
+const C_TRANSPOSE := Color(0.38, 0.58, 0.38, 1.0)  # muted green for Transpose
 
 const CARD_W := 220
-const CARD_H := 200
+const CARD_H := 220
+## Number of resource picks the player makes during Transpose (DAL_SEGNO).
+## Duplicates are allowed. Increase this for future balance changes or player bonuses.
+const TRANSPOSE_PICK_COUNT : int = 3
+## Number of rolled benefits the player may redeem during transit (AL_SEGNO/AL_FINE).
+const TRANSPOSE_REDEEM_COUNT : int = 2
 
 var _room        : RoomInstance
 var _run_state   : RunState
-var _options     : Array = []   # Array of {name, desc, type, val}
 var _allows_segno : bool = false
 
-var _selected_index : int = -1
+# Mode flags set in _resolve_mode().
+enum Mode { SAFE, TRANSPOSE_PICK, TRANSPOSE_USE, TENSE_LOCKED }
+var _mode : Mode = Mode.SAFE
+
+# Options shown as cards.
+var _options     : Array = []   # Array of {name, desc, type, val, locked?}
+
+# Multi-select support: up to MAX_PICKS selections.
+var _selected_indices : Array = []  # Array[int]
 var _cards : Array = []
 var _confirm_btn : Button
 var _outer : VBoxContainer
@@ -36,101 +53,190 @@ func _ready() -> void:
 
 
 func setup(room: RoomInstance, run_state: RunState) -> void:
-	_room      = room
-	_run_state = run_state
+	_room         = room
+	_run_state    = run_state
 	_allows_segno = room.room_data != null and room.room_data.allows_segno
-	_resolve_options()
+	_resolve_mode()
 	if _outer != null:
 		_populate_outer()
 
 
-func _resolve_options() -> void:
-	# Use fixed override options from RoomData if present
-	if _room.room_data != null and not _room.room_data.rest_options_override.is_empty():
-		for ro in _room.room_data.rest_options_override:
-			var val : int = ro.val_override
-			if val < 0:
-				val = _roll_for_type(ro.type)
-			_options.append({"name": ro.option_name, "desc": ro.description, "type": ro.type, "val": val})
-		return
+# ── Mode resolution ──────────────────────────────────────────────────────────────────
 
-	# Fallback: generate random options (same logic as dungeonUI)
-	if not _room.rest_options.is_empty():
-		for o in _room.rest_options:
-			_options.append({"name": o["text"], "desc": "", "type": o["type"], "val": o["val"]})
-		return
+func _resolve_mode() -> void:
+	_options.clear()
+	var dr     : DungeonRunState = GameController.current_dungeon_run
+	var phase  : int = dr.phase if dr != null else DungeonRunState.Phase.DA_CAPO
+	var tense  : bool = phase == DungeonRunState.Phase.DS_AL_SEGNO \
+					 or phase == DungeonRunState.Phase.AL_FINE
+	var dal    : bool = phase == DungeonRunState.Phase.DAL_SEGNO
+	# DC_AL_SEGNO is a gentle transit — treat like a tense phase for chapel
+	# (no Compose, no Transpose — only the Transpose benefits if prepared).
+	var dc_transit : bool = phase == DungeonRunState.Phase.DC_AL_SEGNO
 
-	var members  = _run_state.party_members
-	var avg_hp_lost : int = 0
-	for m in members:
-		avg_hp_lost += m.character.base_max_hp - m.current_hp
-	avg_hp_lost /= max(1, members.size())
-	var avg_max_hp : int = 0
-	for m in members:
-		avg_max_hp += m.character.base_max_hp
-	avg_max_hp /= max(1, members.size())
-	var pct_hp  := randi_range(int(avg_hp_lost * 0.4), int(avg_hp_lost * 1.6) + 1)
-	var flat_hp := randi_range(int(avg_max_hp  * 0.3), int(avg_max_hp  * 0.7))
+	if tense or dc_transit:
+		_resolve_mode_tense()
+	elif dal:
+		_resolve_mode_dal_segno()
+	else:  # DA_CAPO / CAESURA
+		_resolve_mode_safe()
 
-	var avg_will_lost : int = 0
-	var will_members  : int = 0
-	for m in members:
-		if m.has_will():
-			avg_will_lost += m.max_will - m.will
-			will_members  += 1
-	var pct_will  : int = 0
-	var flat_will : int = 0
-	if will_members > 0:
-		avg_will_lost /= will_members
-		var avg_max_will : int = 0
-		for m in members:
-			if m.has_will(): avg_max_will += m.max_will
-		avg_max_will /= will_members
-		pct_will  = randi_range(int(avg_will_lost * 0.4), int(avg_will_lost * 1.6) + 1)
-		flat_will = randi_range(int(avg_max_will  * 0.3), int(avg_max_will  * 0.7))
 
-	var ammo_spent := _run_state.max_ammo - _run_state.ammo
-	var pct_ammo  := randi_range(int(ammo_spent              * 0.4), int(ammo_spent              * 1.6) + 1)
-	var flat_ammo := randi_range(int(_run_state.max_ammo     * 0.3), int(_run_state.max_ammo     * 0.7))
-
-	var all : Array = [
-		{"name": "Rest",     "desc": "", "type": "hp",   "val": pct_hp},
-		{"name": "Slumber",  "desc": "", "type": "hp",   "val": flat_hp},
-		{"name": "Ruminate", "desc": "", "type": "will", "val": pct_will},
-		{"name": "Pray",     "desc": "", "type": "will", "val": flat_will},
-		{"name": "Scavenge", "desc": "", "type": "ammo", "val": pct_ammo},
-		{"name": "Desecrate","desc": "", "type": "ammo", "val": flat_ammo},
+## DA_CAPO and CAESURA: Restore + Compose(Semiosis) + locked Transpose slot.
+func _resolve_mode_safe() -> void:
+	_mode = Mode.SAFE
+	var charges  := _run_state.segno_charges
+	var rem      := RunState.MAX_SEGNO_CHARGES - charges
+	var compose_locked : bool = _run_state.has_full_segno()
+	var compose_desc : String
+	if compose_locked:
+		compose_desc = "Segno already complete."
+	else:
+		compose_desc = "Inscribe a measure of the Segno. (%d/%d — %d remaining.)" \
+			% [charges, RunState.MAX_SEGNO_CHARGES, rem]
+	_options = [
+		{"name": "Restore",  "desc": "Fully restore Corpus Portions to all allies.",
+			"type": "restore_full", "val": 0},
+		{"name": "Compose",  "desc": compose_desc,
+			"type": "semiosis", "val": 1, "locked": compose_locked},
+		{"name": "Transpose", "desc": "Only available during Dal Segno.",
+			"type": "locked", "val": 0},
 	]
-	all.shuffle()
-	var chosen := all.slice(0, 3)
-	# Cache on room so re-entry shows same choices
-	_room.rest_options = chosen.map(func(o): return {"text": o["name"], "type": o["type"], "val": o["val"]})
-	_options = chosen
 
 
-func _roll_for_type(type: String) -> int:
-	var members = _run_state.party_members
-	match type:
-		"hp":
+## DAL_SEGNO: three-pick resource queue. Each click adds one pick (duplicates allowed).
+func _resolve_mode_dal_segno() -> void:
+	if _room.transpose_picks.size() >= TRANSPOSE_PICK_COUNT:
+		# Already fully prepared; show a locked summary.
+		_mode = Mode.TENSE_LOCKED
+		var counts : Dictionary = {}
+		for r in _room.transpose_picks: counts[r] = counts.get(r, 0) + 1
+		var parts : Array = []
+		for r in counts: parts.append("%s×%d" % [r.capitalize(), counts[r]])
+		var summary := ", ".join(parts)
+		_options = [
+			{"name": "Restore",   "desc": "Fully restore Corpus Portions to all allies.",
+				"type": "restore_full", "val": 0},
+			{"name": "Transpose", "desc": "Prepared: " + summary + ".",
+				"type": "locked", "val": 0},
+			{"name": "Compose",   "desc": "Only available in Da Capo and Caesura.",
+				"type": "locked", "val": 0},
+		]
+		return
+	# Unprepared: show main 3 options.
+	# Clicking Transpose opens the resource picker sub-screen (type = "open_transpose").
+	_mode = Mode.SAFE  # re-use SAFE card layout
+	_options = [
+		{"name": "Restore",   "desc": "Fully restore Corpus Portions to all allies.",
+			"type": "restore_full", "val": 0},
+		{"name": "Transpose", "desc": "Prepare resource caches for the transit ahead. Choose %d." % TRANSPOSE_PICK_COUNT,
+			"type": "open_transpose", "val": 0},
+		{"name": "Compose",   "desc": "Only available in Da Capo and Caesura.",
+			"type": "locked", "val": 0},
+	]
+
+
+## AL_SEGNO / AL_FINE: Roll the cached Transpose picks into actual restores (once),
+## then present them so the player can redeem up to MAX_PICKS.
+func _resolve_mode_tense() -> void:
+	if _room.rested:
+		# Already used during this transit.
+		_mode = Mode.TENSE_LOCKED
+		_options = [
+			{"name": "Corpus",     "desc": "Already redeemed.", "type": "locked", "val": 0},
+			{"name": "Anima",      "desc": "Already redeemed.", "type": "locked", "val": 0},
+			{"name": "Beat Bolts", "desc": "Already redeemed.", "type": "locked", "val": 0},
+		]
+		return
+	if _room.transpose_picks.is_empty():
+		# No Transpose was prepared during DAL_SEGNO.
+		_mode = Mode.TENSE_LOCKED
+		_options = [
+			{"name": "Corpus",     "desc": "Not prepared.", "type": "locked", "val": 0},
+			{"name": "Anima",      "desc": "Not prepared.", "type": "locked", "val": 0},
+			{"name": "Beat Bolts", "desc": "Not prepared.", "type": "locked", "val": 0},
+		]
+		return
+	# Roll each pick individually (once per chapel entry; cached on re-entry).
+	if not _room.transpose_rolled:
+		_room.rest_options = _roll_transpose_picks(_room.transpose_picks)
+		_room.transpose_rolled = true
+	# All picks become individual cards (duplicates get numbered labels).
+	_mode = Mode.TRANSPOSE_USE
+	_options.clear()
+	var label_counts : Dictionary = {}
+	for i in _room.rest_options.size():
+		var opt : Dictionary = _room.rest_options[i].duplicate()
+		var base_name : String = opt.get("name", "")
+		label_counts[base_name] = label_counts.get(base_name, 0) + 1
+		var count_so_far : int = label_counts[base_name]
+		# Count total occurrences to decide whether to number them at all
+		var total_of_type : int = 0
+		for o in _room.rest_options:
+			if o.get("name", "") == base_name: total_of_type += 1
+		if total_of_type > 1:
+			opt["name"] = base_name + " ×" + str(count_so_far)
+		_options.append(opt)
+
+
+## Roll a single resource pick into a concrete restore dict.
+func _roll_transpose_picks(picks: Array) -> Array:
+	var rolled : Array = []
+	for res in picks:
+		rolled.append(_roll_one_pick(res))
+	return rolled
+
+
+func _roll_one_pick(resource: String) -> Dictionary:
+	var members := _run_state.party_members
+	match resource:
+		"corpus":
 			var avg_lost : int = 0
-			for m in members:
-				avg_lost += m.character.base_max_hp - m.current_hp
+			for m in members: avg_lost += m.character.base_max_hp - m.current_hp
 			avg_lost /= max(1, members.size())
-			return randi_range(int(avg_lost * 0.4), int(avg_lost * 1.6) + 1)
-		"will":
-			var total : int = 0
-			var count : int = 0
+			var avg_max : int = 0
+			for m in members: avg_max += m.character.base_max_hp + m.bonus_max_hp
+			avg_max /= max(1, members.size())
+			# Randomly choose between pct-missing and flat-average rolls
+			if randi() % 2 == 0:
+				var val := randi_range(int(avg_lost * 0.5), int(avg_lost * 1.5) + 1)
+				return {"name": "Corpus", "desc": "Restore ~%d%% of missing CORP to each ally." \
+					% int(float(val) / float(max(1, avg_max)) * 100),
+					"type": "hp", "val": val, "resource": "corpus"}
+			else:
+				var val := randi_range(int(avg_max * 0.25), int(avg_max * 0.55) + 1)
+				return {"name": "Corpus", "desc": "Restore ~%d CORP to each ally." % val,
+					"type": "hp", "val": val, "resource": "corpus"}
+		"anima":
+			var total_lost : int = 0; var will_count : int = 0
 			for m in members:
-				if m.has_will():
-					total += m.max_will - m.will
-					count += 1
-			if count == 0: return 0
-			var avg := total / count
-			return randi_range(int(avg * 0.4), int(avg * 1.6) + 1)
-		"ammo":
-			var spent := _run_state.max_ammo - _run_state.ammo
-			return randi_range(int(spent * 0.4), int(spent * 1.6) + 1)
-	return 0
+				if m.has_will(): total_lost += m.max_will - m.will; will_count += 1
+			var avg_max_will : int = 0
+			for m in members:
+				if m.has_will(): avg_max_will += m.max_will
+			if will_count > 0:
+				total_lost /= will_count
+				avg_max_will /= will_count
+			if randi() % 2 == 0:
+				var val := randi_range(int(total_lost * 0.5), int(total_lost * 1.5) + 1)
+				return {"name": "Anima", "desc": "Restore ~%d AP to each support." % val,
+					"type": "will", "val": val, "resource": "anima"}
+			else:
+				var val := randi_range(int(avg_max_will * 0.25), int(avg_max_will * 0.55) + 1)
+				return {"name": "Anima", "desc": "Restore ~%d AP to each support." % val,
+					"type": "will", "val": val, "resource": "anima"}
+		"bb":
+			# Beat Bolts: either permanently expand clip OR restore a full clip
+			if randi() % 2 == 0:
+				return {"name": "Beat Bolts", "desc": "Permanently increase max clip by 2.",
+					"type": "max_ammo", "val": 2, "resource": "bb"}
+			else:
+				return {"name": "Beat Bolts", "desc": "Restore a full clip of ammo.",
+					"type": "ammo_full", "val": 0, "resource": "bb"}
+	return {}
+
+
+
 
 
 func _build_ui() -> void:
@@ -155,14 +261,22 @@ func _populate_outer() -> void:
 	for c in _outer.get_children():
 		c.queue_free()
 	_cards.clear()
-	_selected_index = -1
+	_selected_indices.clear()
 
 	var top_space := Control.new()
 	top_space.custom_minimum_size = Vector2(0, 32)
 	_outer.add_child(top_space)
 
 	var prompt := Label.new()
-	prompt.text = _room.room_data.room_name.to_upper() if _room and _room.room_data else "REST"
+	var room_name : String = _room.room_data.room_name.to_upper() if _room and _room.room_data else "REST"
+	match _mode:
+		Mode.TRANSPOSE_PICK:
+			var so_far := _room.transpose_picks.size()
+			prompt.text = room_name + "  —  TRANSPOSE  (%d / %d picks)" % [so_far, TRANSPOSE_PICK_COUNT]
+		Mode.TRANSPOSE_USE:
+			prompt.text = room_name + "  —  REDEEM  (choose %d of %d)" \
+				% [TRANSPOSE_REDEEM_COUNT, _options.size()]
+		_: prompt.text = room_name
 	prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	prompt.add_theme_font_size_override("font_size", 16)
 	prompt.add_theme_color_override("font_color", C_DIM)
@@ -198,7 +312,12 @@ func _populate_outer() -> void:
 
 	# Confirm button
 	_confirm_btn = Button.new()
-	_confirm_btn.text = "CHOOSE"
+	if _mode == Mode.TRANSPOSE_PICK:
+		_confirm_btn.text = "PREPARE"
+	elif _mode == Mode.TRANSPOSE_USE:
+		_confirm_btn.text = "REDEEM"
+	else:
+		_confirm_btn.text = "CHOOSE"
 	_confirm_btn.custom_minimum_size = Vector2(160, 44)
 	_confirm_btn.add_theme_font_size_override("font_size", 14)
 	_confirm_btn.add_theme_color_override("font_color", C_TEXT)
@@ -244,36 +363,7 @@ func _populate_outer() -> void:
 	leave_btn.pressed.connect(func(): emit_signal("event_finished"))
 	btn_row.add_child(leave_btn)
 
-	# Segno button (separate row, only if allowed)
-	if _allows_segno:
-		var spacer3 := Control.new()
-		spacer3.custom_minimum_size = Vector2(0, 12)
-		_outer.add_child(spacer3)
 
-		var segno_row := HBoxContainer.new()
-		segno_row.alignment = BoxContainer.ALIGNMENT_CENTER
-		_outer.add_child(segno_row)
-
-		var segno_btn := Button.new()
-		var has_segno := GameController.current_dungeon_run != null \
-			and GameController.current_dungeon_run.last_segno_pos != Vector2i(-999, -999)
-		segno_btn.text = "MOVE SEGNO HERE" if has_segno else "PLACE SEGNO HERE"
-		segno_btn.custom_minimum_size = Vector2(280, 40)
-		segno_btn.add_theme_font_size_override("font_size", 12)
-		segno_btn.add_theme_color_override("font_color", C_TEXT)
-		segno_btn.add_theme_color_override("font_hover_color", C_TEXT)
-		segno_btn.add_theme_color_override("font_focus_color", C_TEXT)
-		var seg_sbox := StyleBoxFlat.new()
-		seg_sbox.bg_color = C_SEGNO
-		seg_sbox.border_color = C_BORDER
-		seg_sbox.set_border_width_all(1)
-		seg_sbox.set_content_margin_all(8)
-		segno_btn.add_theme_stylebox_override("normal",  seg_sbox)
-		segno_btn.add_theme_stylebox_override("hover",   seg_sbox)
-		segno_btn.add_theme_stylebox_override("pressed", seg_sbox)
-		segno_btn.add_theme_stylebox_override("focus",   seg_sbox)
-		segno_btn.pressed.connect(_on_segno)
-		segno_row.add_child(segno_btn)
 
 	var bot_space := Control.new()
 	bot_space.custom_minimum_size = Vector2(0, 24)
@@ -309,16 +399,37 @@ func _make_card(option: Dictionary, idx: int) -> PanelContainer:
 
 	# Effect summary line
 	var effect_lbl := Label.new()
+	effect_lbl.name = "EffectLabel"
 	effect_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	effect_lbl.add_theme_font_size_override("font_size", 13)
 	effect_lbl.add_theme_color_override("font_color", C_ACCENT)
 	var val : int = option["val"]
+	var charges := _run_state.segno_charges if _run_state else 0
+	var is_locked : bool = option.get("locked", false) or option["type"] == "locked"
 	match option["type"]:
-		"hp":    effect_lbl.text = "+%d CORP" % val
-		"will":  effect_lbl.text = "+%d AP" % val
-		"ammo":  effect_lbl.text = "+%d BB" % val
-		"segno": effect_lbl.text = "1× Segno"
-		_:       effect_lbl.text = str(val)
+		"hp":             effect_lbl.text = "+%d CORP" % val
+		"will":           effect_lbl.text = "+%d AP" % val
+		"ammo":           effect_lbl.text = "+%d BB" % val
+		"max_ammo":       effect_lbl.text = "+%d max BB" % val
+		"ammo_full":      effect_lbl.text = "Full clip"
+		"restore_full":   effect_lbl.text = "Full CORP"
+		"open_transpose": effect_lbl.text = "↕"
+		"transpose_pick": effect_lbl.text = "Cache"
+		"semiosis":
+			var pips := ""
+			for p in RunState.MAX_SEGNO_CHARGES:
+				pips += ("§" if p < charges else "·")
+			effect_lbl.text = pips + "  →  "
+			for p in RunState.MAX_SEGNO_CHARGES:
+				effect_lbl.text += ("§" if p <= charges else "·")
+			effect_lbl.add_theme_color_override("font_color", C_SEGNO if not is_locked else C_DIM)
+		"locked":         effect_lbl.text = "—"
+		_:                effect_lbl.text = str(val)
+	if is_locked:
+		name_lbl.add_theme_color_override("font_color", C_DIM)
+		effect_lbl.add_theme_color_override("font_color", C_DIM)
+	elif option["type"] == "transpose_pick":
+		effect_lbl.add_theme_color_override("font_color", C_TRANSPOSE)
 	inner.add_child(effect_lbl)
 
 	# Description
@@ -347,46 +458,125 @@ func _make_card(option: Dictionary, idx: int) -> PanelContainer:
 
 
 func _select_card(idx: int) -> void:
-	_selected_index = idx
+	var opt : Dictionary = _options[idx]
+	if opt.get("locked", false) or opt["type"] == "locked":
+		return
+	if _mode == Mode.TRANSPOSE_PICK:
+		# Each click appends one pick. Right-click (or clicking again after TRANSPOSE_PICK_COUNT)
+		# undoes the last pick of this resource type.
+		var total_so_far := _room.transpose_picks.size() + _selected_indices.size()
+		var res : String = opt.get("resource", "")
+		# Find how many of this resource are already queued in _selected_indices
+		var queued_of_type := _selected_indices.filter(func(i): return i == idx).size()
+		# Right-click / dequeue: if already picked at least once, remove one
+		# (We use a secondary flag — but since we only have pressed(), simulate
+		#  undo by checking if this card was the last appended index.)
+		if _selected_indices.size() > 0 and _selected_indices.back() == idx:
+			# Undo last pick of this card
+			_selected_indices.pop_back()
+		elif total_so_far < TRANSPOSE_PICK_COUNT:
+			_selected_indices.append(idx)
+		_refresh_card_visuals()
+		var total := _room.transpose_picks.size() + _selected_indices.size()
+		_confirm_btn.disabled = total < TRANSPOSE_PICK_COUNT
+	else:
+		# TRANSPOSE_USE / SAFE: toggle with cap at TRANSPOSE_REDEEM_COUNT
+		var cap := TRANSPOSE_REDEEM_COUNT if _mode == Mode.TRANSPOSE_USE else 1
+		if idx in _selected_indices:
+			_selected_indices.erase(idx)
+		else:
+			if _selected_indices.size() >= cap:
+				_selected_indices.pop_front()
+			_selected_indices.append(idx)
+		_refresh_card_visuals()
+		_confirm_btn.disabled = _selected_indices.is_empty()
+
+
+func _refresh_card_visuals() -> void:
 	for i in _cards.size():
 		var card : PanelContainer = _cards[i]
-		var sel := (i == idx)
+		var count : int = _selected_indices.filter(func(x): return x == i).size()
+		var sel   : bool = count > 0 if _mode == Mode.TRANSPOSE_PICK else (i in _selected_indices)
 		var sbox := StyleBoxFlat.new()
 		sbox.bg_color     = C_SELECTED if sel else Color(0.10, 0.09, 0.08, 1.0)
 		sbox.border_color = C_ACCENT   if sel else C_BORDER
 		sbox.set_border_width_all(2)
 		sbox.set_content_margin_all(20)
 		card.add_theme_stylebox_override("panel", sbox)
-	_confirm_btn.disabled = false
+		# Show pick count badge on the effect label in TRANSPOSE_PICK mode
+		if _mode == Mode.TRANSPOSE_PICK:
+			var effect_lbl : Label = card.find_child("EffectLabel", true, false)
+			if effect_lbl and count > 0:
+				effect_lbl.text = "×%d" % count
 
 
 func _on_confirm() -> void:
-	if _selected_index < 0:
+	if _selected_indices.is_empty():
 		return
-	var opt : Dictionary = _options[_selected_index]
-	_room.rested = true
 	var rs := _run_state
+
+	if _mode == Mode.TRANSPOSE_PICK:
+		# Append queued picks to the room's transpose_picks list.
+		for idx in _selected_indices:
+			var opt : Dictionary = _options[idx]
+			# Only append resource picks, not Restore/Compose cards appended at end.
+			if opt["type"] == "transpose_pick":
+				_room.transpose_picks.append(opt.get("resource", ""))
+		_selected_indices.clear()
+		_options.clear()
+		_resolve_mode()
+		_populate_outer()
+		return
+
+	# Single-select action types that rebuild the UI without closing.
+	if _selected_indices.size() == 1:
+		var single_opt : Dictionary = _options[_selected_indices[0]]
+		if single_opt["type"] == "open_transpose":
+			# Enter the resource-picker sub-screen.
+			_selected_indices.clear()
+			_options.clear()
+			_mode = Mode.TRANSPOSE_PICK
+			_options = [
+				{"name": "Corpus",     "desc": "Cache one Corpus restore for transit.",
+					"type": "transpose_pick", "val": 0, "resource": "corpus"},
+				{"name": "Anima",      "desc": "Cache one Anima restore for transit.",
+					"type": "transpose_pick", "val": 0, "resource": "anima"},
+				{"name": "Beat Bolts", "desc": "Cache one BB restore. May expand your clip.",
+					"type": "transpose_pick", "val": 0, "resource": "bb"},
+			]
+			_populate_outer()
+			return
+
+	# Apply all selected options.
+	for idx in _selected_indices:
+		var opt : Dictionary = _options[idx]
+		_apply_option(opt, rs)
+
+	_room.rested = true
+	emit_signal("event_finished")
+
+
+func _apply_option(opt: Dictionary, rs: RunState) -> void:
 	match opt["type"]:
 		"hp":
 			for member in rs.party_members:
-				member.current_hp = mini(member.current_hp + opt["val"], member.character.base_max_hp)
+				member.current_hp = mini(member.current_hp + opt["val"],
+					member.character.base_max_hp + member.bonus_max_hp)
 		"will":
 			for member in rs.party_members:
 				if member.has_will():
 					member.restore_will(opt["val"])
 		"ammo":
 			rs.restore_ammo(opt["val"])
-		"segno":
-			var segno_data := SegnoItem.new()
-			var segno_inst := ItemInstance.new()
-			segno_inst.item_data = segno_data
-			segno_inst.stacks = 1
-			rs.inventory.append(segno_inst)
-	emit_signal("event_finished")
-
-
-func _on_segno() -> void:
-	# Delegate to dungeon controller; it will show the segno event then return here
-	var dc = get_tree().get_first_node_in_group("dungeon_controller")
-	if dc:
-		dc.place_segno(true)
+		"ammo_full":
+			rs.ammo = rs.max_ammo
+		"max_ammo":
+			rs.increase_max_ammo(opt["val"])
+		"restore_full":
+			for member in rs.party_members:
+				member.current_hp = member.character.base_max_hp + member.bonus_max_hp
+		"semiosis":
+			rs.add_semiosis_charge()
+			if rs.has_full_segno():
+				var dc = get_tree().get_first_node_in_group("dungeon_controller")
+				if dc: dc.on_semiosis_complete()

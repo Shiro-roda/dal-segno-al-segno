@@ -7,6 +7,7 @@
 [ext_resource type="Resource" uid="uid://dh41c43q5ekyx" path="res://audio/tracks/yellow.tres" id="4_br4y7"]
 [ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://resources/bodyparts/BodyPartData.gd" id="4_ua74y"]
 [ext_resource type="Resource" uid="uid://c2hfbcmlpd3bi" path="res://resources/characters/enemies/empty_one.tres" id="5_br4y7"]
+[ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://resources/battle/skill_data.gd" id="5_ovb2g"]
 [ext_resource type="Script" uid="uid://divs34wkweat7" path="res://resources/encounters/dialogue_line.gd" id="6_xfaap"]
 [ext_resource type="Script" uid="uid://cxogdp046hrx2" path="res://resources/encounters/encounter_dialogue.gd" id="8_m6dyk"]
 [ext_resource type="Script" uid="uid://b57cevaydtkqm" path="res://resources/encounters/splash_line.gd" id="8_xfaap"]

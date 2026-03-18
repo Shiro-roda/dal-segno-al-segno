@@ -311,6 +311,7 @@ func spawn_players():
 		actor.max_hp = member_data.character.base_max_hp + member_data.bonus_max_hp
 		actor.hp = member_data.current_hp
 		actor.attack_power = member_data.character.base_attack + member_data.bonus_attack
+		actor.flat_defense = member_data.character.base_flat_defense + member_data.bonus_flat_defense
 		actor.tempo_stat = char_data.tempo
 		actor.body_parts = char_data.body_parts
 		actor.party_member = member_data
@@ -336,11 +337,25 @@ func spawn_enemies():
 		actor.team = BattleActor.Team.ENEMY
 		actor.max_hp = char_data.base_max_hp
 		actor.attack_power = char_data.base_attack
+		actor.flat_defense = char_data.base_flat_defense
 		actor.hp = actor.max_hp
 		actor.tempo_stat = char_data.tempo
 		actor.body_parts = char_data.body_parts
+
+		# Assign party_member so will rings and skill costs work.
 		if char_data.boss_party_member != null:
 			actor.party_member = char_data.boss_party_member
+		elif char_data.base_max_will > 0:
+			# Regular enemy with will — synthesise a minimal PartyMemberData.
+			var pm := PartyMemberData.new()
+			pm.character = char_data
+			pm.max_will  = char_data.base_max_will
+			pm.will      = char_data.base_max_will
+			actor.party_member = pm
+
+		# Copy skill loadout from CharacterData into EnemyActor if applicable.
+		if actor is EnemyActor and not char_data.skills.is_empty():
+			actor.skills = char_data.skills.duplicate()
 
 		enemy_slots[i].add_child(actor)
 
@@ -592,6 +607,22 @@ func end_battle(victory: bool):
 	battle_hud.reset_augur_panel()
 	save_party_state()
 
+	# Restore all AP and BB after every victory except during AL_SEGNO and AL_FINE,
+	# where resource attrition is the primary challenge.
+	if victory:
+		var dr : DungeonRunState = GameController.current_dungeon_run
+		var tense : bool = dr != null and dr.is_battle_reprimed_transit()
+		if not tense:
+			# DAL_SEGNO / DA_CAPO / AL_CODA: free full restore of AP and BB.
+			for member in context.run_state.party_members:
+				if member.has_will():
+					member.will = member.max_will
+			context.run_state.ammo = context.run_state.gun_clip
+		else:
+			# AL_SEGNO / AL_FINE: AP and BB do NOT refill automatically.
+			# The excess ammo pool is drawn on to reload the gun clip.
+			context.run_state.reload_from_excess()
+
 	# Award exp randomly distributed among surviving party members (victory only)
 	var exp_per_member  : Dictionary = {}  # display_name -> int exp share
 	var level_up_events : Dictionary = {}  # display_name -> Array of event dicts
@@ -614,10 +645,25 @@ func end_battle(victory: bool):
 					share = max(1, int(float(_exp_this_battle) * weights[i] / total_w))
 					remaining -= share
 				var member: PartyMemberData = survivors[i]
-				exp_per_member[member.character.display_name] = share
-				var events = member.add_exp(share)
-				if not events.is_empty():
-					level_up_events[member.character.display_name] = events
+				var dr : DungeonRunState = GameController.current_dungeon_run
+				# Al Segno phases: no level cap — grind freely.
+				# Safe phases (DA_CAPO, CAESURA, DAL_SEGNO): cap at segno_level_ceiling.
+				var in_al_segno : bool = dr != null and dr.is_battle_reprimed_transit()
+				if in_al_segno:
+					var events = member.add_exp(share)
+					exp_per_member[member.character.display_name] = share
+					if not events.is_empty():
+						level_up_events[member.character.display_name] = events
+				else:
+					var ceiling : int = dr.segno_level_ceiling if dr != null \
+						else 3
+					if member.level >= ceiling:
+						exp_per_member[member.character.display_name] = 0
+					else:
+						var events = member.add_exp_capped(share, ceiling)
+						exp_per_member[member.character.display_name] = share
+						if not events.is_empty():
+							level_up_events[member.character.display_name] = events
 
 	if battlefield_root:
 		battlefield_root.queue_free()

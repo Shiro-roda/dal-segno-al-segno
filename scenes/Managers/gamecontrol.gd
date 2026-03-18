@@ -103,8 +103,20 @@ func _set_dungeon_map_visible(visible: bool):
 			cam.current = visible
 
 
-func start_battle(encounter):
+func _reset_channel_shader() -> void:
+	# Restore full RGB when leaving the dungeon.
+	var mesh := get_tree().root.get_node_or_null("GameRoot/TVOverlay/MeshInstance2D")
+	if mesh:
+		var mat := mesh.material as ShaderMaterial
+		if mat:
+			mat.set_shader_parameter("channel_strength", Vector3(1.0, 1.0, 1.0))
+	var map := get_tree().get_first_node_in_group("dungeon_map_3d")
+	if map and map.has_method("reset_channels"):
+		map.reset_channels()
 
+
+func start_battle(encounter):
+	_reset_channel_shader()
 	dungeon_layer.visible = false
 	event_layer.visible = false
 	battle_layer.visible = true
@@ -141,16 +153,28 @@ func _on_battle_finished(victory, exp_per_member: Dictionary = {}, level_up_even
 	event_layer.visible = true
 	dungeon_layer.visible = false
 	event_layer.add_child(results)
-	results.setup(victory, current_run.party_members, exp_per_member, level_up_events)
+	# Build reward choices (victory only).
+	var reward_choices : Array = []
+	if victory:
+		reward_choices = _make_battle_rewards()
+
+	results.setup(victory, current_run.party_members, exp_per_member, level_up_events, reward_choices)
+
+	# Apply chosen reward immediately when picked.
+	results.reward_chosen.connect(func(reward: Dictionary):
+		_apply_battle_reward(reward)
+	)
 
 	var _vic: bool = victory
 	results.results_dismissed.connect(func():
 		clear_layer(event_layer)
 		if not _vic:
-			# Defeat: reset the entire run and return to companion select
-			start_new_game()
+			var dc = get_tree().get_first_node_in_group("dungeon_controller")
+			if dc:
+				dc.on_party_defeated()
+			else:
+				start_new_game()
 			return
-		# Victory: return to dungeon
 		event_layer.visible = false
 		dungeon_layer.visible = true
 		_set_dungeon_map_visible(true)
@@ -208,11 +232,9 @@ func start_world(scene: PackedScene):
 
 
 func start_dungeon(dungeon_data: DungeonData):
-
 	dungeon_layer.visible = true
 	world_layer.visible = false
 	_set_dungeon_map_visible(true)
-
 	dungeon_controller.start_dungeon(current_run, dungeon_data)
 
 
@@ -269,3 +291,59 @@ func start_win_screen() -> void:
 	var win_scene := preload("res://scenes/Events/win_screen.tscn")
 	var win := win_scene.instantiate()
 	event_layer.add_child(win)
+
+
+## Build 3 reward options for post-battle pick.
+## Pool: Corpus restore, Beat Bolts (excess ammo), Reroll charge.
+## AL_SEGNO tense phase leans toward ammo; DAL_SEGNO leans toward HP.
+func _make_battle_rewards() -> Array:
+	var dr : DungeonRunState = current_dungeon_run
+	var tense : bool = dr != null and dr.is_battle_reprimed_transit()
+	var run := current_run
+	var bb_amount : int = max(1, run.gun_clip / 2)
+
+	var pool : Array
+	if tense:
+		# AL_SEGNO: permanent / building rewards only — no BB replenish.
+		# The sprint demands resource management, not top-ups.
+		pool = [
+			{"label": "Insight\n+1 Reroll",      "type": "reroll",    "amount": 1},
+			{"label": "Salvage\n+1 Road Tile",   "type": "road_tile",  "amount": 1},
+			{"label": "Windfall\n+15₸",           "type": "money",     "amount": 15},
+			{"label": "Survey\n+2 Road Tiles",   "type": "road_tile",  "amount": 2},
+			{"label": "Archive\n+2 Rerolls",     "type": "reroll",    "amount": 2},
+			{"label": "Bounty\n+25₸",            "type": "money",     "amount": 25},
+		]
+	else:
+		# DAL_SEGNO: sustain rewards — corpus, gold, beat bolts.
+		pool = [
+			{"label": "Corpus\n+3 HP each",      "type": "corpus",    "amount": 3},
+			{"label": "Full Corpus\n+6 HP each", "type": "corpus",    "amount": 6},
+			{"label": "Gold\n+10₸",              "type": "money",     "amount": 10},
+			{"label": "Haul\n+20₸",             "type": "money",     "amount": 20},
+			{"label": "Beat Bolts\n+%d BB" % bb_amount,
+				"type": "bb",  "amount": bb_amount},
+			{"label": "Reload\n+%d BB" % run.gun_clip,
+				"type": "bb",  "amount": run.gun_clip},
+		]
+	pool.shuffle()
+	return pool.slice(0, 3)
+
+
+func _apply_battle_reward(reward: Dictionary) -> void:
+	var run := current_run
+	match reward.get("type", ""):
+		"corpus":
+			var amt : int = reward.get("amount", 3)
+			for m in run.party_members:
+				if m.current_hp > 0:
+					var max_hp : int = m.character.base_max_hp + m.bonus_max_hp
+					m.current_hp = min(m.current_hp + amt, max_hp)
+		"bb":
+			run.excess_ammo += reward.get("amount", 1)
+		"reroll":
+			run.reroll_charges += reward.get("amount", 1)
+		"road_tile":
+			run.road_tiles_remaining += reward.get("amount", 1)
+		"money":
+			run.money += reward.get("amount", 0)

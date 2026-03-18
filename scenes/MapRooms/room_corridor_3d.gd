@@ -27,16 +27,18 @@ func _build_placeholder() -> void:
 	var diff   : Vector3 = to_world - from_world
 	var length : float   = diff.length()
 
-	# Position at midpoint, rotate to face the direction, scale to length.
-	position = mid
-	look_at(to_world, Vector3.UP)
-	# After look_at the local +Z faces away from to_world; flip 180° so +Z faces to_world.
-	rotate_object_local(Vector3.UP, PI)
+	# Position at midpoint. All rooms are on a flat XZ plane so we only
+	# need a Y-axis rotation: atan2(dx, dz) gives the angle toward to_world.
+	position        = mid
+	rotation        = Vector3.ZERO
+	rotation.y      = atan2(diff.x, diff.z)
 
-	# Scale the unit box: X = corridor width, Y = height, Z = length.
+	# Scale the mesh: X = width, Y = height, Z = length.
 	const WIDTH  := 0.12
 	const HEIGHT := 0.06
-	_mesh_node.scale = Vector3(WIDTH, HEIGHT, length)
+	_mesh_node.scale    = Vector3.ONE
+	_mesh_node.rotation = Vector3.ZERO
+	_mesh_node.scale    = Vector3(WIDTH, HEIGHT, length)
 
 	# Glowing yellow material.
 	var mat := StandardMaterial3D.new()

@@ -9,7 +9,9 @@ enum RoomType {
 	REST,
 	SEGNO,
 	BOSS,
-	RECRUIT
+	RECRUIT,
+	ROAD,    ## Pure connector. Free to place, auto-clears, no encounter/event.
+	TREASURE ## Spawns randomly at AL_SEGNO start. One-time reward room.
 }
 
 @export var room_name : String
@@ -50,6 +52,14 @@ enum RoomType {
 # [Vector2i(0,0)] (sentinel)   = no exits at all.
 # Any other values             = exactly those exit directions.
 @export var connections : Array[Vector2i] = []
+
+## True if this room has a TERMINAL effect (no outgoing connections allowed).
+func is_terminal() -> bool:
+	for e in room_effects:
+		if e.effect_type == RoomEffect.EffectType.TERMINAL:
+			return true
+	return false
+
 
 func get_exit_dirs() -> Array:
 	if connections.size() == 1 and connections[0] == Vector2i(0, 0):

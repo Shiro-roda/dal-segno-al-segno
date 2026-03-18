@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://cedd8ir7uudmq"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_5bv60"]
+albedo_color = Color(1, 0.63529414, 0, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_3ahm8"]
+material = SubResource("StandardMaterial3D_5bv60")
+
+[node name="SegnoRoom" type="Node3D" unique_id=1681492508]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1195266053]
+mesh = SubResource("BoxMesh_3ahm8")

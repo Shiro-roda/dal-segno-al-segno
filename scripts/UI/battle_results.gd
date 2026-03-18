@@ -2,6 +2,7 @@ extends Control
 # Battle results screen — shown after every battle before returning to the dungeon.
 
 signal results_dismissed
+signal reward_chosen(reward: Dictionary)
 
 const C_BG     := Color(0.06, 0.05, 0.05, 0.97)
 const C_BORDER := Color(0.35, 0.28, 0.22, 1.0)
@@ -15,16 +16,19 @@ var _victory        : bool       = false
 var _party          : Array      = []
 var _exp_per_member : Dictionary = {}
 var _level_ups      : Dictionary = {}
+var _rewards        : Array      = []  # Array[Dictionary] — reward choices to pick from
 
 @onready var _bg   : ColorRect      = $BG
 @onready var _vbox : VBoxContainer  = $CenterContainer/Panel/VBox
 
 
-func setup(victory: bool, party_members: Array, exp_per_member: Dictionary = {}, level_up_events: Dictionary = {}) -> void:
+func setup(victory: bool, party_members: Array, exp_per_member: Dictionary = {},
+		level_up_events: Dictionary = {}, reward_choices: Array = []) -> void:
 	_victory        = victory
 	_party          = party_members
 	_exp_per_member = exp_per_member
 	_level_ups      = level_up_events
+	_rewards        = reward_choices
 	_build_ui()
 
 
@@ -115,6 +119,47 @@ func _build_ui() -> void:
 					lu.add_theme_color_override("font_color", C_GREEN)
 					exp_vbox.add_child(lu)
 
+		_divider(vbox)
+
+	# --- Reward picker (victory + rewards provided) ---
+	if _victory and not _rewards.is_empty():
+		_divider(vbox)
+		var rew_lbl := Label.new()
+		rew_lbl.text = "CHOOSE A REWARD"
+		rew_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		rew_lbl.add_theme_font_size_override("font_size", 13)
+		rew_lbl.add_theme_color_override("font_color", C_DIM)
+		vbox.add_child(rew_lbl)
+		var rew_row := HBoxContainer.new()
+		rew_row.alignment = BoxContainer.ALIGNMENT_CENTER
+		rew_row.add_theme_constant_override("separation", 12)
+		vbox.add_child(rew_row)
+		for reward in _rewards:
+			var rb := Button.new()
+			rb.text = reward.get("label", "?")
+			rb.custom_minimum_size = Vector2(120, 56)
+			rb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			rb.add_theme_font_size_override("font_size", 13)
+			rb.add_theme_color_override("font_color", C_TEXT)
+			var rs := StyleBoxFlat.new()
+			rs.bg_color = Color(0.14, 0.12, 0.10)
+			rs.border_color = C_ACCENT
+			rs.set_border_width_all(1)
+			rs.set_content_margin_all(8)
+			var rs_h := rs.duplicate() as StyleBoxFlat
+			rs_h.bg_color = Color(0.25, 0.15, 0.10)
+			rb.add_theme_stylebox_override("normal", rs)
+			rb.add_theme_stylebox_override("hover",  rs_h)
+			rb.add_theme_stylebox_override("pressed", rs_h)
+			rb.add_theme_stylebox_override("focus",  rs)
+			var captured : Dictionary = reward
+			rb.pressed.connect(func():
+				# Disable all reward buttons after pick
+				for sib in rew_row.get_children():
+					sib.disabled = true
+				emit_signal("reward_chosen", captured)
+			)
+			rew_row.add_child(rb)
 		_divider(vbox)
 
 	# --- Continue button ---

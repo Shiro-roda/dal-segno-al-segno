@@ -3,17 +3,19 @@ class_name DungeonController
 
 const BossBuilder = preload("res://resources/characters/bosses/boss_builder.gd")
 
+## Minimum Manhattan distance a new Segno room must be from the current one.
+const SEGNO_MIN_DIST : int = 4
+## Minimum number of valid candidate slots required before a transit can begin.
+## Kept low so small dungeons aren't blocked; the range growth does the real work.
+const SEGNO_MIN_CANDIDATES : int = 1
+
 var dungeon : DungeonRunState
 
 var dungeon_ui: Control
 @onready var map_ui: Node3D = $"../../DungeonMap3D"
 
 
-
-
-
 func _ready():
-
 	add_to_group("dungeon_controller")
 
 
@@ -40,8 +42,6 @@ func start_dungeon(run_state: RunState, dungeon_data: DungeonData):
 	dungeon.grid[Vector2i.ZERO] = start_room
 	dungeon.current_pos = Vector2i.ZERO
 
-	# Pre-place recruit room south of start.
-	# Uses dungeon_data.recruit_room if assigned, otherwise a default one.
 	var recruit_data : RoomData = dungeon_data.recruit_room
 	if recruit_data == null:
 		recruit_data = RoomData.new()
@@ -51,104 +51,127 @@ func start_dungeon(run_state: RunState, dungeon_data: DungeonData):
 		recruit_data.allows_segno = false
 	var recruit_instance := RoomInstance.new()
 	recruit_instance.room_data = recruit_data
-#	recruit_instance.position = Vector2i(-4, -3)
-#	dungeon.grid[Vector2i(-4, -3)] = recruit_instance
-	recruit_instance.position = Vector2i(0, -1)
-	dungeon.grid[Vector2i(0, -1)] = recruit_instance
+	recruit_instance.position = Vector2i(4, -5)
+	dungeon.grid[Vector2i(4, -5)] = recruit_instance
 
 	map_ui.setup(dungeon, self)
 
-	# Start dungeon ambient music
+	# Grant starting resources for the first run through.
+	run_state.road_tiles_remaining += 2
+	run_state.reroll_charges       += 1
+
 	if dungeon_data.dungeon_track != null:
 		AudioManagerAuto.play_dungeon_track(dungeon_data.dungeon_track)
 
 	enter_current_room()
 
 
-
-
-
-
 func move_to_room(pos : Vector2i):
-
 	if not dungeon.grid.has(pos):
 		return
-
 	var diff = pos - dungeon.current_pos
 	if diff.length() != 1:
 		return
-
-	# Enforce bidirectional connection check.
 	if not rooms_connected(dungeon.current_pos, pos):
 		return
-
 	dungeon.current_pos = pos
 	dungeon_ui.clear_room_list()
 	enter_current_room()
 
 
-## Returns true when room A has an exit toward B AND room B has an exit back toward A.
-## Ghost (unplaced) positions are not checked here — those go through build_room.
 func rooms_connected(a: Vector2i, b: Vector2i) -> bool:
-	var diff : Vector2i = b - a
 	var room_a : RoomInstance = dungeon.grid.get(a)
-	var room_b : RoomInstance = dungeon.grid.get(b)
-	if room_a == null or room_b == null:
+	if room_a == null:
 		return false
-	var exits_a : Array = room_a.room_data.get_exit_dirs() if room_a.room_data else []
-	var exits_b : Array = room_b.room_data.get_exit_dirs() if room_b.room_data else []
-	return diff in exits_a and -diff in exits_b
+	return b in room_a.explicit_connections
 
 
-const BATTLE_RESPAWN_CHANCE = 0.4
+## Base respawn chance for a cleared battle during AL_SEGNO (2nd+ pass).
+const AL_SEGNO_RESPAWN_BASE  : float = 0.25
+const AL_SEGNO_RESPAWN_STEP  : float = 0.10
+const AL_SEGNO_RESPAWN_MAX   : float = 0.65
+
+func _room_should_battle(room: RoomInstance) -> bool:
+	if not room.cleared:
+		return true
+	if dungeon.is_battle_reprimed_transit():
+		# 2nd+ pass through a cleared battle in AL_SEGNO: rolling re-encounter.
+		if room.al_segno_passes >= 1:
+			var chance := minf(
+				AL_SEGNO_RESPAWN_BASE + AL_SEGNO_RESPAWN_STEP * (room.al_segno_passes - 1),
+				AL_SEGNO_RESPAWN_MAX)
+			if randf() < chance:
+				return true
+	return false
+
 
 func enter_current_room():
-
 	var room : RoomInstance = dungeon.grid.get(dungeon.current_pos)
-
 	if room == null:
 		push_error("Room missing at " + str(dungeon.current_pos))
 		return
-
 	var data : RoomData = room.room_data
-
 	if data == null:
 		push_error("Room has no RoomData!")
 		return
 
 	room.visited = true
+	# Track AL_SEGNO passes for rolling re-encounter probability.
+	if dungeon.is_battle_reprimed_transit() and \
+			room.room_data.room_type in [RoomData.RoomType.BATTLE, RoomData.RoomType.ELITE]:
+		room.al_segno_passes += 1
 	apply_room_effects(room)
 
 	match data.room_type:
-
 		RoomData.RoomType.BATTLE, RoomData.RoomType.ELITE:
-			if not room.cleared or randf() < BATTLE_RESPAWN_CHANCE:
+			if _room_should_battle(room):
 				room.cleared = false
 				GameController.start_battle(data.encounter)
 			else:
-				map_ui.redraw_map()  # already cleared, just show the map
+				map_ui.redraw_map()
 
 		RoomData.RoomType.EVENT:
 			load_event(data.event_scene)
 
 		RoomData.RoomType.REST:
-			if not room.rested:
+			var tense_phase : bool = dungeon.is_battle_reprimed_transit()
+			if not room.rested or tense_phase:
 				open_rest_ui()
 			else:
-				map_ui.redraw_map()  # already rested
+				map_ui.redraw_map()
 
 		RoomData.RoomType.SEGNO:
-			place_segno()
+			# A cleared Segno room is a past placement — just show the map.
+			if room.cleared:
+				map_ui.redraw_map()
+			else:
+				_handle_segno_room()
 
 		RoomData.RoomType.RECRUIT:
 			if not room.cleared:
 				load_recruit_event()
 			else:
-				map_ui.redraw_map()  # already cleared
+				map_ui.redraw_map()
 
 		RoomData.RoomType.BOSS:
 			if not room.cleared:
 				_trigger_boss_battle()
+			else:
+				map_ui.redraw_map()
+
+		RoomData.RoomType.ROAD:
+			# Roads are pure connectors — auto-clear and show the map.
+			if not room.cleared:
+				on_room_completed()
+			else:
+				map_ui.redraw_map()
+
+		RoomData.RoomType.SHOP:
+			_open_shop(room)
+
+		RoomData.RoomType.TREASURE:
+			if not room.cleared:
+				_open_treasure_room(room)
 			else:
 				map_ui.redraw_map()
 
@@ -158,9 +181,12 @@ func on_room_completed():
 	var room : RoomInstance = dungeon.grid[dungeon.current_pos]
 	room.cleared = true
 
-	# If the recruit room was just cleared, place the boss room on the map now.
 	if room.room_data != null and room.room_data.room_type == RoomData.RoomType.RECRUIT:
 		_place_boss_room()
+
+	var dui = get_tree().get_first_node_in_group("dungeon_ui")
+	if dui and dui.has_method("_refresh_inventory_bar"):
+		dui._refresh_inventory_bar()
 
 	map_ui.redraw_map()
 
@@ -171,28 +197,27 @@ func _place_boss_room() -> void:
 	boss_room_data.room_type = RoomData.RoomType.BOSS
 	boss_room_data.danger_level = 5
 	boss_room_data.allows_segno = false
-	boss_room_data.connections = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, -1), Vector2i(0, 1)]  # no exits
+	boss_room_data.connections = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, -1), Vector2i(0, 1)]
 	var boss_instance := RoomInstance.new()
 	boss_instance.room_data = boss_room_data
-#	boss_instance.position = Vector2i(-9, -11)
-#	dungeon.grid[Vector2i(-9, -11)] = boss_instance
-	boss_instance.position = Vector2i(-1, -1)
-	dungeon.grid[Vector2i(-1, -1)] = boss_instance
+	boss_instance.position = Vector2i(-9, -9)
+	dungeon.grid[Vector2i(-9, -9)] = boss_instance
 
-## Returns positions the player can move to or build on from the current room.
-## Splits into two arrays for the map: [navigable_existing, buildable_empty]
+
 func get_available_positions() -> Array:
 	return get_buildable_positions()
 
 
-## Empty neighbour slots reachable from the current room (can be built on).
-## Only blocked when the current room itself is at its connection limit.
-## Neighbour limit checks happen at build_room time, once we know both rooms.
 func get_buildable_positions() -> Array:
+	if dungeon.is_building_locked():
+		return []
+	# TERMINAL rooms have no outgoing exits — nothing can be built from them.
+	var cur_room : RoomInstance = dungeon.grid.get(dungeon.current_pos)
+	if cur_room != null and cur_room.room_data != null and cur_room.room_data.is_terminal():
+		return []
 	var room : RoomInstance = dungeon.grid.get(dungeon.current_pos)
 	if room == null:
 		return []
-	# If this room is full, nowhere new can be built from it.
 	if room.is_connection_full():
 		return []
 	var dirs : Array = room.room_data.get_exit_dirs() if room.room_data != null else []
@@ -204,36 +229,26 @@ func get_buildable_positions() -> Array:
 	return positions
 
 
-## Existing placed rooms that are mutually connected to the current room.
 func get_navigable_positions() -> Array:
 	var room : RoomInstance = dungeon.grid.get(dungeon.current_pos)
 	if room == null:
 		return []
-	var dirs : Array = room.room_data.get_exit_dirs() if room.room_data != null else []
+	# explicit_connections is the authoritative navigation list.
 	var positions : Array = []
-	for d in dirs:
-		var pos : Vector2i = dungeon.current_pos + (d as Vector2i)
-		if dungeon.grid.has(pos) and rooms_connected(dungeon.current_pos, pos):
+	for pos in room.explicit_connections:
+		if dungeon.grid.has(pos):
 			positions.append(pos)
 	return positions
 
 
-## All pairs of mutually-connected placed rooms in the entire dungeon.
-## Returns Array of [Vector2i, Vector2i] with a < b to avoid duplicates.
 func get_all_connected_pairs() -> Array:
 	var pairs : Array = []
 	var seen  : Dictionary = {}
 	for pos_a in dungeon.grid.keys():
 		var room_a : RoomInstance = dungeon.grid[pos_a]
-		if room_a == null or room_a.room_data == null:
+		if room_a == null:
 			continue
-		for d in room_a.room_data.get_exit_dirs():
-			var pos_b : Vector2i = (pos_a as Vector2i) + (d as Vector2i)
-			if not dungeon.grid.has(pos_b):
-				continue
-			if not rooms_connected(pos_a, pos_b):
-				continue
-			# Deduplicate: store with the lexicographically-smaller pos first.
+		for pos_b in room_a.explicit_connections:
 			var key : Array = [pos_a, pos_b] if _pos_less(pos_a, pos_b) else [pos_b, pos_a]
 			var key_str := str(key)
 			if not seen.has(key_str):
@@ -246,14 +261,57 @@ func _pos_less(a: Vector2i, b: Vector2i) -> bool:
 	return a.x < b.x or (a.x == b.x and a.y < b.y)
 
 
-# Returns 3 random room choices for a given grid position (cached per pos).
-var _room_choice_cache : Dictionary = {}  # Vector2i -> Array[RoomData]
+## Explicitly connect two adjacent rooms. Updates both sides.
+func _make_connection(pos_a: Vector2i, pos_b: Vector2i) -> void:
+	var room_a : RoomInstance = dungeon.grid.get(pos_a)
+	var room_b : RoomInstance = dungeon.grid.get(pos_b)
+	if room_a == null or room_b == null:
+		return
+	if pos_b not in room_a.explicit_connections:
+		room_a.explicit_connections.append(pos_b)
+		room_a.built_connections += 1
+	if pos_a not in room_b.explicit_connections:
+		room_b.explicit_connections.append(pos_a)
+		room_b.built_connections += 1
+
+
+## True if two adjacent rooms could legally form a new connection.
+func _can_connect(pos_a: Vector2i, pos_b: Vector2i) -> bool:
+	var room_a : RoomInstance = dungeon.grid.get(pos_a)
+	var room_b : RoomInstance = dungeon.grid.get(pos_b)
+	if room_a == null or room_b == null:
+		return false
+	if pos_b in room_a.explicit_connections:
+		return false  # already connected
+	if room_a.is_connection_full() or room_b.is_connection_full():
+		return false
+	# Terminal rooms cannot accept new connections.
+	if room_b.room_data != null and room_b.room_data.is_terminal():
+		return false
+	if room_a.room_data != null and room_a.room_data.is_terminal():
+		return false
+	# Both rooms must have exits pointing at each other.
+	var diff : Vector2i = pos_b - pos_a
+	var exits_a : Array = room_a.room_data.get_exit_dirs() if room_a.room_data else []
+	var exits_b : Array = room_b.room_data.get_exit_dirs() if room_b.room_data else []
+	return diff in exits_a and -diff in exits_b
+
+
+var _room_choice_cache : Dictionary = {}
+
+## Spend one reroll charge on a ghost slot, regenerating its choices.
+func reroll_room_choices(pos: Vector2i) -> void:
+	var run := dungeon.run_state
+	if run.reroll_charges <= 0:
+		return
+	run.reroll_charges -= 1
+	_room_choice_cache.erase(pos)
+
 
 func get_room_choices(pos: Vector2i) -> Array:
 	if not _room_choice_cache.has(pos):
 		var choices : Array[RoomData] = []
 		var pool : Array = dungeon.dungeon_data.rooms.duplicate()
-		# Check if current room restricts which types can be built from here
 		var current_room : RoomInstance = dungeon.grid.get(dungeon.current_pos)
 		var allowed_types : Array = []
 		if current_room and current_room.room_data:
@@ -263,65 +321,103 @@ func get_room_choices(pos: Vector2i) -> Array:
 					break
 		if not allowed_types.is_empty():
 			pool = pool.filter(func(r): return r.room_type in allowed_types)
-		pool.shuffle()
+		# Depletion weighting: count how many of each RoomData already exist in grid.
+		var counts : Dictionary = {}
+		for inst in dungeon.grid.values():
+			var rd : RoomData = (inst as RoomInstance).room_data
+			if rd != null:
+				counts[rd] = counts.get(rd, 0) + 1
+		# Build a weighted list: weight = 1 / (1 + count). Weighted random draw.
+		var weighted : Array = []
 		for r in pool:
-			if choices.size() >= 3:
+			var w : float = 1.0 / (1.0 + counts.get(r, 0))
+			weighted.append({"room": r, "w": w})
+		var picked : Array = []
+		for _i in 3:
+			if weighted.is_empty():
 				break
-			if r not in choices:
-				choices.append(r)
+			var total : float = 0.0
+			for entry in weighted: total += entry["w"]
+			var roll := randf() * total
+			var acc  : float = 0.0
+			for entry in weighted:
+				acc += entry["w"]
+				if roll <= acc:
+					picked.append(entry["room"])
+					weighted.erase(entry)
+					break
+		for r in picked:
+			choices.append(r)
 		_room_choice_cache[pos] = choices
 	return _room_choice_cache.get(pos, [])
 
 
 func cancel_build():
-	# Called when the player dismisses the choice panel without picking
-	# Don't erase the cache so re-clicking shows the same choices
 	pass
 
 
 func build_room(pos: Vector2i, room_data: RoomData):
 	_room_choice_cache.erase(pos)
+	# Road tiles spend from the player's tile pool, not from the dungeon room pool.
+	if room_data.room_type == RoomData.RoomType.ROAD:
+		dungeon.run_state.road_tiles_remaining = max(0, dungeon.run_state.road_tiles_remaining - 1)
 
 	var instance = RoomInstance.new()
 	instance.room_data = room_data
 	instance.position = pos
 
-	# Count corridors formed by placing this room.
-	# The origin room (where we built from) always gets +1, unless it's already full.
-	var origin_room : RoomInstance = dungeon.grid.get(dungeon.current_pos)
-	if origin_room != null and not origin_room.is_connection_full():
-		origin_room.built_connections += 1
-
-	# The new room starts with 1 (back to origin), then gains one more for every
-	# other already-placed neighbour it mutually connects to — only if that
-	# neighbour still has capacity.
-	var new_corridors : int = 1
-	const CARDINALS := [Vector2i(0,-1), Vector2i(0,1), Vector2i(-1,0), Vector2i(1,0)]
-	var new_exits : Array = room_data.get_exit_dirs()
-	for d in CARDINALS:
-		var nb_pos : Vector2i = pos + d
-		if nb_pos == dungeon.current_pos:
-			continue  # already counted as origin
-		var nb : RoomInstance = dungeon.grid.get(nb_pos)
-		if nb == null or nb.room_data == null:
-			continue
-		if nb.is_connection_full():
-			continue  # neighbour is full — corridor doesn't form
-		var nb_exits : Array = nb.room_data.get_exit_dirs()
-		if d in new_exits and -d in nb_exits:
-			new_corridors += 1
-			nb.built_connections += 1
-	instance.built_connections = new_corridors
-
+	var road_tile : bool = room_data.room_type == RoomData.RoomType.ROAD
 	dungeon.grid[pos] = instance
-	dungeon.current_pos = pos
+
+	# Connect the new room to the origin room it was built from.
+	# For Terminal rooms, only the origin expends a connection slot;
+	# the terminal room records the origin for navigation (leaving) but
+	# its own built_connections is not counted against max_connections.
+	if not road_tile:
+		var origin : RoomInstance = dungeon.grid.get(dungeon.current_pos)
+		if room_data.is_terminal():
+			# Record both sides for navigation, but only charge the origin.
+			if origin != null and not origin.is_connection_full():
+				if pos not in origin.explicit_connections:
+					origin.explicit_connections.append(pos)
+					origin.built_connections += 1
+			if dungeon.current_pos not in instance.explicit_connections:
+				instance.explicit_connections.append(dungeon.current_pos)
+				# Don't increment built_connections on Terminal itself.
+		else:
+			_make_connection(dungeon.current_pos, pos)
 	print("[DC] build_room at ", pos, " grid size now=", dungeon.grid.size())
 
-	# Do NOT call redraw_map() here — enter_current_room will trigger a battle/event
-	# which hides the dungeon layer anyway. redraw_map() is called by on_room_completed()
-	# once the room is actually finished. Calling it here first causes two overlapping
-	# async redraws (both await process_frame) that stomp each other.
-	enter_current_room()
+	if room_data.room_type == RoomData.RoomType.ROAD:
+		_room_choice_cache.clear()
+		map_ui.redraw_map()
+	else:
+		dungeon.current_pos = pos
+		enter_current_room()
+
+
+## After entering a room, check for adjacent placed rooms that could connect.
+## For each eligible pair, show a yes/no prompt in the map UI.
+func _propose_side_connections(pos: Vector2i) -> void:
+	const CARDINALS := [Vector2i(0,-1), Vector2i(0,1), Vector2i(-1,0), Vector2i(1,0)]
+	var proposals : Array = []
+	for d in CARDINALS:
+		var nb_pos : Vector2i = pos + d
+		if not dungeon.grid.has(nb_pos):
+			continue
+		if nb_pos == dungeon.current_pos:
+			continue
+		if _can_connect(pos, nb_pos):
+			proposals.append(nb_pos)
+	if proposals.is_empty():
+		return
+	map_ui.show_connection_proposals(pos, proposals, self)
+
+
+func accept_connection_proposal(pos_a: Vector2i, pos_b: Vector2i) -> void:
+	if _can_connect(pos_a, pos_b):
+		_make_connection(pos_a, pos_b)
+		map_ui.redraw_map()
 
 
 func load_recruit_event() -> void:
@@ -347,8 +443,6 @@ func _trigger_boss_battle() -> void:
 		push_error("No boss encounter found for: " + run.boss_target.display_name)
 		on_room_completed()
 		return
-	# Attach a synthetic PartyMemberData to each enemy CharacterData in the encounter
-	# so the support actor scripts have will and skill unlocks available.
 	for char_data in encounter.enemies:
 		if char_data.boss_party_member == null:
 			char_data.boss_party_member = BossBuilder.make_party_member(char_data)
@@ -356,12 +450,10 @@ func _trigger_boss_battle() -> void:
 
 
 func load_event(event_scene: PackedScene):
-
 	if event_scene == null:
 		push_error("Event room has no scene!")
 		on_room_completed()
 		return
-
 	GameController.start_event(event_scene)
 
 
@@ -387,19 +479,445 @@ func open_rest_ui() -> void:
 		, CONNECT_ONE_SHOT)
 
 
-func place_segno(from_chapel: bool = false) -> void:
-	# Consume one Segno item from inventory
-	var segno_item_idx := _find_segno_in_inventory()
-	if segno_item_idx < 0:
-		# No Segno item — fall back to legacy position-only behaviour
-		dungeon.last_segno_pos = dungeon.current_pos
-		_show_segno_event(from_chapel, false)
-		return
-	_consume_inventory_item(segno_item_idx)
+# ── Segno / Phase logic ───────────────────────────────────────────────────────
+
+## Called when Semiosis at a rest room fills the third charge.
+## Converts the Segno pickup room to SEGNO type. Does not reprime or lock building.
+## DA_CAPO / CAESURA: pickup room = entrance (Vector2i.ZERO)
+## DAL_SEGNO:         pickup room = current segno_pos
+func on_semiosis_complete() -> void:
+	var pickup_pos : Vector2i
+	match dungeon.phase:
+		DungeonRunState.Phase.DA_CAPO:
+			# First Segno always forms at the dungeon entrance.
+			pickup_pos = Vector2i.ZERO
+		DungeonRunState.Phase.CAESURA:
+			# Redo Semiosis at the most recently placed Segno position.
+			if dungeon.past_segno_positions.is_empty():
+				pickup_pos = Vector2i.ZERO
+			else:
+				pickup_pos = dungeon.past_segno_positions.back() as Vector2i
+		_:
+			return  # Semiosis only applies before the first Segno or after CAESURA
+
+	var room : RoomInstance = dungeon.grid.get(pickup_pos)
+	if room != null and room.room_data != null:
+		var segno_data := RoomData.new()
+		segno_data.room_name       = "Segno"
+		segno_data.room_type       = RoomData.RoomType.SEGNO
+		segno_data.allows_segno    = false
+		segno_data.max_connections = 4
+		segno_data.connections     = room.room_data.connections.duplicate()
+		segno_data.room_model      = SEGNO_ROOM_SCENE
+		room.room_data             = segno_data
+		room.cleared               = false
+
+	map_ui.redraw_map()
+
+
+func _handle_segno_room() -> void:
+	var run := dungeon.run_state
+	match dungeon.phase:
+
+		DungeonRunState.Phase.DA_CAPO, DungeonRunState.Phase.CAESURA:
+			if not run.has_full_segno():
+				map_ui.redraw_map()
+				return
+			var candidates := _find_next_segno_candidates()
+			if candidates.is_empty():
+				_show_segno_blocked_notice()
+				return
+			_prompt_pickup_segno(false)
+
+		DungeonRunState.Phase.DAL_SEGNO:
+			# No charge requirement — the Segno is always available to pick up.
+			# Only gate is exploration radius (enough candidates outside min range).
+			var candidates := _find_next_segno_candidates()
+			if candidates.is_empty():
+				_show_segno_blocked_notice()
+				return
+			_prompt_pickup_segno(true)
+
+		DungeonRunState.Phase.DC_AL_SEGNO, DungeonRunState.Phase.DS_AL_SEGNO:
+			_do_place_segno()
+
+		DungeonRunState.Phase.AL_FINE:
+			_trigger_boss_battle()
+
+		_:
+			map_ui.redraw_map()
+
+
+func _prompt_pickup_segno(is_ds: bool) -> void:
+	_show_segno_pickup_event(is_ds)
+
+
+func _show_segno_pickup_event(is_ds: bool) -> void:
+	var scene := preload("res://scenes/Events/segno_event.tscn")
+	var event := scene.instantiate()
+	event.set("is_pickup_prompt", true)
+	event.set("is_ds_transit", is_ds)
+	var event_layer = get_tree().get_first_node_in_group("event_layer")
+	if event_layer:
+		var dungeon_layer = get_tree().get_first_node_in_group("dungeon_layer")
+		if dungeon_layer: dungeon_layer.visible = false
+		for c in event_layer.get_children(): c.queue_free()
+		event_layer.add_child(event)
+		event_layer.visible = true
+		event.pickup_confirmed.connect(func():
+			for c in event_layer.get_children(): c.queue_free()
+			event_layer.visible = false
+			if dungeon_layer: dungeon_layer.visible = true
+			_execute_pickup(is_ds)
+		, CONNECT_ONE_SHOT)
+		event.event_finished.connect(func():
+			for c in event_layer.get_children(): c.queue_free()
+			event_layer.visible = false
+			if dungeon_layer: dungeon_layer.visible = true
+			map_ui.redraw_map()
+		, CONNECT_ONE_SHOT)
+	else:
+		_execute_pickup(is_ds)
+
+
+func _execute_pickup(is_ds: bool) -> void:
+	var run := dungeon.run_state
+	# Record the pickup position as a permanent Segno anchor before finding
+	# candidates, so the exclusion zone around it is respected immediately.
+	if dungeon.current_pos not in dungeon.past_segno_positions:
+		dungeon.past_segno_positions.append(dungeon.current_pos)
+	var candidates := _find_next_segno_candidates()
+	var target : Vector2i = candidates[randi() % candidates.size()]
+	dungeon.next_segno_target = target
+	_place_segno_room_at(target)
+	run.consume_segno()
+	_revert_room_at(dungeon.current_pos)
+	if is_ds:
+		for pos in dungeon.grid.keys():
+			var room : RoomInstance = dungeon.grid[pos]
+			if room.room_data != null and \
+					room.room_data.room_type in [RoomData.RoomType.BATTLE, RoomData.RoomType.ELITE]:
+				room.cleared = false
+				room.al_segno_passes = 0  # reset per-transit pass counter
+		_spawn_treasure_rooms()
+		dungeon.phase = DungeonRunState.Phase.DS_AL_SEGNO
+	else:
+		dungeon.phase = DungeonRunState.Phase.DC_AL_SEGNO
+	on_room_completed()
+
+
+func _do_place_segno() -> void:
+	var run := dungeon.run_state
 	var replacing : bool = dungeon.segno_snapshot != null and not dungeon.segno_snapshot.used
-	dungeon.segno_snapshot = SegnoSnapshot.capture(dungeon.run_state, dungeon.current_pos)
-	dungeon.last_segno_pos = dungeon.current_pos  # keep in sync for UI checks
-	_show_segno_event(from_chapel, replacing)
+	dungeon.segno_snapshot = SegnoSnapshot.capture(
+		run,
+		dungeon.current_pos,
+		DungeonRunState.Phase.DAL_SEGNO,
+		dungeon.current_pos,
+		dungeon.past_segno_positions
+	)
+	# Compute min_dist BEFORE appending so we can measure the gap between
+	# the previous Segno (last entry in past_segno_positions) and this one.
+	# min_dist = distance from the last pickup to this placement, floored at SEGNO_MIN_DIST.
+	# past_segno_positions always contains at least the pickup position by this point.
+	if not dungeon.past_segno_positions.is_empty():
+		var prev : Vector2i = dungeon.past_segno_positions.back() as Vector2i
+		var curr : Vector2i = dungeon.current_pos
+		dungeon.segno_min_dist = max(SEGNO_MIN_DIST,
+			abs(curr.x - prev.x) + abs(curr.y - prev.y))
+	else:
+		dungeon.segno_min_dist = SEGNO_MIN_DIST
+
+	if dungeon.current_pos not in dungeon.past_segno_positions:
+		dungeon.past_segno_positions.append(dungeon.current_pos)
+	dungeon.segno_pos         = dungeon.current_pos
+	dungeon.next_segno_target = Vector2i(-999, -999)
+	dungeon.phase             = DungeonRunState.Phase.DAL_SEGNO
+	# Lock the safe-phase ceiling to max party level + shrinking bonus.
+	# The bonus is generous early and ticks down each transit so the player
+	# has breathing room at first but must earn more through al Segno grinding.
+	var locked_level : int = 1
+	for m in dungeon.run_state.party_members:
+		if m.level > locked_level:
+			locked_level = m.level
+	var bonus_arr := DungeonRunState.CEILING_BONUSES
+	var bonus : int = bonus_arr[min(dungeon.segno_transit_count, bonus_arr.size() - 1)]
+	dungeon.segno_level_ceiling = min(locked_level + bonus, LevelTable.MAX_LEVEL)
+	dungeon.segno_transit_count += 1
+	_spawn_suggested_elite()
+	_show_segno_event(false, replacing)
+
+
+const SEGNO_ROOM_SCENE = preload("res://scenes/MapRooms/segno_room.tscn")
+
+func _place_segno_room_at(pos: Vector2i) -> void:
+	# Never overwrite a room that already exists (e.g. a pre-seeded elite).
+	if dungeon.grid.has(pos):
+		push_warning("[DC] _place_segno_room_at: pos %s already occupied, skipping" % pos)
+		return
+	var segno_data := RoomData.new()
+	segno_data.room_name       = "Threshold"
+	segno_data.room_type       = RoomData.RoomType.SEGNO
+	segno_data.allows_segno    = false
+	segno_data.max_connections = 4
+	segno_data.room_model      = SEGNO_ROOM_SCENE
+	var inst := RoomInstance.new()
+	inst.room_data = segno_data
+	inst.position  = pos
+	dungeon.grid[pos] = inst
+
+
+## Flood-fill from origin through mutually connected rooms.
+## Returns a Dictionary of Vector2i positions that are reachable from the player.
+func _get_connected_positions() -> Dictionary:
+	var visited : Dictionary = {}
+	var queue   : Array      = [Vector2i.ZERO]
+	visited[Vector2i.ZERO]   = true
+	while not queue.is_empty():
+		var pos : Vector2i = queue.pop_front()
+		var room : RoomInstance = dungeon.grid.get(pos)
+		if room == null:
+			continue
+		for nb in room.explicit_connections:
+			if visited.has(nb):
+				continue
+			if not dungeon.grid.has(nb):
+				continue
+			visited[nb] = true
+			queue.append(nb)
+	return visited
+
+
+## Returns empty grid positions reachable and far enough from all past Segno spots.
+## Minimum range is stored on dungeon.segno_min_dist, set at each Segno placement.
+func _find_next_segno_candidates() -> Array:
+	var candidates : Array = []
+	var min_dist : int = dungeon.segno_min_dist
+	# Only consider ghost slots adjacent to the connected component from origin.
+	var connected : Dictionary = _get_connected_positions()
+	for placed_pos in connected.keys():
+		var placed_room : RoomInstance = dungeon.grid.get(placed_pos)
+		if placed_room == null or placed_room.room_data == null:
+			continue
+		# A full room can't form a new connection — any ghost slot beyond it
+		# would be unreachable, so skip it as a Segno candidate source.
+		if placed_room.is_connection_full():
+			continue
+		for d in placed_room.room_data.get_exit_dirs():
+			var candidate : Vector2i = (placed_pos as Vector2i) + d
+			if dungeon.grid.has(candidate):
+				continue
+			if candidate in candidates:
+				continue
+			# Build the full set of anchors: all past positions + live segno_pos.
+			# current_pos is also included so a freshly placed Segno (not yet
+			# appended to past_segno_positions) is still respected.
+			var too_close := false
+			var anchors_check : Array = dungeon.past_segno_positions.duplicate()
+			if dungeon.segno_pos != Vector2i(-999, -999) and \
+					dungeon.segno_pos not in anchors_check:
+				anchors_check.append(dungeon.segno_pos)
+			if dungeon.current_pos not in anchors_check:
+				anchors_check.append(dungeon.current_pos)
+			for anchor in anchors_check:
+				var a : Vector2i = anchor as Vector2i
+				var dist : int = abs(candidate.x - a.x) + abs(candidate.y - a.y)
+				if dist < min_dist:
+					too_close = true
+					break
+			if not too_close:
+				candidates.append(candidate)
+	return candidates
+
+
+func _spawn_suggested_elite() -> void:
+	# The elite must be:
+	#  (a) between min_dist + 1 and min_dist + 4 from every Segno anchor — further than the
+	#      next Segno target range, so it clearly reads as "explore out here"
+	#  (b) NOT adjacent to any room in the player-connected component —
+	#      it sits in genuinely unexplored territory, unreachable without
+	#      building new rooms toward it.
+	var anchors : Array = dungeon.past_segno_positions.duplicate()
+	if dungeon.segno_pos != Vector2i(-999, -999) and dungeon.segno_pos not in anchors:
+		anchors.append(dungeon.segno_pos)
+	var outer_dist : int = dungeon.segno_min_dist + 1
+	var connected : Dictionary = _get_connected_positions()
+	const CARDINALS := [Vector2i(0,-1), Vector2i(0,1), Vector2i(-1,0), Vector2i(1,0)]
+
+	# Scan a generous area around the current Segno for valid positions.
+	var candidates : Array = []
+	var search_range : int = outer_dist + 3
+	var origin : Vector2i = dungeon.segno_pos if dungeon.segno_pos != Vector2i(-999,-999) \
+		else Vector2i.ZERO
+	for dx in range(-search_range, search_range + 1):
+		for dy in range(-search_range, search_range + 1):
+			var pos : Vector2i = origin + Vector2i(dx, dy)
+			# Skip occupied positions.
+			if dungeon.grid.has(pos):
+				continue
+			# Must be outside outer_dist from every anchor.
+			var far_enough := true
+			for a in anchors:
+				var d : int = abs(pos.x - (a as Vector2i).x) + abs(pos.y - (a as Vector2i).y)
+				if d < outer_dist:
+					far_enough = false
+					break
+			if not far_enough:
+				continue
+			# Must NOT be adjacent to any player-connected room.
+			var adj_to_connected := false
+			for dir in CARDINALS:
+				if connected.has(pos + dir):
+					adj_to_connected = true
+					break
+			if adj_to_connected:
+				continue
+			candidates.append(pos)
+
+	# Fall back to any outer candidate if none are fully disconnected.
+	if candidates.is_empty():
+		for dx in range(-search_range, search_range + 1):
+			for dy in range(-search_range, search_range + 1):
+				var pos : Vector2i = origin + Vector2i(dx, dy)
+				if dungeon.grid.has(pos):
+					continue
+				var far_enough := true
+				for a in anchors:
+					var d : int = abs(pos.x - (a as Vector2i).x) + abs(pos.y - (a as Vector2i).y)
+					if d < outer_dist:
+						far_enough = false
+						break
+				if far_enough:
+					candidates.append(pos)
+	if candidates.is_empty():
+		return
+
+	candidates.shuffle()
+	var target : Vector2i = candidates[0]
+	var elite_data : RoomData = null
+	for r in dungeon.dungeon_data.rooms:
+		if r.room_type == RoomData.RoomType.ELITE:
+			elite_data = r
+			break
+	if elite_data == null:
+		return
+	var inst := RoomInstance.new()
+	inst.room_data = elite_data
+	inst.position  = target
+	dungeon.grid[target] = inst
+	map_ui.redraw_map()
+
+
+## Spawn 1-2 treasure rooms in empty ghost slots at AL_SEGNO start.
+## Prefers positions adjacent to dead-end rooms (high connectivity dead ends)
+## so they reward players who built exploratory side branches.
+func _spawn_treasure_rooms() -> void:
+	var all_empty : Array = []
+	for pos in dungeon.grid.keys():
+		var room : RoomInstance = dungeon.grid[pos]
+		if room.room_data == null:
+			continue
+		for d in room.room_data.get_exit_dirs():
+			var candidate : Vector2i = (pos as Vector2i) + d
+			if dungeon.grid.has(candidate):
+				continue
+			if candidate in all_empty:
+				continue
+			all_empty.append(candidate)
+	if all_empty.is_empty():
+		return
+	all_empty.shuffle()
+	var count : int = min(2, all_empty.size())
+	for i in count:
+		var treasure_data := RoomData.new()
+		treasure_data.room_name    = "Cache"
+		treasure_data.room_type    = RoomData.RoomType.TREASURE
+		treasure_data.allows_segno = false
+		treasure_data.max_connections = 1
+		treasure_data.description  = "Something left behind."
+		var inst := RoomInstance.new()
+		inst.room_data = treasure_data
+		inst.position  = all_empty[i]
+		dungeon.grid[all_empty[i]] = inst
+	map_ui.redraw_map()
+
+
+## Open the Sundown Market shop for the current room.
+## The shop can be re-entered; stock persists on the RoomInstance.
+func _open_shop(room: RoomInstance) -> void:
+	var scene := preload("res://scenes/Events/shop_event.tscn")
+	var event := scene.instantiate()
+	event.run_state    = dungeon.run_state
+	event.room_instance = room
+	var event_layer = get_tree().get_first_node_in_group("event_layer")
+	if event_layer == null:
+		return
+	var dungeon_layer = get_tree().get_first_node_in_group("dungeon_layer")
+	if dungeon_layer: dungeon_layer.visible = false
+	for c in event_layer.get_children(): c.queue_free()
+	event_layer.add_child(event)
+	event_layer.visible = true
+	event.event_finished.connect(func():
+		for c in event_layer.get_children(): c.queue_free()
+		event_layer.visible = false
+		if dungeon_layer: dungeon_layer.visible = true
+		map_ui.redraw_map()
+	, CONNECT_ONE_SHOT)
+
+
+## Grant treasure rewards and permanently close the room.
+func _open_treasure_room(room: RoomInstance) -> void:
+	var run  := dungeon.run_state
+	var dr   := dungeon
+	# EXP burst — distributed equally among living party members, capped at ceiling.
+	var burst_exp  : int = 20
+	var ceiling    : int = dr.segno_level_ceiling if dr.segno_level_ceiling > 0 else LevelTable.MAX_LEVEL
+	for m in run.party_members:
+		if m.current_hp > 0:
+			m.add_exp_capped(burst_exp, ceiling)
+	# Excess ammo top-up — refill up to half the gun clip worth of excess.
+	var ammo_grant : int = max(1, run.gun_clip / 2)
+	run.excess_ammo += ammo_grant
+	# One reroll charge.
+	run.reroll_charges += 1
+	var msg := "[Treasure] +%d EXP, +%d BB, +1 reroll." % [burst_exp, ammo_grant]
+	print(msg)
+	on_room_completed()
+
+
+## Show a UI notice that the dungeon must expand before the Segno can be moved.
+## Displayed whenever _find_next_segno_candidates() returns empty.
+func _show_segno_blocked_notice() -> void:
+	var min_dist : int = SEGNO_MIN_DIST + dungeon.past_segno_positions.size()
+	push_warning("[DC] Segno blocked: no candidates at min_dist=%d" % min_dist)
+	# Show a brief on-screen notice via the segno event in blocked mode.
+	var scene := preload("res://scenes/Events/segno_event.tscn")
+	var event := scene.instantiate()
+	event.set("is_blocked_notice", true)
+	var event_layer = get_tree().get_first_node_in_group("event_layer")
+	if event_layer:
+		var dungeon_layer = get_tree().get_first_node_in_group("dungeon_layer")
+		if dungeon_layer: dungeon_layer.visible = false
+		for c in event_layer.get_children(): c.queue_free()
+		event_layer.add_child(event)
+		event_layer.visible = true
+		event.event_finished.connect(func():
+			for c in event_layer.get_children(): c.queue_free()
+			event_layer.visible = false
+			if dungeon_layer: dungeon_layer.visible = true
+			map_ui.redraw_map()
+		, CONNECT_ONE_SHOT)
+	else:
+		map_ui.redraw_map()
+
+
+func place_segno(from_chapel: bool = false) -> void:
+	var run := dungeon.run_state
+	if not run.has_full_segno():
+		if not from_chapel:
+			on_room_completed()
+		return
+	_do_place_segno()
 
 
 func _show_segno_event(from_chapel: bool, replacing: bool) -> void:
@@ -417,72 +935,73 @@ func _show_segno_event(from_chapel: bool, replacing: bool) -> void:
 			for c in event_layer.get_children(): c.queue_free()
 			event_layer.visible = false
 			if dungeon_layer: dungeon_layer.visible = true
-			if not from_chapel:
-				on_room_completed()
-			else:
+			if from_chapel:
 				dungeon_ui.show_rest_screen()
+			else:
+				# Do NOT call on_room_completed — the active Segno room must
+				# stay uncleared so the player can walk back to pick it up.
+				map_ui.redraw_map()
 		, CONNECT_ONE_SHOT)
 	else:
 		on_room_completed()
 
+
 func on_party_defeated():
-	var _snap := dungeon.segno_snapshot as SegnoSnapshot
-	var has_snapshot : bool = _snap != null and not _snap.used
-	var has_legacy   : bool = dungeon.last_segno_pos != Vector2i(-999, -999)
-	if has_snapshot:
-		respawn_at_segno()
-	elif has_legacy:
-		_legacy_respawn()
-	else:
-		end_run()
+	match dungeon.phase:
+		DungeonRunState.Phase.DAL_SEGNO:
+			var snap := dungeon.segno_snapshot as SegnoSnapshot
+			if snap != null and not snap.used:
+				respawn_at_segno()
+			else:
+				end_run()
+		_:
+			end_run()
+
+
+func _revert_entrance_to_start_room() -> void:
+	_revert_room_at(Vector2i.ZERO)
+
+
+## Revert a room back to a safe passable state after the Segno leaves it.
+## Entrance gets the original start_room data.
+## Other positions become a REST room with rested=true (just redraws map on re-entry).
+func _revert_room_at(pos: Vector2i) -> void:
+	var room : RoomInstance = dungeon.grid.get(pos)
+	if room == null:
+		return
+	# All past Segno positions (including the entrance at origin) keep their
+	# SEGNO room_data so the dimmed yellow model persists as a landmark.
+	# Marking cleared prevents re-triggering the pickup interaction.
+	room.cleared = true
+	room.rested  = true
 
 
 func respawn_at_segno() -> void:
-	# Full snapshot restore — returns party to exact state when Segno was placed.
 	var snap := dungeon.segno_snapshot as SegnoSnapshot
+	dungeon.coda_pos             = dungeon.current_pos
 	snap.restore_into(dungeon.run_state)
-	dungeon.current_pos = snap.placed_at
-	# Snapshot is now consumed (used = true set inside restore_into)
-	dungeon.last_segno_pos = Vector2i(-999, -999)
-	dungeon.segno_snapshot = null
+	var placed_at : Vector2i     = snap.placed_at
+	dungeon.current_pos          = placed_at
+	dungeon.segno_snapshot       = null
+	dungeon.past_segno_positions = snap.past_segno_positions.duplicate(true)
+	_revert_room_at(placed_at)
+	dungeon.segno_pos  = Vector2i(-999, -999)
+	dungeon.phase      = DungeonRunState.Phase.CAESURA
+	_revert_entrance_to_start_room()
+	# Restore layer visibility — GameController hid everything during the battle.
+	GameController.event_layer.visible   = false
+	GameController.battle_layer.visible  = false
+	GameController.dungeon_layer.visible = true
+	GameController._set_dungeon_map_visible(true)
 	map_ui.redraw_map()
-	enter_current_room()
 
-
-func _legacy_respawn() -> void:
-	# Old behaviour: just move back to segno position, restore half HP.
-	dungeon.current_pos = dungeon.last_segno_pos
-	for member in dungeon.run_state.party_members:
-		member.current_hp = member.character.base_max_hp / 2
-	map_ui.redraw_map()
-	enter_current_room()
 
 func end_run():
 	print("Run ended")
 	GameController.start_new_game()
 
 
-# --- Inventory helpers ---
-
-func _find_segno_in_inventory() -> int:
-	var inv : Array = dungeon.run_state.inventory
-	for i in inv.size():
-		if inv[i].item_data is SegnoItem:
-			return i
-	return -1
-
-
-func _consume_inventory_item(idx: int) -> void:
-	var inv : Array = dungeon.run_state.inventory
-	if idx < 0 or idx >= inv.size():
-		return
-	var item : ItemInstance = inv[idx]
-	item.stacks -= 1
-	if item.stacks <= 0:
-		inv.remove_at(idx)
-
-
-# --- Room effect application ---
+# ── Room effect application ───────────────────────────────────────────────────
 
 func apply_room_effects(room: RoomInstance) -> void:
 	if room == null or room.room_data == null:
@@ -492,13 +1011,11 @@ func apply_room_effects(room: RoomInstance) -> void:
 		match effect.effect_type:
 
 			RoomEffect.EffectType.AMMO_RESTORE_ON_PASS:
-				# Only fires when room is already cleared (passing through)
 				if not room.cleared:
 					continue
 				if randf() < effect.ammo_chance:
 					run.restore_ammo(effect.ammo_amount)
 					print("[RoomEffect] Restored %d ammo." % effect.ammo_amount)
-					# Risk: reactivate the encounter
 					if effect.risk_reactivate and randf() < effect.ammo_chance:
 						room.cleared = false
 						print("[RoomEffect] High Noon reactivated!")
@@ -514,9 +1031,13 @@ func apply_room_effects(room: RoomInstance) -> void:
 					pm.restore_will(effect.will_amount)
 
 			RoomEffect.EffectType.RESTRICT_BUILD_POOL:
-				# Handled at build time in get_room_choices; stored on the room for reference.
 				pass
 
 			RoomEffect.EffectType.TEMPO_BONUS_ON_ENTER:
-				# Stored in run_flags so the battle manager can read it at battle start.
 				run.run_flags["tempo_bonus_next_battle"] = effect.tempo_amount
+
+			RoomEffect.EffectType.GRANT_REROLLS:
+				run.reroll_charges += effect.grant_amount
+
+			RoomEffect.EffectType.GRANT_ROAD_TILES:
+				run.road_tiles_remaining += effect.grant_amount

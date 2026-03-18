@@ -5,9 +5,11 @@ extends Control
 
 var dungeon : DungeonRunState
 
+func _ready() -> void:
+	add_to_group("dungeon_ui")
+
 func setup(controller_dungeon : DungeonRunState):
 
-	
 	print("Setting up UI.")
 	dungeon = controller_dungeon
 
@@ -110,13 +112,8 @@ func show_rest_screen():
 		btn.pressed.connect(func(): _do_rest(t, v))
 		room_list.add_child(btn)
 
-	# Segno option: available in any room with allows_segno = true (e.g. Chapel)
-	if room.room_data != null and room.room_data.allows_segno:
-		var segno_btn = Button.new()
-		var has_segno := controller.dungeon.last_segno_pos != Vector2i(-999, -999)
-		segno_btn.text = "Move Segno here" if has_segno else "Place Segno here"
-		segno_btn.pressed.connect(func(): controller.place_segno(true))
-		room_list.add_child(segno_btn)
+	# Segno placement is now handled exclusively through the SEGNO room type.
+	# No legacy button needed here.
 
 
 func _do_rest(rest_type: String, val: int) -> void:

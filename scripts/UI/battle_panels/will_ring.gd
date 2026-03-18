@@ -63,17 +63,17 @@ func _update_label_billboard() -> void:
 	var dx := _camera.global_position.x - global_position.x
 	var dz := _camera.global_position.z - global_position.z
 	if dx * dx + dz * dz > 0.0001:
-		_num_label.rotation.y = atan2(dx, dz) - PI * 0.5
+		var is_enemy : bool = _actor != null and _actor.get("team") == 1
+		var flip : float = PI if is_enemy else 0.0
+		_num_label.rotation.y = atan2(dx, dz) - PI * 0.5 + flip
 
 
 func _find_phantom_cam() -> Node3D:
-	var is_enemy : bool = _actor.get("team") == 1
+	var is_enemy : bool = _actor != null and _actor.get("team") == 1
 	var cam_name := "target_cam" if is_enemy else "active_cam"
-	# Walk up to BattleScene root then down to CameraRig
 	var scene_root := get_tree().get_first_node_in_group("battle_scene")
 	if scene_root:
 		return scene_root.get_node_or_null("CameraRig/" + cam_name)
-	# Fallback: walk ancestors until we find a node with CameraRig
 	var node : Node = self
 	while node:
 		var rig := node.get_node_or_null("CameraRig")

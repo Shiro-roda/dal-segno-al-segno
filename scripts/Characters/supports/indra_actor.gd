@@ -150,7 +150,7 @@ func _galvanize(all_actors: Array) -> void:
 	var supports = get_allies()
 	log_msg("%s rouses his companions." % [name])
 	for s in supports:
-		s.attack_power += GALVANIZE_ATK_BONUS
+		s.modify_attack(GALVANIZE_ATK_BONUS)
 		s.party_member.restore_will(GALVANIZE_WILL_BONUS)
 	# Grant Kendall a free shot: flag on the manager
 	var manager = get_tree().get_first_node_in_group("battle_manager")

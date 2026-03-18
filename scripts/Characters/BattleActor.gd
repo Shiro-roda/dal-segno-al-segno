@@ -39,6 +39,16 @@ enum Team { PLAYER, ENEMY }
 
 @export var max_hp : int = 10
 @export var attack_power : int = 3
+## Locked at battle-start value — never modified directly.
+## All buffs/debuffs go through attack_modifier instead.
+var base_attack_power : int = 0
+## Flat modifier applied on top of base. Capped to [-base+1, +base].
+var attack_modifier : int = 0
+
+@export var flat_defense : int = 0
+var base_flat_defense : int = 0
+var flat_modifier : int = 0
+
 @export var tempo_stat : int = 10    # base tempo gained per turn
 @export var body_parts : Array[BodyPartData]
 var party_member : PartyMemberData
@@ -57,8 +67,39 @@ var martyr_tempo_bonus : float = 0.0
 
 
 
+## Effective Sharp value used for all damage calculations.
+## Always at least 1.
+func effective_attack() -> int:
+	return max(1, base_attack_power + attack_modifier)
+
+
+## Apply a Sharp buff (positive) or debuff (negative).
+## Caps so the actor can't exceed double base or drop below 1.
+func modify_attack(delta: int) -> void:
+	var cap_high : int =  base_attack_power
+	var cap_low  : int = -(base_attack_power - 1)
+	attack_modifier = clampi(attack_modifier + delta, cap_low, cap_high)
+	attack_power = effective_attack()
+
+
+## Effective Flat defense value. Always >= 0.
+func effective_flat() -> int:
+	return max(0, base_flat_defense + flat_modifier)
+
+
+## Apply a Flat buff (positive) or debuff (negative).
+## Capped at +100% of base; cannot go below 0.
+func modify_flat(delta: int) -> void:
+	var cap_high : int = base_flat_defense
+	var cap_low  : int = -base_flat_defense
+	flat_modifier = clampi(flat_modifier + delta, cap_low, cap_high)
+	flat_defense  = effective_flat()
+
+
 func _ready():
 	print(hp)
+	base_attack_power = attack_power
+	base_flat_defense = flat_defense
 	add_to_group("battle_actor")
 	var panel = find_child("WorldSpacePanel", true, false)
 	if panel and panel.has_method("setup"):
@@ -124,10 +165,11 @@ func take_damage(amount: int, attacker: BattleActor = null) -> void:
 	# Cover redirect: another actor is absorbing damage for us
 	if cover_source != null and cover_source.is_alive() and cover_source != attacker:
 		amount *= 0.65
-		cover_source.take_damage(int(amount), attacker)  # 15% reduction
-		cover_source.party_member.will += int(amount)
-		log_msg("Hue takes the blow for %s." % [name])
-		return
+		if cover_source != self:
+			cover_source.take_damage(int(amount), attacker)  # 15% reduction
+			cover_source.party_member.will += int(amount)
+			log_msg("Hue takes the blow for %s." % [name])
+			return
 	# Shield: absorb with temporary HP first
 	if shield_hp > 0:
 		if amount <= shield_hp:
@@ -140,6 +182,10 @@ func take_damage(amount: int, attacker: BattleActor = null) -> void:
 			amount -= shield_hp
 			shield_hp = 0
 			active_effects = active_effects.filter(func(e): return e["id"] != STATUS_SHIELD)
+	# Flat defense: damage = Sharp² / (Sharp + Flat). Always at least 1.
+	var flat : int = effective_flat()
+	if flat > 0:
+		amount = max(1, int(float(amount * amount) / float(amount + flat)))
 	hp -= amount
 	emit_signal("hp_changed")
 	log_msg("%s takes %d damage. (%d CORP)" % [name, amount, max(0, hp)])
@@ -342,9 +388,12 @@ func enemy_take_turn(target: BattleActor) -> void:
 	var is_enemy_t : bool   = chosen_skill.get("enemy_target", false)
 	var is_struggle: bool   = chosen_skill.get("struggle", false)
 
-	if is_struggle or key == "attack":
-		await take_turn(target)
-		return
+	# "attack" key on non-data-driven enemies falls back to the base attack.
+	# EnemyActor overrides use_skill and handles attack keys via execute_effects.
+	if key == "attack" or is_struggle:
+		if not (self is EnemyActor):
+			await take_turn(target)
+			return
 
 	# Determine targets for the chosen skill
 	var skill_targets : Array = []

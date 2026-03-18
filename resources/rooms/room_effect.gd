@@ -10,6 +10,10 @@ enum EffectType {
 	PARTY_HEAL_ON_ENTER,   ## Restore HP to all party members on entry.
 	WILL_RESTORE_ON_ENTER, ## Restore will to all party members on entry.
 	TEMPO_BONUS_ON_ENTER,  ## Grant a flat tempo bonus at the start of the next battle.
+	GRANT_REROLLS,         ## Give the player N reroll charges on room entry.
+	GRANT_ROAD_TILES,      ## Give the player N road tile charges on room entry.
+	TERMINAL,              ## Room accepts entry from any direction but has no outgoing exits.
+						   ## No ghost slots appear from this room; no roads or rooms can attach.
 }
 
 @export var effect_type : EffectType = EffectType.RESTRICT_BUILD_POOL
@@ -45,6 +49,9 @@ enum EffectType {
 ## ── TEMPO_BONUS_ON_ENTER ─────────────────────────────────────────────────────
 ## Flat tempo added to all actors at the start of the next battle.
 @export var tempo_amount  : float = 0.0
+
+## Number of reroll or road-tile charges to grant (GRANT_REROLLS / GRANT_ROAD_TILES).
+@export var grant_amount  : int = 1
 
 
 ## Helper used by DungeonController.get_room_choices().

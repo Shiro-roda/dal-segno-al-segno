@@ -53,8 +53,8 @@ var _camera : Node3D
 func setup(actor) -> void:
 	_actor     = actor
 	_run_state = actor.get("run_state")
-	_max_ammo  = _run_state.ammo if _run_state else 8
-	_ammo      = _max_ammo
+	_max_ammo  = _run_state.gun_clip if _run_state else 6
+	_ammo      = _run_state.ammo if _run_state else _max_ammo
 	_build()
 	_refresh()
 	if _run_state and _run_state.has_signal("battle_ammo_changed"):
@@ -158,9 +158,9 @@ func _build_time_sig() -> void:
 	_sig_label_top.position = Vector3(0.0, 0.0, 0.0)
 	_ring_root.add_child(_sig_label_top)
 
-	# Bottom number (denominator)
+	# Bottom number: gun clip size (updates if clip changes)
 	_sig_label_bot = Label3D.new()
-	_sig_label_bot.text = str(time_sig_bottom)
+	_sig_label_bot.text = str(_max_ammo)
 	_sig_label_bot.pixel_size = 0.004
 	_sig_label_bot.font_size  = 40
 	_sig_label_bot.modulate   = C_SIG

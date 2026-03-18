@@ -11,13 +11,18 @@
 [ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://resources/characters/characterdata.gd" id="5_cqasl"]
 [ext_resource type="Resource" uid="uid://cqcjsnswptvk8" path="res://resources/characters/enemies/shadow1.tres" id="6_vit4c"]
 [ext_resource type="Script" uid="uid://coeqyvqijtkns" path="res://resources/encounters/encounterdata.gd" id="7_75ucp"]
+[ext_resource type="PackedScene" uid="uid://bnorhh3o1qy2h" path="res://scenes/MapRooms/chapel.tscn" id="7_gyugg"]
 [ext_resource type="Script" uid="uid://b57cevaydtkqm" path="res://resources/encounters/splash_line.gd" id="8_1man1"]
 [ext_resource type="Resource" uid="uid://c7inm1j3nh7i4" path="res://resources/characters/enemies/shadow2.tres" id="8_oveqs"]
 [ext_resource type="Resource" uid="uid://d3s71movk40pc" path="res://audio/tracks/magenta.tres" id="9_1man1"]
 [ext_resource type="Resource" uid="uid://br73gevor1yrr" path="res://resources/encounters/test_encounter.tres" id="10_vit4c"]
 [ext_resource type="Resource" uid="uid://ds3k10sa11r3j" path="res://resources/characters/enemies/tall_shadow.tres" id="11_cqasl"]
+[ext_resource type="PackedScene" uid="uid://3aj0ixqpon3" path="res://scenes/MapRooms/battle_room.tscn" id="13_s5enb"]
 [ext_resource type="Resource" uid="uid://csg2bw5kmgf41" path="res://audio/tracks/cyan.tres" id="13_vit4c"]
 [ext_resource type="Resource" uid="uid://c2hfbcmlpd3bi" path="res://resources/characters/enemies/empty_one.tres" id="14_75ucp"]
+[ext_resource type="PackedScene" uid="uid://cedd8ir7uudmq" path="res://scenes/MapRooms/segno_room.tscn" id="20_gyugg"]
+[ext_resource type="Resource" uid="uid://bla26kujm0eyj" path="res://resources/characters/enemies/dog.tres" id="20_plsdk"]
+[ext_resource type="Resource" uid="uid://b05yr5egt0f4o" path="res://resources/characters/enemies/big_dog.tres" id="21_job2v"]
 
 [sub_resource type="Resource" id="Resource_oveqs"]
 script = ExtResource("2_gacfb")
@@ -27,15 +32,22 @@ event_scene = ExtResource("2_vit4c")
 allows_segno = false
 metadata/_custom_type_script = "uid://b3i3n6lphwajh"
 
+[sub_resource type="Resource" id="Resource_6fwsg"]
+script = ExtResource("4_w5o4c")
+effect_type = 7
+metadata/_custom_type_script = "uid://cahb38n4bk3e1"
+
 [sub_resource type="Resource" id="Resource_w5o4c"]
 script = ExtResource("2_gacfb")
 room_name = "Chapel"
 room_type = 4
 icon = ExtResource("3_cjxev")
 description = "A place to rest. Your only respite, but there are no paths from here other than the way you came. [+0 Connection(s)]"
+room_model = ExtResource("7_gyugg")
 danger_level = 0
-allows_segno = false
 max_connections = 1
+room_effects = Array[ExtResource("4_w5o4c")]([SubResource("Resource_6fwsg")])
+connections = Array[Vector2i]([Vector2i(0, 0)])
 metadata/_custom_type_script = "uid://b3i3n6lphwajh"
 
 [sub_resource type="Resource" id="Resource_t2pf7"]
@@ -56,6 +68,7 @@ script = ExtResource("2_gacfb")
 room_name = "Morning's Fodder"
 icon = ExtResource("3_cjxev")
 description = "A single, banal foe. [+1 Connection(s)]"
+room_model = ExtResource("13_s5enb")
 encounter = SubResource("Resource_0evoc")
 allows_segno = false
 max_connections = 2
@@ -78,6 +91,7 @@ script = ExtResource("2_gacfb")
 room_name = "Twice your Afternoon"
 icon = ExtResource("3_cjxev")
 description = "Two suns cast two shadows. [+2 Connection(s)]"
+room_model = ExtResource("13_s5enb")
 encounter = SubResource("Resource_gyugg")
 danger_level = 2
 allows_segno = false
@@ -89,10 +103,11 @@ script = ExtResource("2_gacfb")
 room_name = "Insipid Evening"
 icon = ExtResource("3_cjxev")
 description = "The greatest of the least of your challenges. [+2 Connection(s)]"
+room_model = ExtResource("13_s5enb")
 encounter = ExtResource("10_vit4c")
 danger_level = 3
 max_connections = 3
-connections = Array[Vector2i]([Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, 1)])
+connections = Array[Vector2i]([Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(0, -1)])
 metadata/_custom_type_script = "uid://b3i3n6lphwajh"
 
 [sub_resource type="Resource" id="Resource_7g1jr"]
@@ -106,7 +121,7 @@ metadata/_custom_type_script = "uid://cahb38n4bk3e1"
 [sub_resource type="Resource" id="Resource_job2v"]
 script = ExtResource("2_gacfb")
 room_name = "Crossroads"
-room_type = 5
+room_type = 2
 icon = ExtResource("3_cjxev")
 description = "A place for your signpost. Can only lead to trials by combat; all other build options are forbidden. [+3 Connection(s)]"
 danger_level = 0
@@ -144,7 +159,9 @@ room_name = "High Noon"
 room_type = 1
 icon = ExtResource("3_cjxev")
 description = "You might find some ammo while passing through, but there will be a reckoning for the empty shells you've left behind.  [+3 Connection(s)]"
+room_model = ExtResource("13_s5enb")
 encounter = SubResource("Resource_bx1x4")
+danger_level = 4
 room_effects = Array[ExtResource("4_w5o4c")]([SubResource("Resource_q4u41")])
 connections = Array[Vector2i]([Vector2i(0, 1), Vector2i(0, -1), Vector2i(-1, 0), Vector2i(1, 0)])
 metadata/_custom_type_script = "uid://b3i3n6lphwajh"
@@ -172,8 +189,47 @@ script = ExtResource("2_gacfb")
 room_name = "The Empty One"
 room_type = 1
 description = "There is nothing of substance to be found here. [+3 Connection(s)]"
+room_model = ExtResource("13_s5enb")
 encounter = SubResource("Resource_vit4c")
+danger_level = 4
 connections = Array[Vector2i]([Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)])
+metadata/_custom_type_script = "uid://b3i3n6lphwajh"
+
+[sub_resource type="Resource" id="Resource_xojk8"]
+script = ExtResource("8_1man1")
+text = "Neither would you spare the flock."
+metadata/_custom_type_script = "uid://b57cevaydtkqm"
+
+[sub_resource type="Resource" id="Resource_bw1vg"]
+script = ExtResource("7_75ucp")
+battlefield_scene = ExtResource("4_4oxoh")
+enemies = Array[ExtResource("5_cqasl")]([ExtResource("20_plsdk"), ExtResource("20_plsdk"), ExtResource("21_job2v")])
+intro_splash = Array[ExtResource("8_1man1")]([SubResource("Resource_xojk8")])
+metadata/_custom_type_script = "uid://coeqyvqijtkns"
+
+[sub_resource type="Resource" id="Resource_6hh4b"]
+script = ExtResource("2_gacfb")
+room_name = "Den"
+description = "A path to hungry teeth."
+room_model = ExtResource("13_s5enb")
+encounter = SubResource("Resource_bw1vg")
+danger_level = 4
+metadata/_custom_type_script = "uid://b3i3n6lphwajh"
+
+[sub_resource type="Resource" id="Resource_gjhq1"]
+script = ExtResource("4_w5o4c")
+effect_type = 7
+metadata/_custom_type_script = "uid://cahb38n4bk3e1"
+
+[sub_resource type="Resource" id="Resource_48yig"]
+script = ExtResource("2_gacfb")
+room_name = "Sundown Market"
+room_type = 3
+description = "Preparations for the night to come may be bought in a marketplace upon a strange moon."
+danger_level = 0
+max_connections = 1
+room_effects = Array[ExtResource("4_w5o4c")]([SubResource("Resource_gjhq1")])
+connections = Array[Vector2i]([Vector2i(0, 0)])
 metadata/_custom_type_script = "uid://b3i3n6lphwajh"
 
 [sub_resource type="Resource" id="Resource_75ucp"]
@@ -181,6 +237,7 @@ script = ExtResource("2_gacfb")
 room_name = "Atrium"
 room_type = 2
 description = "The mouth of the dungeon."
+room_model = ExtResource("20_gyugg")
 danger_level = 0
 allows_segno = false
 connections = Array[Vector2i]([Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)])
@@ -190,6 +247,6 @@ metadata/_custom_type_script = "uid://b3i3n6lphwajh"
 script = ExtResource("2_xmptu")
 default_battle_track = ExtResource("1_2l6ym")
 dungeon_track = ExtResource("1_2l6ym")
-rooms = Array[ExtResource("2_gacfb")]([SubResource("Resource_w5o4c"), SubResource("Resource_s5enb"), SubResource("Resource_1man1"), SubResource("Resource_plsdk"), SubResource("Resource_job2v"), SubResource("Resource_fg3e6"), SubResource("Resource_gavt7")])
+rooms = Array[ExtResource("2_gacfb")]([SubResource("Resource_w5o4c"), SubResource("Resource_s5enb"), SubResource("Resource_1man1"), SubResource("Resource_plsdk"), SubResource("Resource_job2v"), SubResource("Resource_fg3e6"), SubResource("Resource_gavt7"), SubResource("Resource_6hh4b"), SubResource("Resource_48yig")])
 start_room = SubResource("Resource_75ucp")
 recruit_room = SubResource("Resource_oveqs")

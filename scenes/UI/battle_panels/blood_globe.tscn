@@ -1,10 +1,8 @@
 [gd_scene format=3 uid="uid://xa3kxmnno5bv"]
 
 [ext_resource type="Script" uid="uid://cyrjmvijvkbgi" path="res://scripts/UI/battle_panels/blood_globe.gd" id="1_nx4wt"]
-[ext_resource type="PackedScene" uid="uid://du3suh71satyp" path="res://scenes/UI/ring nodes/large_flesh_orb.tscn" id="2_iwd3k"]
-[ext_resource type="PackedScene" uid="uid://dfksmgwfvhs8y" path="res://scenes/UI/ring nodes/small_flesh_orb.tscn" id="3_c1wjo"]
+[ext_resource type="PackedScene" uid="uid://wog7o86lkrah" path="res://scenes/UI/ring nodes/small_ice_orb.tscn" id="2_0p0ha"]
 
 [node name="BloodGlobe" type="Node3D" unique_id=1192720897]
 script = ExtResource("1_nx4wt")
-token_large_scene = ExtResource("2_iwd3k")
-token_small_scene = ExtResource("3_c1wjo")
+shield_orb_scene = ExtResource("2_0p0ha")

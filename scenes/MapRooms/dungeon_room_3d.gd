@@ -29,32 +29,55 @@ func update_visual() -> void:
 
 	if model_scene != null:
 		_spawn_model(model_scene)
-		# Tint the model node to reflect state, or leave neutral if you prefer.
-		# The placeholder cube is hidden when a model is present.
 		if mesh:
 			mesh.visible = false
+		# Dim the model when this is a spent (cleared) Segno room so it reads
+		# as "past" while remaining visually distinct on the map.
+		if room_instance.cleared and data.room_type == RoomData.RoomType.SEGNO:
+			_tint_model(Color(0.35, 0.22, 0.05, 1.0))  # dark amber
 	else:
 		# No model — fall back to colour-coded placeholder cube.
-		_clear_model()
-		if mesh == null:
-			push_error("MeshInstance3D missing in DungeonRoom3D scene at " + str(grid_pos))
-			return
-		mesh.visible = true
-		var color := _state_color()
-		var mat := StandardMaterial3D.new()
-		mat.albedo_color = color
-		mesh.set_surface_override_material(0, mat)
+		_show_placeholder(_state_color())
 
 
-## Returns the tint colour that represents this room's current state.
+## Base colour per room type — readable at a glance on the 3D map.
+func _type_color() -> Color:
+	if room_instance == null or room_instance.room_data == null:
+		return Color(0.5, 0.5, 0.5)  # unknown
+	match room_instance.room_data.room_type:
+		RoomData.RoomType.BATTLE:  return Color(0.85, 0.22, 0.22)   # red
+		RoomData.RoomType.ELITE:   return Color(0.90, 0.45, 0.10)   # orange
+		RoomData.RoomType.EVENT:   return Color(0.55, 0.35, 0.75)   # purple
+		RoomData.RoomType.SHOP:    return Color(0.90, 0.80, 0.15)   # gold
+		RoomData.RoomType.REST:    return Color(0.20, 0.65, 0.45)   # teal
+		RoomData.RoomType.SEGNO:   return Color(0.30, 0.55, 0.90)   # blue
+		RoomData.RoomType.BOSS:    return Color(0.70, 0.10, 0.10)   # dark red
+		RoomData.RoomType.RECRUIT: return Color(0.30, 0.70, 0.70)   # cyan
+		RoomData.RoomType.ROAD:     return Color(0.70, 0.70, 0.68)   # light grey
+		RoomData.RoomType.TREASURE: return Color(0.95, 0.80, 0.20)   # gold
+		_: return Color(0.55, 0.55, 0.55)
+
+
+## Final display colour: type colour modulated by room state.
 func _state_color() -> Color:
-	if controller != null and controller.dungeon.current_pos == grid_pos:
-		return Color.RED
+	var base := _type_color()
+	# Current room: bright white outline tint
+	if controller != null and controller.dungeon != null \
+			and controller.dungeon.current_pos == grid_pos:
+		return base.lightened(0.45)
+	# Past (cleared) Segno rooms: heavily dimmed so they read as spent
+	# but remain visually distinct from other room types.
+	if room_instance.cleared and room_instance.room_data != null \
+			and room_instance.room_data.room_type == RoomData.RoomType.SEGNO:
+		return base.darkened(0.55)
+	# Cleared: slightly dimmed to show it's done
 	if room_instance.cleared:
-		return Color.GREEN
+		return base.darkened(0.25)
+	# Visited but not cleared: full type colour
 	if room_instance.visited:
-		return Color.YELLOW
-	return Color.GRAY
+		return base
+	# Unvisited: dark / greyed out
+	return base.darkened(0.55)
 
 
 ## Show the placeholder cube in a given colour (used for ghosts and fallback).
@@ -62,9 +85,15 @@ func _show_placeholder(color: Color) -> void:
 	_clear_model()
 	if mesh == null:
 		return
+	# Ensure the mesh has geometry; assign a BoxMesh if empty.
+	if mesh.mesh == null:
+		var box := BoxMesh.new()
+		box.size = Vector3(0.9, 0.4, 0.9)
+		mesh.mesh = box
 	mesh.visible = true
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = color
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mesh.set_surface_override_material(0, mat)
 
 
@@ -84,6 +113,26 @@ func _clear_model() -> void:
 	if _model_node != null and is_instance_valid(_model_node):
 		_model_node.queue_free()
 	_model_node = null
+
+
+## Override the albedo of the first MeshInstance3D found inside the model.
+## Used to tint cleared Segno rooms dark so they read as spent.
+func _tint_model(color: Color) -> void:
+	if _model_node == null:
+		return
+	# Find the first MeshInstance3D — works for both flat and nested models.
+	var mi : MeshInstance3D = _model_node as MeshInstance3D
+	if mi == null:
+		for child in _model_node.get_children():
+			if child is MeshInstance3D:
+				mi = child as MeshInstance3D
+				break
+	if mi == null:
+		return
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mi.set_surface_override_material(0, mat)
 
 
 ## Called by dungeon_map_3d for ghost / unbuilt-slot nodes.
@@ -112,7 +161,18 @@ func setup_ghost(pos: Vector2i, dungeon_controller, color: Color, interactive: b
 func _on_area_3d_input_event(camera, event, position, normal, shape_idx):
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		if room_instance != null:
-			controller.move_to_room(grid_pos)
+			# If adjacent and can connect, propose the connection.
+			# Otherwise attempt normal movement.
+			var cur := controller.dungeon.current_pos
+			var diff := grid_pos - cur
+			var is_adjacent : bool = (abs(diff.x) + abs(diff.y)) == 1
+			if is_adjacent and not controller.rooms_connected(cur, grid_pos) \
+					and controller._can_connect(cur, grid_pos):
+				var map_ui : Node3D = get_tree().get_first_node_in_group("dungeon_map_3d")
+				if map_ui:
+					map_ui.show_connection_proposals(cur, [grid_pos], controller)
+			else:
+				controller.move_to_room(grid_pos)
 		else:
 			# Ghost cube clicked — ask map to show choices near click position
 			var map_ui : Node3D = get_tree().get_first_node_in_group("dungeon_map_3d")

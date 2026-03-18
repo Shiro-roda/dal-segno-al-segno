@@ -338,7 +338,7 @@ func _make_augur_entry(enemy: BattleActor) -> VBoxContainer:
 	entry.add_child(name_lbl)
 
 	var atk_lbl := Label.new()
-	atk_lbl.text = "ATK %d   TEMPO %d" % [enemy.attack_power, enemy.tempo_stat]
+	atk_lbl.text = "SHARP %d   FLAT %d   TEMPO %d" % [enemy.attack_power, enemy.flat_defense, enemy.tempo_stat]
 	atk_lbl.add_theme_font_size_override("font_size", 10)
 	atk_lbl.add_theme_color_override("font_color", C_DIM_L)
 	entry.add_child(atk_lbl)

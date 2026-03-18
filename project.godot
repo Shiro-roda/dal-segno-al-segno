@@ -31,6 +31,7 @@ AudioManagerAuto="*uid://cx2gw1tu0rxpi"
 GameController="*uid://e0k6d8aob0l7"
 GlobalTheme="*res://scenes/Managers/global_theme.gd"
 SkillDirectory="*res://scripts/SkillDirectory.gd"
+ItemRegistry="*res://scripts/item_registry.gd"
 
 [dialogic]
 
@@ -42,6 +43,7 @@ layout/style_directory={}
 
 window/size/viewport_width=1280
 window/size/viewport_height=960
+window/size/mode=3
 window/size/initial_position_type=0
 window/size/window_width_override=1680
 window/size/window_height_override=1260

@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://resources/characters/characterdata.gd" id="1_chardata"]
 [ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://resources/bodyparts/BodyPartData.gd" id="2_ocirn"]
 [ext_resource type="PackedScene" uid="uid://d23jj42kvsjw" path="res://scenes/Characters/battleactors/indra_bactor.tscn" id="2_scene"]
+[ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://resources/battle/skill_data.gd" id="4_r64mj"]
 
 [sub_resource type="Resource" id="Resource_ocirn"]
 script = ExtResource("2_ocirn")
@@ -16,7 +17,8 @@ display_name = "Indra"
 description = "Servant and slave to all he meets, a zealous android of flesh and bone seeking freedom from a body that refuses to support his servitude. One day his clouds of ill-returned grace will run dry, and what fury remains will rain upon Heaven."
 base_max_hp = 17
 base_attack = 5
-base_max_will = 16
+base_flat_defense = 3
+base_max_will = 12
 tempo = 11
 body_parts = Array[ExtResource("2_ocirn")]([SubResource("Resource_ocirn")])
 battle_scene = ExtResource("2_scene")

@@ -23,7 +23,8 @@ const CALCIFY_MIN_TURNS      = 1
 const CALCIFY_MAX_TURNS      = 3
 const CALCIFY_DMG_REDUCTION  = 0.5
 const SHELTER_WILL_COST      = 2
-const SHELTER_HP_AMOUNT      = 8
+const SHELTER_HP_AMOUNT      = 4   # reduced — Flat buff compensates
+const SHELTER_FLAT_BONUS     = 3   # temporary Flat raised while shield holds
 const SELF_HARM_HP_COST      = 3
 const SELF_HARM_WILL_RESTORE = 2
 const EMBRACE_DURATION       = 2
@@ -197,10 +198,21 @@ func _calcify(target: BattleActor, part: BodyPartData = null) -> void:
 func _shelter(ally: BattleActor) -> void:
 	party_member.spend_will(SHELTER_WILL_COST)
 	ally.shield_hp += SHELTER_HP_AMOUNT
+	ally.modify_flat(SHELTER_FLAT_BONUS)
 	ally.emit_signal("hp_changed")
 	ally.apply_status(STATUS_SHIELD, 999)
 	say_random(CHATTER_SHELTER)
-	log_msg("%s shields %s (+%d temp HP)." % [name, ally.name, SHELTER_HP_AMOUNT])
+	log_msg("%s fortifies %s (+%d temp HP, +%d FLAT while it holds)." \
+		% [name, ally.name, SHELTER_HP_AMOUNT, SHELTER_FLAT_BONUS])
+	# Reverse the Flat buff once the shield is consumed.
+	# hp_changed fires whenever shield or hp changes; watch for shield drop.
+	var _conn : Callable
+	_conn = func():
+		if ally.shield_hp <= 0:
+			ally.modify_flat(-SHELTER_FLAT_BONUS)
+			if ally.hp_changed.is_connected(_conn):
+				ally.hp_changed.disconnect(_conn)
+	ally.hp_changed.connect(_conn)
 	spend_turn()
 
 

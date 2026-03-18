@@ -1,0 +1,47 @@
+[gd_scene format=3 uid="uid://dqu6wxijpruaf"]
+
+[ext_resource type="Script" uid="uid://buiokwi30hawb" path="res://scripts/Characters/enemy_actor.gd" id="1_ewwui"]
+[ext_resource type="Script" uid="uid://jtnowsj7i172" path="res://scripts/UI/actor_panel_3d.gd" id="4_27t0e"]
+[ext_resource type="PackedScene" uid="uid://bl3aftctvygxl" path="res://scenes/UI/battle_panels/temp_hp_display.tscn" id="5_ehabe"]
+[ext_resource type="PackedScene" uid="uid://du3suh71satyp" path="res://scenes/UI/ring nodes/large_flesh_orb.tscn" id="5_f031y"]
+[ext_resource type="PackedScene" uid="uid://dfksmgwfvhs8y" path="res://scenes/UI/ring nodes/small_flesh_orb.tscn" id="6_j7hfy"]
+[ext_resource type="Script" uid="uid://cyrjmvijvkbgi" path="res://scripts/UI/battle_panels/blood_globe.gd" id="6_qpcvq"]
+[ext_resource type="PackedScene" uid="uid://dm1a08supvq1i" path="res://scenes/UI/battle_panels/will_ring.tscn" id="7_r1pg8"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_12ivh"]
+albedo_color = Color(1, 0.32941177, 0.22745098, 1)
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_ridxo"]
+material = SubResource("StandardMaterial3D_12ivh")
+radius = 0.3
+height = 1.5
+
+[node name="EnemyActor" type="Node3D" unique_id=620316433]
+script = ExtResource("1_ewwui")
+
+[node name="CameraAnchor" type="Node3D" parent="." unique_id=631189047]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3322496, 0)
+
+[node name="WorldSpacePanel" type="Node3D" parent="." unique_id=1766206424]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3754499, 0)
+script = ExtResource("4_27t0e")
+
+[node name="HpDisplay" parent="WorldSpacePanel" unique_id=1429397145 instance=ExtResource("5_ehabe")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.54176044, 0)
+script = ExtResource("6_qpcvq")
+token_large_scene = ExtResource("5_f031y")
+token_small_scene = ExtResource("6_j7hfy")
+ring_radius = 0.32
+ring_y = 0.0
+rotate_speed = 0.45
+spring_strength = 52.0
+spring_damping = 0.95
+repel_strength = 6.0
+repel_distance = 0.09
+
+[node name="WillRing" parent="WorldSpacePanel" unique_id=887065047 instance=ExtResource("7_r1pg8")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.16930032, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1708803179]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0.8208523, 0)
+mesh = SubResource("CapsuleMesh_ridxo")

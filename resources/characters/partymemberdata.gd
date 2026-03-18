@@ -8,6 +8,7 @@ signal will_changed
 var current_hp : int
 var bonus_attack : int = 0
 var bonus_max_hp : int = 0
+var bonus_flat_defense : int = 0
 var temporary_traits : Array
 var equipment : Dictionary # slot_name -> ItemInstance
 var status_effects : Array
@@ -49,6 +50,44 @@ func is_skill_unlocked(key: String) -> bool:
 
 # Add exp and process level-ups. Returns Array of dicts describing each level gained:
 # { "level": int, "stat": String, "amount": int, "unlock": String }
+## Like add_exp but stops levelling at `ceiling` instead of LevelTable.MAX_LEVEL.
+func add_exp_capped(amount: int, ceiling: int) -> Array:
+	if level >= ceiling:
+		return []
+	exp += amount
+	var events : Array = []
+	while level < ceiling:
+		var needed := LevelTable.exp_needed_for_level(level + 1)
+		if exp < needed:
+			break
+		level += 1
+		var reward_list : Array = _rewards_for_level(level)
+		for reward in reward_list:
+			var stat   : String = reward.get("stat",   "")
+			var amt    : int    = reward.get("amount",  0)
+			var unlock : String = reward.get("unlock", "")
+			match stat:
+				"hp":    bonus_max_hp += amt; current_hp = min(current_hp + amt, character.base_max_hp + bonus_max_hp)
+				"sharp": bonus_attack += amt
+				"flat":  bonus_flat_defense += amt
+				"will":  max_will += amt; will = min(will + amt, max_will)
+				"tempo": pass
+			if unlock != "" and unlock not in skill_unlocks:
+				skill_unlocks.append(unlock)
+			if stat != "" or unlock != "":
+				events.append({"level": level, "stat": stat, "amount": amt, "unlock": unlock})
+	return events
+
+
+## Retrieve the reward list for the current level from static table or generator.
+func _rewards_for_level(lv: int) -> Array:
+	if lv <= LevelTable.STATIC_MAX_LEVEL:
+		var table := LevelTable.get_rewards_for(character.display_name)
+		var entry = table[lv] if lv < table.size() else []
+		return entry if entry is Array else ([entry] if not entry.is_empty() else [])
+	return LevelTable.generate_reward(character.display_name, lv)
+
+
 func add_exp(amount: int) -> Array:
 	if level >= LevelTable.MAX_LEVEL:
 		return []
@@ -59,17 +98,15 @@ func add_exp(amount: int) -> Array:
 		if exp < needed:
 			break
 		level += 1
-		var rewards := LevelTable.get_rewards_for(character.display_name)
-		var entry = rewards[level] if level < rewards.size() else []
-		# Support both old single-dict format and new array-of-dicts format
-		var reward_list : Array = entry if entry is Array else ([entry] if not entry.is_empty() else [])
+		var reward_list : Array = _rewards_for_level(level)
 		for reward in reward_list:
 			var stat   : String = reward.get("stat",   "")
 			var amt    : int    = reward.get("amount",  0)
 			var unlock : String = reward.get("unlock", "")
 			match stat:
 				"hp":    bonus_max_hp += amt; current_hp = min(current_hp + amt, character.base_max_hp + bonus_max_hp)
-				"atk":   bonus_attack += amt
+				"sharp": bonus_attack += amt
+				"flat":  bonus_flat_defense += amt
 				"will":  max_will += amt; will = min(will + amt, max_will)
 				"tempo": pass
 			if unlock != "" and unlock not in skill_unlocks:

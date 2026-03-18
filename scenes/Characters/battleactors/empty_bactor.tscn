@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://c8fvcb046bf6m" path="res://scripts/Characters/BattleActor.gd" id="1_xe1la"]
 [ext_resource type="Script" uid="uid://jtnowsj7i172" path="res://scripts/UI/actor_panel_3d.gd" id="2_26nwy"]
-[ext_resource type="PackedScene" uid="uid://bl3aftctvygxl" path="res://scenes/UI/battle_panels/hp_display.tscn" id="3_fdh3j"]
+[ext_resource type="PackedScene" uid="uid://bl3aftctvygxl" path="res://scenes/UI/battle_panels/temp_hp_display.tscn" id="3_fdh3j"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_xe1la"]
 emission_enabled = true

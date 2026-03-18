@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://bnorhh3o1qy2h"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_7w8nx"]
+albedo_color = Color(0.078431375, 0.003921569, 1, 1)
+
+[sub_resource type="PrismMesh" id="PrismMesh_j1wyc"]
+material = SubResource("StandardMaterial3D_7w8nx")
+
+[node name="Chapel" type="Node3D" unique_id=1681492508]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1195266053]
+mesh = SubResource("PrismMesh_j1wyc")

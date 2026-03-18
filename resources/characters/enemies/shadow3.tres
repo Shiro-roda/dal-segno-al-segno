@@ -3,6 +3,7 @@
 [ext_resource type="PackedScene" uid="uid://433fpucnuqkf" path="res://scenes/Characters/battleactors/shadow_bactor.tscn" id="1_mb5vk"]
 [ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://resources/bodyparts/BodyPartData.gd" id="2_oaxon"]
 [ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://resources/characters/characterdata.gd" id="3_wyblm"]
+[ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://resources/battle/skill_data.gd" id="4_oaxon"]
 
 [sub_resource type="Resource" id="Resource_5ghe2"]
 script = ExtResource("2_oaxon")

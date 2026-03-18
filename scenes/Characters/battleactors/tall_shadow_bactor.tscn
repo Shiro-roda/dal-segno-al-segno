@@ -4,7 +4,7 @@
 [ext_resource type="PackedScene" uid="uid://6kmv2ko6w15m" path="res://scenes/Characters/ken_model.tscn" id="2_auhr8"]
 [ext_resource type="Script" uid="uid://jtnowsj7i172" path="res://scripts/UI/actor_panel_3d.gd" id="3_auhr8"]
 [ext_resource type="Script" uid="uid://d2keok0ggm4q7" path="res://scripts/Characters/ken_model.gd" id="3_q7fgg"]
-[ext_resource type="PackedScene" uid="uid://bl3aftctvygxl" path="res://scenes/UI/battle_panels/hp_display.tscn" id="4_w5jaj"]
+[ext_resource type="PackedScene" uid="uid://bl3aftctvygxl" path="res://scenes/UI/battle_panels/temp_hp_display.tscn" id="4_w5jaj"]
 [ext_resource type="Script" uid="uid://cyrjmvijvkbgi" path="res://scripts/UI/battle_panels/blood_globe.gd" id="6_k60n7"]
 
 [node name="BattleActor" type="Node3D" unique_id=620316433]

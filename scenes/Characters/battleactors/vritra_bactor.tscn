@@ -2,12 +2,11 @@
 
 [ext_resource type="Script" uid="uid://bqgqff54qagij" path="res://scripts/Characters/supports/vritra_actor.gd" id="1_gcjt2"]
 [ext_resource type="Script" uid="uid://jtnowsj7i172" path="res://scripts/UI/actor_panel_3d.gd" id="2_panel"]
-[ext_resource type="PackedScene" uid="uid://bl3aftctvygxl" path="res://scenes/UI/battle_panels/hp_display.tscn" id="3_n5k3y"]
+[ext_resource type="PackedScene" uid="uid://bl3aftctvygxl" path="res://scenes/UI/battle_panels/temp_hp_display.tscn" id="3_n5k3y"]
 [ext_resource type="PackedScene" uid="uid://dm1a08supvq1i" path="res://scenes/UI/battle_panels/will_ring.tscn" id="4_dt3np"]
 [ext_resource type="Script" uid="uid://cyrjmvijvkbgi" path="res://scripts/UI/battle_panels/blood_globe.gd" id="4_jbyfv"]
-[ext_resource type="Script" uid="uid://dy0abpcnhagax" path="res://scripts/UI/battle_panels/will_ring.gd" id="6_j7cl3"]
-[ext_resource type="PackedScene" uid="uid://dq3nb60aox4xs" path="res://scenes/UI/ring nodes/large_orb.tscn" id="7_p7ugb"]
-[ext_resource type="PackedScene" uid="uid://40c4oy4sdeja" path="res://scenes/UI/ring nodes/small_orb.tscn" id="8_3fuo8"]
+[ext_resource type="PackedScene" uid="uid://du3suh71satyp" path="res://scenes/UI/ring nodes/large_flesh_orb.tscn" id="5_dt3np"]
+[ext_resource type="PackedScene" uid="uid://dfksmgwfvhs8y" path="res://scenes/UI/ring nodes/small_flesh_orb.tscn" id="6_jbyfv"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_gcjt2"]
 albedo_color = Color(1, 0.08235294, 0.46666667, 1)
@@ -30,12 +29,18 @@ mesh = SubResource("CapsuleMesh_ukjlv")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1, 0)
 script = ExtResource("2_panel")
 
-[node name="HpDisplay" type="Node3D" parent="WorldSpacePanel" unique_id=1429397145 instance=ExtResource("3_n5k3y")]
+[node name="HpDisplay" parent="WorldSpacePanel" unique_id=1429397145 instance=ExtResource("3_n5k3y")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.30088997, 0)
 script = ExtResource("4_jbyfv")
+token_large_scene = ExtResource("5_dt3np")
+token_small_scene = ExtResource("6_jbyfv")
+ring_radius = 0.32
+ring_y = 0.0
+rotate_speed = 0.45
+spring_strength = 52.0
+spring_damping = 0.95
+repel_strength = 6.0
+repel_distance = 0.09
 
-[node name="WillRing" type="Node3D" parent="WorldSpacePanel" unique_id=887065047 instance=ExtResource("4_dt3np")]
+[node name="WillRing" parent="WorldSpacePanel" unique_id=887065047 instance=ExtResource("4_dt3np")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.021168709, 0)
-script = ExtResource("6_j7cl3")
-token_large_scene = ExtResource("7_p7ugb")
-token_small_scene = ExtResource("8_3fuo8")

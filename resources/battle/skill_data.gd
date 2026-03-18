@@ -13,6 +13,11 @@ class_name SkillData
 @export var ally_target    : bool = false  # targets allies only
 @export var enemy_target   : bool = false  # forces enemy target even as support
 
+## Optional chain of atomic effects executed when this skill fires.
+## Used by EnemyActor (and any actor that calls execute_effects).
+## Leave empty for skills whose logic lives in a custom actor script.
+@export var effects : Array[SkillEffect] = []
+
 # Returns a Dictionary in the format battle_manager / radial UI expect.
 func to_dict() -> Dictionary:
 	var d := {
