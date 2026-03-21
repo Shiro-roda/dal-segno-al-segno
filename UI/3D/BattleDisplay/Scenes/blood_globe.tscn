@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://xa3kxmnno5bv"]
+
+[ext_resource type="Script" uid="uid://cyrjmvijvkbgi" path="res://UI/3D/BattleDisplay/Scripts/blood_globe.gd" id="1_iscfh"]
+
+[node name="BloodGlobe" type="Node3D" unique_id=1192720897]
+script = ExtResource("1_iscfh")

@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="EncounterData" format=3 uid="uid://da537o27dhssw"]
+
+[ext_resource type="PackedScene" uid="uid://r76yl1yimtvb" path="res://Environments/Battlefields/Scenes/battle_field_noon.tscn" id="1_4wg1k"]
+[ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://Systems/PartySys/Scripts/characterdata.gd" id="2_4wg1k"]
+[ext_resource type="Resource" uid="uid://ds3k10sa11r3j" path="res://Characters/Resources/Enemies/tall_shadow.tres" id="3_17mhq"]
+[ext_resource type="Script" uid="uid://b57cevaydtkqm" path="res://UI/Dialogue/Scripts/splash_line.gd" id="4_3l6ga"]
+[ext_resource type="Resource" uid="uid://dh41c43q5ekyx" path="res://Audio/Tracks/yellow.tres" id="5_4wg1k"]
+[ext_resource type="Script" uid="uid://pwai87fl2rdy" path="res://UI/2D/Scripts/reticle_theme.gd" id="6_4wg1k"]
+[ext_resource type="Script" uid="uid://coeqyvqijtkns" path="res://Encounters/Scripts/encounterdata.gd" id="6_iuafo"]
+
+[sub_resource type="Resource" id="Resource_f87ha"]
+script = ExtResource("4_3l6ga")
+text = "The Sun is high,"
+metadata/_custom_type_script = "uid://b57cevaydtkqm"
+
+[sub_resource type="Resource" id="Resource_iy6lp"]
+script = ExtResource("4_3l6ga")
+text = "yet your shadow stretches long before you."
+metadata/_custom_type_script = "uid://b57cevaydtkqm"
+
+[sub_resource type="Resource" id="Resource_4wg1k"]
+script = ExtResource("6_4wg1k")
+enemy_color = Color(0, 0, 0, 1)
+part_color = Color(0.2, 0.2, 0.2, 1)
+metadata/_custom_type_script = "uid://pwai87fl2rdy"
+
+[resource]
+script = ExtResource("6_iuafo")
+battlefield_scene = ExtResource("1_4wg1k")
+enemies = Array[ExtResource("2_4wg1k")]([ExtResource("3_17mhq")])
+intro_splash = Array[ExtResource("4_3l6ga")]([SubResource("Resource_f87ha"), SubResource("Resource_iy6lp")])
+override_music = ExtResource("5_4wg1k")
+reticle_theme = SubResource("Resource_4wg1k")
+metadata/_custom_type_script = "uid://coeqyvqijtkns"

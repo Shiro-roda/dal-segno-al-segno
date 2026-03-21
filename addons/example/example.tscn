@@ -1,9 +1,9 @@
-[gd_scene load_steps=11 format=3 uid="uid://dpx2ai5h6eim5"]
+[gd_scene format=3 uid="uid://dpx2ai5h6eim5"]
 
-[ext_resource type="Shader" uid="uid://kxwu864eola6" path="res://scripts/Shaders/default_object.gdshader" id="1_7cn0y"]
-[ext_resource type="ArrayMesh" uid="uid://cl80o1ow8rxrj" path="res://scenes/Objects/crate/crate.obj" id="1_fdt2r"]
-[ext_resource type="Shader" uid="uid://c7dhsbe1s7mgu" path="res://scripts/Shaders/post_processing.gdshader" id="2_pjyox"]
-[ext_resource type="Texture2D" uid="uid://bkaksukvbnvnv" path="res://scenes/Objects/crate/texture/crate.png" id="2_scst5"]
+[ext_resource type="Shader" uid="uid://kxwu864eola6" path="res://Shaders/default_object.gdshader" id="1_7cn0y"]
+[ext_resource type="ArrayMesh" uid="uid://cl80o1ow8rxrj" path="res://RecycleBin/scenes/Objects/crate/crate.obj" id="1_fdt2r"]
+[ext_resource type="Shader" uid="uid://c7dhsbe1s7mgu" path="res://Shaders/post_processing.gdshader" id="2_pjyox"]
+[ext_resource type="Texture2D" uid="uid://bkaksukvbnvnv" path="res://RecycleBin/scenes/Objects/crate/texture/crate.png" id="2_scst5"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_fdt2r"]
 sky_horizon_color = Color(0.506344, 0.527634, 0.555741, 1)

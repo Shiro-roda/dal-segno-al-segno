@@ -1,0 +1,7 @@
+[gd_scene format=3 uid="uid://bl3aftctvygxl"]
+
+[ext_resource type="Script" uid="uid://mh86sef8w38w" path="res://UI/3D/BattleDisplay/Scripts/hp_display.gd" id="1_veieb"]
+
+[node name="TempHpDisplay" type="Node3D" unique_id=1429397145]
+script = ExtResource("1_veieb")
+max_visible = 50

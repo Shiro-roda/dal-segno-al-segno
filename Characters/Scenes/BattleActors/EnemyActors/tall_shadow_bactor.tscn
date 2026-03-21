@@ -1,0 +1,47 @@
+[gd_scene format=3 uid="uid://cps2iurwxj0aw"]
+
+[ext_resource type="Script" uid="uid://buiokwi30hawb" path="res://Characters/Scripts/enemy_actor.gd" id="1_n7wrl"]
+[ext_resource type="PackedScene" uid="uid://6kmv2ko6w15m" path="res://RecycleBin/scenes/Characters/ken_model.tscn" id="2_auhr8"]
+[ext_resource type="Script" uid="uid://jtnowsj7i172" path="res://UI/3D/BattleDisplay/Scripts/actor_panel_3d.gd" id="3_auhr8"]
+[ext_resource type="PackedScene" uid="uid://bl3aftctvygxl" path="res://UI/3D/BattleDisplay/Scenes/hp_display.tscn" id="4_w5jaj"]
+[ext_resource type="PackedScene" uid="uid://du3suh71satyp" path="res://UI/3D/BattleDisplay/Scenes/ring nodes/large_flesh_orb.tscn" id="6_06jvj"]
+[ext_resource type="Script" uid="uid://cyrjmvijvkbgi" path="res://UI/3D/BattleDisplay/Scripts/blood_globe.gd" id="6_k60n7"]
+[ext_resource type="PackedScene" uid="uid://dfksmgwfvhs8y" path="res://UI/3D/BattleDisplay/Scenes/ring nodes/small_flesh_orb.tscn" id="7_ve5bs"]
+[ext_resource type="PackedScene" uid="uid://wog7o86lkrah" path="res://UI/3D/BattleDisplay/Scenes/ring nodes/small_ice_orb.tscn" id="8_o23ee"]
+
+[node name="BattleActor" type="Node3D" unique_id=620316433]
+script = ExtResource("1_n7wrl")
+
+[node name="ken_model_test9" parent="." unique_id=515500204 instance=ExtResource("2_auhr8")]
+transform = Transform3D(1.2, 0, 0, 0, 1.615, 0, 0, 0, 1.2, 0, 0, 0)
+
+[node name="CameraAnchor" type="Node3D" parent="." unique_id=631189047]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.3400986, 0)
+
+[node name="WorldSpacePanel" type="Node3D" parent="." unique_id=148967351]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.234932, 0)
+script = ExtResource("3_auhr8")
+
+[node name="HpDisplay" parent="WorldSpacePanel" unique_id=1429397145 instance=ExtResource("4_w5jaj")]
+script = ExtResource("6_k60n7")
+token_large_scene = ExtResource("6_06jvj")
+token_small_scene = ExtResource("7_ve5bs")
+shield_orb_scene = ExtResource("8_o23ee")
+ring_radius = 0.32
+ring_y = 0.0
+rotate_speed = 0.45
+spring_strength = 52.0
+spring_damping = 0.95
+repel_strength = 6.0
+repel_distance = 0.09
+
+[node name="PartAnchors" type="Node3D" parent="." unique_id=1693479319]
+
+[node name="Torso" type="Node3D" parent="PartAnchors" unique_id=1967892370]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.29247588, 2.303021, 0)
+
+[node name="Head" type="Node3D" parent="PartAnchors" unique_id=1260640935]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.023761809, 2.7121236, 0)
+
+[node name="Heart" type="Node3D" parent="PartAnchors" unique_id=1897893989]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.08996391, 2.1281595, 0)

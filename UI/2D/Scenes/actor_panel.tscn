@@ -1,0 +1,136 @@
+[gd_scene format=3 uid="uid://bmycm3fk77yls"]
+
+[ext_resource type="Script" uid="uid://binb8ped5kkdv" path="res://UI/2D/Scripts/actor_panel.gd" id="1_s35a5"]
+[ext_resource type="FontFile" uid="uid://c8q52n0ssb7w3" path="res://UI/Themes/Fonts/TerminalVector.ttf" id="2_ctttj"]
+[ext_resource type="Texture2D" uid="uid://bsssy66fbm0va" path="res://RecycleBin/assets/Noise Textures/flesh_texture.tres" id="3_21kbf"]
+[ext_resource type="Texture2D" uid="uid://cwl3nj43sdseg" path="res://RecycleBin/assets/Noise Textures/cloud_texture.tres" id="4_itaw3"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_p0etj"]
+content_margin_left = 8.0
+content_margin_top = 6.0
+content_margin_right = 8.0
+content_margin_bottom = 6.0
+bg_color = Color(0.09803922, 0.09803922, 0.09803922, 0.7411765)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0, 0, 0, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+corner_detail = 5
+
+[sub_resource type="Theme" id="Theme_p0etj"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_h3ar0"]
+font = ExtResource("2_ctttj")
+font_size = 20
+outline_color = Color(0, 0, 0, 1)
+shadow_size = 2
+shadow_color = Color(0, 0, 0, 0.52156866)
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_k40uk"]
+load_path = "res://.godot/imported/noise_generated4.png-29d42b344ce51e7e401a6474e6e2e38b.ctex"
+
+[sub_resource type="Gradient" id="Gradient_itxmc"]
+colors = PackedColorArray(1, 0, 0, 1, 1, 1, 0, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_h3ar0"]
+gradient = SubResource("Gradient_itxmc")
+
+[sub_resource type="LabelSettings" id="LabelSettings_h8jys"]
+font = ExtResource("2_ctttj")
+font_size = 22
+outline_color = Color(0, 0, 0, 1)
+shadow_size = 2
+shadow_color = Color(0, 0, 0, 0.52156866)
+
+[sub_resource type="Gradient" id="Gradient_h8jys"]
+offsets = PackedFloat32Array(0, 0.9859155)
+colors = PackedColorArray(0, 0, 1, 1, 0, 1, 1, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_ci0dn"]
+gradient = SubResource("Gradient_h8jys")
+
+[sub_resource type="LabelSettings" id="LabelSettings_ci0dn"]
+font = ExtResource("2_ctttj")
+font_size = 20
+outline_size = 3
+outline_color = Color(0.0142752165, 0.014275218, 0.014275218, 1)
+shadow_size = 2
+shadow_color = Color(0.0048998436, 0.0048998194, 0.0048998287, 0.39607844)
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_p0etj"]
+content_margin_top = 32.0
+
+[sub_resource type="FontVariation" id="FontVariation_p0etj"]
+base_font = ExtResource("2_ctttj")
+variation_embolden = 0.55
+variation_transform = Transform2D(0.745, 0, 0, 3, 0, 0)
+spacing_glyph = -2
+
+[sub_resource type="LabelSettings" id="LabelSettings_p0etj"]
+font = SubResource("FontVariation_p0etj")
+font_size = 18
+font_color = Color(0.83137256, 0.6862745, 0.21568628, 1)
+outline_size = 8
+outline_color = Color(0, 0, 0, 1)
+
+[node name="ActorPanel" type="PanelContainer" unique_id=1593661217]
+custom_minimum_size = Vector2(80, 100)
+offset_right = 156.0
+offset_bottom = 120.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_p0etj")
+script = ExtResource("1_s35a5")
+
+[node name="ActorPanelVBox" type="VBoxContainer" parent="." unique_id=1555664132]
+layout_mode = 2
+size_flags_vertical = 8
+theme = SubResource("Theme_p0etj")
+theme_override_constants/separation = 4
+alignment = 1
+
+[node name="NameLabel" type="Label" parent="ActorPanelVBox" unique_id=1775829427]
+layout_mode = 2
+text = "Kendall"
+label_settings = SubResource("LabelSettings_h3ar0")
+
+[node name="HPBar" type="TextureProgressBar" parent="ActorPanelVBox" unique_id=1404490146]
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+size_flags_vertical = 3
+nine_patch_stretch = true
+texture_under = ExtResource("3_21kbf")
+texture_over = SubResource("CompressedTexture2D_k40uk")
+texture_progress = SubResource("GradientTexture2D_h3ar0")
+
+[node name="HPText" type="Label" parent="ActorPanelVBox" unique_id=397857968]
+layout_mode = 2
+label_settings = SubResource("LabelSettings_h8jys")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="WillBar" type="TextureProgressBar" parent="ActorPanelVBox" unique_id=65937750]
+custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
+size_flags_vertical = 3
+nine_patch_stretch = true
+texture_under = ExtResource("4_itaw3")
+texture_progress = SubResource("GradientTexture2D_ci0dn")
+
+[node name="WillLabel" type="Label" parent="ActorPanelVBox" unique_id=1140995825]
+layout_mode = 2
+size_flags_vertical = 6
+label_settings = SubResource("LabelSettings_ci0dn")
+horizontal_alignment = 1
+vertical_alignment = 3
+
+[node name="AmmoLabel" type="Label" parent="ActorPanelVBox" unique_id=1991943165]
+layout_mode = 2
+size_flags_vertical = 6
+theme_override_styles/normal = SubResource("StyleBoxEmpty_p0etj")
+text = "AMMO: 20/20"
+label_settings = SubResource("LabelSettings_p0etj")
+horizontal_alignment = 1

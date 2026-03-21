@@ -1,6 +1,0 @@
-[gd_resource type="Resource" format=3 uid="uid://wcjc8yecwy1l"]
-
-[ext_resource type="Script" uid="uid://chicttwgk1ji4" path="res://resources/dungeon_run_state.gd" id="1_u55it"]
-
-[resource]
-script = ExtResource("1_u55it")

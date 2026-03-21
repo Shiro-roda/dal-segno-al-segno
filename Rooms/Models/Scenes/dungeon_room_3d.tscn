@@ -1,0 +1,20 @@
+[gd_scene format=3 uid="uid://cqqouea78cj73"]
+
+[ext_resource type="Script" uid="uid://cb2huvcgxx1u4" path="res://Rooms/Models/Scripts/dungeon_room_3d.gd" id="1_ftvre"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_8hrvi"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_m81j0"]
+
+[node name="DungeonRoom3D" type="Node3D" unique_id=740359103]
+script = ExtResource("1_ftvre")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=610762624]
+mesh = SubResource("BoxMesh_8hrvi")
+
+[node name="Area3D" type="Area3D" parent="." unique_id=1021257957]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Area3D" unique_id=502117675]
+shape = SubResource("BoxShape3D_m81j0")
+
+[connection signal="input_event" from="Area3D" to="." method="_on_area_3d_input_event"]

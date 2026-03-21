@@ -1,6 +1,0 @@
-[gd_scene format=3 uid="uid://cxne3el3c2jda"]
-
-[ext_resource type="Script" uid="uid://cmi4bl88a2kuc" path="res://scenes/UI/menu/party_menu.gd" id="1_pvi0l"]
-
-[node name="PartyMenu" type="CanvasLayer" unique_id=1067261701]
-script = ExtResource("1_pvi0l")

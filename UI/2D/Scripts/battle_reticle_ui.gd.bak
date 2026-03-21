@@ -1,0 +1,420 @@
+extends CanvasLayer
+## BattleReticleUI — projects 3D anchor nodes to 2D screen space and draws
+## fighter-jet-style targeting reticles with connecting lines.
+##
+## Sits above everything (layer 25). Updated every frame in _process.
+## Activated by battle_manager when a player turn begins; hidden otherwise.
+##
+## Visual language:
+##   - One reticle per skill on the active player (draws FROM the skill anchor)
+##   - One reticle per enemy part when an enemy is targeted (draws TO the part anchor)
+##   - A line connects the hovered/selected skill to its target reticle
+##   - Reticles are square brackets [ ] in the jet-targeting style
+##   - All drawn with a single Node2D using _draw(); no Control nodes needed
+
+## Signals emitted when the player makes selections
+signal skill_selected(skill: Dictionary)
+signal target_selected(target: BattleActor)
+signal part_selected(part: BodyPartData)
+signal confirmed
+signal cancelled
+
+# ── Visual constants ───────────────────────────────────────────────────────────
+const C_IDLE     := Color(0.45, 0.65, 0.45, 0.55)   # dim green — inactive reticle
+const C_ACTIVE   := Color(0.55, 0.90, 0.55, 1.0)    # bright green — hovered/selected
+const C_ENEMY    := Color(0.85, 0.30, 0.22, 0.75)   # red — enemy part reticle
+const C_ENEMY_SEL:= Color(1.00, 0.45, 0.30, 1.0)    # bright red — selected enemy part
+const C_LINE     := Color(0.55, 0.90, 0.55, 0.35)   # faint connecting line
+const C_LINE_SEL := Color(0.55, 0.90, 0.55, 0.85)   # bright connecting line when confirmed
+
+const RETICLE_SIZE  := 14.0   # half-size of the bracket square
+const BRACKET_LEN   := 6.0    # length of each bracket arm
+const LINE_WIDTH    := 1.0
+const FONT_PATH     := "res://UI/Themes/Fonts/TerminalVector.ttf"
+const FONT_SIZE     := 11
+
+# SubViewport layout — left panel occupies x: 0..638, right x: 642..1280
+# (4px VSeparator in between). These are set from the actual scene.
+const LEFT_VP_X  := 0.0
+const LEFT_VP_W  := 638.0
+const RIGHT_VP_X := 642.0
+const RIGHT_VP_W := 638.0
+const VP_H       := 960.0   # full height for left; right is 760 but camera clips naturally
+
+# ── State ─────────────────────────────────────────────────────────────────────
+var _active     : bool = false
+var _draw_node  : Node2D = null
+var _font       : Font   = null
+
+# Cameras — resolved from the scene tree
+var _left_cam   : Camera3D = null   # PlayerActorCam
+var _right_cam  : Camera3D = null   # TargetCam
+
+# Active actor whose skills are shown
+var _actor      : BattleActor = null
+var _skills     : Array = []         # Array of Dictionaries from get_skills()
+
+# Enemy targets whose parts are shown
+var _enemies    : Array = []         # Array of BattleActor
+
+# Selection state
+var _hovered_skill  : int = -1   # index into _skill_reticles
+var _sel_skill      : Dictionary = {}
+var _sel_target     : BattleActor = null
+var _hovered_part   : int = -1
+var _sel_part       : BodyPartData = null
+var _removed_mask   : int = 0
+
+# Computed screen positions — rebuilt each frame
+# [{pos, skill, actor}]       for skill reticles on the player
+# [{pos, actor}]              for enemy actor reticles
+# [{pos, part, actor}]        for part reticles on the selected enemy
+var _skill_reticles  : Array = []
+var _enemy_reticles  : Array = []
+var _part_reticles   : Array = []
+
+# Hit areas — invisible Buttons positioned over each reticle for click detection
+var _skill_btns : Array = []
+var _enemy_btns : Array = []
+var _part_btns  : Array = []
+
+
+func _ready() -> void:
+	layer = 25
+	_font = load(FONT_PATH) if ResourceLoader.exists(FONT_PATH) else null
+	_draw_node = Node2D.new()
+	_draw_node.name = "ReticleDraw"
+	add_child(_draw_node)
+	_draw_node.draw.connect(_on_draw)
+	hide()
+
+
+# ── Public API ────────────────────────────────────────────────────────────────
+
+func open(actor: BattleActor, skills: Array, enemies: Array,
+		removed_mask: int, left_cam: Camera3D, right_cam: Camera3D) -> void:
+	_actor        = actor
+	_skills       = skills
+	_enemies      = enemies
+	_removed_mask = removed_mask
+	_left_cam     = left_cam
+	_right_cam    = right_cam
+	_sel_skill    = {}
+	_sel_target   = null
+	_sel_part     = null
+	_hovered_skill = -1
+	_hovered_part  = -1
+	_active = true
+	show()
+	_rebuild_hit_areas()
+
+
+func close(silent: bool = false) -> void:
+	_active = false
+	_clear_hit_areas()
+	hide()
+	if not silent:
+		emit_signal("cancelled")
+
+
+# ── Per-frame update ──────────────────────────────────────────────────────────
+
+func _process(_delta: float) -> void:
+	if not _active:
+		return
+	_update_reticle_positions()
+	_update_hit_area_positions()
+	_draw_node.queue_redraw()
+
+
+# ── Projection helpers ────────────────────────────────────────────────────────
+
+## Project a 3D world position through the given camera into screen space,
+## offset by the SubViewport container's left edge.
+func _project(world_pos: Vector3, cam: Camera3D, vp_offset_x: float) -> Vector2:
+	if cam == null or not is_instance_valid(cam):
+		return Vector2(-9999, -9999)
+	# unproject_position gives coords in the SubViewport's own pixel space
+	var vp_pos : Vector2 = cam.unproject_position(world_pos)
+	# Scale from SubViewport size to actual screen size (stretch mode = viewport)
+	# Left VP is 638×960, right is 638×760 — both map to their container's screen rect.
+	return Vector2(vp_offset_x + vp_pos.x, vp_pos.y)
+
+
+func _project_actor(anchor: Node3D, is_enemy: bool) -> Vector2:
+	var cam    := _right_cam if is_enemy else _left_cam
+	var offset := RIGHT_VP_X if is_enemy else LEFT_VP_X
+	return _project(anchor.global_position, cam, offset)
+
+
+## Returns true if a projected screen pos is within the visible viewport strip.
+func _in_viewport(pos: Vector2, is_enemy: bool) -> bool:
+	var x0 := RIGHT_VP_X if is_enemy else LEFT_VP_X
+	var w  := RIGHT_VP_W if is_enemy else LEFT_VP_W
+	return pos.x >= x0 and pos.x <= x0 + w and pos.y >= 0 and pos.y <= VP_H
+
+
+# ── Position updates ──────────────────────────────────────────────────────────
+
+func _update_reticle_positions() -> void:
+	_skill_reticles.clear()
+	_enemy_reticles.clear()
+	_part_reticles.clear()
+
+	# Skill reticles on the active player
+	if is_instance_valid(_actor):
+		for i in _skills.size():
+			var sk : Dictionary = _skills[i]
+			var anchor : Node3D = _actor.get_skill_anchor(sk)
+			if is_instance_valid(anchor):
+				var pos := _project_actor(anchor, false)
+				_skill_reticles.append({"pos": pos, "skill": sk, "idx": i})
+
+	# Enemy reticles (one per enemy, centred on CameraAnchor)
+	for enemy in _enemies:
+		if not is_instance_valid(enemy) or not enemy.is_alive():
+			continue
+		var ca : Node3D = enemy.get_node_or_null("CameraAnchor")
+		if ca == null: ca = enemy
+		var pos := _project_actor(ca, true)
+		_enemy_reticles.append({"pos": pos, "actor": enemy})
+
+	# Part reticles on the selected enemy
+	if is_instance_valid(_sel_target):
+		var parts := _sel_target.get_visible_parts(_removed_mask)
+		for i in parts.size():
+			var part : BodyPartData = parts[i]
+			var anchor : Node3D = _sel_target.get_part_anchor(part)
+			if is_instance_valid(anchor):
+				var pos := _project_actor(anchor, true)
+				_part_reticles.append({"pos": pos, "part": part, "idx": i})
+
+
+# ── Draw ──────────────────────────────────────────────────────────────────────
+
+func _on_draw() -> void:
+	if not _active:
+		return
+
+	# Connecting line: selected skill anchor → selected part/enemy anchor
+	if not _sel_skill.is_empty() and _skill_reticles.size() > 0:
+		var from_pos := Vector2(-9999, -9999)
+		for r in _skill_reticles:
+			if r["skill"] == _sel_skill:
+				from_pos = r["pos"]
+				break
+		if _sel_part != null and _part_reticles.size() > 0:
+			for r in _part_reticles:
+				if r["part"] == _sel_part:
+					_draw_node.draw_line(from_pos, r["pos"], C_LINE_SEL, LINE_WIDTH)
+					break
+		elif is_instance_valid(_sel_target) and _enemy_reticles.size() > 0:
+			for r in _enemy_reticles:
+				if r["actor"] == _sel_target:
+					_draw_node.draw_line(from_pos, r["pos"], C_LINE, LINE_WIDTH)
+					break
+
+	# Skill reticles
+	for i in _skill_reticles.size():
+		var r   : Dictionary = _skill_reticles[i]
+		var pos : Vector2    = r["pos"]
+		var sel : bool = (r["skill"] == _sel_skill)
+		var hov : bool = (i == _hovered_skill)
+		var col : Color = C_ACTIVE if (sel or hov) else C_IDLE
+		_draw_bracket(pos, col)
+		var sk : Dictionary = r["skill"]
+		var label : String  = str(sk.get("name", sk.get("key", "?")))
+		_draw_label(pos + Vector2(RETICLE_SIZE + 4, -6), label, col)
+
+	# Enemy reticles (only when no target selected yet)
+	if _sel_target == null:
+		for i in _enemy_reticles.size():
+			var r   : Dictionary = _enemy_reticles[i]
+			var pos : Vector2    = r["pos"]
+			var hov : bool = (i == _hovered_skill)  # reuse hover idx
+			var col : Color = C_ENEMY_SEL if hov else C_ENEMY
+			_draw_bracket(pos, col)
+			_draw_label(pos + Vector2(RETICLE_SIZE + 4, -6),
+				(r["actor"] as BattleActor).name, col)
+
+	# Part reticles (only when enemy is selected)
+	if is_instance_valid(_sel_target):
+		for i in _part_reticles.size():
+			var r   : Dictionary = _part_reticles[i]
+			var pos : Vector2    = r["pos"]
+			var sel : bool = (r["part"] == _sel_part)
+			var hov : bool = (i == _hovered_part)
+			var col : Color = C_ENEMY_SEL if (sel or hov) else C_ENEMY
+			_draw_bracket(pos, col)
+			var part : BodyPartData = r["part"]
+			var label := part.part_name
+			if part.has_part_hp():
+				label += "  %d/%d" % [part.current_part_hp, part.max_part_hp]
+			_draw_label(pos + Vector2(RETICLE_SIZE + 4, -6), label, col)
+
+
+## Draw the four-corner bracket reticle  [ ]  centred on pos.
+func _draw_bracket(pos: Vector2, col: Color) -> void:
+	var s := RETICLE_SIZE
+	var b := BRACKET_LEN
+	var w := LINE_WIDTH * 1.5
+	# Top-left
+	_draw_node.draw_line(pos + Vector2(-s, -s), pos + Vector2(-s + b, -s), col, w)
+	_draw_node.draw_line(pos + Vector2(-s, -s), pos + Vector2(-s, -s + b), col, w)
+	# Top-right
+	_draw_node.draw_line(pos + Vector2(s, -s),  pos + Vector2(s - b, -s),  col, w)
+	_draw_node.draw_line(pos + Vector2(s, -s),  pos + Vector2(s, -s + b),  col, w)
+	# Bottom-left
+	_draw_node.draw_line(pos + Vector2(-s, s),  pos + Vector2(-s + b, s),  col, w)
+	_draw_node.draw_line(pos + Vector2(-s, s),  pos + Vector2(-s, s - b),  col, w)
+	# Bottom-right
+	_draw_node.draw_line(pos + Vector2(s, s),   pos + Vector2(s - b, s),   col, w)
+	_draw_node.draw_line(pos + Vector2(s, s),   pos + Vector2(s, s - b),   col, w)
+
+
+func _draw_label(pos: Vector2, text: String, col: Color) -> void:
+	if _font == null:
+		return
+	_draw_node.draw_string(_font, pos, text.to_upper(),
+		HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, col)
+
+
+# ── Hit areas ─────────────────────────────────────────────────────────────────
+# Invisible buttons sized to the reticle bounds, repositioned each frame.
+
+func _rebuild_hit_areas() -> void:
+	_clear_hit_areas()
+	# Skill buttons
+	for i in _skills.size():
+		var btn := _make_hit_btn()
+		var cap_i := i
+		btn.pressed.connect(func(): _on_skill_pressed(cap_i))
+		btn.mouse_entered.connect(func(): _hovered_skill = cap_i)
+		btn.mouse_exited.connect(func(): if _hovered_skill == cap_i: _hovered_skill = -1)
+		add_child(btn)
+		_skill_btns.append(btn)
+	# Enemy buttons
+	for i in _enemies.size():
+		var btn := _make_hit_btn()
+		var cap_i := i
+		btn.pressed.connect(func(): _on_enemy_pressed(cap_i))
+		btn.mouse_entered.connect(func(): _hovered_skill = cap_i)
+		btn.mouse_exited.connect(func(): if _hovered_skill == cap_i: _hovered_skill = -1)
+		add_child(btn)
+		_enemy_btns.append(btn)
+
+
+func _rebuild_part_hit_areas() -> void:
+	for b in _part_btns:
+		if is_instance_valid(b): b.queue_free()
+	_part_btns.clear()
+	var parts := _sel_target.get_visible_parts(_removed_mask) \
+		if is_instance_valid(_sel_target) else []
+	for i in parts.size():
+		var btn := _make_hit_btn()
+		var cap_i := i
+		btn.pressed.connect(func(): _on_part_pressed(cap_i))
+		btn.mouse_entered.connect(func(): _hovered_part = cap_i)
+		btn.mouse_exited.connect(func(): if _hovered_part == cap_i: _hovered_part = -1)
+		add_child(btn)
+		_part_btns.append(btn)
+
+
+func _update_hit_area_positions() -> void:
+	var sz := Vector2(RETICLE_SIZE * 2 + 60, RETICLE_SIZE * 2 + 20)
+	for i in _skill_btns.size():
+		var btn : Button = _skill_btns[i]
+		if not is_instance_valid(btn): continue
+		var pos : Vector2 = _skill_reticles[i]["pos"] if i < _skill_reticles.size() else Vector2(-9999, -9999)
+		btn.position = pos - Vector2(RETICLE_SIZE, RETICLE_SIZE)
+		btn.size     = sz
+	for i in _enemy_btns.size():
+		var btn : Button = _enemy_btns[i]
+		if not is_instance_valid(btn): continue
+		var pos : Vector2 = _enemy_reticles[i]["pos"] if i < _enemy_reticles.size() else Vector2(-9999, -9999)
+		btn.position = pos - Vector2(RETICLE_SIZE, RETICLE_SIZE)
+		btn.size     = sz
+		btn.visible  = _sel_target == null
+	for i in _part_btns.size():
+		var btn : Button = _part_btns[i]
+		if not is_instance_valid(btn): continue
+		var pos : Vector2 = _part_reticles[i]["pos"] if i < _part_reticles.size() else Vector2(-9999, -9999)
+		btn.position = pos - Vector2(RETICLE_SIZE, RETICLE_SIZE)
+		btn.size     = sz
+
+
+func _make_hit_btn() -> Button:
+	var btn := Button.new()
+	btn.flat = true
+	btn.focus_mode = Control.FOCUS_NONE
+	# Fully transparent — just the click target
+	var sbox := StyleBoxEmpty.new()
+	for k in ["normal","hover","pressed","focus"]:
+		btn.add_theme_stylebox_override(k, sbox)
+	return btn
+
+
+func _clear_hit_areas() -> void:
+	for b in _skill_btns + _enemy_btns + _part_btns:
+		if is_instance_valid(b): b.queue_free()
+	_skill_btns.clear()
+	_enemy_btns.clear()
+	_part_btns.clear()
+
+
+# ── Input handlers ────────────────────────────────────────────────────────────
+
+func _on_skill_pressed(idx: int) -> void:
+	if idx >= _skills.size(): return
+	_sel_skill  = _skills[idx]
+	_sel_target = null
+	_sel_part   = null
+	_hovered_part = -1
+	# Clear part buttons; show enemy buttons
+	for b in _part_btns:
+		if is_instance_valid(b): b.queue_free()
+	_part_btns.clear()
+	for b in _enemy_btns:
+		if is_instance_valid(b): b.visible = true
+	emit_signal("skill_selected", _sel_skill)
+
+
+func _on_enemy_pressed(idx: int) -> void:
+	if idx >= _enemies.size(): return
+	_sel_target = _enemies[idx]
+	_sel_part   = null
+	_hovered_part = -1
+	# Hide enemy buttons, show part buttons
+	for b in _enemy_btns:
+		if is_instance_valid(b): b.visible = false
+	_rebuild_part_hit_areas()
+	emit_signal("target_selected", _sel_target)
+
+
+func _on_part_pressed(idx: int) -> void:
+	var parts := _sel_target.get_visible_parts(_removed_mask) \
+		if is_instance_valid(_sel_target) else []
+	if idx >= parts.size(): return
+	if _sel_part == parts[idx]:
+		# Second press — confirm
+		emit_signal("part_selected", _sel_part)
+		emit_signal("confirmed")
+		return
+	_sel_part = parts[idx]
+	emit_signal("part_selected", _sel_part)
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not _active: return
+	if event is InputEventKey and event.pressed:
+		if event.keycode == KEY_ESCAPE:
+			if _sel_target != null:
+				_sel_target = null
+				_sel_part   = null
+				for b in _part_btns:
+					if is_instance_valid(b): b.queue_free()
+				_part_btns.clear()
+				for b in _enemy_btns:
+					if is_instance_valid(b): b.visible = true
+			elif not _sel_skill.is_empty():
+				_sel_skill = {}

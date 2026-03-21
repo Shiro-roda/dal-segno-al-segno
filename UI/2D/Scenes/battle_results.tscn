@@ -1,0 +1,35 @@
+[gd_scene format=3 uid="uid://ial8cbni6qno"]
+
+[ext_resource type="Script" uid="uid://q5pqemvmkr5b" path="res://UI/2D/Scripts/battle_results.gd" id="1_077y2"]
+
+[node name="BattleResults" type="Control" unique_id=1146526108]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_077y2")
+
+[node name="BG" type="ColorRect" parent="." unique_id=73997324]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CenterContainer" type="CenterContainer" parent="." unique_id=58610630]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="CenterContainer" unique_id=455610214]
+custom_minimum_size = Vector2(700, 600)
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="CenterContainer/Panel" unique_id=580704697]
+layout_mode = 2

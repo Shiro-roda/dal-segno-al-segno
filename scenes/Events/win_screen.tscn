@@ -1,8 +1,0 @@
-[gd_scene format=3 uid="uid://dc2mscilwi0gh"]
-
-[ext_resource type="Script" uid="uid://d36pq50wclayq" path="res://scenes/Events/win_screen.gd" id="1_pwceq"]
-
-[node name="WinScreen" type="Control" unique_id=904098484]
-layout_mode = 3
-anchors_preset = 0
-script = ExtResource("1_pwceq")

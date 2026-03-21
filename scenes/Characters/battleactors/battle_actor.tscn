@@ -1,8 +1,0 @@
-[gd_scene format=3 uid="uid://6diegji4lv70"]
-
-[ext_resource type="Script" uid="uid://c8fvcb046bf6m" path="res://scripts/Characters/BattleActor.gd" id="1_xinpp"]
-
-[node name="BattleActor" type="Node3D" unique_id=620316433]
-script = ExtResource("1_xinpp")
-
-[node name="CameraAnchor" type="Node3D" parent="." unique_id=413819805]

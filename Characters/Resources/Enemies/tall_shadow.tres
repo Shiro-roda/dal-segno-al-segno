@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CharacterData" format=3 uid="uid://ds3k10sa11r3j"]
+
+[ext_resource type="PackedScene" uid="uid://cps2iurwxj0aw" path="res://Characters/Scenes/BattleActors/EnemyActors/tall_shadow_bactor.tscn" id="1_hkca0"]
+[ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://Systems/AnatomySys/Scripts/BodyPartData.gd" id="2_y585m"]
+[ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://Systems/PartySys/Scripts/characterdata.gd" id="3_7uloq"]
+[ext_resource type="Resource" uid="uid://ymwcc5pm8aal" path="res://Systems/AnatomySys/Resources/antumbra.tres" id="3_sawnd"]
+[ext_resource type="Resource" uid="uid://bv8nc0eu2eq6j" path="res://Systems/AnatomySys/Resources/penumbra.tres" id="4_p62b6"]
+[ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="4_y585m"]
+[ext_resource type="Resource" uid="uid://s8d8wab3g0yr" path="res://Systems/AnatomySys/Resources/umbra.tres" id="5_fhsvt"]
+
+[resource]
+script = ExtResource("3_7uloq")
+display_name = "Tall Shadow"
+base_max_hp = 50
+base_attack = 10
+exp_yield = 15
+body_parts = Array[ExtResource("2_y585m")]([ExtResource("3_sawnd"), ExtResource("4_p62b6"), ExtResource("5_fhsvt")])
+battle_scene = ExtResource("1_hkca0")
+metadata/_custom_type_script = "uid://b2t1syvrybco8"

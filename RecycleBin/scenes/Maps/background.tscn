@@ -1,0 +1,45 @@
+[gd_scene format=3 uid="uid://b1fl0q07u46yg"]
+
+[ext_resource type="Texture2D" uid="uid://cul68hj2lh26c" path="res://RecycleBin/assets/Sprites/vintage-wallpaper-60__52864.jpg" id="1_sn4cw"]
+
+[node name="Background" type="CanvasLayer" unique_id=2105030130]
+layer = -1
+visible = false
+follow_viewport_enabled = true
+
+[node name="Yellow_Wall" type="CanvasLayer" parent="." unique_id=2049017253]
+
+[node name="parallax" type="CanvasLayer" parent="Yellow_Wall" unique_id=1613319181]
+layer = -1
+follow_viewport_enabled = true
+
+[node name="Sprite2D" type="Sprite2D" parent="Yellow_Wall/parallax" unique_id=1441031614]
+position = Vector2(640, 465)
+texture = ExtResource("1_sn4cw")
+
+[node name="parallax2" type="CanvasLayer" parent="Yellow_Wall" unique_id=1651877226]
+layer = -1
+follow_viewport_enabled = true
+follow_viewport_scale = 0.75
+
+[node name="Sprite2D" type="Sprite2D" parent="Yellow_Wall/parallax2" unique_id=1255643770]
+position = Vector2(641.3333, 465)
+texture = ExtResource("1_sn4cw")
+
+[node name="parallax3" type="CanvasLayer" parent="Yellow_Wall" unique_id=862712880]
+layer = -1
+follow_viewport_enabled = true
+follow_viewport_scale = 0.5
+
+[node name="Sprite2D" type="Sprite2D" parent="Yellow_Wall/parallax3" unique_id=685108217]
+position = Vector2(644, 465)
+texture = ExtResource("1_sn4cw")
+
+[node name="parallax4" type="CanvasLayer" parent="Yellow_Wall" unique_id=1814280068]
+layer = -1
+follow_viewport_enabled = true
+follow_viewport_scale = 0.25
+
+[node name="Sprite2D" type="Sprite2D" parent="Yellow_Wall/parallax4" unique_id=1174774772]
+position = Vector2(652, 465)
+texture = ExtResource("1_sn4cw")

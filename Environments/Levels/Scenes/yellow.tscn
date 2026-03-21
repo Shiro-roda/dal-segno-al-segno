@@ -1,0 +1,221 @@
+[gd_scene format=3 uid="uid://b07y2n7t5etiw"]
+
+[ext_resource type="Script" path="res://scenes/Maps/yellow.gd" id="1_kyw4v"]
+[ext_resource type="Script" uid="uid://dkc2bawmbc4pm" path="res://Environments/Levels/Scripts/yellow_test.gd" id="1_qwycq"]
+[ext_resource type="Script" uid="uid://bd046eokvcnu2" path="res://addons/phantom_camera/scripts/phantom_camera_host/phantom_camera_host.gd" id="2_2of4b"]
+[ext_resource type="Script" uid="uid://csjccrhj5wnx7" path="res://addons/phantom_camera/scripts/phantom_camera/phantom_camera_3d.gd" id="3_kyw4v"]
+[ext_resource type="Script" uid="uid://8umksf8e80fw" path="res://addons/phantom_camera/scripts/resources/tween_resource.gd" id="4_q8gvs"]
+[ext_resource type="Script" uid="uid://b8hhnqsugykly" path="res://addons/phantom_camera/scripts/resources/camera_3d_resource.gd" id="5_3r3l4"]
+[ext_resource type="PackedScene" uid="uid://6giatmcbhmpp" path="res://RecycleBin/scenes/Characters/player.tscn" id="6_q11w0"]
+[ext_resource type="Script" uid="uid://b7a7g16rq0hhf" path="res://Environments/Levels/Scripts/level.gd" id="7_2of4b"]
+[ext_resource type="MeshLibrary" uid="uid://bp1sqksheecrx" path="res://RecycleBin/assets/mesh_library/backrooms_mesh_lib.tres" id="7_d2mgy"]
+[ext_resource type="Shader" uid="uid://cow4hovotygtk" path="res://Shaders/main.gdshader" id="8_fmkk6"]
+[ext_resource type="Shader" uid="uid://c7dhsbe1s7mgu" path="res://Shaders/post_processing.gdshader" id="9_yc5g4"]
+[ext_resource type="Shader" uid="uid://cb5jkne0ljnhv" path="res://Shaders/Yellow.gdshader" id="10_sa5e7"]
+[ext_resource type="Shader" uid="uid://cfw2f3d8q6ml3" path="res://Shaders/crt_shader.gdshader" id="11_vlgs0"]
+
+[sub_resource type="Resource" id="Resource_jkv2x"]
+script = ExtResource("4_q8gvs")
+duration = 2.115
+
+[sub_resource type="Resource" id="Resource_jbj1t"]
+script = ExtResource("5_3r3l4")
+metadata/_custom_type_script = "uid://b8hhnqsugykly"
+
+[sub_resource type="WorldBoundaryShape3D" id="WorldBoundaryShape3D_eb6dy"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_08xoe"]
+sky_horizon_color = Color(0.506344, 0.527634, 0.555741, 1)
+ground_bottom_color = Color(0.266802, 0.302258, 0.357529, 1)
+ground_horizon_color = Color(0.506344, 0.527634, 0.555741, 1)
+ground_curve = 0.0672719
+use_debanding = false
+
+[sub_resource type="Sky" id="Sky_pjyox"]
+sky_material = SubResource("ProceduralSkyMaterial_08xoe")
+
+[sub_resource type="Environment" id="Environment_txflm"]
+background_mode = 2
+sky = SubResource("Sky_pjyox")
+ambient_light_source = 2
+ambient_light_energy = 4.45
+tonemap_mode = 2
+glow_enabled = true
+fog_enabled = true
+fog_light_color = Color(0.23377106, 0.21391135, 9.62615e-08, 1)
+fog_light_energy = 8.1
+fog_depth_curve = 4.594795
+volumetric_fog_enabled = true
+volumetric_fog_albedo = Color(0.18229115, 0.18229112, 7.219613e-08, 1)
+volumetric_fog_emission = Color(0.5137255, 0.5137255, 0, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_l3jph"]
+size = Vector3(26.317871, 0.56433105, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_l3jph"]
+albedo_color = Color(1.605785, 1.6601034, 0.39526072, 1)
+emission_enabled = true
+emission = Color(0.09890811, 0.09890811, 0.046124753, 1)
+emission_energy_multiplier = 0.01
+
+[sub_resource type="BoxMesh" id="BoxMesh_08xoe"]
+material = SubResource("StandardMaterial3D_l3jph")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_txflm"]
+albedo_color = Color(1, 1, 0, 1)
+emission_enabled = true
+emission = Color(18.892157, 18.892157, 0, 1)
+emission_energy_multiplier = 0.1
+emission_operator = 1
+
+[sub_resource type="BoxMesh" id="BoxMesh_im76t"]
+material = SubResource("StandardMaterial3D_txflm")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_0h0fx"]
+albedo_color = Color(1, 1, 0, 1)
+emission_enabled = true
+emission = Color(1, 1, 0, 1)
+emission_energy_multiplier = 0.45
+
+[sub_resource type="BoxMesh" id="BoxMesh_ba6sx"]
+material = SubResource("StandardMaterial3D_0h0fx")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_qr3ne"]
+render_priority = 0
+shader = ExtResource("8_fmkk6")
+shader_parameter/vision_mode = 0
+shader_parameter/flash_pos = Vector3(0, 0, 0)
+shader_parameter/flash_dir = Vector3(0, 0, 0)
+shader_parameter/flash_angle = 0.0
+shader_parameter/hue_boost = 2.0
+shader_parameter/cone_range = 20.0
+shader_parameter/edge_softness = 0.05
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_tipki"]
+resource_local_to_scene = true
+render_priority = 0
+next_pass = SubResource("ShaderMaterial_qr3ne")
+shader = ExtResource("9_yc5g4")
+shader_parameter/dither_amount = 0.5
+
+[sub_resource type="QuadMesh" id="QuadMesh_85g3d"]
+flip_faces = true
+size = Vector2(2, 2)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_a8y0u"]
+shader = ExtResource("10_sa5e7")
+shader_parameter/glow_strength = 0.075
+shader_parameter/fade = 0.23
+shader_parameter/tint_color = Vector3(1, 1, 1)
+shader_parameter/vignette_radius = 1.43
+shader_parameter/vignette_softness = 0.3
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_eb6dy"]
+shader = ExtResource("11_vlgs0")
+shader_parameter/curvature = 6.0
+shader_parameter/vignette_multiplier = 2.0
+shader_parameter/ca_strength = 2.5
+shader_parameter/blur_strength = 0.10000000149012
+
+[sub_resource type="QuadMesh" id="QuadMesh_trceg"]
+size = Vector2(1280, 960)
+center_offset = Vector3(640, 480, 0)
+
+[node name="Yellow_Test" type="Node"]
+script = ExtResource("1_kyw4v")
+
+[node name="Yellow_Test" type="Node3D" parent="."]
+script = ExtResource("1_qwycq")
+
+[node name="RunnerCam" type="Camera3D" parent="Yellow_Test"]
+physics_interpolation_mode = 1
+transform = Transform3D(0.99999976, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 1.2153807, 2, 8.000001)
+
+[node name="PhantomCameraHost" type="Node" parent="Yellow_Test/RunnerCam"]
+process_priority = 300
+process_physics_priority = 300
+script = ExtResource("2_2of4b")
+metadata/_custom_type_script = "uid://bd046eokvcnu2"
+
+[node name="PhantomCamera3D" type="Node3D" parent="Yellow_Test" node_paths=PackedStringArray("follow_target")]
+transform = Transform3D(0.99999976, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 1.2153807, 2, 8.000001)
+top_level = true
+script = ExtResource("3_kyw4v")
+priority = 1
+follow_mode = 5
+follow_target = NodePath("../Player")
+tween_resource = SubResource("Resource_jkv2x")
+camera_3d_resource = SubResource("Resource_jbj1t")
+follow_offset = Vector3(0, 2, 0)
+follow_damping = true
+follow_damping_value = Vector3(0.435, 0.435, 0.435)
+follow_axis_lock = 3
+follow_distance = 8.0
+dead_zone_width = 0.113
+dead_zone_height = 0.195
+spring_length = 8.0
+metadata/_custom_type_script = "uid://csjccrhj5wnx7"
+
+[node name="Player" parent="Yellow_Test" instance=ExtResource("6_q11w0")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.2153807, 0, 0)
+
+[node name="Level" type="Node3D" parent="Yellow_Test"]
+script = ExtResource("7_2of4b")
+
+[node name="FrontWall" type="StaticBody3D" parent="Yellow_Test/Level"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Yellow_Test/Level/FrontWall"]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 4.1300035, 0.46741557, 2.4680228)
+shape = SubResource("WorldBoundaryShape3D_eb6dy")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="Yellow_Test/Level"]
+environment = SubResource("Environment_txflm")
+
+[node name="GridMap" type="GridMap" parent="Yellow_Test/Level"]
+mesh_library = ExtResource("7_d2mgy")
+cell_size = Vector3(1, 1, 1)
+data = {
+"cells": PackedInt32Array(-65536, 65535, 1376256, -1, 65535, 1376256, -1, 0, 1376256, -65535, 0, 1376256, -65536, 0, 1376256, -65535, 65535, 1376256, -1, 65534, 1376256, -65536, 65534, 1376256, -65535, 65534, 1376256, -65534, 0, 1376256, -65534, 65535, 1376256, -65534, 65534, 1376256, -65533, 65534, 1376256, -65532, 65534, 1376256, -65531, 65534, 1376256, -65530, 65534, 1376256, -65529, 65534, 1376256, -65528, 65534, 1376256, -65528, 65535, 1376256, -65529, 65535, 1376256, -65529, 0, 1376256, -65530, 0, 1376256, -65531, 0, 1376256, -65532, 0, 1376256, -65533, 0, 1376256, -65533, 65535, 1376256, -65532, 65535, 1376256, -65531, 65535, 1376256, -65530, 65535, 1376256, -65528, 0, 1376256, -65527, 65534, 1376256, -65527, 65535, 1376256, -65527, 0, 1376256, -65526, 0, 1376256, -65526, 65535, 1376256, -65526, 65534, 1376256, -65525, 0, 1376256, -65525, 65535, 1376256, -65525, 65534, 1376256, -65524, 65534, 1376256, -65524, 65535, 1376256, -65524, 0, 1376256, -2, 65534, 1376256, -2, 65535, 1376256, -2, 0, 1376256, -2, 1, 1376256, -1, 1, 1376256, -65536, 1, 1376256, -65535, 1, 1376256, -65534, 1, 1376256, -65532, 1, 1376256, -65533, 1, 1376256, -65531, 1, 1376256, -65530, 1, 1376256, -65529, 1, 1376256, -65528, 1, 1376256, -65526, 1, 1376256, -65527, 1, 1376256, -65524, 1, 1376256, -65525, 1, 1376256, -65523, 65534, 1376256, -65523, 65535, 1376256, -65523, 0, 1376256, -65523, 1, 1376256, -65522, 1, 1376256, -65522, 0, 1376256, -65522, 65534, 1376256, -65522, 65535, 1376256, -65521, 65534, 1376256, -65521, 65535, 1376256, -65521, 0, 1376256, -65521, 1, 1376256, -65520, 65534, 1376256, -65520, 65535, 1376256, -65520, 0, 1376256, -65520, 1, 1376256, -65519, 65534, 1376256, -65519, 65535, 1376256, -65519, 0, 1376256, -65519, 1, 1376256, -65518, 65534, 1376256, -65518, 65535, 1376256, -65518, 0, 1376256, -65518, 1, 1376256, -65517, 65534, 1376256, -65517, 65535, 1376256, -65517, 0, 1376256, -65517, 1, 1376256, -65516, 1, 1376256, -65516, 65534, 1376256, -65516, 65535, 1376256, -65516, 0, 1376256, -65515, 65534, 1376256, -65515, 65535, 1376256, -65515, 0, 1376256, -65515, 1, 1376256, -65514, 1, 1441792, -65514, 0, 1441792, -65514, 65534, 1441792, -65514, 65535, 1441792)
+}
+metadata/_editor_floor_ = Vector3(0, -1, 0)
+
+[node name="BackWall" type="StaticBody3D" parent="Yellow_Test/Level"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Yellow_Test/Level/BackWall"]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 9.772337, 0.46741557, -2.482767)
+shape = SubResource("BoxShape3D_l3jph")
+
+[node name="Props" type="Node3D" parent="Yellow_Test/Level"]
+
+[node name="Box1" type="MeshInstance3D" parent="Yellow_Test/Level/Props"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.555979, 0.4156518, -1.4474385)
+mesh = SubResource("BoxMesh_08xoe")
+skeleton = NodePath("../..")
+
+[node name="Box2" type="MeshInstance3D" parent="Yellow_Test/Level/Props"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.736588, 0.44308043, -1.1017447)
+mesh = SubResource("BoxMesh_im76t")
+
+[node name="Box3" type="MeshInstance3D" parent="Yellow_Test/Level/Props"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.042587, 0.39632392, -1.285268)
+mesh = SubResource("BoxMesh_ba6sx")
+
+[node name="ScreenQuad" type="MeshInstance3D" parent="Yellow_Test"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.4246502, 1.3194637, 5.2776985)
+material_override = SubResource("ShaderMaterial_tipki")
+extra_cull_margin = 16384.0
+mesh = SubResource("QuadMesh_85g3d")
+
+[node name="Foreground" type="CanvasLayer" parent="."]
+
+[node name="ColorRect" type="ColorRect" parent="Foreground"]
+material = SubResource("ShaderMaterial_a8y0u")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MeshInstance2D" type="MeshInstance2D" parent="."]
+material = SubResource("ShaderMaterial_eb6dy")
+mesh = SubResource("QuadMesh_trceg")

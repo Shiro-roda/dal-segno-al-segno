@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="CharacterData" format=3 uid="uid://bwmbdd8ixs5kf"]
+
+[ext_resource type="PackedScene" uid="uid://433fpucnuqkf" path="res://Characters/Scenes/BattleActors/EnemyActors/shadow_bactor.tscn" id="1_mb5vk"]
+[ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://Systems/AnatomySys/Scripts/BodyPartData.gd" id="2_oaxon"]
+[ext_resource type="Resource" uid="uid://ymwcc5pm8aal" path="res://Systems/AnatomySys/Resources/antumbra.tres" id="3_mi6or"]
+[ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://Systems/PartySys/Scripts/characterdata.gd" id="3_wyblm"]
+[ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="4_oaxon"]
+[ext_resource type="Resource" uid="uid://bv8nc0eu2eq6j" path="res://Systems/AnatomySys/Resources/penumbra.tres" id="4_r32ct"]
+[ext_resource type="Resource" uid="uid://s8d8wab3g0yr" path="res://Systems/AnatomySys/Resources/umbra.tres" id="5_mwmx6"]
+
+[resource]
+script = ExtResource("3_wyblm")
+display_name = "Deadly Shadow"
+base_max_hp = 9
+base_attack = 5
+base_flat_defense = 1
+exp_yield = 9
+body_parts = Array[ExtResource("2_oaxon")]([ExtResource("3_mi6or"), ExtResource("4_r32ct"), ExtResource("5_mwmx6")])
+battle_scene = ExtResource("1_mb5vk")
+metadata/_custom_type_script = "uid://b2t1syvrybco8"

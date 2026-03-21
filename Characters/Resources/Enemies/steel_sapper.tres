@@ -1,0 +1,91 @@
+[gd_resource type="Resource" script_class="CharacterData" format=3 uid="uid://c4dqn4674j3qh"]
+
+[ext_resource type="PackedScene" uid="uid://bgc366awf5t3q" path="res://Characters/Scenes/BattleActors/EnemyActors/hyade.tscn" id="1_uyhun"]
+[ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://Systems/AnatomySys/Scripts/BodyPartData.gd" id="2_y1w52"]
+[ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://Systems/PartySys/Scripts/characterdata.gd" id="3_8dcge"]
+[ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="4_hkqod"]
+[ext_resource type="Script" uid="uid://4yawyrbpe6tk" path="res://Systems/SkillSys/Scripts/skill_effect.gd" id="5_xs340"]
+
+[sub_resource type="Resource" id="Resource_6tkd5"]
+script = ExtResource("2_y1w52")
+part_name = "Heavy Plating"
+base_visible = true
+damage_multiplier = 0.5
+max_part_hp = 12
+break_mask_bit = 9
+anchor_path = NodePath("PartAnchors/Armor")
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[sub_resource type="Resource" id="Resource_dh4ty"]
+script = ExtResource("2_y1w52")
+part_name = "Lightning Welder"
+base_visible = true
+damage_multiplier = 0.1
+max_part_hp = 6
+anchor_path = NodePath("PartAnchors/Tool")
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[sub_resource type="Resource" id="Resource_p36iu"]
+script = ExtResource("2_y1w52")
+part_name = "Cobalt Heart"
+required_removed_mask = 9
+damage_multiplier = 1.6
+anchor_path = NodePath("PartAnchors/Core")
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[sub_resource type="Resource" id="Resource_nakio"]
+script = ExtResource("5_xs340")
+effect_type = 10
+stat_delta = 2
+stat_duration = 3
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
+[sub_resource type="Resource" id="Resource_kfv48"]
+script = ExtResource("4_hkqod")
+skill_name = "Establish Beachhead"
+command_key = "support"
+will_cost = 2
+is_aoe = true
+ally_target = true
+effects = Array[ExtResource("5_xs340")]([SubResource("Resource_nakio")])
+metadata/_custom_type_script = "uid://badrkgc20tgv2"
+
+[sub_resource type="Resource" id="Resource_mj51h"]
+script = ExtResource("5_xs340")
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
+[sub_resource type="Resource" id="Resource_p3l41"]
+script = ExtResource("4_hkqod")
+skill_name = "Defend Position"
+command_key = "attack"
+will_cost = 1
+effects = Array[ExtResource("5_xs340")]([SubResource("Resource_mj51h")])
+metadata/_custom_type_script = "uid://badrkgc20tgv2"
+
+[sub_resource type="Resource" id="Resource_sfd0r"]
+script = ExtResource("5_xs340")
+effect_type = 2
+heal_amount = 3
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
+[sub_resource type="Resource" id="Resource_d1hle"]
+script = ExtResource("4_hkqod")
+skill_name = "Patch Up"
+command_key = "support"
+will_cost = 2
+ally_target = true
+effects = Array[ExtResource("5_xs340")]([SubResource("Resource_sfd0r")])
+metadata/_custom_type_script = "uid://badrkgc20tgv2"
+
+[resource]
+script = ExtResource("3_8dcge")
+display_name = "HYAD-02 \"Bronte\" Steel Sapper Unit"
+base_max_hp = 21
+base_attack = 3
+base_flat_defense = 5
+base_max_will = 11
+exp_yield = 11
+body_parts = Array[ExtResource("2_y1w52")]([SubResource("Resource_6tkd5"), SubResource("Resource_dh4ty"), SubResource("Resource_p36iu")])
+battle_scene = ExtResource("1_uyhun")
+skills = Array[ExtResource("4_hkqod")]([SubResource("Resource_kfv48"), SubResource("Resource_p3l41"), SubResource("Resource_d1hle")])
+metadata/_custom_type_script = "uid://b2t1syvrybco8"

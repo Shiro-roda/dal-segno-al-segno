@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="DialogueLine" format=3 uid="uid://c8f0t2l2bx8wx"]
+
+[ext_resource type="Script" uid="uid://divs34wkweat7" path="res://UI/Dialogue/Scripts/dialogue_line.gd" id="1_dsjvd"]
+
+[resource]
+script = ExtResource("1_dsjvd")
+speaker = "Vritra"
+text = "[br] Come get me, KK!"
+metadata/_custom_type_script = "uid://divs34wkweat7"

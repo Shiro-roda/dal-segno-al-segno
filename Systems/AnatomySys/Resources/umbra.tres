@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="BodyPartData" format=3 uid="uid://s8d8wab3g0yr"]
+
+[ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://Systems/AnatomySys/Scripts/BodyPartData.gd" id="1_essxl"]
+
+[resource]
+script = ExtResource("1_essxl")
+part_name = "Umbra"
+required_removed_mask = 3
+damage_multiplier = 2.5
+is_cognitohazard = true
+anchor_path = NodePath("PartAnchors/Heart")
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"

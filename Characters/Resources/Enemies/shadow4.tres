@@ -1,0 +1,52 @@
+[gd_resource type="Resource" script_class="CharacterData" format=3 uid="uid://cwbnydaea6bpy"]
+
+[ext_resource type="PackedScene" uid="uid://433fpucnuqkf" path="res://Characters/Scenes/BattleActors/EnemyActors/shadow_bactor.tscn" id="1_syh6g"]
+[ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://Systems/AnatomySys/Scripts/BodyPartData.gd" id="2_bqwqs"]
+[ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://Systems/PartySys/Scripts/characterdata.gd" id="3_2331k"]
+[ext_resource type="Resource" uid="uid://ymwcc5pm8aal" path="res://Systems/AnatomySys/Resources/antumbra.tres" id="3_pwp7p"]
+[ext_resource type="Resource" uid="uid://bv8nc0eu2eq6j" path="res://Systems/AnatomySys/Resources/penumbra.tres" id="4_abhgq"]
+[ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="4_g03jy"]
+[ext_resource type="Script" uid="uid://4yawyrbpe6tk" path="res://Systems/SkillSys/Scripts/skill_effect.gd" id="5_bqwqs"]
+[ext_resource type="Resource" uid="uid://s8d8wab3g0yr" path="res://Systems/AnatomySys/Resources/umbra.tres" id="5_kpxwi"]
+
+[sub_resource type="Resource" id="Resource_2331k"]
+script = ExtResource("5_bqwqs")
+effect_type = 2
+heal_amount = 6
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
+[sub_resource type="Resource" id="Resource_g03jy"]
+script = ExtResource("4_g03jy")
+skill_name = "Breeze"
+command_key = "support"
+will_cost = 2
+ally_target = true
+effects = Array[ExtResource("5_bqwqs")]([SubResource("Resource_2331k")])
+metadata/_custom_type_script = "uid://badrkgc20tgv2"
+
+[sub_resource type="Resource" id="Resource_pwp7p"]
+script = ExtResource("5_bqwqs")
+effect_type = 3
+drain_ratio = 1.0
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
+[sub_resource type="Resource" id="Resource_abhgq"]
+script = ExtResource("4_g03jy")
+skill_name = "Whisper"
+command_key = "attack"
+will_cost = 1
+effects = Array[ExtResource("5_bqwqs")]([SubResource("Resource_pwp7p")])
+metadata/_custom_type_script = "uid://badrkgc20tgv2"
+
+[resource]
+script = ExtResource("3_2331k")
+display_name = "Kind Shadow"
+base_max_hp = 12
+base_attack = 3
+base_flat_defense = 1
+base_max_will = 10
+exp_yield = 7
+body_parts = Array[ExtResource("2_bqwqs")]([ExtResource("3_pwp7p"), ExtResource("4_abhgq"), ExtResource("5_kpxwi")])
+battle_scene = ExtResource("1_syh6g")
+skills = Array[ExtResource("4_g03jy")]([SubResource("Resource_g03jy"), SubResource("Resource_abhgq")])
+metadata/_custom_type_script = "uid://b2t1syvrybco8"

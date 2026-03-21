@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CharacterData" format=3 uid="uid://2s23chpgsy4t"]
+
+[ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://Systems/PartySys/Scripts/characterdata.gd" id="1_chardata"]
+[ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://Systems/AnatomySys/Scripts/BodyPartData.gd" id="1_smrkh"]
+[ext_resource type="PackedScene" uid="uid://drgt1emnpwnap" path="res://Characters/Scenes/BattleActors/PartyActors/hue_bactor.tscn" id="2_scene"]
+[ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="4_ddm46"]
+
+[sub_resource type="Resource" id="Resource_g6h2d"]
+script = ExtResource("1_smrkh")
+part_name = "Skin"
+base_visible = true
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[resource]
+script = ExtResource("1_chardata")
+display_name = "Hue"
+description = "A warmhearted young man frightened of the rain, and bearing a snow man's facade. Despite his best and most desperate efforts, he recurringly remains the sole survivor of every band of fortune seekers he has enlisted with. He still wanders these gilded halls in pursuit of precious young days never lived."
+base_max_hp = 20
+base_attack = 3
+base_flat_defense = 2
+base_max_will = 10
+body_parts = Array[ExtResource("1_smrkh")]([SubResource("Resource_g6h2d")])
+battle_scene = ExtResource("2_scene")

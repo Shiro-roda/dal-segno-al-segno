@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="EncounterData" format=3 uid="uid://uh53kvxj035e"]
+
+[ext_resource type="PackedScene" uid="uid://5plgxd17lkvq" path="res://Environments/Battlefields/Scenes/battle_field_afternoon.tscn" id="1_edh12"]
+[ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://Systems/PartySys/Scripts/characterdata.gd" id="2_edh12"]
+[ext_resource type="Resource" uid="uid://cqcjsnswptvk8" path="res://Characters/Resources/Enemies/shadow1.tres" id="3_ypw62"]
+[ext_resource type="Resource" uid="uid://c7inm1j3nh7i4" path="res://Characters/Resources/Enemies/shadow2.tres" id="4_1ji5h"]
+[ext_resource type="Script" uid="uid://b57cevaydtkqm" path="res://UI/Dialogue/Scripts/splash_line.gd" id="5_galum"]
+[ext_resource type="Resource" uid="uid://d3s71movk40pc" path="res://Audio/Tracks/magenta.tres" id="6_edh12"]
+[ext_resource type="Script" uid="uid://coeqyvqijtkns" path="res://Encounters/Scripts/encounterdata.gd" id="7_2uqkv"]
+[ext_resource type="Script" uid="uid://pwai87fl2rdy" path="res://UI/2D/Scripts/reticle_theme.gd" id="7_edh12"]
+
+[sub_resource type="Resource" id="Resource_irf0e"]
+script = ExtResource("5_galum")
+text = "You would disturb a peaceful pair of shadows."
+metadata/_custom_type_script = "uid://b57cevaydtkqm"
+
+[sub_resource type="Resource" id="Resource_ypw62"]
+script = ExtResource("7_edh12")
+mode = 1
+enemy_color = Color(0, 0, 0, 1)
+part_color = Color(0.2, 0.2, 0.2, 1)
+metadata/_custom_type_script = "uid://pwai87fl2rdy"
+
+[resource]
+script = ExtResource("7_2uqkv")
+battlefield_scene = ExtResource("1_edh12")
+enemies = Array[ExtResource("2_edh12")]([ExtResource("3_ypw62"), ExtResource("4_1ji5h")])
+intro_splash = Array[ExtResource("5_galum")]([SubResource("Resource_irf0e")])
+override_music = ExtResource("6_edh12")
+reticle_theme = SubResource("Resource_ypw62")

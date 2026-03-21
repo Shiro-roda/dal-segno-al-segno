@@ -1,0 +1,60 @@
+[gd_resource type="Resource" script_class="EncounterData" format=3 uid="uid://5koubjepyy6t"]
+
+[ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://Systems/PartySys/Scripts/characterdata.gd" id="1_ajgb8"]
+[ext_resource type="PackedScene" uid="uid://qythxyqix8sw" path="res://Environments/Battlefields/Scenes/battle_field_test.tscn" id="1_xfmmy"]
+[ext_resource type="Script" uid="uid://coeqyvqijtkns" path="res://Encounters/Scripts/encounterdata.gd" id="2_13fgl"]
+[ext_resource type="PackedScene" uid="uid://drgt1emnpwnap" path="res://Characters/Scenes/BattleActors/PartyActors/hue_bactor.tscn" id="3_t70c6"]
+[ext_resource type="Resource" uid="uid://dh41c43q5ekyx" path="res://Audio/Tracks/yellow.tres" id="4_br4y7"]
+[ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://Systems/AnatomySys/Scripts/BodyPartData.gd" id="4_ua74y"]
+[ext_resource type="Resource" uid="uid://c2hfbcmlpd3bi" path="res://Characters/Resources/Enemies/empty_one.tres" id="5_br4y7"]
+[ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="5_ovb2g"]
+[ext_resource type="Script" uid="uid://divs34wkweat7" path="res://UI/Dialogue/Scripts/dialogue_line.gd" id="6_xfaap"]
+[ext_resource type="Script" uid="uid://cxogdp046hrx2" path="res://UI/Dialogue/Scripts/encounter_dialogue.gd" id="8_m6dyk"]
+[ext_resource type="Script" uid="uid://b57cevaydtkqm" path="res://UI/Dialogue/Scripts/splash_line.gd" id="8_xfaap"]
+
+[sub_resource type="Resource" id="Resource_g6h2d"]
+script = ExtResource("4_ua74y")
+part_name = "Skin"
+base_visible = true
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[sub_resource type="Resource" id="Resource_ua74y"]
+script = ExtResource("1_ajgb8")
+display_name = "Hue"
+description = "A warmhearted young man frightened of the rain, and bearing a snow man's facade. Despite his best and most desperate efforts, he recurringly remains the sole survivor of every band of fortune seekers he has enlisted with. He still wanders these gilded halls in pursuit of precious young days never lived."
+base_max_hp = 60
+base_attack = 5
+base_max_will = 999
+tempo = 12
+body_parts = Array[ExtResource("4_ua74y")]([SubResource("Resource_g6h2d")])
+battle_scene = ExtResource("3_t70c6")
+
+[sub_resource type="Resource" id="Resource_6poej"]
+script = ExtResource("8_m6dyk")
+metadata/_custom_type_script = "uid://cxogdp046hrx2"
+
+[sub_resource type="Resource" id="Resource_ovb2g"]
+script = ExtResource("8_xfaap")
+text = "Why didn't you go with me?"
+speaker = "Hue"
+metadata/_custom_type_script = "uid://b57cevaydtkqm"
+
+[sub_resource type="Resource" id="Resource_m6dyk"]
+script = ExtResource("8_xfaap")
+text = "Why did you just leave me all alone??"
+speaker = "Hue"
+metadata/_custom_type_script = "uid://b57cevaydtkqm"
+
+[sub_resource type="Resource" id="Resource_6ujns"]
+script = ExtResource("8_xfaap")
+text = "I was so scared!"
+speaker = "Hue"
+metadata/_custom_type_script = "uid://b57cevaydtkqm"
+
+[resource]
+script = ExtResource("2_13fgl")
+battlefield_scene = ExtResource("1_xfmmy")
+enemies = Array[ExtResource("1_ajgb8")]([SubResource("Resource_ua74y"), ExtResource("5_br4y7"), ExtResource("5_br4y7")])
+intro_splash = Array[ExtResource("8_xfaap")]([SubResource("Resource_ovb2g"), SubResource("Resource_m6dyk"), SubResource("Resource_6ujns")])
+intro_dialogue = SubResource("Resource_6poej")
+override_music = ExtResource("4_br4y7")

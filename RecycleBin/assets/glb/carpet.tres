@@ -1,0 +1,15 @@
+[gd_resource type="StandardMaterial3D" format=3 uid="uid://dml1ngtg4dr4x"]
+
+[ext_resource type="Texture2D" uid="uid://dwgk5jtt2p3vs" path="res://RecycleBin/assets/glb/Backrooms Textures/carpet_carpet_color.png" id="1_mitm1"]
+[ext_resource type="Texture2D" uid="uid://csfwdenu3ph84" path="res://RecycleBin/assets/glb/Backrooms Textures/carpet_carpet_rough.png" id="2_u1j0b"]
+[ext_resource type="Texture2D" uid="uid://dp8noggpaue1" path="res://RecycleBin/assets/glb/Backrooms Textures/carpet_carpet_normal.png" id="3_03xhi"]
+
+[resource]
+resource_name = "carpet"
+albedo_texture = ExtResource("1_mitm1")
+metallic_texture = ExtResource("2_u1j0b")
+metallic_texture_channel = 2
+roughness_texture = ExtResource("2_u1j0b")
+roughness_texture_channel = 1
+normal_enabled = true
+normal_texture = ExtResource("3_03xhi")

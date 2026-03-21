@@ -1,0 +1,51 @@
+[gd_scene format=3 uid="uid://d3idossxkgtjh"]
+
+[ext_resource type="Script" uid="uid://bvemdwbw77sji" path="res://Characters/Scripts/kendall_actor.gd" id="1_u31kg"]
+[ext_resource type="PackedScene" uid="uid://dhu0qxbwinbyv" path="res://RecycleBin/scenes/Characters/ken_model_test_11.tscn" id="2_u31kg"]
+[ext_resource type="PackedScene" uid="uid://bl3aftctvygxl" path="res://UI/3D/BattleDisplay/Scenes/hp_display.tscn" id="4_uskna"]
+[ext_resource type="PackedScene" uid="uid://0b058ymoagc" path="res://UI/3D/BattleDisplay/Scenes/ammo_staff.tscn" id="5_6ydus"]
+[ext_resource type="Script" uid="uid://jtnowsj7i172" path="res://UI/3D/BattleDisplay/Scripts/actor_panel_3d.gd" id="5_uskna"]
+[ext_resource type="Script" uid="uid://cyrjmvijvkbgi" path="res://UI/3D/BattleDisplay/Scripts/blood_globe.gd" id="6_lav5c"]
+[ext_resource type="PackedScene" uid="uid://du3suh71satyp" path="res://UI/3D/BattleDisplay/Scenes/ring nodes/large_flesh_orb.tscn" id="6_tvxlr"]
+[ext_resource type="PackedScene" uid="uid://dfksmgwfvhs8y" path="res://UI/3D/BattleDisplay/Scenes/ring nodes/small_flesh_orb.tscn" id="7_myc82"]
+[ext_resource type="PackedScene" uid="uid://wog7o86lkrah" path="res://UI/3D/BattleDisplay/Scenes/ring nodes/small_ice_orb.tscn" id="8_8ig7o"]
+
+[node name="BattleActor" type="Node3D" unique_id=620316433]
+script = ExtResource("1_u31kg")
+
+[node name="ken_model_test11" parent="." unique_id=2005524327 instance=ExtResource("2_u31kg")]
+
+[node name="CameraAnchor" type="Node3D" parent="." unique_id=836785041]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5532758, 0)
+
+[node name="WorldSpacePanel" type="Node3D" parent="." unique_id=1416870058]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.0850544, 0)
+script = ExtResource("5_uskna")
+
+[node name="HpDisplay" parent="WorldSpacePanel" unique_id=1429397145 instance=ExtResource("4_uskna")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3309796, 0)
+script = ExtResource("6_lav5c")
+token_large_scene = ExtResource("6_tvxlr")
+token_small_scene = ExtResource("7_myc82")
+shield_orb_scene = ExtResource("8_8ig7o")
+ring_radius = 0.32
+ring_y = 0.0
+rotate_speed = 0.45
+spring_strength = 52.0
+spring_damping = 0.95
+repel_strength = 6.0
+repel_distance = 0.09
+
+[node name="AmmoStaff" parent="WorldSpacePanel" unique_id=506551254 instance=ExtResource("5_6ydus")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.02578497, 0)
+
+[node name="PartAnchors" type="Node3D" parent="." unique_id=1962265635]
+
+[node name="Gun" type="Node3D" parent="PartAnchors" unique_id=1574933319]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.2543252, 0.84816647, 0.09762442)
+
+[node name="Oracle" type="Node3D" parent="PartAnchors" unique_id=870132073]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1649058, 0)
+
+[node name="Eyes" type="Node3D" parent="PartAnchors" unique_id=2013192411]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.03086698, 1.6629206, 0.1506227)

@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="BodyPartData" format=3 uid="uid://ymwcc5pm8aal"]
+
+[ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://Systems/AnatomySys/Scripts/BodyPartData.gd" id="1_64mq4"]
+
+[resource]
+script = ExtResource("1_64mq4")
+part_name = "Antumbra"
+base_visible = true
+anchor_path = NodePath("PartAnchors/Torso")
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"

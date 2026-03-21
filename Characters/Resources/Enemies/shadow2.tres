@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="CharacterData" format=3 uid="uid://c7inm1j3nh7i4"]
+
+[ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://Systems/AnatomySys/Scripts/BodyPartData.gd" id="1_tpfi6"]
+[ext_resource type="PackedScene" uid="uid://433fpucnuqkf" path="res://Characters/Scenes/BattleActors/EnemyActors/shadow_bactor.tscn" id="1_v3wxi"]
+[ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://Systems/PartySys/Scripts/characterdata.gd" id="2_v3wxi"]
+[ext_resource type="Resource" uid="uid://ymwcc5pm8aal" path="res://Systems/AnatomySys/Resources/antumbra.tres" id="3_6xgbe"]
+[ext_resource type="Resource" uid="uid://bv8nc0eu2eq6j" path="res://Systems/AnatomySys/Resources/penumbra.tres" id="4_ftkpk"]
+[ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="4_sxdbf"]
+[ext_resource type="Resource" uid="uid://s8d8wab3g0yr" path="res://Systems/AnatomySys/Resources/umbra.tres" id="5_8c0wo"]
+
+[resource]
+script = ExtResource("2_v3wxi")
+display_name = "Sturdy Shadow"
+base_max_hp = 16
+base_attack = 2
+base_flat_defense = 2
+exp_yield = 5
+body_parts = Array[ExtResource("1_tpfi6")]([ExtResource("3_6xgbe"), ExtResource("4_ftkpk"), ExtResource("5_8c0wo")])
+battle_scene = ExtResource("1_v3wxi")
+metadata/_custom_type_script = "uid://b2t1syvrybco8"

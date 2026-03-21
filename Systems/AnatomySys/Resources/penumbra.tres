@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="BodyPartData" format=3 uid="uid://bv8nc0eu2eq6j"]
+
+[ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://Systems/AnatomySys/Scripts/BodyPartData.gd" id="1_anxbd"]
+
+[resource]
+script = ExtResource("1_anxbd")
+part_name = "Penumbra"
+required_removed_mask = 1
+damage_multiplier = 2.0
+anchor_path = NodePath("PartAnchors/Head")
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"

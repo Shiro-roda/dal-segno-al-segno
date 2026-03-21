@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="EncounterData" format=3 uid="uid://b6u47kpaaya4k"]
+
+[ext_resource type="PackedScene" uid="uid://5plgxd17lkvq" path="res://Environments/Battlefields/Scenes/battle_field_afternoon.tscn" id="1_cetx7"]
+[ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://Systems/PartySys/Scripts/characterdata.gd" id="2_cetx7"]
+[ext_resource type="Resource" uid="uid://c2hfbcmlpd3bi" path="res://Characters/Resources/Enemies/empty_one.tres" id="3_3l6fn"]
+[ext_resource type="Script" uid="uid://b57cevaydtkqm" path="res://UI/Dialogue/Scripts/splash_line.gd" id="4_ondjm"]
+[ext_resource type="Resource" uid="uid://csg2bw5kmgf41" path="res://Audio/Tracks/cyan.tres" id="5_brh2c"]
+[ext_resource type="Script" uid="uid://pwai87fl2rdy" path="res://UI/2D/Scripts/reticle_theme.gd" id="6_cetx7"]
+[ext_resource type="Script" uid="uid://coeqyvqijtkns" path="res://Encounters/Scripts/encounterdata.gd" id="6_krtvr"]
+
+[sub_resource type="Resource" id="Resource_1uv21"]
+script = ExtResource("4_ondjm")
+text = "Gaze upon the earth and everything in it."
+metadata/_custom_type_script = "uid://b57cevaydtkqm"
+
+[sub_resource type="Resource" id="Resource_8tmfl"]
+script = ExtResource("4_ondjm")
+text = "The World, and they that dwell therein."
+metadata/_custom_type_script = "uid://b57cevaydtkqm"
+
+[sub_resource type="Resource" id="Resource_3l6fn"]
+script = ExtResource("6_cetx7")
+mode = 1
+enemy_color = Color(0.7411765, 0.7411765, 0.7411765, 1)
+part_color = Color(0, 0, 0, 1)
+metadata/_custom_type_script = "uid://pwai87fl2rdy"
+
+[resource]
+script = ExtResource("6_krtvr")
+battlefield_scene = ExtResource("1_cetx7")
+enemies = Array[ExtResource("2_cetx7")]([ExtResource("3_3l6fn")])
+intro_splash = Array[ExtResource("4_ondjm")]([SubResource("Resource_1uv21"), SubResource("Resource_8tmfl")])
+override_music = ExtResource("5_brh2c")
+reticle_theme = SubResource("Resource_3l6fn")
+metadata/_custom_type_script = "uid://coeqyvqijtkns"

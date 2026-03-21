@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="RoomData" format=3 uid="uid://c0jewxi878exy"]
+
+[ext_resource type="Resource" uid="uid://c1np0avd3p3jf" path="res://Encounters/Resources/RegularBattles/evening.tres" id="1_y5odd"]
+[ext_resource type="Texture2D" uid="uid://d1lr8w2d7rryn" path="res://icon.svg" id="2_iiddx"]
+[ext_resource type="Script" uid="uid://c85hdsihevf3n" path="res://Events/Scripts/rest_option.gd" id="3_xylfd"]
+[ext_resource type="Script" uid="uid://cahb38n4bk3e1" path="res://Rooms/Types/Scripts/room_effect.gd" id="4_47ij2"]
+[ext_resource type="PackedScene" uid="uid://3aj0ixqpon3" path="res://Rooms/Models/Scenes/battle_room.tscn" id="5_4a008"]
+[ext_resource type="Script" uid="uid://b3i3n6lphwajh" path="res://Rooms/Types/Scripts/room_data.gd" id="6_tifyj"]
+
+[resource]
+script = ExtResource("6_tifyj")
+room_name = "Insipid Evening"
+icon = ExtResource("2_iiddx")
+description = "The greatest of the least of your challenges. [+2 Connection(s)]"
+room_model = ExtResource("5_4a008")
+encounter = ExtResource("1_y5odd")
+danger_level = 3
+max_connections = 3
+connections = Array[Vector2i]([Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(0, -1)])
+metadata/_custom_type_script = "uid://b3i3n6lphwajh"

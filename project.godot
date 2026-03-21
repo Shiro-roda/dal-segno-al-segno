@@ -29,9 +29,9 @@ Dialogic="*res://addons/dialogic/Core/DialogicGameHandler.gd"
 PhantomCameraManager="*uid://duq6jhf6unyis"
 AudioManagerAuto="*uid://cx2gw1tu0rxpi"
 GameController="*uid://e0k6d8aob0l7"
-GlobalTheme="*res://scenes/Managers/global_theme.gd"
-SkillDirectory="*res://scripts/SkillDirectory.gd"
-ItemRegistry="*res://scripts/item_registry.gd"
+GlobalTheme="*res://UI/Themes/Scripts/global_theme.gd"
+SkillDirectory="*res://Systems/SkillSys/Scripts/SkillDirectory.gd"
+ItemRegistry="*res://Items/Scripts/item_registry.gd"
 
 [dialogic]
 
@@ -55,7 +55,7 @@ movie_writer/movie_file="/Recordings/Video Recordings/dsas.ogv"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/dialogic/plugin.cfg", "res://addons/godot_mcp/plugin.cfg", "res://addons/phantom_camera/plugin.cfg")
+enabled=PackedStringArray("res://addons/dialogic/plugin.cfg", "res://addons/func_godot/plugin.cfg", "res://addons/godot_mcp/plugin.cfg", "res://addons/phantom_camera/plugin.cfg")
 
 [global_group]
 

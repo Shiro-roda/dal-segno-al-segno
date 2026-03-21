@@ -1,6 +1,0 @@
-[gd_resource type="Resource" format=3 uid="uid://bx3s1rxpkeo1b"]
-
-[ext_resource type="Script" uid="uid://b1026ntiy06yv" path="res://resources/battlecontext.gd" id="1_7nukj"]
-
-[resource]
-script = ExtResource("1_7nukj")

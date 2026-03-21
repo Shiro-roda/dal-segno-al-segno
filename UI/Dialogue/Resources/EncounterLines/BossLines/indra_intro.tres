@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="DialogueLine" format=3 uid="uid://bgk333ltcq1nf"]
+
+[ext_resource type="Script" uid="uid://divs34wkweat7" path="res://UI/Dialogue/Scripts/dialogue_line.gd" id="1_5r53o"]
+
+[resource]
+script = ExtResource("1_5r53o")
+speaker = "Indra"
+text = "[br]I will be making the ascent alone."
+metadata/_custom_type_script = "uid://divs34wkweat7"

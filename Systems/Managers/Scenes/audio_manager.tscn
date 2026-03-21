@@ -1,0 +1,33 @@
+[gd_scene format=3 uid="uid://cx2gw1tu0rxpi"]
+
+[ext_resource type="Script" uid="uid://bd8ymuwvnwx35" path="res://Systems/Managers/Scripts/audio_manager.gd" id="1_v3rsy"]
+[ext_resource type="AudioStream" uid="uid://cb75xobc2ohqe" path="res://Audio/Assets/wav/tv_static.wav" id="2_x0ip0"]
+
+[node name="Audio Manager" type="Node" unique_id=2102780936]
+script = ExtResource("1_v3rsy")
+
+[node name="BGM_Base" type="AudioStreamPlayer" parent="." unique_id=723115629]
+bus = &"BGM"
+
+[node name="BGM_R" type="AudioStreamPlayer" parent="." unique_id=1585084749]
+bus = &"BGM"
+
+[node name="BGM_G" type="AudioStreamPlayer" parent="." unique_id=1442841813]
+bus = &"BGM"
+
+[node name="BGM_B" type="AudioStreamPlayer" parent="." unique_id=2053986714]
+bus = &"BGM"
+
+[node name="SFXPlayer1" type="AudioStreamPlayer" parent="." unique_id=498492234]
+bus = &"SFX"
+
+[node name="SFXPlayer2" type="AudioStreamPlayer" parent="." unique_id=1546235332]
+bus = &"SFX"
+
+[node name="UISFXPlayer" type="AudioStreamPlayer" parent="." unique_id=601691158]
+bus = &"UI"
+
+[node name="AmbiencePlayer" type="AudioStreamPlayer" parent="." unique_id=1494524309]
+stream = ExtResource("2_x0ip0")
+volume_db = -65.0
+bus = &"BGM"

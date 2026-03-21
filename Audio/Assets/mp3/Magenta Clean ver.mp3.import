@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://cbfje81nfnmk0"
+path="res://.godot/imported/Magenta Clean ver.mp3-47b8a6b520d78104b23ce1971557a23a.mp3str"
+
+[deps]
+
+source_file="res://Audio/Assets/mp3/Magenta Clean ver.mp3"
+dest_files=["res://.godot/imported/Magenta Clean ver.mp3-47b8a6b520d78104b23ce1971557a23a.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

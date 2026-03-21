@@ -1,0 +1,6 @@
+[gd_resource type="Resource" format=3 uid="uid://cpn8mnjh8fx1u"]
+
+[ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://Systems/AnatomySys/Scripts/BodyPartData.gd" id="1_a5wmw"]
+
+[resource]
+script = ExtResource("1_a5wmw")

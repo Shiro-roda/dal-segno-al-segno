@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="EncounterData" format=3 uid="uid://c1np0avd3p3jf"]
+
+[ext_resource type="PackedScene" uid="uid://b5t3vd4uqy3tn" path="res://Environments/Battlefields/Scenes/battle_field_evening.tscn" id="1_i53s8"]
+[ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://Systems/PartySys/Scripts/characterdata.gd" id="2_i53s8"]
+[ext_resource type="Resource" uid="uid://c7inm1j3nh7i4" path="res://Characters/Resources/Enemies/shadow2.tres" id="4_7ydep"]
+[ext_resource type="Resource" uid="uid://bwmbdd8ixs5kf" path="res://Characters/Resources/Enemies/shadow3.tres" id="5_7ol47"]
+[ext_resource type="Resource" uid="uid://cwbnydaea6bpy" path="res://Characters/Resources/Enemies/shadow4.tres" id="5_i53s8"]
+[ext_resource type="Script" uid="uid://b57cevaydtkqm" path="res://UI/Dialogue/Scripts/splash_line.gd" id="6_kvvq1"]
+[ext_resource type="Resource" uid="uid://csg2bw5kmgf41" path="res://Audio/Tracks/cyan.tres" id="7_owamm"]
+[ext_resource type="Script" uid="uid://coeqyvqijtkns" path="res://Encounters/Scripts/encounterdata.gd" id="8_4qi4f"]
+[ext_resource type="Script" uid="uid://pwai87fl2rdy" path="res://UI/2D/Scripts/reticle_theme.gd" id="8_i53s8"]
+
+[sub_resource type="Resource" id="Resource_7y7tb"]
+script = ExtResource("6_kvvq1")
+text = "Three same faces appear such a bore."
+metadata/_custom_type_script = "uid://b57cevaydtkqm"
+
+[sub_resource type="Resource" id="Resource_i53s8"]
+script = ExtResource("8_i53s8")
+mode = 1
+enemy_color = Color(0, 0, 0, 1)
+part_color = Color(0.2, 0.2, 0.2, 1)
+metadata/_custom_type_script = "uid://pwai87fl2rdy"
+
+[resource]
+script = ExtResource("8_4qi4f")
+battlefield_scene = ExtResource("1_i53s8")
+enemies = Array[ExtResource("2_i53s8")]([ExtResource("4_7ydep"), ExtResource("5_7ol47"), ExtResource("5_i53s8")])
+intro_splash = Array[ExtResource("6_kvvq1")]([SubResource("Resource_7y7tb")])
+override_music = ExtResource("7_owamm")
+reticle_theme = SubResource("Resource_i53s8")

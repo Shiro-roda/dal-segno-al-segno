@@ -1,9 +1,0 @@
-[gd_scene format=3 uid="uid://bl3aftctvygxl"]
-
-[ext_resource type="Script" uid="uid://mh86sef8w38w" path="res://scripts/UI/battle_panels/hp_display.gd" id="1_veieb"]
-[ext_resource type="PackedScene" uid="uid://wog7o86lkrah" path="res://scenes/UI/ring nodes/small_ice_orb.tscn" id="2_clm1u"]
-
-[node name="TempHpDisplay" type="Node3D" unique_id=1429397145]
-script = ExtResource("1_veieb")
-max_visible = 50
-shield_orb_scene = ExtResource("2_clm1u")

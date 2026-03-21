@@ -1,0 +1,17 @@
+[gd_scene format=3 uid="uid://6giatmcbhmpp"]
+
+[ext_resource type="Script" uid="uid://dnnt2wdvcyqrq" path="res://RecycleBin/scripts/Characters/character_body_3d.gd" id="1_dqkch"]
+[ext_resource type="PackedScene" uid="uid://dhu0qxbwinbyv" path="res://RecycleBin/scenes/Characters/ken_model_test_11.tscn" id="3_8iw34"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_jyhfs"]
+radius = 0.59521484
+height = 1.9285889
+
+[node name="Player" type="CharacterBody3D" unique_id=825966127]
+script = ExtResource("1_dqkch")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=55261342]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0013905, 0.08042693)
+shape = SubResource("CapsuleShape3D_jyhfs")
+
+[node name="ken_model_test11" parent="." unique_id=195824855 instance=ExtResource("3_8iw34")]

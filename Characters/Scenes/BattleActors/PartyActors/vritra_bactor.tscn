@@ -1,0 +1,59 @@
+[gd_scene format=3 uid="uid://btqwkbg0gpxtt"]
+
+[ext_resource type="Script" uid="uid://bqgqff54qagij" path="res://Characters/Scripts/vritra_actor.gd" id="1_gcjt2"]
+[ext_resource type="Script" uid="uid://jtnowsj7i172" path="res://UI/3D/BattleDisplay/Scripts/actor_panel_3d.gd" id="2_panel"]
+[ext_resource type="PackedScene" uid="uid://bl3aftctvygxl" path="res://UI/3D/BattleDisplay/Scenes/hp_display.tscn" id="3_n5k3y"]
+[ext_resource type="PackedScene" uid="uid://dm1a08supvq1i" path="res://UI/3D/BattleDisplay/Scenes/will_ring.tscn" id="4_dt3np"]
+[ext_resource type="Script" uid="uid://cyrjmvijvkbgi" path="res://UI/3D/BattleDisplay/Scripts/blood_globe.gd" id="4_jbyfv"]
+[ext_resource type="PackedScene" uid="uid://du3suh71satyp" path="res://UI/3D/BattleDisplay/Scenes/ring nodes/large_flesh_orb.tscn" id="5_dt3np"]
+[ext_resource type="PackedScene" uid="uid://dfksmgwfvhs8y" path="res://UI/3D/BattleDisplay/Scenes/ring nodes/small_flesh_orb.tscn" id="6_jbyfv"]
+[ext_resource type="PackedScene" uid="uid://wog7o86lkrah" path="res://UI/3D/BattleDisplay/Scenes/ring nodes/small_ice_orb.tscn" id="7_pdccf"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_gcjt2"]
+albedo_color = Color(1, 0.08235294, 0.46666667, 1)
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_ukjlv"]
+material = SubResource("StandardMaterial3D_gcjt2")
+radius = 0.35
+
+[node name="BattleActor" type="Node3D" unique_id=1538544639]
+script = ExtResource("1_gcjt2")
+
+[node name="CameraAnchor" type="Node3D" parent="." unique_id=2071011302]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6305662, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=891095583]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+mesh = SubResource("CapsuleMesh_ukjlv")
+
+[node name="WorldSpacePanel" type="Node3D" parent="." unique_id=437901912]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1, 0)
+script = ExtResource("2_panel")
+
+[node name="HpDisplay" parent="WorldSpacePanel" unique_id=1429397145 instance=ExtResource("3_n5k3y")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.30088997, 0)
+script = ExtResource("4_jbyfv")
+token_large_scene = ExtResource("5_dt3np")
+token_small_scene = ExtResource("6_jbyfv")
+shield_orb_scene = ExtResource("7_pdccf")
+ring_radius = 0.32
+ring_y = 0.0
+rotate_speed = 0.45
+spring_strength = 52.0
+spring_damping = 0.95
+repel_strength = 6.0
+repel_distance = 0.09
+
+[node name="WillRing" parent="WorldSpacePanel" unique_id=887065047 instance=ExtResource("4_dt3np")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.021168709, 0)
+
+[node name="PartAnchors" type="Node3D" parent="." unique_id=862955942]
+
+[node name="Stomach" type="Node3D" parent="PartAnchors" unique_id=1910874436]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.049701154, 1.0100375, -0.0013235807)
+
+[node name="Snakes" type="Node3D" parent="PartAnchors" unique_id=1105181838]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2486691, 0)
+
+[node name="Mouth" type="Node3D" parent="PartAnchors" unique_id=1355487434]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.33720404, 1.4405177, 0)
