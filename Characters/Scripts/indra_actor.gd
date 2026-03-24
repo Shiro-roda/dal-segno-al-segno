@@ -124,9 +124,9 @@ func _crucify(target: BattleActor, part: BodyPartData) -> void:
 		perishing = true
 	if randf() < BLEED_CHANCE_NORMAL:
 		target.apply_status(STATUS_BLEEDING, BLEED_DURATION)
-		log_msg("%s opens a wound on %s." % [name, target.name])
+		log_msg("%s opens a wound on %s." % [get_log_name(), target.get_log_name()])
 	say_random(CHATTER_CRUCIFY)
-	log_msg("%s charges at %s." % [name, target.name])
+	log_msg("%s charges at %s." % [name, target.get_log_name()])
 	await play_attack_animation(target, attack_power, 2.0, damage)
 	emit_signal("turn_finished")
 
@@ -134,7 +134,7 @@ func _crucify(target: BattleActor, part: BodyPartData) -> void:
 func _fulminate(all_actors: Array) -> void:
 	party_member.spend_will(FULMINATE_WILL_COST)
 	say_random(CHATTER_FULMINATE)
-	log_msg("The earth is laid waste before him, the world and all who dwell in it." % [name])
+	log_msg("The earth is laid waste before him, the world and all who dwell in it.")
 	var targets := get_opponents()
 	for enemy in targets:
 		if not is_instance_valid(enemy) or not enemy.is_alive():

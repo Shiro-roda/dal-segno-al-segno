@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://do0gqj5qr438x"
 path.s3tc="res://.godot/imported/ceiling_tiles_ceiling_tiles_normal.png-86e471650103a74eeb17c91bba8af466.s3tc.ctex"
+path.etc2="res://.godot/imported/ceiling_tiles_ceiling_tiles_normal.png-86e471650103a74eeb17c91bba8af466.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://RecycleBin/assets/glb/Backrooms Textures/ceiling_tiles_ceiling_tiles_normal.png"
-dest_files=["res://.godot/imported/ceiling_tiles_ceiling_tiles_normal.png-86e471650103a74eeb17c91bba8af466.s3tc.ctex"]
+dest_files=["res://.godot/imported/ceiling_tiles_ceiling_tiles_normal.png-86e471650103a74eeb17c91bba8af466.s3tc.ctex", "res://.godot/imported/ceiling_tiles_ceiling_tiles_normal.png-86e471650103a74eeb17c91bba8af466.etc2.ctex"]
 
 [params]
 

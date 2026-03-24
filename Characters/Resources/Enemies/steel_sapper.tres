@@ -13,6 +13,7 @@ base_visible = true
 damage_multiplier = 0.5
 max_part_hp = 12
 break_mask_bit = 9
+on_break_flat_delta = -4
 anchor_path = NodePath("PartAnchors/Armor")
 metadata/_custom_type_script = "uid://bewuwngi8x4ad"
 
@@ -80,6 +81,7 @@ metadata/_custom_type_script = "uid://badrkgc20tgv2"
 [resource]
 script = ExtResource("3_8dcge")
 display_name = "HYAD-02 \"Bronte\" Steel Sapper Unit"
+log_name = "Steel Sapper Unit"
 base_max_hp = 21
 base_attack = 3
 base_flat_defense = 5

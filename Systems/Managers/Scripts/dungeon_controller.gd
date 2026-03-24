@@ -126,6 +126,8 @@ func enter_current_room():
 		RoomData.RoomType.BATTLE, RoomData.RoomType.ELITE:
 			if _room_should_battle(room):
 				room.cleared = false
+				AudioManagerAuto.reset_ambience()
+				await AudioManagerAuto.fade_out_bgm()
 				GameController.start_battle(data.encounter, dungeon)
 			else:
 				map_ui.redraw_map()

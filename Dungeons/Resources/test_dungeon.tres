@@ -15,6 +15,7 @@
 [ext_resource type="Resource" uid="uid://b6u47kpaaya4k" path="res://Encounters/Resources/RegularBattles/empty.tres" id="13_iib2a"]
 [ext_resource type="PackedScene" uid="uid://3aj0ixqpon3" path="res://Rooms/Models/Scenes/battle_room.tscn" id="13_s5enb"]
 [ext_resource type="Resource" uid="uid://butn33pyfhpwe" path="res://Encounters/Resources/RegularBattles/den.tres" id="14_83p74"]
+[ext_resource type="Resource" uid="uid://cm0rjx3khixnv" path="res://Encounters/Resources/RegularBattles/tempest.tres" id="15_hsgog"]
 [ext_resource type="Resource" uid="uid://cyvwnwerusumw" path="res://Encounters/Resources/RegularBattles/songseed.tres" id="15_iuhbl"]
 [ext_resource type="PackedScene" uid="uid://cedd8ir7uudmq" path="res://Rooms/Models/Scenes/segno_room.tscn" id="20_gyugg"]
 
@@ -150,12 +151,21 @@ metadata/_custom_type_script = "uid://cahb38n4bk3e1"
 
 [sub_resource type="Resource" id="Resource_a34ew"]
 script = ExtResource("2_gacfb")
-room_name = "Thunderous Symphony"
+room_name = "Tempest Troupe"
 description = "Stray soldiers far from their front sing for you. [+2 Connection(s)]"
 room_model = ExtResource("13_s5enb")
-encounter = ExtResource("15_iuhbl")
+encounter = ExtResource("15_hsgog")
 danger_level = 4
 room_effects = Array[ExtResource("4_w5o4c")]([SubResource("Resource_hsgog")])
+metadata/_custom_type_script = "uid://b3i3n6lphwajh"
+
+[sub_resource type="Resource" id="Resource_iib2a"]
+script = ExtResource("2_gacfb")
+room_name = "Thunderous Symphony"
+description = "Nymphonic harmonies to a hydroelectric tune. [+3 Connection(s)]"
+room_model = ExtResource("13_s5enb")
+encounter = ExtResource("15_iuhbl")
+danger_level = 5
 metadata/_custom_type_script = "uid://b3i3n6lphwajh"
 
 [sub_resource type="Resource" id="Resource_75ucp"]
@@ -173,6 +183,6 @@ metadata/_custom_type_script = "uid://b3i3n6lphwajh"
 script = ExtResource("2_xmptu")
 default_battle_track = ExtResource("1_2l6ym")
 dungeon_track = ExtResource("1_2l6ym")
-rooms = Array[ExtResource("2_gacfb")]([SubResource("Resource_w5o4c"), SubResource("Resource_s5enb"), SubResource("Resource_1man1"), ExtResource("11_hsgog"), SubResource("Resource_job2v"), SubResource("Resource_fg3e6"), SubResource("Resource_gavt7"), SubResource("Resource_6hh4b"), SubResource("Resource_48yig"), SubResource("Resource_a34ew")])
+rooms = Array[ExtResource("2_gacfb")]([SubResource("Resource_w5o4c"), SubResource("Resource_s5enb"), SubResource("Resource_1man1"), ExtResource("11_hsgog"), SubResource("Resource_job2v"), SubResource("Resource_fg3e6"), SubResource("Resource_gavt7"), SubResource("Resource_6hh4b"), SubResource("Resource_48yig"), SubResource("Resource_a34ew"), SubResource("Resource_iib2a")])
 start_room = SubResource("Resource_75ucp")
 recruit_room = SubResource("Resource_oveqs")

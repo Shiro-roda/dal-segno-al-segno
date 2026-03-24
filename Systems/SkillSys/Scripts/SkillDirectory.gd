@@ -37,7 +37,7 @@ func _register_all() -> void:
 		false, false, false, false, "PartAnchors/Gun", "Pistol Whip")
 	_add("Pistol Whip", "attack",  "Attack at random for half damage. Has a chance to miss.",              "Short of arms, yet not devoid of alternatives.",
 		false, true,  false, false, "PartAnchors/Gun")
-	_add("Unveil", "special", "Reveal weak points at the risk of uncovering memetic hazards.",        "Strip away the layers of perception itself to expose your foe's most intimate and fragile disfigurements.\n\nUnderstand that the price of understanding may be more than you can afford.",
+	_add("Unveil", "special", "Reveal weak points at the risk of uncovering memetic hazards.",        "Strip away the pretenses of perception itself to expose your foe's most intimate and fragile disfigurements.\n\nUnderstand that the price of understanding may be more than you can afford.",
 		false, false, false, false, "PartAnchors/Eyes")
 	_add("Augur",       "support", "Grants dodge chance and heightened tempo to all allies. Also reveals enemy specifications.", "Portentious signs only you can see are all around you, and your companions may benefit from your discernment.",
 		true,  false, false, false, "PartAnchors/Oracle")

@@ -96,11 +96,11 @@ func execute_effects(sd: SkillData, targets: Array) -> void:
 				for t in targets:
 					if is_instance_valid(t) and t.is_alive():
 						t.apply_status(effect.status_id, effect.status_duration)
-						log_msg("%s afflicts %s with %s." % [name, t.name, effect.status_id])
+						log_msg("%s afflicts %s with %s." % [get_log_name(), t.get_log_name(), effect.status_id])
 
 			SkillEffect.EffectType.SELF_STATUS:
 				apply_status(effect.status_id, effect.status_duration)
-				log_msg("%s enters %s stance." % [name, effect.status_id])
+				log_msg("%s enters %s stance." % [get_log_name(), effect.status_id])
 
 			SkillEffect.EffectType.HEAL:
 				for t in targets:
@@ -109,21 +109,21 @@ func execute_effects(sd: SkillData, targets: Array) -> void:
 							else int(t.max_hp * effect.heal_amount / 100.0)
 						t.hp = min(t.hp + amt, t.max_hp)
 						t.emit_signal("hp_changed")
-						log_msg("%s restores %d CORP to %s." % [name, amt, t.name])
+						log_msg("%s restores %d CORP to %s." % [get_log_name(), amt, t.get_log_name()])
 
 			SkillEffect.EffectType.SELF_HEAL:
 				var amt : int = effect.heal_amount if effect.heal_flat \
 					else int(max_hp * effect.heal_amount / 100.0)
 				hp = min(hp + amt, max_hp)
 				emit_signal("hp_changed")
-				log_msg("%s recovers %d CORP." % [name, amt])
+				log_msg("%s recovers %d CORP." % [get_log_name(), amt])
 
 			SkillEffect.EffectType.DRAIN:
 				var dmg : int = int(attack_power * effect.damage_mult) + effect.damage_bonus
 				for t in targets:
 					if is_instance_valid(t) and t.is_alive():
 						var hp_before : int = t.hp
-						var t_name : String = t.name
+						var t_name : String = t.get_log_name()
 						await play_attack_animation(t, 1.0, 1.0, dmg)
 						# Drain based on damage actually dealt (hp delta), not raw dmg.
 						
@@ -133,12 +133,12 @@ func execute_effects(sd: SkillData, targets: Array) -> void:
 								var heal : int = max(1, int(dealt * effect.drain_ratio))
 								hp = min(hp + heal, max_hp)
 								emit_signal("hp_changed")
-								log_msg("%s drains %d CORP from %s." % [name, heal, t_name])
+								log_msg("%s drains %d CORP from %s." % [get_log_name(), heal, t_name])
 						else:
 							var heal : int = max(1, int(hp_before * effect.drain_ratio))
 							hp = min(hp + heal, max_hp)
 							emit_signal("hp_changed")
-							log_msg("%s drains %d CORP from %s." % [name, heal, t_name])
+							log_msg("%s drains %d CORP from %s." % [get_log_name(), heal, t_name])
 
 			SkillEffect.EffectType.SELF_DAMAGE:
 				take_damage(effect.self_damage_amount)

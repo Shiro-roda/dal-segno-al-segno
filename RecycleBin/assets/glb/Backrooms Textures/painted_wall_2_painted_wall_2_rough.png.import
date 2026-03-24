@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://bhpki01m0gss5"
 path.s3tc="res://.godot/imported/painted_wall_2_painted_wall_2_rough.png-85ad182cb798efec74749a454f60f008.s3tc.ctex"
+path.etc2="res://.godot/imported/painted_wall_2_painted_wall_2_rough.png-85ad182cb798efec74749a454f60f008.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://RecycleBin/assets/glb/Backrooms Textures/painted_wall_2_painted_wall_2_rough.png"
-dest_files=["res://.godot/imported/painted_wall_2_painted_wall_2_rough.png-85ad182cb798efec74749a454f60f008.s3tc.ctex"]
+dest_files=["res://.godot/imported/painted_wall_2_painted_wall_2_rough.png-85ad182cb798efec74749a454f60f008.s3tc.ctex", "res://.godot/imported/painted_wall_2_painted_wall_2_rough.png-85ad182cb798efec74749a454f60f008.etc2.ctex"]
 
 [params]
 

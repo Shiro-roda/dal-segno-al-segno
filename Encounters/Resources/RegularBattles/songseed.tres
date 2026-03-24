@@ -4,6 +4,7 @@
 [ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://Systems/PartySys/Scripts/characterdata.gd" id="2_ra5o5"]
 [ext_resource type="Resource" uid="uid://uumq56vn7noa" path="res://Characters/Resources/Enemies/sandstriker.tres" id="3_132bn"]
 [ext_resource type="Resource" uid="uid://c4dqn4674j3qh" path="res://Characters/Resources/Enemies/steel_sapper.tres" id="4_wjeql"]
+[ext_resource type="Resource" uid="uid://dl727jtflii60" path="res://Characters/Resources/Enemies/waterweaver.tres" id="5_ra5o5"]
 [ext_resource type="Script" uid="uid://b57cevaydtkqm" path="res://UI/Dialogue/Scripts/splash_line.gd" id="6_ucrgs"]
 [ext_resource type="Resource" uid="uid://csg2bw5kmgf41" path="res://Audio/Tracks/cyan.tres" id="7_0b30r"]
 [ext_resource type="Script" uid="uid://pwai87fl2rdy" path="res://UI/2D/Scripts/reticle_theme.gd" id="7_wjeql"]
@@ -11,13 +12,24 @@
 
 [sub_resource type="Resource" id="Resource_132bn"]
 script = ExtResource("6_ucrgs")
-text = "We are all far from home."
+text = "Without souls, we who are never to die"
+speaker = "Indra"
+metadata/_custom_type_script = "uid://b57cevaydtkqm"
+
+[sub_resource type="Resource" id="Resource_8xe6t"]
+script = ExtResource("6_ucrgs")
+text = "our songs unsung, and tears unshed:"
+speaker = "Indra"
+metadata/_custom_type_script = "uid://b57cevaydtkqm"
+
+[sub_resource type="Resource" id="Resource_d6vbc"]
+script = ExtResource("6_ucrgs")
+text = "Our dried and undying voices shall be heard long beyond the dead."
 speaker = "Indra"
 metadata/_custom_type_script = "uid://b57cevaydtkqm"
 
 [sub_resource type="Resource" id="Resource_ra5o5"]
 script = ExtResource("7_wjeql")
-mode = 1
 enemy_color = Color(0.09770482, 0.34066874, 1, 1)
 part_color = Color(0.17939998, 0.22151999, 0.39, 1)
 metadata/_custom_type_script = "uid://pwai87fl2rdy"
@@ -25,7 +37,7 @@ metadata/_custom_type_script = "uid://pwai87fl2rdy"
 [resource]
 script = ExtResource("8_aw8mu")
 battlefield_scene = ExtResource("1_wjeql")
-enemies = Array[ExtResource("2_ra5o5")]([ExtResource("3_132bn"), ExtResource("4_wjeql")])
-intro_splash = Array[ExtResource("6_ucrgs")]([SubResource("Resource_132bn")])
+enemies = Array[ExtResource("2_ra5o5")]([ExtResource("3_132bn"), ExtResource("4_wjeql"), ExtResource("5_ra5o5")])
+intro_splash = Array[ExtResource("6_ucrgs")]([SubResource("Resource_132bn"), SubResource("Resource_8xe6t"), SubResource("Resource_d6vbc")])
 override_music = ExtResource("7_0b30r")
 reticle_theme = SubResource("Resource_ra5o5")

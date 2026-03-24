@@ -157,6 +157,7 @@ func open(actor: BattleActor, skills: Array, enemies: Array, allies: Array,
 func close(silent: bool = false) -> void:
 	_active = false
 	_clear_all_boxes()
+	_hide_filter_panel()
 	hide()
 	if not silent:
 		emit_signal("cancelled")
@@ -164,6 +165,7 @@ func close(silent: bool = false) -> void:
 
 ## Reset all selections back to idle floating state without destroying boxes.
 func reset_selection() -> void:
+	_hide_filter_panel()
 	_sel_skill  = {}
 	_sel_target = null
 	_sel_part   = null
@@ -197,7 +199,7 @@ func set_skills_visible(visible_: bool) -> void:
 			_hide_detail(eb)
 	for e in _skill_boxes:
 		var b : Button = e["box"]
-		var lp : PanelContainer = e["label_panel"]
+		var lp : Control = e["label_panel"]
 		if is_instance_valid(b):  b.visible  = visible_
 		if is_instance_valid(lp): lp.visible = visible_
 
@@ -215,6 +217,87 @@ func set_allowed_commands(keys: Array) -> void:
 			b.mouse_filter = Control.MOUSE_FILTER_STOP if allowed else Control.MOUSE_FILTER_IGNORE
 		# Dim the box visually when locked
 		e["_locked"] = not allowed
+
+
+# ── Channel filter panel ──────────────────────────────────────────────────────
+# Three RGB buttons shown when Kendall's "special" (Change Lens) is chosen.
+# Emits filter_selected(channel_int) then hides itself.
+
+signal filter_selected(channel: int)
+
+var _filter_panel : Control = null
+
+func show_filter_options(removed_mask: int = 0) -> void:
+	_hide_filter_panel()
+	var panel := PanelContainer.new()
+	var sbox := StyleBoxFlat.new()
+	sbox.bg_color = Color(0.02, 0.02, 0.06, 0.92)
+	sbox.set_border_width_all(1)
+	sbox.border_color = Color(0.25, 0.25, 0.35, 1.0)
+	sbox.set_content_margin_all(14)
+	panel.add_theme_stylebox_override("panel", sbox)
+	panel.set_anchor(SIDE_LEFT,   0.5)
+	panel.set_anchor(SIDE_RIGHT,  0.5)
+	panel.set_anchor(SIDE_TOP,    0.5)
+	panel.set_anchor(SIDE_BOTTOM, 0.5)
+	panel.set_offset(SIDE_LEFT,   -130)
+	panel.set_offset(SIDE_RIGHT,   130)
+	panel.set_offset(SIDE_TOP,    -48)
+	panel.set_offset(SIDE_BOTTOM,  48)
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 10)
+	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hbox.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+	panel.add_child(hbox)
+	var channels := [
+		{"label": "R", "channel": 1, "color": Color(1.0, 0.25, 0.25, 1.0)},
+		{"label": "G", "channel": 2, "color": Color(0.25, 1.0, 0.35, 1.0)},
+		{"label": "B", "channel": 4, "color": Color(0.25, 0.55, 1.0, 1.0)},
+	]
+	for ch in channels:
+		var btn := Button.new()
+		btn.text = ch["label"]
+		btn.focus_mode = Control.FOCUS_NONE
+		btn.custom_minimum_size = Vector2(60, 54)
+		var already_used : bool = (removed_mask & int(ch["channel"])) != 0
+		if _font: btn.add_theme_font_override("font", _font)
+		btn.add_theme_font_size_override("font_size", 18)
+		var col : Color = ch["color"]
+		var normal_sbox := StyleBoxFlat.new()
+		normal_sbox.bg_color = Color(col.r * 0.15, col.g * 0.15, col.b * 0.15, 1.0)
+		normal_sbox.set_border_width_all(1)
+		normal_sbox.border_color = Color(col.r * 0.5, col.g * 0.5, col.b * 0.5, 1.0)
+		normal_sbox.set_content_margin_all(6)
+		var hover_sbox := StyleBoxFlat.new()
+		hover_sbox.bg_color = Color(col.r * 0.30, col.g * 0.30, col.b * 0.30, 1.0)
+		hover_sbox.set_border_width_all(1)
+		hover_sbox.border_color = col
+		hover_sbox.set_content_margin_all(6)
+		btn.add_theme_stylebox_override("normal",   normal_sbox)
+		btn.add_theme_stylebox_override("hover",    hover_sbox)
+		btn.add_theme_stylebox_override("pressed",  hover_sbox)
+		btn.add_theme_stylebox_override("focus",    normal_sbox)
+		btn.add_theme_stylebox_override("disabled", normal_sbox)
+		btn.add_theme_color_override("font_color",          col)
+		btn.add_theme_color_override("font_hover_color",    Color.WHITE)
+		btn.add_theme_color_override("font_pressed_color",  Color.WHITE)
+		btn.add_theme_color_override("font_disabled_color", Color(col.r * 0.3, col.g * 0.3, col.b * 0.3, 1.0))
+		btn.disabled = already_used
+		var cap_ch : int = int(ch["channel"])
+		btn.pressed.connect(func():
+			_hide_filter_panel()
+			emit_signal("filter_selected", cap_ch)
+		)
+		hbox.add_child(btn)
+	add_child(panel)
+	_filter_panel = panel
+
+
+func _hide_filter_panel() -> void:
+	if is_instance_valid(_filter_panel):
+		_filter_panel.queue_free()
+	_filter_panel = null
 
 
 ## Switch between enemy targeting and ally targeting.
@@ -272,7 +355,7 @@ func _update_drift(delta: float) -> void:
 			var box : Button = e["box"]
 			if not is_instance_valid(box):
 				continue
-			var lbl_panel : PanelContainer = e["label_panel"]
+			var lbl_panel : Control = e["label_panel"]
 
 			# ── Position drift ──────────────────────────────────────────────
 			# Determine which viewport this box lives in and its centre
@@ -370,32 +453,36 @@ func _update_drift(delta: float) -> void:
 			var cycle2    : bool  = coloured2 and th2.allow_hue_cycle()
 			var pulse2    : float = 0.70 + 0.30 * sin(t_sec2 * 1.8 + neon2.h * TAU)
 			# Label text is always white; panel carries the colour when active
-			if is_instance_valid(lbl_panel):
-				var psbox2 := lbl_panel.get_theme_stylebox("panel") as StyleBoxFlat
-				if psbox2:
-					if coloured2:
-						if cycle2:
-							# VAPORWAVE: complement hue panel
-							var hue2 : float = fmod(neon2.h + t_sec2 * 0.08 + float(e.get("orbit_phase", 0.0)) * 0.05, 1.0)
-							var comp2 : float = fmod(hue2 + 0.5, 1.0)
-							var panel_val : float = 0.38 + 0.10 * sin(t_sec2 * 1.1 + comp2 * TAU)
-							psbox2.bg_color = Color.from_hsv(comp2, 0.80, panel_val, 1.0)
-						else:
-							# TACTICAL: dark version of the base colour
-							var fade : float = 0.25
-							psbox2.bg_color = Color(neon2.r * fade, neon2.g * fade, neon2.b * fade, 1.0)
+			if is_instance_valid(lbl_panel) and lbl_panel is ColorRect:
+				var cr := lbl_panel as ColorRect
+				if coloured2:
+					if cycle2:
+						var hue2 : float = fmod(neon2.h + t_sec2 * 0.08 + float(e.get("orbit_phase", 0.0)) * 0.05, 1.0)
+						var comp2 : float = fmod(hue2 + 0.5, 1.0)
+						var panel_val : float = 0.38 + 0.10 * sin(t_sec2 * 1.1 + comp2 * TAU)
+						cr.color = Color.from_hsv(comp2, 0.80, panel_val, 1.0)
 					else:
-						psbox2.bg_color = Color(0.08, 0.08, 0.08, 1.0)
+						var fade : float = 0.25
+						cr.color = Color(neon2.r * fade, neon2.g * fade, neon2.b * fade, 1.0)
+				else:
+					cr.color = Color(0.08, 0.08, 0.08, 1.0)
 			box.position = dp - box.size * 0.5
 			if is_instance_valid(lbl_panel):
 				# modulate drives all alpha — don’t encode it in the stylebox too
 				lbl_panel.modulate = Color.WHITE
 				var lp := dp + Vector2(BOX_W * 0.5 + LABEL_PAD, -BOX_H * 0.5)
+				const _P := 4.0
 				lbl_panel.position = lp
+				var lv : VBoxContainer = e.get("label_vbox")
+				if is_instance_valid(lv):
+					# lv is a child of lbl_panel at fixed offset (LBL_PAD, LBL_PAD).
+					# Size the panel to wrap around it.
+					var lv_min := lv.get_minimum_size()
+					lbl_panel.size = Vector2(lv_min.x + _P * 2.0, lv_min.y + _P * 2.0)
 				for j in e["detail_nodes"].size():
 					var dn : Control = e["detail_nodes"][j]
 					if is_instance_valid(dn):
-						dn.position = lp + Vector2(0.0, float(j + 1) * 26.0)
+						dn.position = lp + Vector2(0.0, lbl_panel.size.y + float(j) * 22.0)
 
 
 # ── Projection ────────────────────────────────────────────────────────────────
@@ -437,7 +524,7 @@ func _build_enemy_boxes() -> void:
 		if not is_instance_valid(enemy) or not enemy.is_alive():
 			continue
 		var float_pos := _enemy_float_pos(i, n)
-		var entry := _make_box_entry(float_pos, enemy.name, enemy, true, "enemy")
+		var entry := _make_box_entry(float_pos, enemy.display_name, enemy, true, "enemy")
 		# Seed display_pos at the actual anchor so no jump occurs
 		var ca := enemy.get_node_or_null("CameraAnchor")
 		var anchor_node : Node3D = ca if ca is Node3D else enemy
@@ -447,7 +534,7 @@ func _build_enemy_boxes() -> void:
 			entry["display_pos"]   = initial_pos
 			# Also move the actual nodes so they match display_pos from frame 0
 			var b : Button = entry["box"]
-			var lp_node : PanelContainer = entry["label_panel"]
+			var lp_node : Control = entry["label_panel"]
 			if is_instance_valid(b):
 				b.position = initial_pos - b.size * 0.5
 			if is_instance_valid(lp_node):
@@ -462,7 +549,7 @@ func _build_ally_boxes() -> void:
 		if not is_instance_valid(ally) or not ally.is_alive():
 			continue
 		var float_pos := _ally_float_pos(i, n)
-		var entry := _make_box_entry(float_pos, ally.name, ally, false, "ally")
+		var entry := _make_box_entry(float_pos, ally.display_name, ally, false, "ally")
 		# Seed display_pos at the actual anchor (left cam)
 		var ca := ally.get_node_or_null("CameraAnchor")
 		var anchor_node : Node3D = ca if ca is Node3D else ally
@@ -471,7 +558,7 @@ func _build_ally_boxes() -> void:
 			entry["anchor_screen"] = initial_pos
 			entry["display_pos"]   = initial_pos
 			var b : Button = entry["box"]
-			var lp_node : PanelContainer = entry["label_panel"]
+			var lp_node : Control = entry["label_panel"]
 			if is_instance_valid(b):
 				b.position = initial_pos - b.size * 0.5
 			if is_instance_valid(lp_node):
@@ -545,21 +632,34 @@ func _make_box_entry(float_pos: Vector2, label: String,
 		box.add_theme_stylebox_override(k, sbox)
 	add_child(box)
 
-	# Dark panel behind label text
-	var lbl_panel := PanelContainer.new()
-	var psbox := StyleBoxFlat.new()
-	# Start plain dark — colour is applied each frame once a skill is selected
-	psbox.bg_color = Color(0.08, 0.08, 0.08, 1.0)
-	psbox.set_corner_radius_all(0)
-	psbox.set_content_margin_all(3)
-	psbox.set_border_width_all(0)
-	lbl_panel.add_theme_stylebox_override("panel", psbox)
+	const LBL_MAX_W := 140.0
+	const LBL_PAD   := 4.0
+	var lbl_offset  := Vector2(BOX_W * 0.5 + LABEL_PAD, -BOX_H * 0.5)
+
+	# Measure natural (unwrapped) label width first.
+	var measure_lbl := Label.new()
+	measure_lbl.text = label.to_upper()
+	measure_lbl.add_theme_font_size_override("font_size", FONT_SIZE_LBL)
+	if _font: measure_lbl.add_theme_font_override("font", _font)
+	add_child(measure_lbl)  # must be in tree to measure
+	var natural_w : float = measure_lbl.get_minimum_size().x
+	remove_child(measure_lbl)
+	measure_lbl.queue_free()
+	var col_w : float = minf(natural_w, LBL_MAX_W)
+
+	var lbl_panel := ColorRect.new()
+	lbl_panel.color = Color(0.08, 0.08, 0.08, 1.0)
 	lbl_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lbl_panel.position = float_pos + lbl_offset
 	add_child(lbl_panel)
 
+	# VBoxContainer is child of ColorRect — positioned at (0,0) inside it.
+	# We set lbl_panel.size manually each frame from lbl_vbox.get_minimum_size().
 	var lbl_vbox := VBoxContainer.new()
 	lbl_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	lbl_vbox.add_theme_constant_override("separation", 2)
+	lbl_vbox.position = Vector2(LBL_PAD, LBL_PAD)
+	lbl_vbox.size = Vector2(col_w, 0.0)
 	lbl_panel.add_child(lbl_vbox)
 
 	var lbl_node := Label.new()
@@ -567,10 +667,9 @@ func _make_box_entry(float_pos: Vector2, label: String,
 	lbl_node.add_theme_font_size_override("font_size", FONT_SIZE_LBL)
 	if _font: lbl_node.add_theme_font_override("font", _font)
 	lbl_node.add_theme_color_override("font_color", Color.WHITE)
+	lbl_node.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl_node.custom_minimum_size = Vector2(col_w, 0.0)
 	lbl_vbox.add_child(lbl_node)
-
-	# Position panel to the right of the box initially
-	lbl_panel.position = float_pos + Vector2(BOX_W * 0.5 + LABEL_PAD, -BOX_H * 0.5)
 
 	var entry := {
 		"box":           box,
@@ -934,6 +1033,8 @@ func _slide_to_float(entry: Dictionary) -> void:
 	entry["at_anchor"] = false
 	entry["edge_push"] = false   # always clear push when returning to float
 	_hide_detail(entry)
+	if entry.get("data_type") == "skill":
+		_hide_filter_panel()
 	if is_instance_valid(entry.get("tween")):
 		(entry["tween"] as Tween).kill()
 	var lbl_node : Label = entry["label_node"]
@@ -996,7 +1097,7 @@ func _show_detail(entry: Dictionary) -> void:
 				lines.append("STRUCT  %d/%d" % [part.current_part_hp, part.max_part_hp])
 
 	# Each detail line gets its own dark panel, stacked below the label panel
-	var lbl_panel : PanelContainer = entry["label_panel"]
+	var lbl_panel : Control = entry["label_panel"]
 	for i in lines.size():
 		var dp_node := PanelContainer.new()
 		var psbox := StyleBoxFlat.new()

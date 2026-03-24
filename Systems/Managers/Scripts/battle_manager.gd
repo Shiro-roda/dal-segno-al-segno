@@ -164,6 +164,7 @@ func _ready():
 		reticle_ui.part_selected.connect(_on_radial_part_chosen)
 		reticle_ui.confirmed.connect(_on_radial_confirmed)
 		reticle_ui.cancelled.connect(_on_reticle_cancelled)
+		reticle_ui.filter_selected.connect(_on_radial_filter_chosen)
 
 	call_deferred("emit_signal", "battle_manager_ready")
 	
@@ -321,7 +322,9 @@ func spawn_players():
 
 		var actor = char_data.battle_scene.instantiate()
 		
-		actor.name = char_data.display_name
+		actor.name         = char_data.display_name
+		actor.display_name = char_data.display_name
+		actor.log_name     = char_data.get_log_name()
 		actor.team = BattleActor.Team.PLAYER
 		actor.max_hp = member_data.character.base_max_hp + member_data.bonus_max_hp
 		actor.hp = member_data.current_hp
@@ -348,7 +351,9 @@ func spawn_enemies():
 
 		var actor : BattleActor = char_data.battle_scene.instantiate()
 		
-		actor.name = char_data.display_name
+		actor.name         = char_data.display_name
+		actor.display_name = char_data.display_name
+		actor.log_name     = char_data.get_log_name()
 		actor.team = BattleActor.Team.ENEMY
 		actor.max_hp = char_data.base_max_hp
 		actor.attack_power = char_data.base_attack
@@ -933,10 +938,13 @@ func update_ui_state():
 			battle_ui.set_confirm_enabled(false)
 
 		InputStage.FILTER:
-			battle_ui.show()  # restore legacy panel for filter/confirm stages
 			focus_idle_orbit()
-			battle_ui.show_filter_options()
-			battle_ui.set_confirm_enabled(false)
+			if is_instance_valid(reticle_ui):
+				reticle_ui.show_filter_options(removed_channels)
+			else:
+				battle_ui.show()
+				battle_ui.show_filter_options()
+				battle_ui.set_confirm_enabled(false)
 
 		InputStage.CONFIRM:
 			battle_ui.show()
@@ -1057,6 +1065,8 @@ func _on_radial_part_chosen(part: BodyPartData) -> void:
 
 func _on_radial_filter_chosen(channel: int) -> void:
 	selected_filter = channel
+	input_stage = InputStage.CONFIRM
+	_on_confirm_pressed()
 
 
 func _on_radial_confirmed() -> void:
@@ -1089,6 +1099,16 @@ func _on_reticle_skill_chosen(skill: Dictionary) -> void:
 				support_targeting = true  # default: ally
 		"special":
 			support_targeting = is_ally_target
+			# Kendall's Unveil: ammo user with a special routes to FILTER (channel picker)
+			var _is_ammo_user := active_player_actor != null and \
+				(active_player_actor.party_member == null or \
+				 not active_player_actor.party_member.has_will())
+			if _is_ammo_user:
+				input_stage = InputStage.FILTER
+				if is_instance_valid(reticle_ui):
+					reticle_ui.set_support_targeting(false)
+				update_ui_state()
+				return
 		_:
 			support_targeting = false
 	if is_instance_valid(reticle_ui):

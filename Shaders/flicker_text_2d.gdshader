@@ -4,6 +4,7 @@ render_mode unshaded;
 uniform float flicker_speed : hint_range(0.1, 20.0) = 4.0;
 uniform float pixel_size : hint_range(1.0, 50.0) = 8.0;
 uniform float flicker_intensity : hint_range(0.0, 1.0) = 0.3;
+uniform vec4 font_color   : source_color = vec4(1.0, 1.0, 1.0, 1.0);
 
 uniform vec4 shadow_color : source_color = vec4(0.0, 0.0, 0.0, 1.0);
 // Integer pixel-grid steps for shadow offset
@@ -12,7 +13,15 @@ uniform vec2 shadow_pixel_steps = vec2(1.0, -1.0);
 uniform float interlace_jitter : hint_range(0.0, 8.0) = 0.0;
 
 float hash(vec2 p) {
-    return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453123);
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+}
+
+float flicker_on(vec2 pix, float speed, float intensity) {
+    float phase   = hash(pix);
+    float rate    = 0.5 + hash(pix + vec2(7.3, 13.7));
+    float t_frame = floor(TIME * speed * rate + phase * 97.3);
+    float rnd     = hash(pix + vec2(t_frame * 0.1371, t_frame * 0.7913));
+    return step(intensity, rnd);
 }
 
 void fragment() {
@@ -37,20 +46,13 @@ void fragment() {
     vec2 pix_uv = floor(UV * screen_size / pixel_size);
 
     // --- Text flicker ---
-    float rnd = hash(pix_uv);
-    float f   = sin(TIME * flicker_speed + rnd * 20.0) * 0.5 + 0.5;
-    float on  = step(flicker_intensity, f) * glyph;
+    float on = flicker_on(pix_uv, flicker_speed, flicker_intensity) * glyph;
 
     // --- Shadow flicker ---
-    // Sample the flicker of the text pixel that casts this shadow.
-    // Shadow pixel at P is cast by the text pixel at P - shadow_pixel_steps.
-    vec2 src_pix_uv = pix_uv - floor(shadow_pixel_steps);
-    float src_rnd   = hash(src_pix_uv);
-    float src_f     = sin(TIME * flicker_speed + src_rnd * 20.0) * 0.5 + 0.5;
-    // Shadow glyph mask: sample TEXTURE at the source UV
-    vec2 src_uv       = (src_pix_uv * pixel_size) / screen_size;
+    vec2 src_pix_uv    = pix_uv - floor(shadow_pixel_steps);
+    vec2 src_uv        = (src_pix_uv * pixel_size) / screen_size;
     float shadow_glyph = texture(TEXTURE, src_uv).a;
-    float shadow_on    = step(flicker_intensity, src_f) * shadow_glyph;
+    float shadow_on    = flicker_on(src_pix_uv, flicker_speed, flicker_intensity) * shadow_glyph;
 
     // Text wins; shadow only where text is off at this pixel
     float use_shadow = (1.0 - step(0.5, on)) * shadow_on;
@@ -60,5 +62,5 @@ void fragment() {
 
     // Output: text color preserved from TEXTURE RGB, shadow is flat color
     vec4 text_sample = texture(TEXTURE, jitter_uv);
-    COLOR = on > 0.5 ? vec4(text_sample.rgb, 1.0) : shadow_color;
+    COLOR = on > 0.5 ? vec4(font_color.rgb, 1.0) : shadow_color;
 }

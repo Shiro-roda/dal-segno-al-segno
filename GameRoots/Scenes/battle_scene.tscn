@@ -14,6 +14,7 @@
 [ext_resource type="Script" uid="uid://dy7nm6c7r8ulp" path="res://UI/2D/Scripts/BattleUI.gd" id="11_wbvnx"]
 [ext_resource type="Shader" uid="uid://btm2rulspg8el" path="res://Shaders/battleglitch.gdshader" id="12_lvunh"]
 [ext_resource type="Script" uid="uid://cyhiqc5tsl2mm" path="res://UI/2D/Scripts/battle_dialogue_box.gd" id="14_xe0bb"]
+[ext_resource type="Script" uid="uid://3t5g2wj1mm2x" path="res://Systems/Managers/Scripts/tutorial_manager.gd" id="16_y8mdh"]
 [ext_resource type="Script" uid="uid://bm3xqpsekoqep" path="res://UI/2D/Scripts/battle_reticle_ui.gd" id="16_yw742"]
 
 [sub_resource type="Resource" id="Resource_26idg"]
@@ -309,3 +310,4 @@ script = ExtResource("14_xe0bb")
 script = ExtResource("16_yw742")
 
 [node name="TutorialManager" type="Node" parent="." unique_id=1875854761]
+script = ExtResource("16_y8mdh")

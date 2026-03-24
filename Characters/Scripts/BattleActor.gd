@@ -69,6 +69,15 @@ func reveal_stats() -> void:
 		panel.visible = true
 		for child in panel.get_children():
 			child.visible = true
+## Human-readable name shown in the HUD panel. Set from CharacterData.display_name.
+## Not the same as node.name which Godot sanitises (spaces → underscores).
+var display_name : String = ""
+## Short name used in battle log lines. Falls back to display_name.
+var log_name : String = ""
+
+func get_log_name() -> String:
+	return log_name if log_name != "" else display_name if display_name != "" else name
+
 var broken_parts_mask : int = 0   # bits set as parts are broken
 var tempo_pool : float = 0.0          # accumulated tempo
 var tempo_bonus : float = 0.0         # temporary flat bonus (e.g. from Evade/Augur)
@@ -110,10 +119,15 @@ func modify_flat(delta: int) -> void:
 
 
 func _ready():
-	
 	base_attack_power = attack_power
 	base_flat_defense = flat_defense
 	add_to_group("battle_actor")
+	# Deep-duplicate body_parts so runtime state (is_broken, current_part_hp, etc.)
+	# doesn't bleed between battles that share the same .tres resource.
+	var fresh : Array[BodyPartData] = []
+	for part in body_parts:
+		fresh.append(part.duplicate_for_battle())
+	body_parts = fresh
 	var panel = find_child("WorldSpacePanel", true, false)
 	if panel and panel.has_method("setup"):
 		panel.setup(self)
@@ -134,7 +148,7 @@ func take_turn(target: BattleActor, part: BodyPartData = null) -> void:
 		emit_signal("turn_finished")
 		return
 	if has_status(STATUS_FROZEN):
-		log_msg("%s is frozen and cannot act." % name)
+		log_msg("%s is frozen and cannot act." % get_log_name())
 		spend_turn()
 		return
 	# All player attacks target a body part; enemies call with part = null
@@ -176,7 +190,7 @@ func take_damage(amount: int, attacker: BattleActor = null) -> void:
 	if has_status("encased"):
 		amount = int(amount * 0.6)
 	if has_status(STATUS_DODGING) and randf() < DODGE_CHANCE:
-		log_msg("%s dodges!" % name)
+		log_msg("%s dodges!" % get_log_name())
 		return
 	# Cover redirect: another actor is absorbing damage for us
 	if cover_source != null and cover_source.is_alive() and cover_source != attacker:
@@ -184,7 +198,7 @@ func take_damage(amount: int, attacker: BattleActor = null) -> void:
 		if cover_source != self:
 			cover_source.take_damage(int(amount), attacker)  # 15% reduction
 			cover_source.party_member.will += int(amount)
-			log_msg("Hue takes the blow for %s." % [name])
+			log_msg("Hue takes the blow for %s." % [get_log_name()])
 			return
 	# Shield: absorb with temporary HP first
 	if shield_hp > 0:
@@ -204,22 +218,17 @@ func take_damage(amount: int, attacker: BattleActor = null) -> void:
 		amount = max(1, int(float(amount * amount) / float(amount + flat)))
 	hp -= amount
 	emit_signal("hp_changed")
-	log_msg("%s takes %d damage." % [name, amount])
+	log_msg("%s takes %d damage." % [get_log_name(), amount])
 	_spawn_damage_number(amount, attacker)
 		# Martyr pain conversion
 	if has_status(STATUS_MARTYR):
-
 		var stored = int(amount * 0.5)
-
 		martyr_bonus_damage += stored
-
-		log_msg("%s drinks deeply from the cup of wrath. (+%d stored damage)" % [name, stored])
-
+		log_msg("%s drinks deeply from the cup of wrath. (+%d stored damage)" % [get_log_name(), stored])
 		# Malice counter
 	if has_status(STATUS_MALICE) and attacker != null and is_alive():
 		var counter_damage = max(1, attack_power)
-
-		log_msg("%s returns the blow." % name)
+		log_msg("%s returns the blow." % get_log_name())
 		
 		await get_tree().create_timer(0.15).timeout
 		await play_attack_animation(attacker, 1.0, 1.0, counter_damage)
@@ -231,7 +240,7 @@ func take_damage(amount: int, attacker: BattleActor = null) -> void:
 
 			malice_source.log_msg(
 				"%s feeds on the spite — restores %d AP."
-				% [malice_source.name, will_gain]
+				% [malice_source.get_log_name(), will_gain]
 			)
 
 
@@ -241,12 +250,12 @@ func take_damage(amount: int, attacker: BattleActor = null) -> void:
 		var heal = max(1, amount / 2)
 		attacker.hp = min(attacker.hp + heal, attacker.max_hp)
 		attacker.emit_signal("hp_changed")
-		log_msg("%s leeches %d CORP from %s." % [attacker.name, heal, name])
+		log_msg("%s leeches %d CORP from %s." % [attacker.get_log_name(), heal, get_log_name()])
 		attacker.on_leech_proc(heal)
 
 	if hp <= 0:
 		hp = 0
-		log_msg("%s has fallen." % name)
+		log_msg("%s has fallen." % get_log_name())
 		emit_signal("died", self)
 		# Do NOT queue_free here — manager handles cleanup in _on_actor_died
 		# so that any in-progress coroutines don't access freed nodes
@@ -497,7 +506,7 @@ func struggle_attack(all_actors: Array, base_damage: int) -> void:
 		return
 	var target = enemies[randi() % enemies.size()]
 	if randf() < STRUGGLE_MISS_CHANCE:
-		log_msg("%s lacked the will to strike true." % name)
+		log_msg("%s lacked the will to strike true." % get_log_name())
 		spend_turn()
 		return
 	# Randomly hit a visible body part if one exists, otherwise hit the actor directly
@@ -506,7 +515,7 @@ func struggle_attack(all_actors: Array, base_damage: int) -> void:
 	var hit_part: bool = not visible_parts.is_empty()
 	if hit_part:
 		var part = visible_parts[randi() % visible_parts.size()]
-		log_msg("%s found the will to strike %s's %s." % [name, target.name, part.part_name])
+		log_msg("%s found the will to strike %s's %s." % [get_log_name(), target.get_log_name(), part.part_name])
 		await play_attack_animation(target, 1.0, 1.0, int((base_damage * 0.5) * part.damage_multiplier))
 		if part.is_cognitohazard:
 			perishing = true
@@ -514,7 +523,7 @@ func struggle_attack(all_actors: Array, base_damage: int) -> void:
 		await play_attack_animation(target, 1.0, 1.0, base_damage)
 	if randf() < STRUGGLE_SELF_CHANCE:
 		var self_dmg = max(1, base_damage / 4)
-		log_msg("%s struggles in vain." % name)
+		log_msg("%s struggles in vain." % get_log_name())
 		take_damage(self_dmg)
 	emit_signal("turn_finished")
 
@@ -580,7 +589,7 @@ func play_attack_animation(target: BattleActor, player_mult, enemy_mult, damage 
 				target.take_damage(damage * (1 - LIFESTEAL_RATIO), self)
 				var heal = max(1, int(damage * LIFESTEAL_RATIO))
 				hp = min(hp + heal, max_hp)
-				log_msg("%s drinks %d CORP from the wound." % [name, heal])
+				log_msg("%s drinks %d CORP from the wound." % [get_log_name(), heal])
 				if has_status(STATUS_MARTYR):
 					martyr_bonus_damage = max(0, martyr_bonus_damage - heal)
 					log_msg("The cup passes from Indra. (-%d damage)" % [heal])
@@ -589,7 +598,7 @@ func play_attack_animation(target: BattleActor, player_mult, enemy_mult, damage 
 				
 			else:
 				if has_status(STATUS_MARTYR) and martyr_bonus_damage > 0:
-					log_msg("%s pours out the cup of wrath. (+%d damage)" % [name, martyr_bonus_damage])
+					log_msg("%s pours out the cup of wrath. (+%d damage)" % [get_log_name(), martyr_bonus_damage])
 				target.take_damage(final_damage, self)
 
 
@@ -610,9 +619,9 @@ func play_attack_animation(target: BattleActor, player_mult, enemy_mult, damage 
 		print("You saw something you shouldn't have.")
 		emit_signal("turn_finished")
 		if damage >= hp:
-			log_msg("%s understood the price all too well." % [name])
+			log_msg("%s understood the price all too well." % [get_log_name()])
 		else:
-			log_msg("%s underestimated the price of understanding." % [name])
+			log_msg("%s underestimated the price of understanding." % [get_log_name()])
 		take_damage(damage)
 		perishing = false
 
@@ -651,12 +660,20 @@ func get_part_anchor(part: BodyPartData) -> Node3D:
 
 
 func _on_part_broken(part: BodyPartData) -> void:
-	log_msg("%s's %s gives way!" % [name, part.part_name])
+	log_msg("%s's %s dissolves." % [get_log_name(), part.part_name])
 	if part.break_mask_bit > 0:
 		broken_parts_mask |= part.break_mask_bit
 	if not part.on_break_status.is_empty():
 		apply_status(part.on_break_status, part.on_break_duration)
-		log_msg("%s is %s." % [name, part.on_break_status])
+		log_msg("%s is %s." % [get_log_name(), part.on_break_status])
+	if part.on_break_sharp_delta != 0:
+		modify_attack(part.on_break_sharp_delta)
+		var word := "ascends" if part.on_break_sharp_delta > 0 else "dims"
+		log_msg("%s's SHARP %s." % [get_log_name(), word])
+	if part.on_break_flat_delta != 0:
+		modify_flat(part.on_break_flat_delta)
+		var word := "ascends" if part.on_break_flat_delta > 0 else "dims"
+		log_msg("%s's FLAT %s." % [get_log_name(), word])
 	emit_signal("hp_changed")  # refresh HUD
 
 

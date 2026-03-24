@@ -12,9 +12,13 @@ uniform vec4  shadow_color : source_color = vec4(0.0,0.0,0.0,0.72);
 
 uniform vec2 shadow_offset = vec2(3.0, 3.0);
 
+
+
 float hash(vec2 p){
-    return fract(sin(dot(p, vec2(127.1,311.7))) * 43758.5453);
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
 }
+
+
 
 void fragment() {
 

@@ -12,7 +12,17 @@ uniform vec3 shadow_color : source_color = vec3(0.0);
 uniform vec2 shadow_pixel_steps = vec2(1.0, -1.0);
 
 float hash(vec2 p) {
-    return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453123);
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+}
+
+// Each pixel gets an independent random on/off state that changes at its own rate.
+// phase_seed is unique per pixel; time_bucket quantises TIME so state holds briefly.
+float flicker_on(vec2 pix, float speed, float intensity) {
+    float phase   = hash(pix);                              // [0,1) unique per cell
+    float rate    = 0.5 + hash(pix + vec2(7.3, 13.7));     // [0.5,1.5) per-cell rate
+    float t_frame = floor(TIME * speed * rate + phase * 97.3); // quantised, per-cell offset
+    float rnd     = hash(pix + vec2(t_frame * 0.1371, t_frame * 0.7913));
+    return step(intensity, rnd);
 }
 
 void fragment() {
@@ -20,17 +30,11 @@ void fragment() {
     vec2 pix_uv = floor(vec2(UV.x * pixel_size * uv_aspect, UV.y * pixel_size));
 
     // --- Text layer ---
-    float rnd = hash(pix_uv);
-    float f   = sin(TIME * flicker_speed + rnd * 20.0) * 0.5 + 0.5;
-    float on  = step(flicker_intensity, f);
+    float on = flicker_on(pix_uv, flicker_speed, flicker_intensity);
 
     // --- Shadow layer ---
-    // This pixel's shadow is cast by the text pixel at (pix_uv - shadow_pixel_steps).
-    // Subtract the offset to find the source text pixel, hash that, get its flicker.
     vec2 src_pix_uv = pix_uv - floor(shadow_pixel_steps);
-    float src_rnd   = hash(src_pix_uv);
-    float src_f     = sin(TIME * flicker_speed + src_rnd * 20.0) * 0.5 + 0.5;
-    float shadow_on = step(flicker_intensity, src_f);
+    float shadow_on = flicker_on(src_pix_uv, flicker_speed, flicker_intensity);
 
     // Text wins; shadow only where this pixel has no text
     float use_shadow = (1.0 - on) * shadow_on;

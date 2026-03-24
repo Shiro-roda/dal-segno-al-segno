@@ -7,7 +7,7 @@ class_name BattleIntroSplash
 # Await play(lines) to block until all lines have finished.
 
 # ── Timing ────────────────────────────────────────────────────────────────────
-const HOLD_TIME := 3.0# seconds each card is held on screen
+var HOLD_TIME := 3.0# seconds each card is held on screen
 const FLASH_IN_TIME := 0.02   # black gap between cards
 
 # ── Text ──────────────────────────────────────────────────────────────────────
@@ -29,15 +29,16 @@ const BG_COLOR := Color(0.03, 0.02, 0.02, 0.88)
 const SHADER_SYNC_JITTER_PX := 1.5# max horizontal sync-roll in pixels
 const SHADER_SYNC_SPEED := 197.0   # how many times per second the roll snaps
 const SHADER_INTERLACE_PX   := 0.5# per-scanline interlace split in pixels
-const SHADER_NOISE_AMOUNT   := 0.005   # fraction of pixels randomly dark per frame
+const SHADER_NOISE_AMOUNT   := 0.035   # fraction of pixels randomly dark per frame
 
 # ── Colours ───────────────────────────────────────────────────────────────────
 const SPEAKER_COLORS : Dictionary = {
-	"Hue": Color(1.0,  0.92, 0.2,  1.0),
+	"Hue":     Color(1.0,  0.92, 0.2,  1.0),
 	"Indra":   Color(0.532, 1.951, 2.375, 1.0),
 	"Vritra":  Color(2.871, 0.0, 0.904, 1.0),
 	"Kendall": Color(0.88, 0.83, 0.74, 1.0),
-	"Huginn": Color(0.992, 0.749, 0.314, 1.0)
+	"Huginn":  Color(0.992, 0.749, 0.314, 1.0),
+	"Helenus": Color(0.957, 0.867, 0.0),
 }
 const DEFAULT_COLOR := Color(0.0, 0.0, 0.0, 1.0)
 
@@ -46,16 +47,18 @@ const OUTLINE_SIZE  := 10
 
 const SPEAKER_FONTS : Dictionary = {
 	"Kendall": "res://UI/Themes/Fonts/SpaceMono-Bold.ttf",
-	"Hue": "res://UI/Themes/Fonts/Lora/Lora-VariableFont_wght.ttf",
+	"Hue":     "res://UI/Themes/Fonts/Lora/Lora-VariableFont_wght.ttf",
 	"Indra":   "res://UI/Themes/Fonts/Josefin_Slab/JosefinSlab-VariableFont_wght.ttf",
 	"Vritra":  "res://UI/Themes/Fonts/Cormorant_Garamond/CormorantGaramond-Italic-VariableFont_wght.ttf",
+	"Helenus": "res://UI/Themes/Fonts/SpaceMono-Regular.ttf",
 }
 const DEFAULT_FONT := "res://UI/Themes/Fonts/SpaceMono-Italic.ttf"
 
 # ── Internals ─────────────────────────────────────────────────────────────────
-var _label   : Label
-var _mat : ShaderMaterial
-var _blocker : ColorRect
+var _label      : Label
+var _mat_crt    : ShaderMaterial  # chatter_crt — used for all non-Helenus lines
+var _mat_flicker: ShaderMaterial  # flicker_text_2d — used for Helenus lines
+var _blocker    : ColorRect
 
 
 func _ready() -> void:
@@ -95,17 +98,28 @@ func _build_ui() -> void:
 	# Shadow is handled entirely inside the shader; no theme overrides needed
 	anchor.add_child(_label)
 
-	# CRT shader
-	_mat = ShaderMaterial.new()
-	_mat.shader = load("res://Shaders/chatter_crt.gdshader")
-	_mat.set_shader_parameter("sync_jitter_px", SHADER_SYNC_JITTER_PX)
-	_mat.set_shader_parameter("sync_speed", SHADER_SYNC_SPEED)
-	_mat.set_shader_parameter("interlace_px",   SHADER_INTERLACE_PX)
-	_mat.set_shader_parameter("noise_amount",   SHADER_NOISE_AMOUNT)
-	_mat.set_shader_parameter("font_color", DEFAULT_COLOR)
-	_mat.set_shader_parameter("shadow_color",   Color(0.0, 0.0, 0.0, SHADOW_ALPHA))
-	_mat.set_shader_parameter("shadow_offset",  Vector2(SHADOW_OFFSET_X, SHADOW_OFFSET_Y))
-	_label.material = _mat
+	# CRT shader — default for all speakers
+	_mat_crt = ShaderMaterial.new()
+	_mat_crt.shader = load("res://Shaders/chatter_crt.gdshader")
+	_mat_crt.set_shader_parameter("sync_jitter_px", SHADER_SYNC_JITTER_PX)
+	_mat_crt.set_shader_parameter("sync_speed",     SHADER_SYNC_SPEED)
+	_mat_crt.set_shader_parameter("interlace_px",   SHADER_INTERLACE_PX)
+	_mat_crt.set_shader_parameter("noise_amount",   SHADER_NOISE_AMOUNT)
+	_mat_crt.set_shader_parameter("font_color",     DEFAULT_COLOR)
+	_mat_crt.set_shader_parameter("shadow_color",   Color(0.0, 0.0, 0.0, SHADOW_ALPHA))
+	_mat_crt.set_shader_parameter("shadow_offset",  Vector2(SHADOW_OFFSET_X, SHADOW_OFFSET_Y))
+
+	# Flicker shader — Helenus only
+	_mat_flicker = ShaderMaterial.new()
+	_mat_flicker.shader = load("res://Shaders/flicker_text_2d.gdshader")
+	_mat_flicker.set_shader_parameter("flicker_speed",     0.2)
+	_mat_flicker.set_shader_parameter("flicker_intensity", 0.24)
+	_mat_flicker.set_shader_parameter("pixel_size",        50.0)
+	_mat_flicker.set_shader_parameter("shadow_color",      Color(0.0, 0.0, 0.0, SHADOW_ALPHA))
+	_mat_flicker.set_shader_parameter("shadow_pixel_steps",Vector2(0.0, 0.0))
+	_mat_flicker.set_shader_parameter("interlace_jitter",  0.0)
+
+	_label.material = _mat_crt
 
 
 func play(lines: Array, run_state: RunState = null) -> void:
@@ -136,17 +150,18 @@ func _show_line(text: String, speaker: String) -> void:
 	_label.add_theme_color_override("font_outline_color", OUTLINE_COLOR)
 	_label.add_theme_constant_override("outline_size", OUTLINE_SIZE)
 
-	# Pass text and shadow colours to shader
-	_mat.set_shader_parameter("font_color", col)
-	var shadow_col := Color(
-		1.0 - col.r,
-		1.0 - col.g,
-		1.0 - col.b,
-		SHADOW_ALPHA
-	)
-
-	_mat.set_shader_parameter("shadow_color",  shadow_col)
-	_mat.set_shader_parameter("shadow_offset", Vector2(SHADOW_OFFSET_X, SHADOW_OFFSET_Y))
+	if speaker == "Helenus":
+		HOLD_TIME = 6.0
+		_mat_flicker.set_shader_parameter("font_color",   Color(col.r, col.g, col.b, 1.0))
+		_mat_flicker.set_shader_parameter("seed_offset",  randf_range(0.0, 1000.0))
+		_label.material = _mat_flicker
+	else:
+		HOLD_TIME = 3.0
+		var shadow_col := Color(1.0 - col.r, 1.0 - col.g, 1.0 - col.b, SHADOW_ALPHA)
+		_mat_crt.set_shader_parameter("font_color",    col)
+		_mat_crt.set_shader_parameter("shadow_color",  shadow_col)
+		_mat_crt.set_shader_parameter("shadow_offset", Vector2(SHADOW_OFFSET_X, SHADOW_OFFSET_Y))
+		_label.material = _mat_crt
 
 	_label.text = text
 	_label.modulate = Color(1, 1, 1, 0)

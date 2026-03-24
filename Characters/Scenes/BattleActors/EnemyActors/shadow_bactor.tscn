@@ -23,6 +23,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1034403, 0)
 script = ExtResource("3_33l1f")
 
 [node name="HpDisplay" parent="WorldSpacePanel" unique_id=1429397145 instance=ExtResource("4_aw60n")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.35729575, 0)
 script = ExtResource("6_scve4")
 token_large_scene = ExtResource("6_imxug")
 token_small_scene = ExtResource("7_qw5nu")
@@ -36,7 +37,6 @@ repel_strength = 6.0
 repel_distance = 0.09
 
 [node name="WillRing" parent="WorldSpacePanel" unique_id=887065047 instance=ExtResource("9_qw5nu")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.16930032, 0)
 
 [node name="PartAnchors" type="Node3D" parent="." unique_id=874083461]
 

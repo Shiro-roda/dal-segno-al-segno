@@ -4,6 +4,10 @@ class_name GameControl
 static var current_run : RunState
 static var current_dungeon_run : DungeonRunState
 
+## Set to true once the player has completed the tutorial battle.
+## Persists for the session; reset only on a full game restart.
+static var tutorial_complete : bool = false
+
 var dungeon_layer
 var battle_layer
 var event_layer
@@ -24,7 +28,7 @@ func _ready():
 
 	await _wait_for_controllers()
 
-	start_new_game()
+	_show_start_screen()
 
 
 func _wait_for_layers():
@@ -47,27 +51,119 @@ func _wait_for_controllers():
 
 
 func start_new_game():
+	_begin_game_flow()
 
-	var run = RunState.new()
 
-	# Kendall is always in the party
-	var member = PartyMemberData.new()
+func _show_start_screen() -> void:
+	clear_layer(event_layer)
+	var screen := preload("res://UI/2D/Scenes/start_screen.tscn").instantiate()
+	event_layer.add_child(screen)
+	dungeon_layer.visible = false
+	battle_layer.visible  = false
+	world_layer.visible   = false
+	event_layer.visible   = true
+	screen.play_intro.connect(func():
+		clear_layer(event_layer)
+		event_layer.visible = false
+		_start_intro_scene())
+	screen.skip_intro.connect(func():
+		clear_layer(event_layer)
+		event_layer.visible = false
+		_begin_game_flow())
+
+
+## Load the intro level into the world layer.
+func _start_intro_scene() -> void:
+	load_world_scene("res://Environments/Levels/Scenes/white_test.tscn")
+
+
+## Returns the SubViewport inside WorldLayer.
+func _get_world_viewport() -> SubViewport:
+	return world_layer.get_node("SubViewportContainer/SubViewport") as SubViewport
+
+
+## Load a world level scene into the SubViewport inside WorldLayer.
+## The SubViewport has its own camera context — no conflict with the dungeon camera.
+func load_world_scene(scene_path: String) -> void:
+	var vp := _get_world_viewport()
+	for c in vp.get_children(): c.queue_free()
+	var level := (load(scene_path) as PackedScene).instantiate()
+	vp.add_child(level)
+	dungeon_layer.visible = false
+	battle_layer.visible  = false
+	event_layer.visible   = false
+	world_layer.visible   = true
+
+
+## Suppress or restore the dungeon map's camera so it doesn't fight
+## with cameras inside world-layer level scenes.
+func _set_dungeon_camera_active(active: bool) -> void:
+	var map := get_tree().get_first_node_in_group("dungeon_map_3d")
+	if map == null:
+		return
+	var cam := map.get_node_or_null("CameraPivot/Camera3D") as Camera3D
+	if cam:
+		cam.current = active
+		cam.set_process(active)
+		cam.set_physics_process(active)
+	var host := map.get_node_or_null("CameraPivot/Camera3D/PhantomCameraHost")
+	if host:
+		host.set_process(active)
+		host.set_physics_process(active)
+
+
+## Load world level scene into the world layer.
+## Build the run and proceed to tutorial or companion select.
+func _begin_game_flow() -> void:
+	var vp := _get_world_viewport()
+	for c in vp.get_children(): c.queue_free()
+	world_layer.visible = false
+	var run := RunState.new()
+	var member := PartyMemberData.new()
 	member.init_from_character(preload("res://Characters/Resources/Party/kendall.tres"))
 	run.party_members.append(member)
-
-	# All three supports available; player picks one via companion-select event
 	run.available_supports = [
 		preload("res://Characters/Resources/Party/hue.tres"),
 		preload("res://Characters/Resources/Party/indra.tres"),
 		preload("res://Characters/Resources/Party/vritra.tres"),
 	]
-
 	start_new_run(run)
-
-	# Show companion select before entering the dungeon
+	if not tutorial_complete:
+		_start_tutorial_battle(run)
+		return
 	var select_scene := preload("res://Events/Scenes/companion_select.tscn")
-	var dungeon_data := preload("res://Dungeons/Resources/test_dungeon.tres")
+	var dungeon_data  := preload("res://Dungeons/Resources/test_dungeon.tres")
+	_start_companion_select(select_scene, dungeon_data)
 
+
+func _start_tutorial_battle(run: RunState) -> void:
+	dungeon_layer.visible = false
+	event_layer.visible = false
+	battle_layer.visible = true
+	_set_dungeon_map_visible(false)
+	clear_layer(battle_layer)
+
+	var battle_scene := preload("res://GameRoots/Scenes/battle_scene.tscn").instantiate()
+	battle_layer.add_child(battle_scene)
+
+	var manager := battle_scene.get_node("BattleManager")
+	var context := BattleContext.new()
+	context.encounter = preload("res://Encounters/Resources/Tutorial/tutorial.tres")
+	context.run_state  = run
+	manager.start_battle_with_context(context)
+
+	manager.battle_finished.connect(_on_tutorial_battle_finished)
+
+
+func _on_tutorial_battle_finished(_victory: bool, _exp: Dictionary = {}, _lvl: Dictionary = {}) -> void:
+	tutorial_complete = true
+	AudioManagerAuto.reset_ambience()
+	AudioManagerAuto.fade_out_bgm()
+	clear_layer(battle_layer)
+	battle_layer.visible = false
+
+	var select_scene := preload("res://Events/Scenes/companion_select.tscn")
+	var dungeon_data  := preload("res://Dungeons/Resources/test_dungeon.tres")
 	_start_companion_select(select_scene, dungeon_data)
 
 
@@ -116,6 +212,7 @@ func _reset_channel_shader() -> void:
 
 
 func start_battle(encounter, dungeon_run_state: DungeonRunState = null):
+
 	_reset_channel_shader()
 	dungeon_layer.visible = false
 	event_layer.visible = false
@@ -174,7 +271,7 @@ func _on_battle_finished(victory, exp_per_member: Dictionary = {}, level_up_even
 			if dc:
 				dc.on_party_defeated()
 			else:
-				start_new_game()
+				_begin_game_flow()
 			return
 		event_layer.visible = false
 		dungeon_layer.visible = true
@@ -221,15 +318,40 @@ func start_world(scene: PackedScene):
 
 	clear_layer(world_layer)
 
-	var world = scene.instantiate()
-
-	world_layer.add_child(world)
-
 	dungeon_layer.visible = false
 	battle_layer.visible = false
 	event_layer.visible = false
 	world_layer.visible = true
 	_set_dungeon_map_visible(false)
+
+	var world = scene.instantiate()
+	world_layer.add_child(world)
+
+	# Make the scene's Camera3D current immediately so get_viewport().get_camera_3d()
+	# returns a valid camera on the first PhantomCamera process tick.
+	var cam := _find_first_camera(world)
+	if cam:
+		cam.make_current()
+
+
+func _find_first_camera(node: Node) -> Camera3D:
+	if node is Camera3D:
+		return node
+	for child in node.get_children():
+		var result := _find_first_camera(child)
+		if result:
+			return result
+	return null
+
+
+func _collect_phantom_hosts(node: Node, result: Array) -> void:
+	# PhantomCameraHost is a scripted class — check via is_class or script name.
+	if node.get_script() != null:
+		var sn : String = node.get_script().get_global_name()
+		if sn == "PhantomCameraHost":
+			result.append(node)
+	for child in node.get_children():
+		_collect_phantom_hosts(child, result)
 
 
 func start_dungeon(dungeon_data: DungeonData):

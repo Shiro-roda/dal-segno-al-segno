@@ -2,50 +2,96 @@
 
 [ext_resource type="PackedScene" uid="uid://ceaxxejcpwwch" path="res://Environments/Battlefields/Scenes/battle_field_morning.tscn" id="1_tut"]
 [ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://Systems/PartySys/Scripts/characterdata.gd" id="2_tut"]
-[ext_resource type="Resource" uid="uid://cqcjsnswptvk8" path="res://Characters/Resources/Enemies/shadow1.tres" id="3_tut"]
+[ext_resource type="PackedScene" uid="uid://433fpucnuqkf" path="res://Characters/Scenes/BattleActors/EnemyActors/shadow_bactor.tscn" id="3_x06xt"]
+[ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://Systems/AnatomySys/Scripts/BodyPartData.gd" id="4_ndqax"]
 [ext_resource type="Script" uid="uid://b57cevaydtkqm" path="res://UI/Dialogue/Scripts/splash_line.gd" id="4_tut"]
+[ext_resource type="Resource" uid="uid://ymwcc5pm8aal" path="res://Systems/AnatomySys/Resources/antumbra.tres" id="5_ghtej"]
 [ext_resource type="Resource" uid="uid://dh41c43q5ekyx" path="res://Audio/Tracks/yellow.tres" id="5_tut"]
 [ext_resource type="Script" uid="uid://coeqyvqijtkns" path="res://Encounters/Scripts/encounterdata.gd" id="6_tut"]
+[ext_resource type="Resource" uid="uid://bv8nc0eu2eq6j" path="res://Systems/AnatomySys/Resources/penumbra.tres" id="6_x5g26"]
+[ext_resource type="Resource" uid="uid://s8d8wab3g0yr" path="res://Systems/AnatomySys/Resources/umbra.tres" id="7_pn17s"]
 [ext_resource type="Script" uid="uid://divs34wkweat7" path="res://UI/Dialogue/Scripts/dialogue_line.gd" id="7_tut"]
+[ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="8_h3xnh"]
 [ext_resource type="Script" uid="uid://cxogdp046hrx2" path="res://UI/Dialogue/Scripts/encounter_dialogue.gd" id="8_tut"]
 [ext_resource type="Script" uid="uid://pwai87fl2rdy" path="res://UI/2D/Scripts/reticle_theme.gd" id="9_tut"]
 
+[sub_resource type="Resource" id="Resource_x06xt"]
+script = ExtResource("4_ndqax")
+part_name = "Rotten Penumbra"
+required_removed_mask = 2
+damage_multiplier = 1.3
+is_cognitohazard = true
+anchor_path = NodePath("PartAnchors/Head")
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[sub_resource type="Resource" id="Resource_ndqax"]
+script = ExtResource("4_ndqax")
+part_name = "Putrid Penumbra"
+required_removed_mask = 4
+damage_multiplier = 2.0
+is_cognitohazard = true
+anchor_path = NodePath("PartAnchors/Head")
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[sub_resource type="Resource" id="Resource_kjasc"]
+script = ExtResource("2_tut")
+display_name = "Banal Shadow"
+base_max_hp = 24
+base_attack = 3
+tempo = 5
+body_parts = Array[ExtResource("4_ndqax")]([ExtResource("5_ghtej"), ExtResource("6_x5g26"), ExtResource("7_pn17s"), SubResource("Resource_x06xt"), SubResource("Resource_ndqax")])
+battle_scene = ExtResource("3_x06xt")
+metadata/_custom_type_script = "uid://b2t1syvrybco8"
+
 [sub_resource type="Resource" id="Resource_line1"]
 script = ExtResource("7_tut")
-speaker = "Helenus"
-metadata/_custom_type_script = "uid://divs34wkweat7"
-
-[sub_resource type="Resource" id="Resource_line2"]
-script = ExtResource("7_tut")
-speaker = "Helenus"
-metadata/_custom_type_script = "uid://divs34wkweat7"
-
-[sub_resource type="Resource" id="Resource_line3"]
-script = ExtResource("7_tut")
-speaker = "Helenus"
+speaker = "Shoot"
+text = "Blasphemous lethality lies in your hands. Take aim and dispel the fantasias that take refuge here."
+typewriter = false
 metadata/_custom_type_script = "uid://divs34wkweat7"
 
 [sub_resource type="Resource" id="Resource_dialogue"]
 script = ExtResource("8_tut")
-lines = Array[ExtResource("7_tut")]([SubResource("Resource_line1"), SubResource("Resource_line2"), SubResource("Resource_line3")])
+lines = Array[ExtResource("7_tut")]([SubResource("Resource_line1")])
 metadata/_custom_type_script = "uid://cxogdp046hrx2"
 
 [sub_resource type="Resource" id="Resource_splash1"]
 script = ExtResource("4_tut")
-text = "Something stirs in the dark."
+text = "Your mask is yet lifted since last you slept;"
 speaker = "Helenus"
+wait_for_input = true
+metadata/_custom_type_script = "uid://b57cevaydtkqm"
+
+[sub_resource type="Resource" id="Resource_tldio"]
+script = ExtResource("4_tut")
+text = "you are the only one to be seen."
+speaker = "Helenus"
+wait_for_input = true
+metadata/_custom_type_script = "uid://b57cevaydtkqm"
+
+[sub_resource type="Resource" id="Resource_d15t5"]
+script = ExtResource("4_tut")
+text = "But day is breaking."
+speaker = "Helenus"
+wait_for_input = true
+metadata/_custom_type_script = "uid://b57cevaydtkqm"
+
+[sub_resource type="Resource" id="Resource_xds4p"]
+script = ExtResource("4_tut")
+text = "Stifle that truth laid barren below you of your own accord."
+speaker = "Helenus"
+wait_for_input = true
 metadata/_custom_type_script = "uid://b57cevaydtkqm"
 
 [sub_resource type="Resource" id="Resource_reticle"]
 script = ExtResource("9_tut")
-mode = 1
 metadata/_custom_type_script = "uid://pwai87fl2rdy"
 
 [resource]
 script = ExtResource("6_tut")
 battlefield_scene = ExtResource("1_tut")
-enemies = Array[ExtResource("2_tut")]([ExtResource("3_tut")])
-intro_splash = Array[ExtResource("4_tut")]([SubResource("Resource_splash1")])
+enemies = Array[ExtResource("2_tut")]([SubResource("Resource_kjasc")])
+intro_splash = Array[ExtResource("4_tut")]([SubResource("Resource_splash1"), SubResource("Resource_tldio"), SubResource("Resource_d15t5"), SubResource("Resource_xds4p")])
 intro_dialogue = SubResource("Resource_dialogue")
 override_music = ExtResource("5_tut")
 reticle_theme = SubResource("Resource_reticle")

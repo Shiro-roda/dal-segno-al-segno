@@ -4,15 +4,16 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://cul68hj2lh26c"
 path.s3tc="res://.godot/imported/vintage-wallpaper-60__52864.jpg-9a983419b96825a081fdb684f6ef9f85.s3tc.ctex"
+path.etc2="res://.godot/imported/vintage-wallpaper-60__52864.jpg-9a983419b96825a081fdb684f6ef9f85.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 
 [deps]
 
 source_file="res://RecycleBin/assets/Sprites/vintage-wallpaper-60__52864.jpg"
-dest_files=["res://.godot/imported/vintage-wallpaper-60__52864.jpg-9a983419b96825a081fdb684f6ef9f85.s3tc.ctex"]
+dest_files=["res://.godot/imported/vintage-wallpaper-60__52864.jpg-9a983419b96825a081fdb684f6ef9f85.s3tc.ctex", "res://.godot/imported/vintage-wallpaper-60__52864.jpg-9a983419b96825a081fdb684f6ef9f85.etc2.ctex"]
 
 [params]
 

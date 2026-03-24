@@ -56,7 +56,7 @@ func _apply_setup():
 	# HP bar tinted to accent gold
 	hp_bar.modulate = _HUD_ACCENT
 	will_bar.modulate = _HUD_ACCENT
-	name_label.text = actor.name
+	name_label.text = actor.display_name if actor.display_name != "" else actor.name
 	hp_bar.max_value = actor.max_hp
 
 	var has_will = actor.party_member != null and actor.party_member.has_will()

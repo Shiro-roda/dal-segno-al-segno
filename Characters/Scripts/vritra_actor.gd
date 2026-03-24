@@ -37,14 +37,14 @@ const UNWILLING_MAX_WILL_BONUS   = 1
 const CHATTER_VICE = [
 	"Hey tasty~",
 	"C'mere... just want a hug, is all...",
-	" ",
+	"Don't they look soooo good?",
 	" ",
 	" ",
 
 ]
 const CHATTER_MALICE = [
-	" ",
-	" ",
+	"You owe me at least this much.",
+	"Don't just stand there!",
 	" ",
 	" ",
 	" ",
@@ -187,7 +187,7 @@ func _vice(target: BattleActor, part: BodyPartData = null) -> void:
 
 	target.apply_status(STATUS_LIFESTEAL, LEECH_DURATION)
 
-	log_msg("%s blesses %s with a hungry vice — damage dealt restores health." % [name, target.name])
+	log_msg("%s instills a terrible hunger within %s." % [name, target.name])
 
 	emit_signal("turn_finished")
 
@@ -229,7 +229,7 @@ func _constrict_tick() -> void:
 	if constrict_target.team == Team.PLAYER and party_member != null:
 		var will_gain = max(1, int(dmg * LEECH_WILL_RESTORE_RATIO))
 		party_member.restore_will(will_gain)
-		log_msg("%s asphyxiates %s — restores %d will." % [name, constrict_target.name, will_gain])
+		log_msg("%s asphyxiates %s — restores %d AP." % [name, constrict_target.name, will_gain])
 
 	constrict_turns_remaining -= 1
 	if constrict_turns_remaining <= 0 or not constrict_target.is_alive():
@@ -248,10 +248,10 @@ func _end_constrict() -> void:
 
 func _devour(target: BattleActor) -> void:
 	party_member.spend_will(DEVOUR_WILL_COST)
-	var victim = target.name
+	var victim = target.get_log_name()
 	var damage := int(attack_power * DEVOUR_DMG_MULT)
 	say_random(CHATTER_DEVOUR)
-	log_msg("The beast grows voracious." % [name, target.name])
+	log_msg("The beast grows voracious.")
 	await play_attack_animation(target, 3.0, 3.0, damage)
 	if not target:
 		max_hp += DEVOUR_MAX_HP_BONUS

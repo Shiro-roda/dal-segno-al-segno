@@ -111,7 +111,10 @@ func _build_ui() -> void:
 			_divider(exp_vbox)
 			for cname in _level_ups:
 				for ev in _level_ups[cname]:
-					var s := "  +%d %s" % [ev["amount"], ev["stat"].to_upper()] if ev.get("stat", "") != "" else ""
+					var stat_display := {"hp": "CORP", "will": "AP", "sharp": "SHARP", "flat": "FLAT", "tempo": "TEMPO"}
+					var raw_stat : String = ev.get("stat", "")
+					var stat_label : String = stat_display.get(raw_stat, raw_stat.to_upper())
+					var s := "  +%d %s" % [ev["amount"], stat_label] if raw_stat != "" else ""
 					var u := "  UNLOCKED: %s" % ev["unlock"].replace("_", " ").to_upper() if ev.get("unlock", "") != "" else ""
 					var lu := Label.new()
 					lu.text = "%s  →  LV.%d%s%s" % [cname.to_upper(), ev["level"], s, u]

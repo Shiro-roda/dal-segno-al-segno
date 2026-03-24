@@ -143,7 +143,7 @@ func _rebuke(target: BattleActor, part: BodyPartData) -> void:
 		await _cling()
 		return
 	say_random(CHATTER_REBUKE)
-	log_msg("%s wards off your foes." % [name])
+	log_msg("%s wards off your foes." % [get_log_name()])
 	# Snapshot before damage loop — enemies may die and be freed mid-loop
 	var targets := get_opponents()
 	for enemy in targets:
@@ -153,7 +153,7 @@ func _rebuke(target: BattleActor, part: BodyPartData) -> void:
 		enemy.take_damage(dmg, self)
 		if is_instance_valid(enemy) and enemy.is_alive() and randf() < REBUKE_SLOW_CHANCE:
 			enemy.apply_status(STATUS_SLOW, 2)
-			log_msg("%s is slowed." % enemy.name)
+			log_msg("%s is slowed." % enemy.get_log_name())
 	if not is_inside_tree():
 		return
 	await get_tree().create_timer(0.5).timeout
@@ -167,10 +167,10 @@ func _cling() -> void:
 		spend_turn()
 		return
 	var target = enemies[randi() % enemies.size()]
-	log_msg("Hue throws himself at %s." % [target.name])
+	log_msg("Hue throws himself at %s." % [target.get_log_name()])
 	if randf() < 0.75:
 		target.apply_status(STATUS_SLOW, 1)
-		log_msg("%s can't shake Hue off. (slowed)" % [target.name])
+		log_msg("%s can't shake Hue off. (slowed)" % [target.get_log_name()])
 	say_random(CHATTER_CLING)
 	
 	var dmg = max(1, randi() % attack_power)
@@ -190,9 +190,9 @@ func _calcify(target: BattleActor, part: BodyPartData = null) -> void:
 	target.apply_status("encased", 0)
 	if part != null:
 		part.apply_status("encased", 0)
-		log_msg("Hue encases %s's %s in ice, guarding them from harm until it melts. (-%s TEMPO)" % [target.name, part.part_name, tempo_penalty])
+		log_msg("Hue entombs %s's %s in ice, guarding them from harm until it melts. (-%s TEMPO)" % [target.get_log_name(), part.part_name, tempo_penalty])
 	else:
-		log_msg("Hue encases %s in ice, guarding them from harm until it melts. (-%s TEMPO)" % [target.name, tempo_penalty])
+		log_msg("Hue entombs %s in ice, guarding them from harm until it melts. (-%s TEMPO)" % [target.get_log_name(), tempo_penalty])
 	say_random(CHATTER_CALCIFY)
 	await get_tree().create_timer(0.5).timeout
 	emit_signal("turn_finished")
@@ -232,19 +232,9 @@ func _embrace(ally: BattleActor) -> void:
 				ally.hp_changed.disconnect(_watch)
 	ally.hp_changed.connect(_watch)
 	say_random(CHATTER_EMBRACE)
-	log_msg("%s covers %s for %d turns." % [name, ally.name, EMBRACE_DURATION])
+	log_msg("%s holds %s tight for %d turns." % [name, ally.name, EMBRACE_DURATION])
 	spend_turn()
 
-
-func _desperate_grasp() -> void:
-	if hp <= SELF_HARM_HP_COST:
-		log_msg("%s is too weak to grasp." % name)
-		spend_turn()
-		return
-	take_damage(SELF_HARM_HP_COST)
-	party_member.restore_will(SELF_HARM_WILL_RESTORE)
-	log_msg("%s trades %d HP for %d will." % [name, SELF_HARM_HP_COST, SELF_HARM_WILL_RESTORE])
-	spend_turn()
 
 
 func take_damage(amount: int, attacker: BattleActor = null) -> void:
@@ -254,4 +244,4 @@ func take_damage(amount: int, attacker: BattleActor = null) -> void:
 		if _embrace_active and struggle_restores_will() and party_member != null:
 			var will_gain: Variant = max(1, int(amount * EMBRACE_WILL_RATIO))
 			party_member.restore_will(will_gain)
-			log_msg("%s endures — love and punishment are one. (+%d AP)" % [name, will_gain])
+			log_msg("%s endures (+%d AP)" % [name, will_gain])

@@ -626,7 +626,7 @@ func _populate_skill_list() -> void:
 			{"name": "Pistol Whip", "type": "ATTACK",  "cost": "Beatless"},
 			{"name": "Augur",       "type": "SUPPORT", "cost": "2 AP (allies)"},
 			{"name": "Evade",       "type": "SUPPORT", "cost": "Ally Unwilling"},
-			{"name": "Change Lens", "type": "SPECIAL", "cost": "2 AP (allies)"},
+			{"name": "Unveil", "type": "SPECIAL", "cost": "2 AP (allies)"},
 		]},
 		{"character": "Hue", "skills": [
 			{"name": "Rebuke",  "type": "ATTACK (AoE)",  "cost": "1 AP"},

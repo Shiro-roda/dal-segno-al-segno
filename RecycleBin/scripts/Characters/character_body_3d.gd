@@ -21,6 +21,7 @@ var color = 0
 const CHANNEL_COLORS = [Color.CYAN, Color.MAGENTA, Color.YELLOW]
 
 func _ready() -> void:
+	add_to_group("player")
 	flashlight.light_color = CHANNEL_COLORS[current_channel]
 
 

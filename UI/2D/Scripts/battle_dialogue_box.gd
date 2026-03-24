@@ -178,7 +178,14 @@ func _show_line(line: DialogueLine) -> void:
 	if line.speaker == "Helenus":
 		if _text_lbl.material == null:
 			var mat := ShaderMaterial.new()
-			mat.shader = load("res://Shaders/flicker_text_2d.gdshader")
+			mat.shader = load("res://Shaders/flicker_text.gdshader")
+			mat.set_shader_parameter("text_color", Vector3(1.0, 1.0, 1.0))
+			mat.set_shader_parameter("flicker_speed", 1.0)
+			mat.set_shader_parameter("uv_aspect", 10.0)
+			mat.set_shader_parameter("pixel_size", 5.0)
+			mat.set_shader_parameter("flicker_intensity", 0.14)
+			mat.set_shader_parameter("shadow_color", Vector3(0.0, 0.0, 0.0))
+			mat.set_shader_parameter("shadow_pixel_steps", Vector2(0.0, 0.0))
 			_text_lbl.material = mat
 	else:
 		_text_lbl.material = null

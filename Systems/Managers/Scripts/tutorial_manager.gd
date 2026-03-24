@@ -21,18 +21,20 @@ var _unveil_used       : bool = false
 var _dummy_spawned     : bool = false
 
 # Dummy ally CharacterData resource — a shadow repurposed as a silent companion
-const DUMMY_SCENE := preload("res://Characters/Scenes/BattleActors/EnemyActors/shadow_bactor.tscn")
+const DUMMY_SCENE := preload("res://Characters/Scenes/BattleActors/PartyActors/hue_bactor.tscn")
 
 # ── Dialogue helpers ───────────────────────────────────────────────────────────
 func _make_line(speaker: String, text: String) -> DialogueLine:
 	var l := DialogueLine.new()
 	l.speaker = speaker
 	l.text    = text
+	l.typewriter = false
 	return l
 
 func _make_dialogue(lines: Array) -> EncounterDialogue:
 	var d := EncounterDialogue.new()
-	d.lines = lines
+	for l in lines:
+		d.lines.append(l)
 	return d
 
 func _say(lines: Array) -> void:
@@ -90,7 +92,7 @@ func _on_skill_used(actor: BattleActor, command_key: String) -> void:
 # ── Step completions ──────────────────────────────────────────────────────────
 func _complete_step_0() -> void:
 	# Wait a beat for the attack animation to finish.
-	await get_tree().create_timer(1.2, false).timeout
+	await get_tree().create_timer(2.2, false).timeout
 
 	# Spawn dummy ally
 	_spawn_dummy_ally()
@@ -103,18 +105,17 @@ func _complete_step_0() -> void:
 			kendall.party_member.skill_unlocks.append("Augur")
 
 	_step = 1
-	_apply_skill_lock()
-
 	await _say([
-		_make_line("Helenus", "You are not alone in this."),
-		_make_line("Helenus", "Your companion carries something within them. A reservoir. Will, they call it — the fuel of instinct and intuition."),
-		_make_line("Helenus", "Use Augur. Draw from them. Let their will sharpen your sight — and lend all of you a moment's grace."),
+		_make_line("Augur", "Portentious signs only you can see are all around you, and your companions may benefit from your discernment."),
 	])
+	_apply_skill_lock()
+	if is_instance_valid(_reticle):
+		_manager._open_radial_for_actor(_manager.active_player_actor)
 
 
 func _complete_step_1() -> void:
 	# Wait for augur animation
-	await get_tree().create_timer(1.0, false).timeout
+	await get_tree().create_timer(0.5, false).timeout
 
 	# Unlock Unveil
 	var kendall := _get_kendall()
@@ -123,26 +124,27 @@ func _complete_step_1() -> void:
 			kendall.party_member.skill_unlocks.append("Unveil")
 
 	_step = 2
-	_apply_skill_lock()
-
 	await _say([
-		_make_line("Helenus", "Good. Now look closer."),
-		_make_line("Helenus", "Use Unveil. Strip away what the shadow shows you and find what it hides."),
-		_make_line("Helenus", "Then put a bullet through it."),
+		_make_line("Unveil", "Strip away the pretenses of perception itself to expose your foe's most intimate and fragile disfigurements."),
 	])
+	_apply_skill_lock()
+	if is_instance_valid(_reticle):
+		_manager._open_radial_for_actor(_manager.active_player_actor)
 
 
 func _on_unveil_used() -> void:
 	# Unveil used — now allow attack, prompt them to target a part
+	await get_tree().create_timer(1.0, false).timeout
 	await _say([
-		_make_line("Helenus", "There. You can see it now."),
-		_make_line("Helenus", "Select your target. Take the shot."),
+		_make_line("Shoot again.", "Understand that the price of understanding may be more than you can afford."),
 	])
 
 
 func _complete_step_2() -> void:
 	_step = 3
 	_apply_skill_lock()
+	var kendall = _get_kendall()
+	kendall.party_member.skill_unlocks.resize(0)
 	# Tutorial complete — no further intervention needed
 
 
@@ -185,6 +187,7 @@ func _spawn_dummy_ally() -> void:
 
 	var dummy : Node3D = DUMMY_SCENE.instantiate()
 	dummy.name = "DummyShadow"
+	dummy.display_name = "Ally"
 	dummy.team = BattleActor.Team.PLAYER
 	dummy.max_hp = 10
 	dummy.hp = 10

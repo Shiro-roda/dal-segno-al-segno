@@ -8,11 +8,12 @@ class_name WorldTrigger
 signal triggered
 
 enum TriggerType {
-	DIALOGUE,   # play dialogue then emit triggered
-	BATTLE,     # start a battle via GameController
-	EVENT,      # start an event scene via GameController
-	TRANSITION, # load a new world scene via GameController
-	CUSTOM,     # just emit triggered, world scene handles it
+	DIALOGUE,    # play dialogue then emit triggered
+	BATTLE,      # start a battle via GameController
+	EVENT,       # start an event scene via GameController
+	TRANSITION,  # load a new world scene via GameController
+	GAME_START,  # build run + tutorial/companion-select flow (intro scene use)
+	CUSTOM,      # just emit triggered, world scene handles it
 }
 
 @export var trigger_type   : TriggerType = TriggerType.CUSTOM
@@ -39,7 +40,7 @@ func _on_body_entered(body: Node3D) -> void:
 
 
 func _fire() -> void:
-	var gc = get_tree().get_first_node_in_group("game_controller")
+	var gc = GameController
 
 	match trigger_type:
 		TriggerType.DIALOGUE:
@@ -63,6 +64,10 @@ func _fire() -> void:
 			if gc and world_scene != null:
 				emit_signal("triggered")
 				gc.start_world(world_scene)
+
+		TriggerType.GAME_START:
+			emit_signal("triggered")
+			gc._begin_game_flow()
 
 		TriggerType.CUSTOM:
 			emit_signal("triggered")

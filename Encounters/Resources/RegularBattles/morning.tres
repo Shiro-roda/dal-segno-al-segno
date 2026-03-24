@@ -15,7 +15,6 @@ metadata/_custom_type_script = "uid://b57cevaydtkqm"
 
 [sub_resource type="Resource" id="Resource_03fa2"]
 script = ExtResource("6_03fa2")
-mode = 1
 enemy_color = Color(0, 0, 0, 1)
 part_color = Color(0.2, 0.2, 0.2, 1)
 metadata/_custom_type_script = "uid://pwai87fl2rdy"

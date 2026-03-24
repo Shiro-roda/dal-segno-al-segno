@@ -133,7 +133,7 @@ func push_log(msg: String) -> void:
 
 
 const CHATTER_COLORS : Dictionary = {
-	"Hue":    Color(3.337, 3.085, 0.765, 1.0),  # yellow
+	"Hue":    Color(3.337, 2.606, 0.311, 1.0),  # yellow
 	"Indra":  Color(0.613, 2.318, 2.708, 1.0),  # cerulean
 	"Vritra": Color(2.871, 0.0, 0.904, 1.0),
 }
@@ -286,7 +286,7 @@ func show_augur_panel(enemies: Array) -> void:
 		var entry := _make_augur_entry(enemy)
 		_augur_panel.get_node("VBox").add_child(entry)
 		_augur_labels[enemy] = entry
-	_augur_panel.visible = true
+	#_augur_panel.visible = true
 
 
 func reset_augur_panel() -> void:
