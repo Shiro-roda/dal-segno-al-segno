@@ -33,7 +33,12 @@ const PIP_GAP    := 4
 
 var _run_state    : RunState        = null
 var _dungeon_run  : DungeonRunState = null
-var _phase_lbl    : Label           = null
+var _phase_lbl    : Button          = null   # was Label — Button handles input reliably
+var _phase_sbox : StyleBoxFlat
+var _annotation_lbl : Label         = null
+var _annotation_open : bool         = false
+var _phase_acknowledged : bool      = false  # true once player clicks the phase label
+var _phase_flash_tween  : Tween     = null   # drives the strobe
 var _pip_row      : HBoxContainer   = null
 var _pip_nodes    : Array           = []   # Array[ColorRect]
 var _excess_lbl   : Label           = null  # shows excess ammo pool
@@ -99,10 +104,13 @@ func _build_ui() -> void:
 	bar.set("anchor_top",    0.0)
 	bar.set("anchor_right",  0.0)
 	bar.set("anchor_bottom", 0.0)
+	bar.set("anchor_right",  0.0)
+	bar.set("anchor_bottom", 0.0)
 	bar.set("offset_left",   18.0)
 	bar.set("offset_top",    18.0)
 	bar.set("offset_right",  490.0)
 	bar.set("offset_bottom", 82.0)
+	bar.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	bar.set("mouse_filter",  Control.MOUSE_FILTER_IGNORE)
 	root_ctrl.add_child(bar)
 	_build_bar(bar)
@@ -117,24 +125,51 @@ func _build_bar(bar: Control) -> void:
 	bg_sbox.set_content_margin_all(8)
 
 	var panel := PanelContainer.new()
-	panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.add_theme_stylebox_override("panel", bg_sbox)
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.mouse_filter = Control.MOUSE_FILTER_PASS
 	bar.add_child(panel)
+
+	# Outer VBox — top row + collapsible annotation row
+	var outer_vbox := VBoxContainer.new()
+	outer_vbox.add_theme_constant_override("separation", 0)
+	outer_vbox.mouse_filter = Control.MOUSE_FILTER_PASS
+	panel.add_child(outer_vbox)
 
 	var hbox := HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", 10)
 	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_child(hbox)
+	outer_vbox.add_child(hbox)
 
-	# Phase label
-	_phase_lbl = Label.new()
+	# Phase button — flat button so it looks like a label but takes input reliably.
+	# Generous content margins widen the click area around the text.
+	_phase_sbox = StyleBoxFlat.new()
+	_phase_lbl = Button.new()
 	_phase_lbl.text = "D.C."
 	_phase_lbl.add_theme_font_size_override("font_size", 14)
-	_phase_lbl.add_theme_color_override("font_color", C_PHASE_DC)
-	_phase_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_phase_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_phase_lbl.add_theme_color_override("font_color",         C_PHASE_DC)
+	_phase_lbl.add_theme_color_override("font_hover_color",   C_PHASE_DC)
+	_phase_lbl.add_theme_color_override("font_pressed_color", C_PHASE_DC)
+	_phase_lbl.add_theme_color_override("font_focus_color",   C_PHASE_DC)
+	_phase_lbl.focus_mode = Control.FOCUS_NONE
+	_phase_lbl.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_phase_lbl.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_phase_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_phase_sbox.bg_color = Color(0.329, 0.306, 0.306, 0.05)
+	_phase_sbox.set_border_width_all(0)
+	_phase_sbox.set_content_margin_all(10) # this expands clickable area
+	_phase_lbl.add_theme_constant_override("h_separation", 0) # optional
+	_phase_lbl.add_theme_constant_override("outline_size", 0) # optional
+	for st in ["normal", "hover", "pressed", "focus"]:
+		_phase_lbl.add_theme_stylebox_override(st, _phase_sbox)
+	_phase_lbl.pressed.connect(_on_phase_btn_pressed)
+	_phase_lbl.mouse_entered.connect(_on_phase_hover_enter)
+	_phase_lbl.mouse_exited.connect(_on_phase_hover_exit)
+	_phase_lbl.resized.connect(func():
+		_phase_lbl.pivot_offset = _phase_lbl.size / 2.0
+	)
 	hbox.add_child(_phase_lbl)
 
 	# Vertical divider
@@ -268,6 +303,107 @@ func _build_bar(bar: Control) -> void:
 		_chan_btns.append(cb)
 		hbox.add_child(cb)
 
+	# Annotation row — hidden until phase label is clicked
+	_annotation_lbl = Label.new()
+	_annotation_lbl.add_theme_font_size_override("font_size", 11)
+	_annotation_lbl.add_theme_color_override("font_color", C_DIM)
+	_annotation_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_annotation_lbl.custom_minimum_size = Vector2(440, 0)
+	_annotation_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_annotation_lbl.visible = false
+	outer_vbox.add_child(_annotation_lbl)
+
+
+func _on_phase_btn_pressed() -> void:
+	_annotation_open = not _annotation_open
+	if _annotation_lbl:
+		_annotation_lbl.visible = _annotation_open
+	if not _phase_acknowledged:
+		_phase_acknowledged = true
+		_stop_phase_flash()
+
+
+
+func _on_phase_hover_enter() -> void:
+	if _phase_flash_tween:
+		_phase_flash_tween.pause()
+	create_tween().tween_property(_phase_lbl, "scale", Vector2(1.4, 1.4), 0.05)
+
+func _on_phase_hover_exit() -> void:
+	if not _phase_acknowledged and _phase_flash_tween:
+		_phase_flash_tween.play()
+	create_tween().tween_property(_phase_lbl, "scale", Vector2.ONE, 0.15)
+
+
+func _start_phase_flash() -> void:
+	_phase_acknowledged = false
+
+	if _phase_flash_tween:
+		_phase_flash_tween.kill()
+
+	var base_color : Color = _phase_sbox.bg_color
+	var dim_color  : Color = base_color
+	dim_color.a = 0.05
+
+	var bright_color : Color = base_color
+	bright_color.a = 0.6
+
+	_phase_flash_tween = create_tween().set_loops()
+
+	_phase_flash_tween.tween_method(
+		func(c): _phase_sbox.bg_color = c,
+		dim_color,
+		bright_color,
+		0.45
+	).set_trans(Tween.TRANS_SINE)
+
+	_phase_flash_tween.tween_method(
+		func(c): _phase_sbox.bg_color = c,
+		bright_color,
+		dim_color,
+		0.45
+	).set_trans(Tween.TRANS_SINE)
+	_phase_flash_tween.parallel().tween_property(
+		_phase_lbl, "scale",
+		Vector2(1.05, 1.05),
+		0.45
+	).set_trans(Tween.TRANS_SINE)
+
+	_phase_flash_tween.parallel().tween_property(
+		_phase_lbl, "scale",
+		Vector2.ONE,
+		0.45
+	).set_trans(Tween.TRANS_SINE)
+
+
+func _stop_phase_flash() -> void:
+	if _phase_flash_tween:
+		_phase_flash_tween.kill()
+		_phase_flash_tween = null
+
+	if _phase_sbox:
+		_phase_sbox.bg_color = Color(0.329, 0.306, 0.306, 0.05)
+
+
+func _phase_annotation(phase: int, run: RunState) -> String:
+	match phase:
+		DungeonRunState.Phase.DA_CAPO:
+			return "\nSelect the spaces around you to view the options for your next composition.\n\nVisit the chapel when you need rest, or wish to move on.\n\nReturn to the atrium once you have found the Segno."
+		DungeonRunState.Phase.DAL_SEGNO:
+			#if run != null and run.boss_battle_triggered:
+			#	return "[placeholder]"
+			return "\nExpand and explore, and make preparation for when you next return to the Segno."
+		DungeonRunState.Phase.DC_AL_SEGNO:
+			return "\nBring the Segno to the untouched yellow room."
+		DungeonRunState.Phase.DS_AL_SEGNO:
+			return "\nBring the Segno to its new resting place at the frontier.\n\nTake care, your enemies have returned to where you last met them."
+		DungeonRunState.Phase.CAESURA:
+			return "\nRepeat your search for the Segno."
+		DungeonRunState.Phase.AL_FINE:
+			return "[placeholder]"
+		_:
+			return ""
+
 
 func _process(_delta: float) -> void:
 	_update_visibility()
@@ -355,7 +491,16 @@ func _refresh_display(charges: int, phase: int, excess: int = 0, rerolls: int = 
 				label_text  = ""
 				label_color = C_DIM
 		_phase_lbl.text = label_text
-		_phase_lbl.add_theme_color_override("font_color", label_color)
+		for col_key in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+			_phase_lbl.add_theme_color_override(col_key, label_color)
+		if _annotation_lbl:
+			_annotation_lbl.text = _phase_annotation(phase, GameController.current_run)
+			_annotation_lbl.add_theme_color_override("font_color", label_color.darkened(0.3))
+		# Flash on every phase change until the player acknowledges
+		if phase != _last_phase or not _phase_acknowledged:
+			_annotation_open = false
+			if _annotation_lbl: _annotation_lbl.visible = false
+			_start_phase_flash()
 
 	# Update pips — each pip has its own R/G/B colour.
 	var full : bool = charges >= RunState.MAX_SEGNO_CHARGES

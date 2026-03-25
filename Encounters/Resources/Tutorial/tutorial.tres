@@ -19,7 +19,7 @@
 script = ExtResource("4_ndqax")
 part_name = "Rotten Penumbra"
 required_removed_mask = 2
-damage_multiplier = 1.3
+damage_multiplier = 1.1
 is_cognitohazard = true
 anchor_path = NodePath("PartAnchors/Head")
 metadata/_custom_type_script = "uid://bewuwngi8x4ad"
@@ -37,7 +37,7 @@ metadata/_custom_type_script = "uid://bewuwngi8x4ad"
 script = ExtResource("2_tut")
 display_name = "Banal Shadow"
 base_max_hp = 24
-base_attack = 3
+base_attack = 1
 tempo = 5
 body_parts = Array[ExtResource("4_ndqax")]([ExtResource("5_ghtej"), ExtResource("6_x5g26"), ExtResource("7_pn17s"), SubResource("Resource_x06xt"), SubResource("Resource_ndqax")])
 battle_scene = ExtResource("3_x06xt")

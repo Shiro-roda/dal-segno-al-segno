@@ -135,21 +135,21 @@ func _build_ui() -> void:
 	await get_tree().process_frame
 	if is_blocked_notice:
 		body.text = "The path ahead is not yet clear."
-		note.text = "Explore further before relocating the Segno. \nPress E to disable the Blue channel, and see how far you must expand."
+		note.text = "Explore further before relocating the Segno.\nPress E to disable the Blue channel, and see how far you must expand."
 	elif is_pickup_prompt:
 		if is_ds_transit:
 			body.text = "Pick up the Segno and carry it to its new resting place."
-			note.text = "All battles along the route have been reprimed. There is no safety net."
+			note.text = "All battles along the route have been reprimed.\nYour Beat Bolts(ammunition) and your allies' will to fight will no longer be restored at the end of a battle."
 		else:
 			body.text = "The Segno awaits. Carry it forward to mark your path."
 			note.text = "Building is suspended until you set it down."
 	else:
 		if is_replacing:
-			body.text = ""
-			note.text = "Your mark has been moved."
+			body.text = "Your mark has been moved."
+			note.text = "The Segno will no longer prevent your allies from reinvigorating their anima,\nand will resume supplying you with Beat Bolts."
 		else:
-			body.text = ""
-			note.text = "If you fall, you will return here."
+			body.text = "If you fall, you will return here."
+			note.text = "You will need to find the Segno once again if it expires in your stead."
 
 
 func _make_btn(label: String, bg: Color, border: Color, cb: Callable) -> Button:

@@ -10,7 +10,6 @@
 [ext_resource type="Script" uid="uid://r12gfink2342" path="res://UI/2D/Scripts/battle_hud.gd" id="8_85sqs"]
 [ext_resource type="FontFile" uid="uid://c8q52n0ssb7w3" path="res://UI/Themes/Fonts/TerminalVector.ttf" id="9_i5rsa"]
 [ext_resource type="PackedScene" uid="uid://cx2gw1tu0rxpi" path="res://Systems/Managers/Scenes/audio_manager.tscn" id="10_jcu24"]
-[ext_resource type="Script" uid="uid://bd8ymuwvnwx35" path="res://Systems/Managers/Scripts/audio_manager.gd" id="11_rhq0f"]
 [ext_resource type="Script" uid="uid://dy7nm6c7r8ulp" path="res://UI/2D/Scripts/BattleUI.gd" id="11_wbvnx"]
 [ext_resource type="Shader" uid="uid://btm2rulspg8el" path="res://Shaders/battleglitch.gdshader" id="12_lvunh"]
 [ext_resource type="Script" uid="uid://cyhiqc5tsl2mm" path="res://UI/2D/Scripts/battle_dialogue_box.gd" id="14_xe0bb"]
@@ -292,8 +291,7 @@ size_flags_horizontal = 3
 size_flags_stretch_ratio = 2.0
 alignment = 2
 
-[node name="Audio Manager" type="Node" parent="." unique_id=2102780936 instance=ExtResource("10_jcu24")]
-script = ExtResource("11_rhq0f")
+[node name="Audio Manager" parent="." unique_id=2102780936 instance=ExtResource("10_jcu24")]
 
 [node name="BattleUI" type="CanvasLayer" parent="." unique_id=100288458]
 script = ExtResource("11_wbvnx")

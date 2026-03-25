@@ -151,7 +151,7 @@ func _show_line(text: String, speaker: String) -> void:
 	_label.add_theme_constant_override("outline_size", OUTLINE_SIZE)
 
 	if speaker == "Helenus":
-		HOLD_TIME = 6.0
+		HOLD_TIME = 1.0
 		_mat_flicker.set_shader_parameter("font_color",   Color(col.r, col.g, col.b, 1.0))
 		_mat_flicker.set_shader_parameter("seed_offset",  randf_range(0.0, 1000.0))
 		_label.material = _mat_flicker
