@@ -78,9 +78,9 @@ func _register_all() -> void:
 	_add("Wither",    "attack",  "Steals CORP from the target and lowers their SHARP.",                  "Vritra inflicts the enemy with unbearable famine, lessening their strength and siphoning their vitality.",
 		false, false, false, false, "PartAnchors/Mouth", "Waste")
 	_add("Waste",     "attack",  " ",                                                                   "",
-		true,  false, false, false, "PartAnchors/Mouth")
+		false,  true, false, false, "PartAnchors/Mouth")
 	_add("Unwilling", "special", " ",                                                                   "",
-		false, false, true,  false, "PartAnchors/Stomach")
+		false, true, true,  false, "PartAnchors/Stomach")
 
 
 func _add(sname: String, key: String = "attack", summary: String = "", desc: String = "",

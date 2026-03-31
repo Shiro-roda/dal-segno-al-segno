@@ -57,3 +57,23 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2486691, 0)
 
 [node name="Mouth" type="Node3D" parent="PartAnchors" unique_id=1355487434]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.33720404, 1.4405177, 0)
+
+[node name="BoundAnchors" type="Node3D" parent="." unique_id=2033145283]
+
+[node name="BoundsRight" type="Node3D" parent="BoundAnchors" unique_id=1587102282]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3518448, 1, 0.14605409)
+
+[node name="BoundsLeft" type="Node3D" parent="BoundAnchors" unique_id=1623806679]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.36434782, 1, 0.09854248)
+
+[node name="BoundsTop" type="Node3D" parent="BoundAnchors" unique_id=1199019449]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.037046075, 2.0249166, 0.04105264)
+
+[node name="BoundsBottom" type="Node3D" parent="BoundAnchors" unique_id=1990789358]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0017098784, 0.0038274527, 0.050523937)
+
+[node name="BoundsNear" type="Node3D" parent="BoundAnchors" unique_id=497282351]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.054642916, 1, 0.37016523)
+
+[node name="BoundsFar" type="Node3D" parent="BoundAnchors" unique_id=1110751962]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.045659423, 1, -0.3601769)

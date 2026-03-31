@@ -308,6 +308,10 @@ func set_support_targeting(support: bool) -> void:
 		var b : Button = e["box"]
 		if is_instance_valid(b):
 			b.mouse_filter = Control.MOUSE_FILTER_IGNORE if support else Control.MOUSE_FILTER_STOP
+	for e in _ally_boxes:
+		var b : Button = e["box"]
+		if is_instance_valid(b):
+			b.mouse_filter = Control.MOUSE_FILTER_STOP if support else Control.MOUSE_FILTER_IGNORE
 
 
 # ── Frame update ──────────────────────────────────────────────────────────────
@@ -369,6 +373,9 @@ func _update_drift(delta: float) -> void:
 			# ── Target and speed ────────────────────────────────────────
 			# Skill boxes bias toward the right edge of the left viewport
 			var is_skill : bool = e["data_type"] == "skill"
+			var is_entity : bool = e["data_type"] in ["enemy", "ally", "part"]
+			var sr : Rect2 = e.get("screen_rect", Rect2())
+			var has_rect : bool = is_entity and sr.size.x > 4.0
 			var bias : float = ORBIT_CENTRE_BIAS if is_skill else ORBIT_CENTRE_BIAS_ENTITY
 			var orbit_bias_target : Vector2 = vp_centre
 			if not is_right and is_skill:
@@ -379,15 +386,17 @@ func _update_drift(delta: float) -> void:
 										sin(orbit_angle * 0.7) * ORBIT_RADIUS_Y)
 			var target_centre : Vector2
 			var spd : float
-			if e["selected"]:
-				# Selected enemy (BattleActor only) moves to left edge so parts have room
+			if has_rect:
+				# Entity boxes always track the projected model rect centre directly
+				target_centre = sr.get_center()
+				spd = 18.0  # snap tightly so bracket follows animation
+			elif e["selected"]:
 				if is_right and e["data_type"] == "enemy":
 					target_centre = Vector2(vp_x + BOX_W * 1.2, e["anchor_screen"].y)
 				else:
 					target_centre = e["anchor_screen"]
 				spd = DRIFT_SPEED_SEL
 			elif e.get("edge_push", false):
-				# Push unchosen enemies toward the top edge, staggered by phase
 				var push_x : float = vp_x + vp_w * 0.25 + float(e["orbit_phase"]) * 40.0
 				var push_y : float = BOX_W * 1.5
 				target_centre = Vector2(push_x, push_y)
@@ -403,6 +412,9 @@ func _update_drift(delta: float) -> void:
 			e["display_pos"] = Vector2(clamped_x, clamped_y)
 			var dp : Vector2 = e["display_pos"]
 			var velocity : float = dp.distance_to(prev_dp) / max(delta, 0.001)
+			# Advance spawn animation
+			if float(e["spawn_anim"]) < 1.0:
+				e["spawn_anim"] = minf(float(e["spawn_anim"]) + delta / 0.4, 1.0)
 
 			# ── Rotation ─────────────────────────────────────────────────
 			# Roll along the line to anchor only while selected and moving.
@@ -425,7 +437,7 @@ func _update_drift(delta: float) -> void:
 
 			# ── Trail sampling ──────────────────────────────────────────
 			e["trail_timer"] = float(e["trail_timer"]) - delta
-			if e["selected"] and moving and float(e["trail_timer"]) <= 0.0:
+			if not has_rect and e["selected"] and moving and float(e["trail_timer"]) <= 0.0:
 				e["trail_timer"] = TRAIL_STEP
 				var trail : Array = e["trail"]
 				trail.push_front({"pos": dp, "rot": float(e["box_rot"])})
@@ -466,11 +478,22 @@ func _update_drift(delta: float) -> void:
 						cr.color = Color(neon2.r * fade, neon2.g * fade, neon2.b * fade, 1.0)
 				else:
 					cr.color = Color(0.08, 0.08, 0.08, 1.0)
-			box.position = dp - box.size * 0.5
+			var e_sr : Rect2 = e.get("screen_rect", Rect2())
+			var e_is_entity : bool = e["data_type"] in ["enemy", "ally", "part"]
+			var e_has_rect  : bool = e_is_entity and e_sr.size.x > 4.0
+			if e_has_rect:
+				box.position = e_sr.position
+				box.size     = e_sr.size
+			else:
+				box.position = dp - box.size * 0.5
 			if is_instance_valid(lbl_panel):
 				# modulate drives all alpha — don’t encode it in the stylebox too
 				lbl_panel.modulate = Color.WHITE
-				var lp := dp + Vector2(BOX_W * 0.5 + LABEL_PAD, -BOX_H * 0.5)
+				var lp : Vector2
+				if e_has_rect:
+					lp = Vector2(e_sr.position.x + e_sr.size.x + LABEL_PAD, e_sr.position.y)
+				else:
+					lp = dp + Vector2(BOX_W * 0.5 + LABEL_PAD, -BOX_H * 0.5)
 				const _P := 4.0
 				lbl_panel.position = lp
 				var lv : VBoxContainer = e.get("label_vbox")
@@ -532,13 +555,8 @@ func _build_enemy_boxes() -> void:
 		if initial_pos.x > -9000:  # valid projection
 			entry["anchor_screen"] = initial_pos
 			entry["display_pos"]   = initial_pos
-			# Also move the actual nodes so they match display_pos from frame 0
-			var b : Button = entry["box"]
-			var lp_node : Control = entry["label_panel"]
-			if is_instance_valid(b):
-				b.position = initial_pos - b.size * 0.5
-			if is_instance_valid(lp_node):
-				lp_node.position = initial_pos + Vector2(BOX_W * 0.5 + LABEL_PAD, -BOX_H * 0.5)
+			# Seed screen_rect immediately so first-frame size is correct
+			entry["screen_rect"] = enemy.get_screen_rect(_right_cam, RIGHT_VP_X)
 		_enemy_boxes.append(entry)
 
 
@@ -550,19 +568,18 @@ func _build_ally_boxes() -> void:
 			continue
 		var float_pos := _ally_float_pos(i, n)
 		var entry := _make_box_entry(float_pos, ally.display_name, ally, false, "ally")
-		# Seed display_pos at the actual anchor (left cam)
+		# Ally boxes start non-interactive; only enabled during support targeting.
+		var b0 : Button = entry["box"]
+		if is_instance_valid(b0):
+			b0.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# Seed screen_rect, display_pos, and anchor immediately.
 		var ca := ally.get_node_or_null("CameraAnchor")
 		var anchor_node : Node3D = ca if ca is Node3D else ally
 		var initial_pos : Vector2 = _anchor_screen(anchor_node, false)
 		if initial_pos.x > -9000:
 			entry["anchor_screen"] = initial_pos
 			entry["display_pos"]   = initial_pos
-			var b : Button = entry["box"]
-			var lp_node : Control = entry["label_panel"]
-			if is_instance_valid(b):
-				b.position = initial_pos - b.size * 0.5
-			if is_instance_valid(lp_node):
-				lp_node.position = initial_pos + Vector2(BOX_W * 0.5 + LABEL_PAD, -BOX_H * 0.5)
+			entry["screen_rect"]   = ally.get_screen_rect(_left_cam, LEFT_VP_X)
 		_ally_boxes.append(entry)
 
 
@@ -695,6 +712,8 @@ func _make_box_entry(float_pos: Vector2, label: String,
 		"orbit_phase":   float(palette_idx) * (TAU / NEON_PALETTE.size()),
 		"edge_push":     false,
 		"click_pulse":   0.0,   # decays from 1.0 on press, drives size/brightness burst
+		"screen_rect":   Rect2(), # computed each frame for entity boxes; empty for skills
+		"spawn_anim":    0.0,   # 0.0 -> 1.0 over spawn; drives lock-on bracket animation
 	}
 
 	var cap_entry := entry
@@ -727,6 +746,7 @@ func _refresh_anchor_positions() -> void:
 			var ca := enemy.get_node_or_null("CameraAnchor")
 			var anchor : Node3D = ca if ca is Node3D else enemy
 			e["anchor_screen"] = _anchor_screen(anchor, true)
+			e["screen_rect"]   = enemy.get_screen_rect(_right_cam, RIGHT_VP_X)
 
 	# Ally boxes → CameraAnchor on each ally (left cam)
 	for i in _ally_boxes.size():
@@ -739,6 +759,7 @@ func _refresh_anchor_positions() -> void:
 			var ca := ally.get_node_or_null("CameraAnchor")
 			var anchor : Node3D = ca if ca is Node3D else ally
 			e["anchor_screen"] = _anchor_screen(anchor, false)
+			e["screen_rect"]   = ally.get_screen_rect(_left_cam, LEFT_VP_X)
 
 	# Part boxes → part anchors on selected target (right cam)
 	for e in _part_boxes:
@@ -789,14 +810,16 @@ func _draw_box_set(entries: Array) -> void:
 		var box_a : float = pulse * 0.85 if sel else pulse * 0.38
 
 		# ── Trail ghosts ────────────────────────────────────────────
-		if coloured:
+		var _no_trail : bool = e["data_type"] in ["enemy", "ally", "part"] and e.get("screen_rect", Rect2()).size.x > 4.0
+		if coloured and not _no_trail:
 			var trail : Array = e["trail"]
 			for ti in trail.size():
 				var t_alpha : float = (1.0 - float(ti + 1) / float(TRAIL_LEN + 1)) * 0.28
 				var td : Dictionary = trail[ti]
 				_draw_rect_layered(td["pos"], half, float(td["rot"]), base_neon, t_alpha, LINE_W, cycle_on)
 
-		# ── Connecting line — clipped to viewport, starts at box edge ───
+		# ── Connecting line: skip for entity boxes that have a screen rect
+		var _ent_has_line : bool = not (e["data_type"] in ["enemy", "ally", "part"] and e.get("screen_rect", Rect2()).size.x > 4.0)
 		var is_r  : bool  = e["is_enemy"]
 		var vp_lx : float = RIGHT_VP_X if is_r else LEFT_VP_X
 		var vp_rx : float = vp_lx + (RIGHT_VP_W if is_r else LEFT_VP_W)
@@ -810,26 +833,36 @@ func _draw_box_set(entries: Array) -> void:
 		var line_start : Vector2 = dp
 		if to_anch.length_squared() > 0.01:
 			line_start = dp + to_anch.normalized() * half.x
-		_draw_clipped_line(line_start, anch, lc_dim,    LINE_W * 4.0, vp_lx, vp_rx)
-		_draw_clipped_line(line_start, anch, lc_bright, LINE_W,       vp_lx, vp_rx)
+		if _ent_has_line:
+			_draw_clipped_line(line_start, anch, lc_dim,    LINE_W * 4.0, vp_lx, vp_rx)
+			_draw_clipped_line(line_start, anch, lc_bright, LINE_W,       vp_lx, vp_rx)
 
-		# ── Click pulse — bright front expands outward, dark decay trails behind
-		if cp > 0.0:
-			var wave_t : float = 1.0 - cp   # 0 at click, 1 when fully expanded
+		# ── Click pulse
+		var pulse_sr   : Rect2  = e.get("screen_rect", Rect2())
+		var pulse_rect : bool   = e["data_type"] in ["enemy", "ally", "part"] and pulse_sr.size.x > 4.0
+		if cp > 0.0 and not pulse_rect:
+			var wave_t : float = 1.0 - cp
 			const PULSE_LAYERS := 7
 			const SPREAD : float = 0.40
-			# Draw outer layers first; inner layers paint on top (dark centre stays dark)
 			for pi in range(PULSE_LAYERS - 1, -1, -1):
-				var band_t : float = float(pi) / float(PULSE_LAYERS - 1)  # 0=inner, 1=outer
+				var band_t : float = float(pi) / float(PULSE_LAYERS - 1)
 				var scale  : float = clamp(wave_t + (band_t - 1.0) * SPREAD, 0.0, 1.0)
-				# Outer leading edge bright, inner trailing edge dark/transparent
 				var p_a    : float = cp * 0.88 * (band_t * band_t)
 				_draw_node.draw_colored_polygon(
 						_rotated_corners(dp, half * scale, rot), Color(1.0, 1.0, 1.0, p_a))
 
 		# ── Box ───────────────────────────────────────────────────
-		if coloured:
-			var draw_col : Color = hue_drifted  # carries drifted hue in VAPORWAVE, base in TACTICAL
+		var db_sr   : Rect2 = e.get("screen_rect", Rect2())
+		var db_ent  : bool  = e["data_type"] in ["enemy", "ally", "part"]
+		var db_rect : bool  = db_ent and db_sr.size.x > 4.0
+		if db_rect:
+			var draw_col : Color = hue_drifted if coloured else Color.WHITE
+			var spawn_t  : float = float(e.get("spawn_anim", 1.0))
+			_draw_corner_brackets(db_sr, draw_col, box_a, LINE_W * 2.0, spawn_t)
+			if sel and coloured:
+				_draw_corner_brackets(db_sr.grow(4.0), draw_col, box_a * 0.45, LINE_W, spawn_t)
+		elif coloured:
+			var draw_col : Color = hue_drifted
 			_draw_rect_layered(dp, half, rot, draw_col, box_a * 0.18, LINE_W * 5.0, cycle_on)
 			_draw_rect_layered(dp, half, rot, draw_col, box_a, LINE_W * 1.5, cycle_on)
 		else:
@@ -877,6 +910,38 @@ func _rotated_corners(centre: Vector2, half: Vector2, rot: float) -> PackedVecto
 	return pts
 
 
+## Draw AR-style corner brackets around a Rect2.
+## spawn_t: 0=brackets far out (lock-on start), 1=fully converged on rect.
+func _draw_corner_brackets(rect: Rect2, col: Color, alpha: float, lw: float,
+		spawn_t: float = 1.0) -> void:
+	# Ease the spawn so it starts fast and snaps on
+	var t : float = 1.0 - pow(1.0 - clamp(spawn_t, 0.0, 1.0), 3.0)
+	# Expand rect outward during spawn
+	var expand : float = (1.0 - t) * 22.0
+	var r := rect.grow(expand)
+	var arm_x : float = maxf(r.size.x * 0.22, 8.0)
+	var arm_y : float = maxf(r.size.y * 0.22, 8.0)
+	var c : Color = Color(col.r, col.g, col.b, alpha * t)
+	var tl := r.position
+	var tr := Vector2(r.position.x + r.size.x, r.position.y)
+	var bl := Vector2(r.position.x,             r.position.y + r.size.y)
+	var br := r.position + r.size
+	# Top-left
+	_draw_node.draw_line(tl, tl + Vector2(arm_x,  0), c, lw)
+	_draw_node.draw_line(tl, tl + Vector2(0,  arm_y), c, lw)
+	# Top-right
+	_draw_node.draw_line(tr, tr + Vector2(-arm_x, 0), c, lw)
+	_draw_node.draw_line(tr, tr + Vector2(0,  arm_y), c, lw)
+	# Bottom-left
+	_draw_node.draw_line(bl, bl + Vector2(arm_x,  0), c, lw)
+	_draw_node.draw_line(bl, bl + Vector2(0, -arm_y), c, lw)
+	# Bottom-right
+	_draw_node.draw_line(br, br + Vector2(-arm_x, 0), c, lw)
+	_draw_node.draw_line(br, br + Vector2(0, -arm_y), c, lw)
+	# Very faint fill
+	_draw_node.draw_rect(r, Color(col.r, col.g, col.b, alpha * t * 0.06), true)
+
+
 ## Draw a filled rotated square with:
 ## - Outer edge: hue at hue_base, bright, semi-opaque
 ## - Inner layers: hue shifts toward complement, fading to fully transparent
@@ -919,12 +984,14 @@ func _draw_rect_layered(centre: Vector2, half: Vector2, rot: float,
 # ── Box press handler ─────────────────────────────────────────────────────────
 
 func _on_box_pressed(entry: Dictionary) -> void:
+	
 	var data    : Variant = entry["data"]
 	var at_anch : bool    = entry["at_anchor"]
 
 	var dtype : String = entry["data_type"]
 
 	if dtype == "skill":
+		print("CLICK skill | support targeting:", _support_targeting)
 		var sk : Dictionary = data
 		var already_sel : bool = (_sel_skill == sk)
 		_deselect_all(_skill_boxes, entry)
@@ -951,6 +1018,10 @@ func _on_box_pressed(entry: Dictionary) -> void:
 			_spawn_struggle_box(entry)
 
 	elif dtype == "enemy":
+		print("CLICK enemy | support targeting:", _support_targeting)
+		print("Enemy data type:", typeof(data), " value:", data)
+		var actor = data as BattleActor
+		print("Casted actor:", actor)
 		if not is_instance_valid(data):
 			return
 		# During ally-targeting mode, enemy clicks do camera focus only.

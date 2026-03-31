@@ -14,7 +14,7 @@ metadata/_custom_type_script = "uid://bewuwngi8x4ad"
 [resource]
 script = ExtResource("1_chardata")
 display_name = "Hue"
-description = "A warmhearted young man frightened of the rain, and bearing a snow man's facade. Despite his best and most desperate efforts, he recurringly remains the sole survivor of every band of fortune seekers he has enlisted with. He still wanders these gilded halls in pursuit of precious young days never lived."
+description = "A pious, warmhearted young shepherd frightened of the rain, and bearing a snow man's facade. Despite his best and most desperate efforts, he recurringly remains the only survivor of every band of fortune seekers he attempts to guide across the mount. The sole supplicant of a jealous god, he still wanders these gilded halls in pursuit of precious young days never lived."
 base_max_hp = 20
 base_attack = 3
 base_flat_defense = 2

@@ -32,6 +32,7 @@ GameController="*uid://e0k6d8aob0l7"
 GlobalTheme="*res://UI/Themes/Scripts/global_theme.gd"
 SkillDirectory="*res://Systems/SkillSys/Scripts/SkillDirectory.gd"
 ItemRegistry="*res://Items/Scripts/item_registry.gd"
+ArReticleOverlay="*uid://cs8rjvj1a71c7"
 
 [dialogic]
 

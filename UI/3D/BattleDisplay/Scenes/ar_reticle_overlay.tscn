@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://cs8rjvj1a71c7"]
+
+[ext_resource type="Script" uid="uid://0jykqsurof28" path="res://UI/3D/BattleDisplay/Scripts/ar_reticle_overlay.gd" id="1_yd8vc"]
+
+[node name="ARReticleOverlay" type="CanvasLayer" unique_id=1001246021]
+script = ExtResource("1_yd8vc")

@@ -719,7 +719,7 @@ func _show_skill_detail(skill: Dictionary) -> void:
 # Defaults used by both _build_options_page and Apply
 const OPT_DEFAULTS := {
 	"master": 1.0, "bgm": 1.0, "sfx": 1.0,
-	"ca": 3.0, "brightness": 1.0, "contrast": 1.0, "saturation": 1.0,
+	"ca": 2.0, "brightness": 1.0, "contrast": 1.0, "saturation": 1.0,
 	"ssao": false, "ssil": false, "glow": false,
 }
 

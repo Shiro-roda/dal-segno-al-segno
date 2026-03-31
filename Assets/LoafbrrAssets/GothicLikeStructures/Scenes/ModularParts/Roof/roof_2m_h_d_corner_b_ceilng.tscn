@@ -1,0 +1,47 @@
+[gd_scene load_steps=5 format=4 uid="uid://cwel4tw5rlg0i"]
+
+[ext_resource type="Material" uid="uid://3cqwyiqlpu63" path="res://Assets/LoafbrrAssets/GothicLikeStructures/Materials/WoodPlanks.material" id="1_xh8uq"]
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_r0dws"]
+_surfaces = [{
+"aabb": AABB(-2.99998, 0.0181951, -2.99998, 6.01006, 2, 6.01006),
+"format": 34896613377,
+"index_count": 18,
+"index_data": PackedByteArray("AQADAAAAAwACAAQAAwABAAIAAwAGAAUABgAEAAcABgADAAQA"),
+"name": "WoodPlanks",
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 8,
+"vertex_data": PackedByteArray("//8AAJH/AAD+////AAAAAG0A//8AAAAAkf8AAJH/AABtAJH/bQAAAJH/AAD+/wAAAAD/////AAAAAP//bQAAAA==")
+}]
+blend_shape_mode = 0
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_mi0i4"]
+resource_name = "GothicLikeStructures_Roof_2mH_D_Corner_B_Ceilng"
+_surfaces = [{
+"aabb": AABB(-2.99998, 0.0181951, -2.99998, 6.01006, 2, 6.01006),
+"attribute_data": PackedByteArray("Hfsu5h37HgAAAB4Asfou5rH6LuYAAIEAAACBAB37LuYd+x4AAAAeAA=="),
+"format": 34896613399,
+"index_count": 18,
+"index_data": PackedByteArray("AQADAAAAAwACAAUAAwABAAIABAAIAAcACAAGAAkACAAEAAYA"),
+"material": ExtResource("1_xh8uq"),
+"name": "WoodPlanks",
+"primitive": 3,
+"uv_scale": Vector4(0, 0, 0, 0),
+"vertex_count": 10,
+"vertex_data": PackedByteArray("//8AAJH/5DL+////AADkMm0A//8AAOQykf8AAJH/5DKR/wAAkf82zm0Akf9tAOQybQCR/20ANs6R/wAA/v82zgAA/////zbOAAD//20ANs4AAP9/AAD/fwAA/38AAP9/bDQ12gAA/39sNDXabDQ12mw0NdpsNDXa")
+}]
+blend_shape_mode = 0
+shadow_mesh = SubResource("ArrayMesh_r0dws")
+
+[sub_resource type="ConcavePolygonShape3D" id="ConcavePolygonShape3D_l0ih8"]
+data = PackedVector3Array(3.01008, 2.0182, -2.99998, 3.00003, 0.0181951, 3.00002, 3.01008, 0.0181951, 3.00002, 3.00003, 0.0181951, 3.00002, -2.98992, 2.0182, -2.99998, -2.98992, 2.01484, -2.98992, 3.00003, 0.0181951, 3.00002, 3.01008, 2.0182, -2.99998, -2.98992, 2.0182, -2.99998, 3.00003, 0.0181951, 3.00002, -2.99997, 2.0182, 3.01008, 3.00003, 0.0181951, 3.01008, -2.99997, 2.0182, 3.01008, -2.98992, 2.01484, -2.98992, -2.99998, 2.0182, -2.98992, -2.99997, 2.0182, 3.01008, 3.00003, 0.0181951, 3.00002, -2.98992, 2.01484, -2.98992)
+
+[node name="Roof_2mH_D_Corner_B_Ceilng" type="MeshInstance3D"]
+mesh = SubResource("ArrayMesh_mi0i4")
+skeleton = NodePath("")
+
+[node name="Roof_2mH_D_Corner_B_Ceilng" type="StaticBody3D" parent="."]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Roof_2mH_D_Corner_B_Ceilng"]
+shape = SubResource("ConcavePolygonShape3D_l0ih8")

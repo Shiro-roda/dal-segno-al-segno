@@ -4,10 +4,10 @@
 [ext_resource type="PackedScene" uid="uid://6kmv2ko6w15m" path="res://RecycleBin/scenes/Characters/ken_model.tscn" id="2_33l1f"]
 [ext_resource type="Script" uid="uid://jtnowsj7i172" path="res://UI/3D/BattleDisplay/Scripts/actor_panel_3d.gd" id="3_33l1f"]
 [ext_resource type="PackedScene" uid="uid://bl3aftctvygxl" path="res://UI/3D/BattleDisplay/Scenes/hp_display.tscn" id="4_aw60n"]
-[ext_resource type="PackedScene" uid="uid://du3suh71satyp" path="res://UI/3D/BattleDisplay/Scenes/ring nodes/large_flesh_orb.tscn" id="6_imxug"]
+[ext_resource type="PackedScene" uid="uid://du3suh71satyp" path="res://UI/3D/BattleDisplay/Scenes/ring nodes/large_flesh_orb.tscn" id="6_qw5nu"]
 [ext_resource type="Script" uid="uid://cyrjmvijvkbgi" path="res://UI/3D/BattleDisplay/Scripts/blood_globe.gd" id="6_scve4"]
-[ext_resource type="PackedScene" uid="uid://dfksmgwfvhs8y" path="res://UI/3D/BattleDisplay/Scenes/ring nodes/small_flesh_orb.tscn" id="7_qw5nu"]
-[ext_resource type="PackedScene" uid="uid://wog7o86lkrah" path="res://UI/3D/BattleDisplay/Scenes/ring nodes/small_ice_orb.tscn" id="8_xmh4e"]
+[ext_resource type="PackedScene" uid="uid://dfksmgwfvhs8y" path="res://UI/3D/BattleDisplay/Scenes/ring nodes/small_flesh_orb.tscn" id="7_xmh4e"]
+[ext_resource type="PackedScene" uid="uid://wog7o86lkrah" path="res://UI/3D/BattleDisplay/Scenes/ring nodes/small_ice_orb.tscn" id="8_lxlrr"]
 [ext_resource type="PackedScene" uid="uid://dm1a08supvq1i" path="res://UI/3D/BattleDisplay/Scenes/will_ring.tscn" id="9_qw5nu"]
 
 [node name="BattleActor" type="Node3D" unique_id=620316433]
@@ -25,9 +25,9 @@ script = ExtResource("3_33l1f")
 [node name="HpDisplay" parent="WorldSpacePanel" unique_id=1429397145 instance=ExtResource("4_aw60n")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.35729575, 0)
 script = ExtResource("6_scve4")
-token_large_scene = ExtResource("6_imxug")
-token_small_scene = ExtResource("7_qw5nu")
-shield_orb_scene = ExtResource("8_xmh4e")
+token_large_scene = ExtResource("6_qw5nu")
+token_small_scene = ExtResource("7_xmh4e")
+shield_orb_scene = ExtResource("8_lxlrr")
 ring_radius = 0.32
 ring_y = 0.0
 rotate_speed = 0.45
@@ -54,3 +54,23 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.2502799, 1.4111508, 0)
 
 [node name="Heart" type="Node3D" parent="PartAnchors" unique_id=902577531]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.10033846, 1.3243494, 0)
+
+[node name="BoundAnchors" type="Node3D" parent="." unique_id=1527897623]
+
+[node name="BoundsLeft" type="Node3D" parent="BoundAnchors" unique_id=1253147864]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.36434782, 1, 0.09854248)
+
+[node name="BoundsBottom" type="Node3D" parent="BoundAnchors" unique_id=1529927850]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0017098784, 0.0038274527, 0.050523937)
+
+[node name="BoundsNear" type="Node3D" parent="BoundAnchors" unique_id=2131498037]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.054642916, 1, 0.21820116)
+
+[node name="BoundsFar" type="Node3D" parent="BoundAnchors" unique_id=1554195638]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.045659423, 1, -0.26571277)
+
+[node name="BoundsRight" type="Node3D" parent="BoundAnchors" unique_id=1177910509]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3518448, 1, 0.14605409)
+
+[node name="BoundsTop" type="Node3D" parent="BoundAnchors" unique_id=306292360]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.037046075, 1.8886418, 0.04105264)

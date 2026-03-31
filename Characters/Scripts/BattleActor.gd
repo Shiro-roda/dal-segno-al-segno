@@ -51,6 +51,10 @@ var flat_modifier : int = 0
 
 @export var tempo_stat : int = 10    # base tempo gained per turn
 @export var body_parts : Array[BodyPartData]
+## NodePaths (relative to actor root) used to compute the screen-space AABB
+## for the AR-style detection box. Populated automatically in _ready() from
+## PartAnchors children if left empty.
+@export var aabb_anchors : Array[NodePath] = []
 var party_member : PartyMemberData
 var run_state : RunState
 @onready var camera_anchor: Node3D = $CameraAnchor
@@ -60,6 +64,32 @@ var hp : int
 ## Set to true by Augur — reveals SHARP, FLAT, status lines in the reticle
 ## and makes the blood globe and will ring visible.
 var stats_revealed : bool = false
+
+## Project all aabb_anchors through cam and return a padded screen Rect2.
+## Returns Rect2(-9999,-9999,0,0) if projection fails.
+func get_screen_rect(cam: Camera3D, vp_offset_x: float) -> Rect2:
+	if cam == null or aabb_anchors.is_empty():
+		return Rect2(-9999, -9999, 0, 0)
+	var min_x : float =  INF
+	var max_x : float = -INF
+	var min_y : float =  INF
+	var max_y : float = -INF
+	for np in aabb_anchors:
+		var node : Node3D = get_node_or_null(np) as Node3D
+		if not is_instance_valid(node):
+			continue
+		var sp : Vector2 = cam.unproject_position(node.global_position)
+		sp.x += vp_offset_x
+		min_x = min(min_x, sp.x)
+		max_x = max(max_x, sp.x)
+		min_y = min(min_y, sp.y)
+		max_y = max(max_y, sp.y)
+	if min_x == INF:
+		return Rect2(-9999, -9999, 0, 0)
+	var w : float = max(max_x - min_x, 24.0)
+	var h : float = max(max_y - min_y, 24.0)
+	return Rect2(min_x, min_y, w, h)
+
 
 func reveal_stats() -> void:
 	stats_revealed = true
@@ -131,6 +161,12 @@ func _ready():
 	var panel = find_child("WorldSpacePanel", true, false)
 	if panel and panel.has_method("setup"):
 		panel.setup(self)
+	# Auto-populate aabb_anchors from PartAnchors children if not set in Inspector.
+	if aabb_anchors.is_empty():
+		var ba := get_node_or_null("BoundAnchors")
+		if ba:
+			for child in ba.get_children():
+				aabb_anchors.append(get_path_to(child))
 
 
 func take_turn(target: BattleActor, part: BodyPartData = null) -> void:

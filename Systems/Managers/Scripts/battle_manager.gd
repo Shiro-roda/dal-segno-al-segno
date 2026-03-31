@@ -1085,8 +1085,10 @@ func _on_reticle_skill_chosen(skill: Dictionary) -> void:
 	_on_radial_skill_chosen(skill_key, skill)
 	# Derive support_targeting from skill flags, same logic as _on_command_selected.
 	var is_aoe         := bool(skill.get("aoe", false))
+	var is_struggle := bool(skill.get("struggle", false))
 	var is_ally_target := bool(skill.get("ally_target", false))
 	var is_enemy_target := bool(skill.get("enemy_target", false))
+	
 	match skill_key:
 		"support":
 			if is_aoe:
@@ -1111,11 +1113,18 @@ func _on_reticle_skill_chosen(skill: Dictionary) -> void:
 				return
 		_:
 			support_targeting = false
+	
+	if is_aoe or is_struggle:
+		input_stage = InputStage.CONFIRM
+	else:
+		input_stage = InputStage.TARGET
 	if is_instance_valid(reticle_ui):
 		reticle_ui.set_support_targeting(support_targeting)
+	update_ui_state()
 
 
 func _on_reticle_cancelled() -> void:
+	reset_selection() 
 	input_stage = InputStage.COMMAND
 	if is_instance_valid(reticle_ui):
 		reticle_ui.set_support_targeting(false)
@@ -1213,7 +1222,6 @@ func _on_command_selected(command):
 				support_targeting = true
 				input_stage = InputStage.TARGET
 			elif _is_enemy_target:
-				# Pick an enemy (Wither)
 				support_targeting = false
 				input_stage = InputStage.TARGET
 			else:

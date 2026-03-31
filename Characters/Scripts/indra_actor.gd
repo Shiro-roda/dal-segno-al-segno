@@ -25,6 +25,9 @@ const MARTYR_TEMPO_BONUS = 3
 
 const CHATTER_CRUCIFY = [
 	"Hold out your arms.",
+	"Bleed with me.",
+	"Forgiveness is beyond you now.",
+	"Another nail for your coffin.",
 	" ",
 	" ",
 	" ",
@@ -32,33 +35,39 @@ const CHATTER_CRUCIFY = [
 ]
 const CHATTER_CLOBBER = [
 	"Get out of my way!",
-	" ",
-	" ",
-	" ",
+	"No time for this.",
 	" ",
 	" ",
 ]
 const CHATTER_FULMINATE = [
+	"Kneel.",
+	"Only filth, to be washed away.",
+	"",
+	" ",
 	" ",
 ]
 const CHATTER_GALVANIZE = [
-	" ",
+	"We need to keep going.",
+	"They're only another stepping stone for us.",
+	"The skies stand with you.",
+	"We've weathered greater storms.",
+	"Sharpen yourselves. Turn your head to the howling wind and pierce it."
 ]
 const CHATTER_MARTYR = [
 	"It's not my right to falter now.",
-	" ",
-	" ",
-	" ",
-	" ",
+	"Not nearly enough...",
+	"You . . . will bleed with me.",
+	"Thirsty . . . but there's no rain.",
+	"Let us share this bitter cup.",
 	" ",
 	" ",
 ]
 const CHATTER_HURT = [
 	"It's nothing.",
-	"I can always get another arm.",
+	"I'll get another arm.",
 	"...!",
 	"This won't stop me.",
-	" ",
+	"It's not nearly enough.",
 	" ",
 	" ",
 ]
