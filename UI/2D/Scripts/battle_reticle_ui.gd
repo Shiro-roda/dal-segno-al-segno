@@ -331,9 +331,9 @@ func _repulse_boxes() -> void:
 	# Gather all active boxes into flat arrays grouped by viewport
 	var left_boxes  : Array = []
 	var right_boxes : Array = []
-	for e in _skill_boxes + _ally_boxes:
+	for e in _skill_boxes:
 		left_boxes.append(e)
-	for e in _enemy_boxes + _part_boxes:
+	for e in _enemy_boxes + _ally_boxes + _part_boxes:
 		right_boxes.append(e)
 	const MIN_DIST : float = BOX_W * 1.3
 	for group in [left_boxes, right_boxes]:
@@ -567,7 +567,7 @@ func _build_ally_boxes() -> void:
 		if not is_instance_valid(ally) or not ally.is_alive():
 			continue
 		var float_pos := _ally_float_pos(i, n)
-		var entry := _make_box_entry(float_pos, ally.display_name, ally, false, "ally")
+		var entry := _make_box_entry(float_pos, ally.display_name, ally, true, "ally")
 		# Ally boxes start non-interactive; only enabled during support targeting.
 		var b0 : Button = entry["box"]
 		if is_instance_valid(b0):
@@ -575,11 +575,11 @@ func _build_ally_boxes() -> void:
 		# Seed screen_rect, display_pos, and anchor immediately.
 		var ca := ally.get_node_or_null("CameraAnchor")
 		var anchor_node : Node3D = ca if ca is Node3D else ally
-		var initial_pos : Vector2 = _anchor_screen(anchor_node, false)
+		var initial_pos : Vector2 = _anchor_screen(anchor_node, true)
 		if initial_pos.x > -9000:
 			entry["anchor_screen"] = initial_pos
 			entry["display_pos"]   = initial_pos
-			entry["screen_rect"]   = ally.get_screen_rect(_left_cam, LEFT_VP_X)
+			entry["screen_rect"]   = ally.get_screen_rect(_right_cam, RIGHT_VP_X)
 		_ally_boxes.append(entry)
 
 
@@ -623,7 +623,7 @@ func _part_float_pos(i: int, n: int) -> Vector2:
 
 func _ally_float_pos(i: int, _n: int) -> Vector2:
 	var phase : float = float(i) * (TAU / 5.0) + 1.2
-	return Vector2(LEFT_VP_X + LEFT_VP_W * 0.5 + cos(phase) * 120.0,
+	return Vector2(RIGHT_VP_X + RIGHT_VP_W * 0.5 + cos(phase) * 120.0,
 				   600.0 + sin(phase) * 100.0)
 
 
@@ -748,7 +748,7 @@ func _refresh_anchor_positions() -> void:
 			e["anchor_screen"] = _anchor_screen(anchor, true)
 			e["screen_rect"]   = enemy.get_screen_rect(_right_cam, RIGHT_VP_X)
 
-	# Ally boxes → CameraAnchor on each ally (left cam)
+	# Ally boxes → CameraAnchor on each ally (right cam)
 	for i in _ally_boxes.size():
 		var e : Dictionary = _ally_boxes[i]
 		var raw = e["data"]
@@ -758,8 +758,8 @@ func _refresh_anchor_positions() -> void:
 		if ally != null:
 			var ca := ally.get_node_or_null("CameraAnchor")
 			var anchor : Node3D = ca if ca is Node3D else ally
-			e["anchor_screen"] = _anchor_screen(anchor, false)
-			e["screen_rect"]   = ally.get_screen_rect(_left_cam, LEFT_VP_X)
+			e["anchor_screen"] = _anchor_screen(anchor, true)
+			e["screen_rect"]   = ally.get_screen_rect(_right_cam, RIGHT_VP_X)
 
 	# Part boxes → part anchors on selected target (right cam)
 	for e in _part_boxes:

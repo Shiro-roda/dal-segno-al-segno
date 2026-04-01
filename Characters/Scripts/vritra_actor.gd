@@ -160,7 +160,7 @@ func use_skill(command_key: String, targets: Array, part: BodyPartData = null) -
 				spend_turn()
 				return
 			if party_member != null and party_member.will >= DEVOUR_WILL_COST:
-				await _devour(t)
+				await _devour(t, part)
 			else:
 				await _unwilling_devour(t)
 		"support":
@@ -170,7 +170,7 @@ func use_skill(command_key: String, targets: Array, part: BodyPartData = null) -
 				return
 			if party_member != null and party_member.will >= VICE_WILL_COST:
 				await _vice(t, part)
-			else: 
+			else:
 				await _malice(t)
 		_:
 			spend_turn()
@@ -246,14 +246,18 @@ func _end_constrict() -> void:
 	constrict_turn_count = 0
 
 
-func _devour(target: BattleActor) -> void:
+func _devour(target: BattleActor, part: BodyPartData = null) -> void:
 	party_member.spend_will(DEVOUR_WILL_COST)
 	var victim = target.get_log_name()
 	var damage := int(attack_power * DEVOUR_DMG_MULT)
 	say_random(CHATTER_DEVOUR)
 	log_msg("The beast grows voracious.")
 	await play_attack_animation(target, 3.0, 3.0, damage)
-	if not target:
+	if part != null and part.has_part_hp():
+		var broke := part.take_part_damage(attack_power)
+		if broke:
+			target._on_part_broken(part)
+	if not target.is_alive():
 		max_hp += DEVOUR_MAX_HP_BONUS
 		if party_member:
 			party_member.bonus_max_hp += DEVOUR_MAX_HP_BONUS
@@ -310,26 +314,23 @@ func _waste() -> void:
 	spend_turn()
 
 
-func _wither(target: BattleActor) -> void:
+func _wither(target: BattleActor, part: BodyPartData = null) -> void:
 	party_member.spend_will(WITHER_WILL_COST)
-
-	
-
 	say_random(CHATTER_WITHER)
-
 	log_msg("%s sharpens their tongue on %s." % [name, target.name])
-
 	if randf() < LEECH_CHANCE_NORMAL:
 		var siphon = int(attack_power * WITHER_SIPHON_HP)
 		target.take_damage(attack_power - siphon, self)
 		target.modify_attack(-WITHER_ATK_REDUCTION)
 		hp = min(hp + siphon, max_hp)
 		emit_signal("hp_changed")
-
 		log_msg("%s cowers under %s's fangs - arms grow heavy, and %d vitality is stolen." % [target.name, name, siphon])
 	else:
 		target.take_damage(attack_power, self)
-
+	if part != null and part.has_part_hp():
+		var broke := part.take_part_damage(attack_power)
+		if broke:
+			target._on_part_broken(part)
 	spend_turn()
 
 

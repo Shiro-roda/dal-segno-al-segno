@@ -972,8 +972,7 @@ func _on_confirm_pressed():
 				)
 			else:
 				if is_ammo_user:
-					# Hidden (cognitohazard) parts cost 2 ammo; normal parts cost 1
-					var ammo_cost = 2 if (selected_body_part != null and not selected_body_part.base_visible) else 1
+					var ammo_cost = 1
 					if not free_shot_pending and not context.run_state.spend_ammo(ammo_cost):
 						print("Not enough ammo!")
 						input_locked = false

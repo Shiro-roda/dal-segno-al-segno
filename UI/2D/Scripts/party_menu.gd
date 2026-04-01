@@ -939,6 +939,7 @@ func _build_inventory_row(inst: ItemInstance, rs: RunState) -> VBoxContainer:
 				match consumable.effect_type:
 					"corpus": use_btn.disabled = m.current_hp <= 0
 					"will":   use_btn.disabled = not m.has_will()
+					"revive": use_btn.disabled = m.current_hp > 0
 				var captured_inst := inst
 				var captured_m    := m
 				use_btn.pressed.connect(func():

@@ -137,6 +137,10 @@ func _crucify(target: BattleActor, part: BodyPartData) -> void:
 	say_random(CHATTER_CRUCIFY)
 	log_msg("%s charges at %s." % [name, target.get_log_name()])
 	await play_attack_animation(target, attack_power, 2.0, damage)
+	if part != null and part.has_part_hp():
+		var broke := part.take_part_damage(attack_power)
+		if broke:
+			target._on_part_broken(part)
 	emit_signal("turn_finished")
 
 

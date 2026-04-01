@@ -154,6 +154,11 @@ func _rebuke(target: BattleActor, part: BodyPartData) -> void:
 		if is_instance_valid(enemy) and enemy.is_alive() and randf() < REBUKE_SLOW_CHANCE:
 			enemy.apply_status(STATUS_SLOW, 2)
 			log_msg("%s is slowed." % enemy.get_log_name())
+		# Tick part HP: only applies when targeting a specific part on a single enemy
+		if part != null and enemy == target and part.has_part_hp():
+			var broke := part.take_part_damage(attack_power)
+			if broke:
+				enemy._on_part_broken(part)
 	if not is_inside_tree():
 		return
 	await get_tree().create_timer(0.5).timeout

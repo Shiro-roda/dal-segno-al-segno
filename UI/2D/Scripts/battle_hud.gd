@@ -95,7 +95,7 @@ func refresh_queue(manager) -> void:
 			var actor : BattleActor = entry["actor"]
 			var tempo : float = entry["tempo"]
 			# Two-line format: name on top, tempo value below
-			lbl.text = actor.name + "\n" + str(int(tempo))
+			lbl.text = actor.get_log_name() + "\n" + str(int(tempo))
 			if actor == active and i == 0:
 				lbl.modulate = Color(1.0, 0.95, 0.3, 1.0)   # gold - acting now
 			elif actor.team == BattleActor.Team.PLAYER:
