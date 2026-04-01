@@ -121,8 +121,12 @@ func get_skills() -> Array:
 	]
 	if vice_unlocked:
 		skills.append(SkillDirectory.get_dict("Vice" if can_vice else "Malice"))
+	var has_devour_bonus = party_member != null and party_member.bonus_max_hp > 0
 	if devour_unlocked:
-		skills.insert(1, SkillDirectory.get_dict("Devour" if can_devour else "Unwilling"))
+		if can_devour:
+			skills.insert(1, SkillDirectory.get_dict("Devour"))
+		elif has_devour_bonus:
+			skills.insert(1, SkillDirectory.get_dict("Unwilling"))
 	return skills
 
 
@@ -274,15 +278,21 @@ func _unwilling_devour(ally: BattleActor) -> void:
 	say_random(CHATTER_UNWILLING)
 	log_msg("%s turns on %s." % [name, victim_name])
 	await play_attack_animation(ally, 3.0, 3.0, damage)
+	# Always restore 1-3 AP regardless of phase
 	if party_member:
-		party_member.restore_will(UNWILLING_WILL_RESTORE)
-		log_msg("%s restores %d will." % [name, UNWILLING_WILL_RESTORE])
+		var ap_gain := randi_range(1, 3)
+		party_member.restore_will(ap_gain)
+		log_msg("%s wrings out %d AP from the act." % [name, ap_gain])
 	if not ally.is_alive():
-		# Kill grants a permanent bonus to max will for this run
-		if party_member:
+		# Convert 1 bonus max corp (from Devour) into 1 max AP
+		if party_member and party_member.bonus_max_hp > 0:
+			party_member.bonus_max_hp -= 1
+			max_hp = max(1, max_hp - 1)
 			party_member.max_will += UNWILLING_MAX_WILL_BONUS
 			party_member.will = min(party_member.will, party_member.max_will)
-		log_msg("%s was consumed — %s's hunger deepens." % [victim_name, name])
+			log_msg("%s was consumed — flesh becomes will." % [victim_name])
+		else:
+			log_msg("%s was consumed." % [victim_name])
 	emit_signal("turn_finished")
 
 
@@ -324,7 +334,7 @@ func _wither(target: BattleActor, part: BodyPartData = null) -> void:
 		target.modify_attack(-WITHER_ATK_REDUCTION)
 		hp = min(hp + siphon, max_hp)
 		emit_signal("hp_changed")
-		log_msg("%s cowers under %s's fangs - arms grow heavy, and %d vitality is stolen." % [target.name, name, siphon])
+		log_msg("%s cowers under %s's fangs and is drained of %d CORP." % [target.name, name, siphon])
 	else:
 		target.take_damage(attack_power, self)
 	if part != null and part.has_part_hp():

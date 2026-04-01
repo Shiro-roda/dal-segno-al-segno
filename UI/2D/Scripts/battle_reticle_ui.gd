@@ -370,10 +370,20 @@ func _update_drift(delta: float) -> void:
 			var vp_cy : float = 480.0   # vertical centre target
 			var vp_centre := Vector2(vp_cx, vp_cy)
 
+			# ── Off-screen snap: entity boxes park in a corner row ───────
+			var is_entity : bool = e["data_type"] in ["enemy", "ally", "part"]
+			if is_entity and e.get("off_screen", false):
+				var park : Vector2 = e.get("park_pos", e["display_pos"])
+				e["display_pos"] = (e["display_pos"] as Vector2).lerp(park, clamp(20.0 * delta, 0.0, 1.0))
+				var dp2 : Vector2 = e["display_pos"]
+				box.position = dp2 - box.size * 0.5
+				if is_instance_valid(lbl_panel):
+					lbl_panel.position = dp2 + Vector2(BOX_W * 0.5 + LABEL_PAD, -BOX_H * 0.5)
+				continue
+
 			# ── Target and speed ────────────────────────────────────────
 			# Skill boxes bias toward the right edge of the left viewport
 			var is_skill : bool = e["data_type"] == "skill"
-			var is_entity : bool = e["data_type"] in ["enemy", "ally", "part"]
 			var sr : Rect2 = e.get("screen_rect", Rect2())
 			var has_rect : bool = is_entity and sr.size.x > 4.0
 			var bias : float = ORBIT_CENTRE_BIAS if is_skill else ORBIT_CENTRE_BIAS_ENTITY
@@ -513,6 +523,12 @@ func _update_drift(delta: float) -> void:
 func _project(world_pos: Vector3, cam: Camera3D, vp_x: float) -> Vector2:
 	if cam == null or not is_instance_valid(cam):
 		return Vector2(-9999, -9999)
+	# If the point is behind the camera, unproject_position returns garbage.
+	# Detect this via the sign of the dot product with the camera's forward axis.
+	var to_point : Vector3 = world_pos - cam.global_position
+	var forward  : Vector3 = -cam.global_transform.basis.z  # Godot: -Z is forward
+	if to_point.dot(forward) <= 0.0:
+		return Vector2(-9999, -9999)
 	var p : Vector2 = cam.unproject_position(world_pos)
 	return Vector2(vp_x + p.x, p.y)
 
@@ -521,6 +537,21 @@ func _anchor_screen(anchor: Node3D, is_enemy: bool) -> Vector2:
 	var cam := _right_cam if is_enemy else _left_cam
 	var ox  := RIGHT_VP_X if is_enemy else LEFT_VP_X
 	return _project(anchor.global_position, cam, ox)
+
+
+## Returns the parked position for an off-screen entity box.
+## Enemies park in a row at the top-right of the right viewport.
+## Allies park in a row at the top-left of the right viewport.
+func _offscreen_park_pos(slot_index: int, is_enemy: bool) -> Vector2:
+	var y     : float = BOX_H * 0.5 + 8.0 + float(slot_index) * (BOX_H + 6.0)
+	var x     : float
+	if is_enemy:
+		# Top-right: stack downward from the right edge
+		x = RIGHT_VP_X + RIGHT_VP_W - BOX_W * 0.5 - 8.0
+	else:
+		# Top-left of right viewport: stack downward from the left edge
+		x = RIGHT_VP_X + BOX_W * 0.5 + 8.0
+	return Vector2(x, y)
 
 
 # ── Box building ──────────────────────────────────────────────────────────────
@@ -714,6 +745,8 @@ func _make_box_entry(float_pos: Vector2, label: String,
 		"click_pulse":   0.0,   # decays from 1.0 on press, drives size/brightness burst
 		"screen_rect":   Rect2(), # computed each frame for entity boxes; empty for skills
 		"spawn_anim":    0.0,   # 0.0 -> 1.0 over spawn; drives lock-on bracket animation
+		"off_screen":    false,  # true when 3D anchor is behind/off camera
+		"park_pos":      float_pos,  # corner-row position used when off_screen
 	}
 
 	var cap_entry := entry
@@ -736,6 +769,7 @@ func _refresh_anchor_positions() -> void:
 				e["anchor_screen"] = _anchor_screen(anchor, false)
 
 	# Enemy boxes → CameraAnchor on each enemy (right cam)
+	var enemy_park_slot : int = 0
 	for i in _enemy_boxes.size():
 		var e : Dictionary = _enemy_boxes[i]
 		var raw = e["data"]
@@ -745,10 +779,19 @@ func _refresh_anchor_positions() -> void:
 		if enemy != null:
 			var ca := enemy.get_node_or_null("CameraAnchor")
 			var anchor : Node3D = ca if ca is Node3D else enemy
-			e["anchor_screen"] = _anchor_screen(anchor, true)
-			e["screen_rect"]   = enemy.get_screen_rect(_right_cam, RIGHT_VP_X)
+			var proj : Vector2 = _anchor_screen(anchor, true)
+			if proj.x <= -9000:
+				e["off_screen"]    = true
+				e["park_pos"]      = _offscreen_park_pos(enemy_park_slot, true)
+				e["screen_rect"]   = Rect2()
+				enemy_park_slot += 1
+			else:
+				e["off_screen"]    = false
+				e["anchor_screen"] = proj
+				e["screen_rect"]   = enemy.get_screen_rect(_right_cam, RIGHT_VP_X)
 
 	# Ally boxes → CameraAnchor on each ally (right cam)
+	var ally_park_slot : int = 0
 	for i in _ally_boxes.size():
 		var e : Dictionary = _ally_boxes[i]
 		var raw = e["data"]
@@ -758,8 +801,16 @@ func _refresh_anchor_positions() -> void:
 		if ally != null:
 			var ca := ally.get_node_or_null("CameraAnchor")
 			var anchor : Node3D = ca if ca is Node3D else ally
-			e["anchor_screen"] = _anchor_screen(anchor, true)
-			e["screen_rect"]   = ally.get_screen_rect(_right_cam, RIGHT_VP_X)
+			var proj : Vector2 = _anchor_screen(anchor, true)
+			if proj.x <= -9000:
+				e["off_screen"]    = true
+				e["park_pos"]      = _offscreen_park_pos(ally_park_slot, false)
+				e["screen_rect"]   = Rect2()
+				ally_park_slot += 1
+			else:
+				e["off_screen"]    = false
+				e["anchor_screen"] = proj
+				e["screen_rect"]   = ally.get_screen_rect(_right_cam, RIGHT_VP_X)
 
 	# Part boxes → part anchors on selected target (right cam)
 	for e in _part_boxes:
@@ -786,6 +837,22 @@ func _draw_box_set(entries: Array) -> void:
 	for e in entries:
 		var box : Button = e["box"]
 		if not is_instance_valid(box) or not box.visible:
+			continue
+		# Off-screen entity: draw a plain dim rectangle with just the name — no fancy visuals.
+		if e.get("off_screen", false):
+			var dp2   : Vector2 = e["display_pos"]
+			var half2 : Vector2 = Vector2(BOX_W, BOX_H) * 0.5
+			var t_sec2 : float = Time.get_ticks_msec() * 0.001
+			var pulse2 : float = 0.45 + 0.15 * sin(t_sec2 * 1.2)
+			var sel2 : bool = e.get("selected", false)
+			var alpha2 : float = pulse2 * (1.0 if sel2 else 0.55)
+			var th2 : ReticleTheme = _active_theme()
+			var neon2 : Color = th2.get_neon(e["data_type"], int(e.get("palette_idx", 0)))
+			var dim_col := Color(neon2.r * 0.4, neon2.g * 0.4, neon2.b * 0.4, alpha2)
+			_draw_node.draw_rect(Rect2(dp2 - half2, half2 * 2.0), Color(0.0, 0.0, 0.0, 0.5 * alpha2), true)
+			for si in 4:
+				var pts2 := _rotated_corners(dp2, half2, 0.0)
+				_draw_node.draw_line(pts2[si], pts2[(si + 1) % 4], dim_col, LINE_W)
 			continue
 		var dp    : Vector2 = e["display_pos"]
 		var anch  : Vector2 = e["anchor_screen"]
