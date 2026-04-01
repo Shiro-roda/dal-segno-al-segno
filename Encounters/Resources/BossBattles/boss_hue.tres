@@ -4,7 +4,7 @@
 [ext_resource type="PackedScene" uid="uid://qythxyqix8sw" path="res://Environments/Battlefields/Scenes/battle_field_test.tscn" id="1_xfmmy"]
 [ext_resource type="Script" uid="uid://coeqyvqijtkns" path="res://Encounters/Scripts/encounterdata.gd" id="2_13fgl"]
 [ext_resource type="PackedScene" uid="uid://drgt1emnpwnap" path="res://Characters/Scenes/BattleActors/PartyActors/hue_bactor.tscn" id="3_t70c6"]
-[ext_resource type="Resource" uid="uid://dh41c43q5ekyx" path="res://Audio/Tracks/yellow.tres" id="4_br4y7"]
+[ext_resource type="Resource" uid="uid://dh41c43q5ekyx" path="res://Audio/tracks/yellow.tres" id="4_br4y7"]
 [ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://Systems/AnatomySys/Scripts/BodyPartData.gd" id="4_ua74y"]
 [ext_resource type="Resource" uid="uid://c2hfbcmlpd3bi" path="res://Characters/Resources/Enemies/empty_one.tres" id="5_br4y7"]
 [ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="5_ovb2g"]
