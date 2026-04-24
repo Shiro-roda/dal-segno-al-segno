@@ -6,10 +6,9 @@ extends BattleActor
 # ATTACK  — Crucify:    spends will, bleed application, medium damage
 # ATTACK  — Clobber:    struggle (no will), random target, chance to miss/self-hit, no bleed
 # SPECIAL — Fulminate:  spends 3 will, AoE lightning hits all enemies for reduced damage
-# SPECIAL — Martyr:     sacrifice HP to restore will (no will for Fulminate)
 # SUPPORT — Galvanize:  spends 2 will, raises attack+will of both supports slightly,
-#                        grants Kendall a free shot this turn
-# SUPPORT — Martyr:     sacrifice HP to restore will (fallback, same as special fallback)
+#                        grants Kendall a free shot.
+# SUPPORT — Martyr:     bleed self and store all damage taken to add to next attack
 
 const BLEED_DURATION          = 3
 const BLEED_CHANCE_NORMAL     = 0.5
@@ -26,7 +25,6 @@ const MARTYR_TEMPO_BONUS = 3
 const CHATTER_CRUCIFY = [
 	"Hold out your arms.",
 	"Bleed with me.",
-	"Forgiveness is beyond you now.",
 	"Another nail for your coffin.",
 	" ",
 	" ",
@@ -57,7 +55,7 @@ const CHATTER_MARTYR = [
 	"It's not my right to falter now.",
 	"Not nearly enough...",
 	"You . . . will bleed with me.",
-	"Thirsty . . . but there's no rain.",
+	"This thirst . . . but there's no rain.",
 	"Let us share this bitter cup.",
 	" ",
 	" ",
@@ -72,6 +70,33 @@ const CHATTER_HURT = [
 	" ",
 ]
 
+const CHATTER_KILL = [
+	"Forgiveness is beyond you now.",
+	"I will be with you soon, in Paradise.",
+	"I will not forget your sacrifice.",
+	" ",
+	" ",
+]
+
+const CHATTER_DIE = [
+	"I leave the rest to you . . .",
+	"Mother . . . ?",
+	"Is this enough . . . ?",
+	"Is it finished . . . ?",
+	". . . they know not . . .",
+	" ",
+	" ",
+]
+
+const CHATTER_TURN_START = [
+	"This brother will not falter.",
+	"I await your command.",
+	"By your will.",
+	"Who stands against you?",
+	" ",
+	" ",
+	" ",
+]
 
 func get_skills() -> Array:
 	var has_will        = party_member != null and party_member.will > 0

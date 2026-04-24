@@ -11,8 +11,9 @@
 [resource]
 script = ExtResource("3_wyblm")
 display_name = "Deadly Shadow"
+theme_color = Color(0.12591085, 0.12591085, 0.12591082, 1)
 base_max_hp = 9
-base_attack = 5
+base_attack = 6
 base_flat_defense = 1
 exp_yield = 9
 body_parts = Array[ExtResource("2_oaxon")]([ExtResource("3_mi6or"), ExtResource("4_r32ct"), ExtResource("5_mwmx6")])

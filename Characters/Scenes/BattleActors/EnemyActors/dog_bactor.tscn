@@ -10,7 +10,7 @@
 [ext_resource type="PackedScene" uid="uid://wog7o86lkrah" path="res://UI/3D/BattleDisplay/Scenes/ring nodes/small_ice_orb.tscn" id="7_xlrnx"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_12ivh"]
-albedo_color = Color(1, 0.32941177, 0.22745098, 1)
+albedo_color = Color(1, 0.5372549, 0, 1)
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_ridxo"]
 material = SubResource("StandardMaterial3D_12ivh")

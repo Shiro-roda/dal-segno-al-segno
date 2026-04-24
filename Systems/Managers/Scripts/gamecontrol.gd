@@ -4,10 +4,6 @@ class_name GameControl
 static var current_run : RunState
 static var current_dungeon_run : DungeonRunState
 
-## Set to true once the player has completed the tutorial battle.
-## Persists for the session; reset only on a full game restart.
-static var tutorial_complete : bool = false
-
 var dungeon_layer
 var battle_layer
 var event_layer
@@ -28,7 +24,35 @@ func _ready():
 
 	await _wait_for_controllers()
 
+	# Show boot sequence on first launch, then hand off to start screen.
+	#var boot := get_tree().get_first_node_in_group("boot_sequence") as Node
+	#if boot != null and boot.has_method("show_boot"):
+	#	boot.show_boot()
+	#	await boot.finished
 	_show_start_screen()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		if current_dungeon_run != null and current_run != null:
+			SaveManager.save_run(current_run, current_dungeon_run)
+		get_tree().quit()
+
+
+func resume_run() -> void:
+	var save := SaveManager.load_run()
+	if save.is_empty():
+		_begin_game_flow_skip_tutorial()
+		return
+	var run : RunState = save["run"]
+	var dungeon : DungeonRunState = save["dungeon"]
+	current_run = run
+	clear_layer(event_layer)
+	event_layer.visible = false
+	dungeon_layer.visible = true
+	world_layer.visible = false
+	_set_dungeon_map_visible(true)
+	dungeon_controller.resume_dungeon(dungeon)
 
 
 func _wait_for_layers():
@@ -51,10 +75,12 @@ func _wait_for_controllers():
 
 
 func start_new_game():
-	_begin_game_flow()
+	SaveManager.delete_run_save()
+	_begin_game_flow_skip_tutorial()
 
 
 func _show_start_screen() -> void:
+	AudioManagerAuto.fade_out_bgm()	
 	clear_layer(event_layer)
 	var screen := preload("res://UI/2D/Scenes/start_screen.tscn").instantiate()
 	event_layer.add_child(screen)
@@ -69,7 +95,18 @@ func _show_start_screen() -> void:
 	screen.skip_intro.connect(func():
 		clear_layer(event_layer)
 		event_layer.visible = false
-		_begin_game_flow())
+		_begin_game_flow_with_tutorial())
+	screen.start_new_run.connect(func():
+		clear_layer(event_layer)
+		event_layer.visible = false
+		_begin_game_flow_skip_tutorial())
+	screen.continue_run.connect(func():
+		clear_layer(event_layer)
+		event_layer.visible = false
+		resume_run())
+	screen.quit_game.connect(func(): get_tree().quit())
+
+
 
 
 ## Load the intro level into the world layer.
@@ -114,7 +151,19 @@ func _set_dungeon_camera_active(active: bool) -> void:
 
 ## Load world level scene into the world layer.
 ## Build the run and proceed to tutorial or companion select.
-func _begin_game_flow() -> void:
+func _begin_game_flow_with_tutorial() -> void:
+	_setup_run()
+	_start_tutorial_battle(current_run)
+
+
+func _begin_game_flow_skip_tutorial() -> void:
+	_setup_run()
+	var select_scene := preload("res://Events/Scenes/companion_select.tscn")
+	var dungeon_data  := preload("res://Dungeons/Resources/test_dungeon.tres")
+	_start_companion_select(select_scene, dungeon_data)
+
+
+func _setup_run() -> void:
 	var vp := _get_world_viewport()
 	for c in vp.get_children(): c.queue_free()
 	world_layer.visible = false
@@ -128,12 +177,6 @@ func _begin_game_flow() -> void:
 		preload("res://Characters/Resources/Party/vritra.tres"),
 	]
 	start_new_run(run)
-	if not tutorial_complete:
-		_start_tutorial_battle(run)
-		return
-	var select_scene := preload("res://Events/Scenes/companion_select.tscn")
-	var dungeon_data  := preload("res://Dungeons/Resources/test_dungeon.tres")
-	_start_companion_select(select_scene, dungeon_data)
 
 
 func _start_tutorial_battle(run: RunState) -> void:
@@ -156,7 +199,6 @@ func _start_tutorial_battle(run: RunState) -> void:
 
 
 func _on_tutorial_battle_finished(_victory: bool, _exp: Dictionary = {}, _lvl: Dictionary = {}) -> void:
-	tutorial_complete = true
 	AudioManagerAuto.reset_ambience()
 	AudioManagerAuto.fade_out_bgm()
 	clear_layer(battle_layer)
@@ -271,7 +313,7 @@ func _on_battle_finished(victory, exp_per_member: Dictionary = {}, level_up_even
 			if dc:
 				dc.on_party_defeated()
 			else:
-				_begin_game_flow()
+				_begin_game_flow_skip_tutorial()
 			return
 		event_layer.visible = false
 		dungeon_layer.visible = true
@@ -409,6 +451,8 @@ func _on_boss_battle_finished(victory: bool, exp_per_member: Dictionary = {}, le
 
 
 func start_win_screen() -> void:
+	SaveManager.delete_run_save()
+	MetaProgress.on_run_ended(true)
 	clear_layer(event_layer)
 	event_layer.visible = true
 	dungeon_layer.visible = false
@@ -434,7 +478,7 @@ func _make_battle_rewards() -> Array:
 		var tiles   : int = randi_range(1, 2)
 		var gold    : int = randi_range(20, 45)
 		pool = [
-			{"label": "Reprise\n+%d Reprise%s" % [rerolls, "s" if rerolls > 1 else ""],
+			{"label": "Revision\n+%d Revise%s" % [rerolls, "s" if rerolls > 1 else ""],
 				"type": "reprise",  "amount": rerolls},
 			{"label": "Salvage\n+%d Tie%s" % [tiles, "s" if tiles > 1 else ""],
 				"type": "tie",      "amount": tiles},
@@ -447,11 +491,11 @@ func _make_battle_rewards() -> Array:
 		var gold    : int = randi_range(10, 25)
 		var bb_amt  : int = max(1, randi_range(run.gun_clip / 2, run.gun_clip))
 		pool = [
-			{"label": "Corpus\n+%d CORP each" % hp_amt,
+			{"label": "Butcher\n+%d CORP each" % hp_amt,
 				"type": "corpus", "amount": hp_amt},
 			{"label": "Small Cut\n+%d\u20b5" % gold,
 				"type": "cuts",   "amount": gold},
-			{"label": "Beat Bolts\n+%d BB" % bb_amt,
+			{"label": "Forge Bolts\n+%d BB's" % bb_amt,
 				"type": "bb",     "amount": bb_amt},
 		]
 	# All types are already distinct — just shuffle and return all 3.

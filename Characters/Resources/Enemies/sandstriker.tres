@@ -102,6 +102,7 @@ metadata/_custom_type_script = "uid://badrkgc20tgv2"
 script = ExtResource("3_rfy4i")
 display_name = "HYAD-01 \"Astrape\" Sandstriker Unit"
 log_name = "Sandstriker Unit"
+theme_color = Color(0.02745098, 0.32941177, 1, 1)
 base_max_hp = 15
 base_attack = 7
 base_flat_defense = 2

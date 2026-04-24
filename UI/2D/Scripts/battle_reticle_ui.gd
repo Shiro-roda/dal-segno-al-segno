@@ -16,10 +16,11 @@ extends CanvasLayer
 
 signal skill_selected(skill: Dictionary)
 signal target_selected(target: BattleActor)
-signal focus_requested(target: BattleActor)  # camera focus only, no state change
+signal focus_requested(target: BattleActor)
 signal part_selected(part: BodyPartData)
 signal confirmed
 signal cancelled
+signal repeat_action  # emitted when the player presses the repeat button
 
 # ── Colours ───────────────────────────────────────────────────────────────────
 # Neon palette — one hue per slot, cycling through the set
@@ -98,10 +99,12 @@ var _skill_boxes     : Array = []
 var _enemy_boxes     : Array = []
 var _ally_boxes      : Array = []
 var _part_boxes      : Array = []
-var _struggle_box    : Dictionary = {}  # at most one — tracks selected skill's struggle alt
-var _tense_phase     : bool  = false    # set by open(); enables struggle box display
+var _struggle_box    : Dictionary = {}
+var _repeat_btn      : Button = null   # the REPEAT action button; null when not shown
+var _repeat_lbl      : Control = null  # label panel paired with repeat button
+var _tense_phase     : bool  = false
 var _palette_counter : int   = 0
-var _time            : float = 0.0  # global accumulator for orbit animation
+var _time            : float = 0.0
 
 var _draw_node    : Node2D = null
 
@@ -132,7 +135,7 @@ func _ready() -> void:
 
 func open(actor: BattleActor, skills: Array, enemies: Array, allies: Array,
 		removed_mask: int, left_cam: Camera3D, right_cam: Camera3D,
-		tense_phase: bool = false) -> void:
+		tense_phase: bool = false, can_repeat: bool = false) -> void:
 	_actor             = actor
 	_skills            = skills
 	_enemies           = enemies
@@ -152,11 +155,17 @@ func open(actor: BattleActor, skills: Array, enemies: Array, allies: Array,
 	_build_skill_boxes()
 	_build_enemy_boxes()
 	_build_ally_boxes()
+	if can_repeat:
+		_build_repeat_button()
+	else:
+		_clear_repeat_button()
 
 
 func close(silent: bool = false) -> void:
 	_active = false
 	_clear_all_boxes()
+	_clear_struggle_box()
+	_clear_repeat_button()
 	_hide_filter_panel()
 	hide()
 	if not silent:
@@ -301,17 +310,13 @@ func _hide_filter_panel() -> void:
 
 
 ## Switch between enemy targeting and ally targeting.
-## Enemy boxes are blocked during support; allies are always clickable.
+## Enemy boxes are blocked during support; ally boxes are always clickable.
 func set_support_targeting(support: bool) -> void:
 	_support_targeting = support
 	for e in _enemy_boxes:
 		var b : Button = e["box"]
 		if is_instance_valid(b):
 			b.mouse_filter = Control.MOUSE_FILTER_IGNORE if support else Control.MOUSE_FILTER_STOP
-	for e in _ally_boxes:
-		var b : Button = e["box"]
-		if is_instance_valid(b):
-			b.mouse_filter = Control.MOUSE_FILTER_STOP if support else Control.MOUSE_FILTER_IGNORE
 
 
 # ── Frame update ──────────────────────────────────────────────────────────────
@@ -378,7 +383,12 @@ func _update_drift(delta: float) -> void:
 				var dp2 : Vector2 = e["display_pos"]
 				box.position = dp2 - box.size * 0.5
 				if is_instance_valid(lbl_panel):
-					lbl_panel.position = dp2 + Vector2(BOX_W * 0.5 + LABEL_PAD, -BOX_H * 0.5)
+					var lbl_x : float
+					if e["data_type"] == "enemy":
+						lbl_x = dp2.x - BOX_W * 0.5 - LABEL_PAD - lbl_panel.size.x
+					else:
+						lbl_x = dp2.x + BOX_W * 0.5 + LABEL_PAD
+					lbl_panel.position = Vector2(lbl_x, dp2.y - BOX_H * 0.5)
 				continue
 
 			# ── Target and speed ────────────────────────────────────────
@@ -468,6 +478,20 @@ func _update_drift(delta: float) -> void:
 				lbl_alpha = 0.15
 			else:
 				lbl_alpha = 0.55
+			# Apply colour to the label text every frame so it resets cleanly
+			# when toggling between modes. Allies turn green and enemies turn
+			# red when selected; all other states use white at varying alpha.
+			var lbl_node2 : Label = e.get("label_node")
+			if is_instance_valid(lbl_node2):
+				var lbl_col : Color
+				if e["selected"]:
+					match e["data_type"]:
+						"ally":  lbl_col = Color(0.30, 1.00, 0.45, 1.0)
+						"enemy": lbl_col = Color(1.00, 0.28, 0.28, 1.0)
+						_:       lbl_col = Color(1.0, 1.0, 1.0, 1.0)
+				else:
+					lbl_col = Color(1.0, 1.0, 1.0, lbl_alpha)
+				lbl_node2.add_theme_color_override("font_color", lbl_col)
 			var t_sec2    : float = Time.get_ticks_msec() * 0.001
 			var coloured2 : bool  = e["data_type"] == "skill" or not _sel_skill.is_empty()
 			var th2       : ReticleTheme = _active_theme()
@@ -491,27 +515,36 @@ func _update_drift(delta: float) -> void:
 			var e_sr : Rect2 = e.get("screen_rect", Rect2())
 			var e_is_entity : bool = e["data_type"] in ["enemy", "ally", "part"]
 			var e_has_rect  : bool = e_is_entity and e_sr.size.x > 4.0
-			if e_has_rect:
-				box.position = e_sr.position
-				box.size     = e_sr.size
-			else:
-				box.position = dp - box.size * 0.5
+			# Clip the screen rect to the entity's viewport, matching the draw section.
+			var e_lbl_vp_x : float = RIGHT_VP_X if e["is_enemy"] else LEFT_VP_X
+			var e_lbl_vp_w : float = RIGHT_VP_W if e["is_enemy"] else LEFT_VP_W
+			var e_vp_rect  := Rect2(e_lbl_vp_x, 0, e_lbl_vp_w, 960.0)
+			var e_clipped  : Rect2 = e_sr.intersection(e_vp_rect) if e_has_rect else e_sr
+			# Button hit area always tracks display_pos at BOX size — screen_rect
+			# is used only for drawing corner brackets, never for the click region.
+			box.position = dp - box.size * 0.5
 			if is_instance_valid(lbl_panel):
 				# modulate drives all alpha — don’t encode it in the stylebox too
 				lbl_panel.modulate = Color.WHITE
 				var lp : Vector2
-				if e_has_rect:
-					lp = Vector2(e_sr.position.x + e_sr.size.x + LABEL_PAD, e_sr.position.y)
-				else:
-					lp = dp + Vector2(BOX_W * 0.5 + LABEL_PAD, -BOX_H * 0.5)
+				var dtype2 : String = e["data_type"]
 				const _P := 4.0
-				lbl_panel.position = lp
 				var lv : VBoxContainer = e.get("label_vbox")
 				if is_instance_valid(lv):
-					# lv is a child of lbl_panel at fixed offset (LBL_PAD, LBL_PAD).
-					# Size the panel to wrap around it.
 					var lv_min := lv.get_minimum_size()
 					lbl_panel.size = Vector2(lv_min.x + _P * 2.0, lv_min.y + _P * 2.0)
+				if dtype2 == "enemy" and e_has_rect:
+					# Enemy maximised: label right of the projected bracket.
+					var lbl_x := e_clipped.position.x + e_clipped.size.x + LABEL_PAD
+					lbl_x = clampf(lbl_x, e_lbl_vp_x + LABEL_PAD, e_lbl_vp_x + e_lbl_vp_w - 150.0)
+					lp = Vector2(lbl_x, e_clipped.position.y)
+				elif dtype2 == "enemy":
+					# Enemy floating/minimised: label left of the box.
+					lp = dp + Vector2(-(lbl_panel.size.x + LABEL_PAD), -BOX_H * 0.5)
+				else:
+					# Allies, skills, parts: label always right of the box.
+					lp = dp + Vector2(BOX_W * 0.5 + LABEL_PAD, -BOX_H * 0.5)
+				lbl_panel.position = lp
 				for j in e["detail_nodes"].size():
 					var dn : Control = e["detail_nodes"][j]
 					if is_instance_valid(dn):
@@ -543,14 +576,16 @@ func _anchor_screen(anchor: Node3D, is_enemy: bool) -> Vector2:
 ## Enemies park in a row at the top-right of the right viewport.
 ## Allies park in a row at the top-left of the right viewport.
 func _offscreen_park_pos(slot_index: int, is_enemy: bool) -> Vector2:
-	var y     : float = BOX_H * 0.5 + 8.0 + float(slot_index) * (BOX_H + 6.0)
-	var x     : float
+	const SLOT_H : float = BOX_H + 6.0
+	const MARGIN : float = 8.0
+	var y : float = BOX_H * 0.5 + MARGIN + float(slot_index) * SLOT_H
+	var x : float
 	if is_enemy:
-		# Top-right: stack downward from the right edge
-		x = RIGHT_VP_X + RIGHT_VP_W - BOX_W * 0.5 - 8.0
+		# Right edge of right viewport — label will go to the left of the box
+		x = RIGHT_VP_X + RIGHT_VP_W - BOX_W * 0.5 - MARGIN
 	else:
-		# Top-left of right viewport: stack downward from the left edge
-		x = RIGHT_VP_X + BOX_W * 0.5 + 8.0
+		# Left edge of right viewport — label goes to the right
+		x = RIGHT_VP_X + BOX_W * 0.5 + MARGIN
 	return Vector2(x, y)
 
 
@@ -599,10 +634,8 @@ func _build_ally_boxes() -> void:
 			continue
 		var float_pos := _ally_float_pos(i, n)
 		var entry := _make_box_entry(float_pos, ally.display_name, ally, true, "ally")
-		# Ally boxes start non-interactive; only enabled during support targeting.
-		var b0 : Button = entry["box"]
-		if is_instance_valid(b0):
-			b0.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		# Ally boxes are always clickable — they show details when no skill
+		# is selected, and act as targets when a support skill is selected.
 		# Seed screen_rect, display_pos, and anchor immediately.
 		var ca := ally.get_node_or_null("CameraAnchor")
 		var anchor_node : Node3D = ca if ca is Node3D else ally
@@ -776,11 +809,21 @@ func _refresh_anchor_positions() -> void:
 		if not is_instance_valid(raw):
 			continue
 		var enemy := raw as BattleActor
+		# Hide and skip boxes whose enemy has died since the reticle was opened.
+		if enemy != null and not enemy.is_alive():
+			var dead_btn : Button = e["box"]
+			if is_instance_valid(dead_btn):
+				dead_btn.visible = false
+			continue
 		if enemy != null:
 			var ca := enemy.get_node_or_null("CameraAnchor")
 			var anchor : Node3D = ca if ca is Node3D else enemy
 			var proj : Vector2 = _anchor_screen(anchor, true)
-			if proj.x <= -9000:
+			var sr : Rect2 = enemy.get_screen_rect(_right_cam, RIGHT_VP_X)
+			# Off-screen if projection failed OR the rect doesn't overlap the right viewport
+			var vp_rect := Rect2(RIGHT_VP_X, 0.0, RIGHT_VP_W, 960.0)
+			var is_off : bool = proj.x <= -9000 or sr.size.x <= 4.0 or not sr.intersects(vp_rect)
+			if is_off:
 				e["off_screen"]    = true
 				e["park_pos"]      = _offscreen_park_pos(enemy_park_slot, true)
 				e["screen_rect"]   = Rect2()
@@ -788,7 +831,7 @@ func _refresh_anchor_positions() -> void:
 			else:
 				e["off_screen"]    = false
 				e["anchor_screen"] = proj
-				e["screen_rect"]   = enemy.get_screen_rect(_right_cam, RIGHT_VP_X)
+				e["screen_rect"]   = sr
 
 	# Ally boxes → CameraAnchor on each ally (right cam)
 	var ally_park_slot : int = 0
@@ -831,6 +874,7 @@ func _on_draw() -> void:
 	_draw_box_set(_ally_boxes)
 	_draw_box_set(_part_boxes)
 	_draw_struggle_box()
+	_draw_repeat_button()
 
 
 func _draw_box_set(entries: Array) -> void:
@@ -840,19 +884,18 @@ func _draw_box_set(entries: Array) -> void:
 			continue
 		# Off-screen entity: draw a plain dim rectangle with just the name — no fancy visuals.
 		if e.get("off_screen", false):
-			var dp2   : Vector2 = e["display_pos"]
-			var half2 : Vector2 = Vector2(BOX_W, BOX_H) * 0.5
+			var dp2    : Vector2 = e["display_pos"]
+			var half2  : Vector2 = Vector2(BOX_W, BOX_H) * 0.5
 			var t_sec2 : float = Time.get_ticks_msec() * 0.001
 			var pulse2 : float = 0.45 + 0.15 * sin(t_sec2 * 1.2)
-			var sel2 : bool = e.get("selected", false)
+			var sel2   : bool  = e.get("selected", false)
 			var alpha2 : float = pulse2 * (1.0 if sel2 else 0.55)
-			var th2 : ReticleTheme = _active_theme()
-			var neon2 : Color = th2.get_neon(e["data_type"], int(e.get("palette_idx", 0)))
-			var dim_col := Color(neon2.r * 0.4, neon2.g * 0.4, neon2.b * 0.4, alpha2)
-			_draw_node.draw_rect(Rect2(dp2 - half2, half2 * 2.0), Color(0.0, 0.0, 0.0, 0.5 * alpha2), true)
-			for si in 4:
-				var pts2 := _rotated_corners(dp2, half2, 0.0)
-				_draw_node.draw_line(pts2[si], pts2[(si + 1) % 4], dim_col, LINE_W)
+			var th2    : ReticleTheme = _active_theme()
+			var neon2  : Color = th2.get_neon(e["data_type"], int(e.get("palette_idx", 0)))
+			var dim_col := Color(neon2.r * 0.5, neon2.g * 0.5, neon2.b * 0.5, alpha2)
+			# Draw corner brackets at the parked box size
+			var park_rect := Rect2(dp2 - half2, half2 * 2.0)
+			_draw_corner_brackets(park_rect, neon2, alpha2, LINE_W * 1.5, 1.0)
 			continue
 		var dp    : Vector2 = e["display_pos"]
 		var anch  : Vector2 = e["anchor_screen"]
@@ -921,13 +964,19 @@ func _draw_box_set(entries: Array) -> void:
 		# ── Box ───────────────────────────────────────────────────
 		var db_sr   : Rect2 = e.get("screen_rect", Rect2())
 		var db_ent  : bool  = e["data_type"] in ["enemy", "ally", "part"]
-		var db_rect : bool  = db_ent and db_sr.size.x > 4.0
+		var db_is_r : bool  = e["is_enemy"]
+		# Clamp the draw rect to whichever viewport this entity belongs to.
+		var db_vp_x : float = RIGHT_VP_X if db_is_r else LEFT_VP_X
+		var db_vp_w : float = RIGHT_VP_W if db_is_r else LEFT_VP_W
+		var db_vp_rect := Rect2(db_vp_x, 0, db_vp_w, 960.0)
+		var db_clipped  : Rect2 = db_sr.intersection(db_vp_rect)
+		var db_rect : bool  = db_ent and db_clipped.size.x > 4.0
 		if db_rect:
 			var draw_col : Color = hue_drifted if coloured else Color.WHITE
 			var spawn_t  : float = float(e.get("spawn_anim", 1.0))
-			_draw_corner_brackets(db_sr, draw_col, box_a, LINE_W * 2.0, spawn_t)
+			_draw_corner_brackets(db_clipped, draw_col, box_a, LINE_W * 2.0, spawn_t)
 			if sel and coloured:
-				_draw_corner_brackets(db_sr.grow(4.0), draw_col, box_a * 0.45, LINE_W, spawn_t)
+				_draw_corner_brackets(db_clipped.grow(4.0).intersection(db_vp_rect), draw_col, box_a * 0.45, LINE_W, spawn_t)
 		elif coloured:
 			var draw_col : Color = hue_drifted
 			_draw_rect_layered(dp, half, rot, draw_col, box_a * 0.18, LINE_W * 5.0, cycle_on)
@@ -1073,11 +1122,14 @@ func _on_box_pressed(entry: Dictionary) -> void:
 		emit_signal("skill_selected", sk)
 		_slide_to_anchor(entry)
 		_clear_boxes(_part_boxes)
+		# Properly reset all enemy and ally boxes via _slide_to_float so their
+		# detail nodes, label colours, and edge-push state are all cleaned up.
 		for eb in _enemy_boxes:
-			eb["selected"]  = false
-			eb["at_anchor"] = false
-			eb["edge_push"] = false
-			_hide_detail(eb)
+			if eb["selected"] or eb["edge_push"]:
+				_slide_to_float(eb)
+		for ab in _ally_boxes:
+			if ab["selected"]:
+				_slide_to_float(ab)
 		# Spawn struggle alternative if in tense phase and skill has one
 		# Spawn struggle alternative if in tense phase and skill has one
 		_clear_struggle_box()
@@ -1093,7 +1145,6 @@ func _on_box_pressed(entry: Dictionary) -> void:
 			return
 		# During ally-targeting mode, enemy clicks do camera focus only.
 		if _support_targeting:
-			emit_signal("focus_requested", data as BattleActor)
 			return
 		var enemy : BattleActor = data as BattleActor
 		var already_sel : bool = (_sel_target == enemy)
@@ -1118,14 +1169,28 @@ func _on_box_pressed(entry: Dictionary) -> void:
 		if not is_instance_valid(data):
 			return
 		var ally : BattleActor = data as BattleActor
-		_deselect_all(_ally_boxes, entry)
-		_sel_target = ally
-		_sel_part   = null
-		_slide_to_anchor(entry)
-		if not _sel_skill.is_empty():
-			emit_signal("target_selected", ally)
-		else:
+		if _sel_skill.is_empty() or (_sel_target != null and _sel_target.team == BattleActor.Team.ENEMY):
+			# No skill selected — reset all other selections first, then show
+			# ally details and focus camera; do not set _sel_target.
+			_deselect_all(_skill_boxes, {})
+			_sel_skill  = {}
+			_sel_target = null
+			_sel_part   = null
+			_clear_boxes(_part_boxes)
+			_clear_struggle_box()
+			for eb in _enemy_boxes:
+				if eb["selected"] or eb["edge_push"]:
+					_slide_to_float(eb)
+			_deselect_all(_ally_boxes, entry)
+			_slide_to_anchor(entry)
 			emit_signal("focus_requested", ally)
+		else:
+			# Support skill selected — commit as target.
+			_deselect_all(_ally_boxes, entry)
+			_sel_target = ally
+			_sel_part   = null
+			_slide_to_anchor(entry)
+			emit_signal("target_selected", ally)
 
 	elif dtype == "part":
 		if _sel_skill.is_empty():
@@ -1149,10 +1214,6 @@ func _slide_to_anchor(entry: Dictionary) -> void:
 	entry["click_pulse"]  = 0.75
 
 	var lbl_node : Label = entry["label_node"]
-	if is_instance_valid(lbl_node):
-		# Brighten toward white when selected
-		var nc : Color = entry["neon"]
-		lbl_node.add_theme_color_override("font_color", nc.lightened(0.3))
 	if is_instance_valid(entry.get("tween")):
 		(entry["tween"] as Tween).kill()
 	# Wait for drift to land (~travel time), then mark at_anchor and show detail
@@ -1175,10 +1236,6 @@ func _slide_to_float(entry: Dictionary) -> void:
 		_hide_filter_panel()
 	if is_instance_valid(entry.get("tween")):
 		(entry["tween"] as Tween).kill()
-	var lbl_node : Label = entry["label_node"]
-	if is_instance_valid(lbl_node):
-		var nc : Color = entry["neon"]
-		lbl_node.add_theme_color_override("font_color", Color(nc.r, nc.g, nc.b, 0.70))
 
 
 # ── Detail expansion ──────────────────────────────────────────────────────────
@@ -1212,8 +1269,7 @@ func _show_detail(entry: Dictionary) -> void:
 				lines.append("CORP  ???")
 			if revealed:
 				lines.append("SHARP  %d" % actor.attack_power)
-				if actor.flat_defense > 0:
-					lines.append("FLAT  %d" % actor.flat_defense)
+				lines.append("FLAT  %d" % actor.flat_defense)
 				for fx in actor.active_effects:
 					var dur : int = int(fx.get("duration", 0))
 					var dur_str : String = " %dt" % dur if dur > 0 else ""
@@ -1330,6 +1386,68 @@ func _clear_struggle_box() -> void:
 	_struggle_box = {}
 
 
+func _clear_repeat_button() -> void:
+	if is_instance_valid(_repeat_btn): _repeat_btn.queue_free()
+	if is_instance_valid(_repeat_lbl): _repeat_lbl.queue_free()
+	_repeat_btn = null
+	_repeat_lbl = null
+
+
+func _build_repeat_button() -> void:
+	_clear_repeat_button()
+	# Position at the bottom of the skill box column, in the left viewport.
+	var base_x : float = LEFT_VP_X + LEFT_VP_W * 0.82
+	var base_y : float = 660.0  # near bottom of left viewport
+	var half   : Vector2 = Vector2(BOX_W, BOX_H) * 0.5
+
+	var btn := Button.new()
+	btn.custom_minimum_size = Vector2(BOX_W, BOX_H)
+	btn.size = Vector2(BOX_W, BOX_H)
+	btn.flat = true
+	btn.position = Vector2(base_x - half.x, base_y - half.y)
+	# Transparent so _draw handles visuals
+	var sbox := StyleBoxEmpty.new()
+	btn.add_theme_stylebox_override("normal", sbox)
+	btn.add_theme_stylebox_override("hover",  sbox)
+	btn.add_theme_stylebox_override("pressed", sbox)
+	btn.add_theme_stylebox_override("focus",  sbox)
+	btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	btn.pressed.connect(func(): emit_signal("repeat_action"))
+	add_child(btn)
+	_repeat_btn = btn
+
+	# Label panel
+	var lbl_panel := ColorRect.new()
+	lbl_panel.color = Color(0.04, 0.04, 0.04, 1.0)
+	lbl_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(lbl_panel)
+
+	var lv := VBoxContainer.new()
+	lv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lv.add_theme_constant_override("separation", 2)
+	lbl_panel.add_child(lv)
+
+	var name_lbl := Label.new()
+	name_lbl.text = " REPRISE"
+	name_lbl.add_theme_font_size_override("font_size", FONT_SIZE_LBL)
+	if _font: name_lbl.add_theme_font_override("font", _font)
+	name_lbl.add_theme_color_override("font_color", Color.WHITE)
+	lv.add_child(name_lbl)
+
+	var hint_lbl := Label.new()
+	hint_lbl.text = " Repeat last\n action"
+	hint_lbl.add_theme_font_size_override("font_size", 10)
+	if _font: hint_lbl.add_theme_font_override("font", _font)
+	hint_lbl.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6, 1.0))
+	lv.add_child(hint_lbl)
+
+	# Position label to the right of the button
+	var lp_pos := Vector2(base_x + half.x + LABEL_PAD, base_y - half.y)
+	lbl_panel.position = lp_pos
+	_repeat_lbl = lbl_panel
+	_draw_node.queue_redraw()
+
+
 func _update_struggle_box_position(delta: float) -> void:
 	if _struggle_box.is_empty():
 		return
@@ -1354,11 +1472,28 @@ func _draw_struggle_box() -> void:
 	var half : Vector2 = Vector2(BOX_W, BOX_H) * 0.5
 	var t_sec : float = Time.get_ticks_msec() * 0.001
 	var pulse : float = 0.55 + 0.20 * sin(t_sec * 1.4)
-	# Desaturated amber — visibly different from primary, still clearly interactive
 	var dim   : Color = Color(0.75, 0.60, 0.25, pulse)
 	_draw_rect_layered(dp, half, 0.0, dim, pulse, LINE_W * 1.2, false)
-	# Faint fill so it reads as a separate button
 	_draw_rect_layered(dp, half, 0.0, dim, pulse * 0.12, LINE_W * 5.0, false)
+
+
+func _draw_repeat_button() -> void:
+	if not is_instance_valid(_repeat_btn):
+		return
+	var dp   : Vector2 = _repeat_btn.position + _repeat_btn.size * 0.5
+	var half : Vector2 = Vector2(BOX_W, BOX_H) * 0.5
+	var t_sec : float = Time.get_ticks_msec() * 0.001
+	var pulse : float = 0.50 + 0.20 * sin(t_sec * 1.1)
+	# Muted cyan — distinct from skill palette, reads as a utility action
+	var col  : Color = Color(0.20, 0.80, 0.75, pulse)
+	_draw_rect_layered(dp, half, 0.0, col, pulse * 0.85, LINE_W * 1.2, false)
+	_draw_rect_layered(dp, half, 0.0, col, pulse * 0.10, LINE_W * 5.0, false)
+	# Size the label panel now that it has children
+	if is_instance_valid(_repeat_lbl):
+		var lv := _repeat_lbl.get_child(0) if _repeat_lbl.get_child_count() > 0 else null
+		if lv != null:
+			var lv_min := (lv as Control).get_minimum_size()
+			_repeat_lbl.size = Vector2(lv_min.x + 8.0, lv_min.y + 8.0)
 
 
 func _clear_boxes(entries: Array) -> void:

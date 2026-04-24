@@ -67,6 +67,54 @@ var money : int = 0
 var run_flags : Dictionary = {}
 var run_modifiers : Array = []
 
+## Kendall's equipped guns. Up to two slots: "gun_primary" and "gun_secondary".
+## Values are GunData resources, or null if the slot is empty.
+var gun_primary   : GunData = null
+var gun_secondary : GunData = null
+
+## Return whichever gun is currently active (primary first, then secondary).
+## Returns null if no gun is equipped.
+func get_active_gun() -> GunData:
+	if gun_primary != null:
+		return gun_primary
+	return gun_secondary
+
+## Equip a gun into the next available slot.
+## Returns true if equipped, false if both slots are full.
+func equip_gun(gun: GunData) -> bool:
+	if gun_primary == null:
+		gun_primary = gun
+		_sync_clip_to_gun()
+		return true
+	if gun_secondary == null:
+		gun_secondary = gun
+		return true
+	return false
+
+## Swap primary ↔ secondary (cycles active gun).
+func swap_guns() -> void:
+	var tmp := gun_primary
+	gun_primary   = gun_secondary
+	gun_secondary = tmp
+	_sync_clip_to_gun()
+
+## Unequip from a slot by name ("gun_primary" | "gun_secondary").
+func unequip_gun(slot: String) -> void:
+	if slot == "gun_primary":
+		gun_primary = null
+	elif slot == "gun_secondary":
+		gun_secondary = null
+	_sync_clip_to_gun()
+
+## Sync gun_clip to the active gun's clip_size, preserving relative ammo.
+func _sync_clip_to_gun() -> void:
+	var gun := get_active_gun()
+	var new_clip : int = gun.clip_size if gun != null else 6
+	if new_clip != gun_clip:
+		var ratio : float = float(ammo) / float(max(gun_clip, 1))
+		gun_clip = new_clip
+		ammo = clamp(int(round(ratio * gun_clip)), 0, gun_clip)
+
 func spend_ammo(amount: int) -> bool:
 	if ammo < amount:
 		return false

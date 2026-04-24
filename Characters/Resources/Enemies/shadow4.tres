@@ -41,8 +41,9 @@ metadata/_custom_type_script = "uid://badrkgc20tgv2"
 [resource]
 script = ExtResource("3_2331k")
 display_name = "Kind Shadow"
+theme_color = Color(0.15487596, 0.154876, 0.15487596, 1)
 base_max_hp = 12
-base_attack = 3
+base_attack = 4
 base_flat_defense = 1
 base_max_will = 10
 exp_yield = 7

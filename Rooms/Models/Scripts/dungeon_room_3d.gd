@@ -9,6 +9,10 @@ var controller : DungeonController
 
 # Spawned custom model node, if any.
 var _model_node : Node3D = null
+# Hover outline mesh node.
+var _hover_outline : MeshInstance3D = null
+var _is_hovered : bool = false
+var _interactive : bool = true  # set false for non-interactive ghost slots
 
 
 func setup(pos: Vector2i, instance: RoomInstance, dungeon_controller) -> void:
@@ -16,6 +20,11 @@ func setup(pos: Vector2i, instance: RoomInstance, dungeon_controller) -> void:
 	room_instance = instance
 	controller    = dungeon_controller
 	update_visual()
+
+
+func _ready() -> void:
+	if _interactive:
+		_connect_hover_signals()
 
 
 func update_visual() -> void:
@@ -145,6 +154,7 @@ func setup_ghost(pos: Vector2i, dungeon_controller, color: Color, interactive: b
 		area.monitoring   = false
 		area.monitorable  = false
 		area.process_mode = Node.PROCESS_MODE_DISABLED
+		_interactive      = false
 	# Ghost always uses the emissive placeholder cube, never a model.
 	_clear_model()
 	if mesh == null:
@@ -158,6 +168,54 @@ func setup_ghost(pos: Vector2i, dungeon_controller, color: Color, interactive: b
 	mesh.set_surface_override_material(0, mat)
 
 
+func _connect_hover_signals() -> void:
+	if area == null:
+		return
+	if not area.mouse_entered.is_connected(_on_mouse_entered):
+		area.mouse_entered.connect(_on_mouse_entered)
+	if not area.mouse_exited.is_connected(_on_mouse_exited):
+		area.mouse_exited.connect(_on_mouse_exited)
+
+
+func _on_mouse_entered() -> void:
+	_is_hovered = true
+	_show_hover_outline(true)
+	var map_ui = get_tree().get_first_node_in_group("dungeon_map_3d")
+	if map_ui and map_ui.has_method("notify_room_hovered"):
+		map_ui.notify_room_hovered(true)
+
+
+func _on_mouse_exited() -> void:
+	_is_hovered = false
+	_show_hover_outline(false)
+	var map_ui = get_tree().get_first_node_in_group("dungeon_map_3d")
+	if map_ui and map_ui.has_method("notify_room_hovered"):
+		map_ui.notify_room_hovered(false)
+
+
+func _show_hover_outline(show: bool) -> void:
+	if not show:
+		if is_instance_valid(_hover_outline):
+			_hover_outline.visible = false
+		return
+	if not is_instance_valid(_hover_outline):
+		_hover_outline = MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = Vector3(1.0, 1.0, 1.0)
+		_hover_outline.mesh = box
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode              = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.albedo_color              = Color(1.0, 0.85, 0.0)
+		mat.emission_enabled          = true
+		mat.emission                  = Color(1.0, 0.85, 0.0)
+		mat.emission_energy_multiplier = 4.0
+		mat.cull_mode                 = BaseMaterial3D.CULL_FRONT
+		_hover_outline.set_surface_override_material(0, mat)
+		_hover_outline.scale = Vector3(1.28, 1.18, 1.28)
+		add_child(_hover_outline)
+	_hover_outline.visible = true
+
+
 func _on_area_3d_input_event(camera, event, position, normal, shape_idx):
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
 		if room_instance != null:
@@ -167,6 +225,7 @@ func _on_area_3d_input_event(camera, event, position, normal, shape_idx):
 			return
 
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		var map_ui : Node3D = get_tree().get_first_node_in_group("dungeon_map_3d")
 		if room_instance != null:
 			# If adjacent and can connect, propose the connection.
 			# Otherwise attempt normal movement.
@@ -175,14 +234,14 @@ func _on_area_3d_input_event(camera, event, position, normal, shape_idx):
 			var is_adjacent : bool = (abs(diff.x) + abs(diff.y)) == 1
 			if is_adjacent and not controller.rooms_connected(cur, grid_pos) \
 					and controller._can_connect(cur, grid_pos):
-				var map_ui : Node3D = get_tree().get_first_node_in_group("dungeon_map_3d")
 				if map_ui:
 					map_ui.show_connection_proposals(cur, [grid_pos], controller)
 			else:
+				if map_ui:
+					map_ui._pending_marker_target = grid_pos
 				controller.move_to_room(grid_pos)
 		else:
 			# Ghost cube clicked — ask map to show choices near click position
-			var map_ui : Node3D = get_tree().get_first_node_in_group("dungeon_map_3d")
 			if map_ui == null:
 				return
 			var choices := controller.get_room_choices(grid_pos)

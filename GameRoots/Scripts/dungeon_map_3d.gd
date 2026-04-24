@@ -6,7 +6,24 @@ extends Node3D
 var dungeon    : DungeonRunState
 var controller : DungeonController = null
 var rotating   = false    # middle-mouse rotate
-var _panning   = false    # left-click pan
+var _panning   = false    # left-click pan (active)
+var _pan_armed = false    # press seen, waiting for drag threshold
+var _pan_press_pos : Vector2 = Vector2.ZERO
+const PAN_DRAG_THRESHOLD := 6.0
+var _room_mesh_hovered := false  # true whenever the cursor is over any room mesh
+
+# ── Player position marker ─────────────────────────────────────────────────────
+var _player_marker     : MeshInstance3D = null
+var _marker_tween      : Tween          = null
+var _marker_bounce_t   : float          = 0.0   # drives the idle bounce sine wave
+var _pending_marker_target : Vector2i   = Vector2i(-999, -999)  # set before redraw; marker will animate to this on arrival
+var _prev_marker_world_pos : Vector3    = Vector3.ZERO  # saved before queue_free so the new marker knows where to arc from
+const MARKER_COLOR     := Color(0.718, 0.718, 0.353, 1.0)  # beige
+const MARKER_HOVER_Y   := 1.4   # resting height above room surface
+const MARKER_BOUNCE_AMP := 0.22  # idle bounce amplitude
+const MARKER_BOUNCE_SPD := 2.2   # idle bounce frequency (rad/s)
+const MARKER_JUMP_H    := 1.6   # arc peak height when travelling between rooms
+const MARKER_TRAVEL_T  := 0.25   # travel tween duration in seconds
 var last_mouse_pos : Vector2 = Vector2.ZERO
 
 # ── Camera orbit ──────────────────────────────────────────────────────────────
@@ -94,6 +111,18 @@ func _ready():
 
 func _process(delta: float) -> void:
 	_tick_channel_text(delta)
+	_tick_marker_bounce(delta)
+
+
+func _tick_marker_bounce(delta: float) -> void:
+	if not is_instance_valid(_player_marker):
+		return
+	if is_instance_valid(_marker_tween) and _marker_tween.is_running():
+		return  # don't fight the travel tween
+	_marker_bounce_t += delta * MARKER_BOUNCE_SPD
+	var base_pos := grid_to_world(dungeon.current_pos)
+	_player_marker.position = base_pos + Vector3(0.0,
+		MARKER_HOVER_Y + sin(_marker_bounce_t) * MARKER_BOUNCE_AMP, 0.0)
 
 
 func _tick_channel_text(delta: float) -> void:
@@ -152,11 +181,15 @@ func _input(event):
 		rotating       = event.pressed
 		last_mouse_pos = event.position
 
-	if event is InputEventMouseMotion and (rotating or _panning):
+	if event is InputEventMouseMotion and (rotating or _panning or _pan_armed):
 		var mouse_delta : Vector2 = event.position - last_mouse_pos
 		last_mouse_pos = event.position
 		if rotating:
 			$CameraPivot.rotate_y(-mouse_delta.x * 0.01)
+		if _pan_armed and not _panning:
+			if event.position.distance_to(_pan_press_pos) >= PAN_DRAG_THRESHOLD:
+				_panning   = true
+				_pan_armed = false
 		if _panning:
 			# Use the pivot's own basis so pan is always aligned to screen axes
 			var basis : Basis = $CameraPivot.global_transform.basis
@@ -190,6 +223,80 @@ func _rotate_cam_step(dir: int) -> void:
 	_cam_tween.tween_property($CameraPivot, "rotation:y", snap_y, CAM_SNAP_TIME)
 
 
+## Move the player one step in the given grid direction if the target room is
+## connected and the controller is available. Arrow keys map to absolute grid
+## directions (Up = North / -Y, Down = South / +Y, Left = West / -X, Right = East / +X).
+func _try_move_player(dir: Vector2i) -> void:
+	if controller == null or dungeon == null:
+		return
+	var target : Vector2i = dungeon.current_pos + dir
+	_pending_marker_target = target
+	controller.move_to_room(target)
+
+
+## Called by DungeonRoom3D on mouse_entered/mouse_exited to track hover state.
+## Pan is blocked whenever the cursor is over any room mesh.
+func notify_room_hovered(hovered: bool) -> void:
+	_room_mesh_hovered = hovered
+
+
+## Spawn the player marker sphere and optionally animate it from a prior position.
+## Pass a valid grid pos in animate_from to trigger the jump arc;
+## pass Vector2i(-999,-999) to just place it at current_pos with no animation.
+func _spawn_player_marker_at(animate_to: Vector2i) -> void:
+	if is_instance_valid(_player_marker):
+		_player_marker.queue_free()
+	if is_instance_valid(_marker_tween):
+		_marker_tween.kill()
+	_player_marker = MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = 0.32
+	sphere.height = 0.64
+	_player_marker.mesh = sphere
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode               = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color               = MARKER_COLOR
+	mat.emission_enabled           = true
+	mat.emission                   = MARKER_COLOR
+	mat.emission_energy_multiplier = 5.0
+	_player_marker.set_surface_override_material(0, mat)
+	map_root.add_child(_player_marker)
+
+	var dest_pos : Vector2i = dungeon.current_pos  # where the player actually is now
+	var dest_world : Vector3 = grid_to_world(dest_pos) + Vector3(0, MARKER_HOVER_Y, 0)
+
+	# If a pending target was set, a real move happened.
+	# Spawn the marker at the saved old world position and arc to the new one.
+	if animate_to != Vector2i(-999, -999) and _prev_marker_world_pos != Vector3.ZERO:
+		_player_marker.position = _prev_marker_world_pos
+		move_marker_to_world(_prev_marker_world_pos, dest_world)
+	else:
+		_player_marker.position = dest_world
+	_prev_marker_world_pos = Vector3.ZERO
+
+
+## Animate the marker jumping between two world-space positions.
+func move_marker_to_world(from: Vector3, to: Vector3) -> void:
+	if is_instance_valid(_marker_tween):
+		_marker_tween.kill()
+	# Quadratic Bézier arc: control point is directly above the midpoint.
+	# tween_method evaluates the curve every frame, giving a smooth parabola
+	# instead of the sharp angle you get from two straight-line segments.
+	var ctrl : Vector3 = (from + to) * 0.5 + Vector3(0, MARKER_JUMP_H, 0)
+	_marker_tween = create_tween()
+	_marker_tween.tween_method(
+		func(t: float) -> void:
+			var p : Vector3 = (1.0 - t) * (1.0 - t) * from \
+							+ 2.0 * (1.0 - t) * t * ctrl \
+							+ t * t * to
+			_player_marker.position = p,
+		0.0, 1.0, MARKER_TRAVEL_T
+	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+
+
+
+
 func _unhandled_input(event):
 	# Any click dismisses the room info popup if open.
 	if event is InputEventMouseButton and event.pressed and is_instance_valid(_room_info_layer):
@@ -199,10 +306,13 @@ func _unhandled_input(event):
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		var can_pan := dungeon == null or not dungeon.is_building_locked()
 		if event.pressed and can_pan:
-			_panning       = true
-			last_mouse_pos = event.position
+			if not _room_mesh_hovered:
+				_pan_armed     = true
+				_pan_press_pos = event.position
+				last_mouse_pos = event.position
 		elif not event.pressed:
-			_panning = false
+			_pan_armed = false
+			_panning   = false
 
 	# Q/W/E toggle R/G/B channels — only while the dungeon layer is active.
 	# During battle the dungeon layer is hidden; Change Lens owns the shader there.
@@ -219,6 +329,18 @@ func _unhandled_input(event):
 					get_viewport().set_input_as_handled()
 				KEY_E:
 					toggle_channel(CHAN_B)
+					get_viewport().set_input_as_handled()
+				KEY_UP:
+					_try_move_player(DIR_N)
+					get_viewport().set_input_as_handled()
+				KEY_DOWN:
+					_try_move_player(DIR_S)
+					get_viewport().set_input_as_handled()
+				KEY_LEFT:
+					_try_move_player(DIR_W)
+					get_viewport().set_input_as_handled()
+				KEY_RIGHT:
+					_try_move_player(DIR_E)
 					get_viewport().set_input_as_handled()
 	# Any mouse press not consumed by a UI Control (button or card) dismisses the panel.
 	if _choice_layer == null:
@@ -238,6 +360,10 @@ func redraw_map():
 
 	var old_pos = map_root.position
 	var new_pos = -grid_to_world(dungeon.current_pos)
+
+	# Save marker world position before destroying it so the new one can arc from there.
+	if is_instance_valid(_player_marker):
+		_prev_marker_world_pos = _player_marker.position
 
 	for child in map_root.get_children():
 		child.queue_free()
@@ -262,6 +388,11 @@ func redraw_map():
 
 	_draw_corridors()
 	draw_available_positions()
+	# Capture the pending target before _spawn_player_marker clears state,
+	# then animate the marker from the old room to the new one.
+	var _animate_to := _pending_marker_target
+	_pending_marker_target = Vector2i(-999, -999)
+	_spawn_player_marker_at(_animate_to)
 	_segno_overlay_nodes.clear()   # freed with map_root children above
 	# channel_overlay_nodes are freed by group membership — no separate list needed
 	# channel text pools are persistent — visibility managed by _apply_channel_state
@@ -269,8 +400,8 @@ func redraw_map():
 
 	var tween = create_tween()
 	tween.set_trans(Tween.TRANS_CUBIC)
-	tween.set_ease(Tween.EASE_OUT)
-	tween.tween_property(map_root, "position", new_pos, 0.35)
+	tween.set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(map_root, "position", new_pos, 0.75)
 
 
 func draw_available_positions():
@@ -1148,7 +1279,7 @@ func _on_road_pressed(_origin: Vector2) -> void:
 	# Capture pos before dismiss clears _pending_pos.
 	var build_pos : Vector2i = _pending_pos
 	var road_data := RoomData.new()
-	road_data.room_name       = "Road"
+	road_data.room_name       = "Tie"
 	road_data.room_type       = RoomData.RoomType.ROAD
 	road_data.allows_segno    = false
 	road_data.max_connections = 4

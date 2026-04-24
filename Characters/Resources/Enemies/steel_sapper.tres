@@ -82,6 +82,7 @@ metadata/_custom_type_script = "uid://badrkgc20tgv2"
 script = ExtResource("3_8dcge")
 display_name = "HYAD-02 \"Bronte\" Steel Sapper Unit"
 log_name = "Steel Sapper Unit"
+theme_color = Color(0.02745098, 0.32941177, 1, 1)
 base_max_hp = 21
 base_attack = 3
 base_flat_defense = 5

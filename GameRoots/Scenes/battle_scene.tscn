@@ -7,6 +7,7 @@
 [ext_resource type="Script" uid="uid://8umksf8e80fw" path="res://addons/phantom_camera/scripts/resources/tween_resource.gd" id="5_8bb5l"]
 [ext_resource type="Script" uid="uid://b8hhnqsugykly" path="res://addons/phantom_camera/scripts/resources/camera_3d_resource.gd" id="6_xxfeu"]
 [ext_resource type="Script" uid="uid://bd046eokvcnu2" path="res://addons/phantom_camera/scripts/phantom_camera_host/phantom_camera_host.gd" id="7_5u8md"]
+[ext_resource type="Shader" uid="uid://cw256eg1mpaef" path="res://Shaders/blur_separator.gdshader" id="8_8bb5l"]
 [ext_resource type="Script" uid="uid://r12gfink2342" path="res://UI/2D/Scripts/battle_hud.gd" id="8_85sqs"]
 [ext_resource type="FontFile" uid="uid://c8q52n0ssb7w3" path="res://UI/Themes/Fonts/TerminalVector.ttf" id="9_i5rsa"]
 [ext_resource type="PackedScene" uid="uid://cx2gw1tu0rxpi" path="res://Systems/Managers/Scenes/audio_manager.tscn" id="10_jcu24"]
@@ -15,6 +16,8 @@
 [ext_resource type="Script" uid="uid://cyhiqc5tsl2mm" path="res://UI/2D/Scripts/battle_dialogue_box.gd" id="14_xe0bb"]
 [ext_resource type="Script" uid="uid://3t5g2wj1mm2x" path="res://Systems/Managers/Scripts/tutorial_manager.gd" id="16_y8mdh"]
 [ext_resource type="Script" uid="uid://bm3xqpsekoqep" path="res://UI/2D/Scripts/battle_reticle_ui.gd" id="16_yw742"]
+[ext_resource type="Script" uid="uid://dkqwk62kls8mn" path="res://UI/2D/Scripts/battle_menu.gd" id="17_y8mdh"]
+[ext_resource type="Script" uid="uid://r4b8b5iqvu68" path="res://UI/2D/Scripts/battle_subtitles.gd" id="18_8bb5l"]
 
 [sub_resource type="Resource" id="Resource_26idg"]
 script = ExtResource("5_8bb5l")
@@ -28,15 +31,19 @@ metadata/_custom_type_script = "uid://b8hhnqsugykly"
 script = ExtResource("5_8bb5l")
 duration = 0.5
 
-[sub_resource type="StyleBoxLine" id="StyleBoxLine_xhnwx"]
-content_margin_left = 0.0
-content_margin_top = 4.0
-content_margin_right = 0.0
-content_margin_bottom = 4.0
-grow_begin = 0.0
-grow_end = 0.0
-thickness = 4
-vertical = true
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_xxfeu"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_5u8md"]
+shader = ExtResource("8_8bb5l")
+shader_parameter/blur_amount = 4.0
+shader_parameter/spread = 0.02
+shader_parameter/edge_softness = 0.622000029545
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_8bb5l"]
+shader = ExtResource("8_8bb5l")
+shader_parameter/blur_amount = 4.0
+shader_parameter/spread = 0.0490000023275
+shader_parameter/edge_softness = 0.4
 
 [sub_resource type="Theme" id="Theme_itxmc"]
 default_font = ExtResource("9_i5rsa")
@@ -116,7 +123,7 @@ transform = Transform3D(1, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 0, 0, 0)
 script = ExtResource("3_yw742")
 
 [node name="IdleOrbiter" type="Node3D" parent="CameraRig/IdleOrbitPivot" unique_id=1216574263]
-transform = Transform3D(1, 0, 0, 0, 0.9999998, 0, 0, 0, 0.9999998, 0, 5.2470794, 5.168442)
+transform = Transform3D(1, 0, 0, 0, 0.9999998, 0, 0, 0, 0.9999998, 0, 6.3744373, 7.6217666)
 
 [node name="active_cam" type="Node3D" parent="CameraRig" unique_id=2025165075]
 transform = Transform3D(1, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, -1.3915569, 7.385764, 3.37666)
@@ -168,7 +175,7 @@ size_flags_vertical = 8
 
 [node name="Left" type="SubViewport" parent="HBoxContainer/Left_Container" unique_id=1840474016]
 handle_input_locally = false
-size = Vector2i(638, 960)
+size = Vector2i(640, 960)
 size_2d_override_stretch = true
 render_target_update_mode = 4
 
@@ -184,12 +191,6 @@ script = ExtResource("7_5u8md")
 [node name="VBoxContainer" type="VBoxContainer" parent="HBoxContainer/Left_Container" unique_id=1888404380]
 layout_mode = 2
 
-[node name="VSeparator" type="VSeparator" parent="HBoxContainer" unique_id=1852598101]
-layout_mode = 2
-size_flags_horizontal = 2
-theme_override_constants/separation = 0
-theme_override_styles/separator = SubResource("StyleBoxLine_xhnwx")
-
 [node name="Right_Container" type="SubViewportContainer" parent="HBoxContainer" unique_id=1715034904]
 layout_mode = 2
 size_flags_horizontal = 10
@@ -197,7 +198,7 @@ size_flags_vertical = 0
 
 [node name="Right" type="SubViewport" parent="HBoxContainer/Right_Container" unique_id=249572341]
 handle_input_locally = false
-size = Vector2i(638, 760)
+size = Vector2i(640, 960)
 render_target_update_mode = 4
 
 [node name="TargetCam" type="Camera3D" parent="HBoxContainer/Right_Container/Right" unique_id=30126024]
@@ -209,6 +210,36 @@ process_priority = 300
 process_physics_priority = 300
 script = ExtResource("7_5u8md")
 host_layers = 2
+
+[node name="VSeparator" type="VSeparator" parent="." unique_id=1852598101]
+z_index = 1
+custom_minimum_size = Vector2(30, 0)
+offset_left = 625.0
+offset_right = 655.0
+offset_bottom = 960.0
+size_flags_horizontal = 6
+theme_override_constants/separation = 0
+theme_override_styles/separator = SubResource("StyleBoxEmpty_xxfeu")
+
+[node name="ColorRect" type="ColorRect" parent="VSeparator" unique_id=2120112905]
+material = SubResource("ShaderMaterial_5u8md")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ColorRect2" type="ColorRect" parent="VSeparator" unique_id=1398908933]
+material = SubResource("ShaderMaterial_8bb5l")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 11.0
+offset_right = -13.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="BattleHUD" type="CanvasLayer" parent="." unique_id=1441720760]
 script = ExtResource("8_85sqs")
@@ -263,6 +294,7 @@ layout_mode = 2
 label_settings = SubResource("LabelSettings_hq6gs")
 
 [node name="BattleLog" type="PanelContainer" parent="BattleHUD" unique_id=1305430076]
+visible = false
 anchors_preset = 3
 anchor_left = 1.0
 anchor_top = 1.0
@@ -309,3 +341,9 @@ script = ExtResource("16_yw742")
 
 [node name="TutorialManager" type="Node" parent="." unique_id=1875854761]
 script = ExtResource("16_y8mdh")
+
+[node name="BattleMenu" type="CanvasLayer" parent="." unique_id=1073381507]
+script = ExtResource("17_y8mdh")
+
+[node name="BattleSubtitles" type="CanvasLayer" parent="." unique_id=836863914]
+script = ExtResource("18_8bb5l")

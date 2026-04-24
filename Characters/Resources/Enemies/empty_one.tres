@@ -66,8 +66,9 @@ metadata/_custom_type_script = "uid://bewuwngi8x4ad"
 [resource]
 script = ExtResource("2_cupcf")
 display_name = "Empty One"
+theme_color = Color(0.9531004, 0.9339393, 0.8972416, 1)
 base_max_hp = 50
 base_attack = 6
-exp_yield = 25
+exp_yield = 30
 body_parts = Array[ExtResource("1_8o661")]([SubResource("Resource_yn853"), SubResource("Resource_mi7yb"), SubResource("Resource_wnm8g"), SubResource("Resource_3jjjy"), SubResource("Resource_crdkm"), SubResource("Resource_dthue"), SubResource("Resource_mtr2k")])
 battle_scene = ExtResource("1_mi7yb")

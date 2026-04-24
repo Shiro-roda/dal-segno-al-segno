@@ -9,6 +9,7 @@
 [ext_resource type="Shader" uid="uid://cow4hovotygtk" path="res://Shaders/main.gdshader" id="7_mt7hb"]
 [ext_resource type="Shader" uid="uid://c7dhsbe1s7mgu" path="res://Shaders/post_processing.gdshader" id="8_2t1uq"]
 [ext_resource type="Shader" uid="uid://btm2rulspg8el" path="res://Shaders/battleglitch.gdshader" id="9_gtsmc"]
+[ext_resource type="Script" uid="uid://dcej0pqmf3vn3" path="res://UI/2D/BootSequence/boot_sequence.gd" id="11_nuie3"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_iusj4"]
 font_size = 10
@@ -125,6 +126,11 @@ visible = false
 
 [node name="PartyMenu" type="CanvasLayer" parent="." unique_id=2037623213]
 script = ExtResource("6_vho5l")
+
+[node name="BootSequence" type="CanvasLayer" parent="." unique_id=1304569985]
+layer = 120
+visible = false
+script = ExtResource("11_nuie3")
 
 [node name="TVOverlay" type="CanvasLayer" parent="." unique_id=661082050]
 layer = 200

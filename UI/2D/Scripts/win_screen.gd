@@ -68,5 +68,5 @@ func _ready() -> void:
 
 
 func _on_continue() -> void:
-	# Return to the title / world map — for now reload the game
-	GameController.start_world(preload("res://Environments/Levels/Scenes/white_test.tscn"))
+	# Show the motif tree then return to the main menu.
+	GameController._show_start_screen()

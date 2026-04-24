@@ -19,9 +19,15 @@ func get_skills() -> Array:
 	var supports_have_will = _supports_have_will()
 	var lens_unlocked   = party_member != null and party_member.is_skill_unlocked("Unveil")
 
-	var skills = [
-		SkillDirectory.get_dict("Shoot" if has_ammo else "Pistol Whip"),
-	]
+	# Use the equipped gun's shoot dict if a gun is equipped.
+	var active_gun : GunData = run_state.get_active_gun() if run_state != null else null
+	var shoot_dict : Dictionary
+	if active_gun != null:
+		shoot_dict = active_gun.get_shoot_dict(not has_ammo)
+	else:
+		shoot_dict = SkillDirectory.get_dict("Shoot" if has_ammo else "Pistol Whip")
+
+	var skills = [shoot_dict]
 
 	if party_member != null and party_member.is_skill_unlocked("Augur"):
 		skills.append(SkillDirectory.get_dict("Augur" if supports_have_will else "Evade"))

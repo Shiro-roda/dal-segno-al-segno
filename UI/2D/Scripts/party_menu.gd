@@ -11,7 +11,8 @@ signal menu_closed
 const TAB_PARTY     := 0
 const TAB_SKILLS    := 1
 const TAB_INVENTORY := 2
-const TAB_OPTIONS   := 3
+const TAB_MOTIFS    := 3
+const TAB_OPTIONS   := 4
 
 var _open       := false
 var _active_tab := TAB_PARTY
@@ -106,6 +107,10 @@ func _ready() -> void:
 # -----------------------------------------------------------------------
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("open_menu"):
+		# Don't intercept during battle — the battle manager handles it there.
+		var in_battle : bool = get_tree().get_first_node_in_group("battle_manager") != null
+		if in_battle:
+			return
 		if _open:
 			hide_menu()
 		else:
@@ -236,6 +241,7 @@ func _build_ui() -> void:
 	_tab_bar.add_theme_constant_override("separation", 0)
 	vbox.add_child(_tab_bar)
 
+#	var tab_names := ["PARTY", "SKILLS", "ITEMS", "MOTIFS", "OPTIONS"]
 	var tab_names := ["PARTY", "SKILLS", "ITEMS", "OPTIONS"]
 	for i in tab_names.size():
 		var btn := Button.new()
@@ -281,6 +287,12 @@ func _build_ui() -> void:
 	inventory_page.set_anchors_preset(Control.PRESET_FULL_RECT)
 	content.add_child(inventory_page)
 	_pages.append(inventory_page)
+
+	# Motif Tree page
+	"var motif_page := _build_motif_page()
+	motif_page.set_anchors_preset(Control.PRESET_FULL_RECT)
+	content.add_child(motif_page)
+	_pages.append(motif_page)"
 
 	# Options page
 	var options_page := _build_options_page()
@@ -711,6 +723,379 @@ func _show_skill_detail(skill: Dictionary) -> void:
 	var _sd := SkillDirectory.get_skill(skill["name"])
 	_skill_detail_summary.text = _sd.summary if _sd else ""
 	_skill_detail_desc.text = _sd.description if _sd else ""
+
+
+# -----------------------------------------------------------------------
+# MOTIF PAGE  (in-game access to the cross-run module tree)
+# -----------------------------------------------------------------------
+# Per-character page refs — rebuilt on each open so state is fresh.
+var _motif_page_root   : Control = null
+var _motif_char_pages  : Array   = []   # one Control per character
+var _motif_active_char : int     = 0
+var _motif_char_btns   : Array   = []
+var _motif_points_lbl  : Label   = null
+var _motif_detail_name : Label   = null
+var _motif_detail_from : Label   = null
+var _motif_detail_desc : Label   = null
+var _motif_detail_cost : Label   = null
+var _motif_unlock_btn  : Button  = null
+var _motif_reset_btn   : Button  = null
+var _motif_selected_id : String  = ""
+var _motif_node_btns   : Dictionary = {}  # motif_id -> Button
+
+func _build_motif_page() -> Control:
+	var page := HBoxContainer.new()
+	page.name = "MotifsPage"
+	page.add_theme_constant_override("separation", 0)
+	_motif_page_root = page
+
+	# Left: character tabs + node list
+	var left := VBoxContainer.new()
+	left.custom_minimum_size = Vector2(480, 0)
+	left.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	left.add_theme_constant_override("separation", 0)
+	page.add_child(left)
+
+	# Points header
+	var header := HBoxContainer.new()
+	header.custom_minimum_size = Vector2(0, 32)
+	header.add_theme_constant_override("separation", 8)
+	left.add_child(header)
+
+	var pts_spacer := Control.new()
+	pts_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(pts_spacer)
+
+	_motif_points_lbl = Label.new()
+	_motif_points_lbl.add_theme_font_size_override("font_size", 13)
+	_motif_points_lbl.add_theme_color_override("font_color", C_ACCENT)
+	_motif_points_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	header.add_child(_motif_points_lbl)
+
+	# Character tab bar
+	var char_bar := HBoxContainer.new()
+	char_bar.add_theme_constant_override("separation", 0)
+	left.add_child(char_bar)
+
+	_motif_char_btns.clear()
+	var char_names := ["Kendall", "Hue", "Indra", "Vritra"]
+	for i in char_names.size():
+		var btn := Button.new()
+		btn.text = char_names[i].to_upper()
+		btn.custom_minimum_size = Vector2(110, 28)
+		btn.add_theme_font_size_override("font_size", 11)
+		btn.add_theme_color_override("font_color", C_TEXT)
+		btn.add_theme_color_override("font_hover_color", C_TEXT)
+		btn.add_theme_color_override("font_pressed_color", C_TEXT)
+		btn.add_theme_color_override("font_focus_color", C_TEXT)
+		var idx := i
+		btn.pressed.connect(func(): _motif_switch_char(idx))
+		char_bar.add_child(btn)
+		_motif_char_btns.append(btn)
+
+	var char_div := ColorRect.new()
+	char_div.color = C_ACCENT
+	char_div.custom_minimum_size = Vector2(0, 1)
+	left.add_child(char_div)
+
+	# Per-character node scroll areas
+	var char_stack := Control.new()
+	char_stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	char_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left.add_child(char_stack)
+
+	_motif_char_pages.clear()
+	_motif_node_btns.clear()
+	for i in char_names.size():
+		var scroll := ScrollContainer.new()
+		scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		char_stack.add_child(scroll)
+		var vbox := VBoxContainer.new()
+		vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		vbox.add_theme_constant_override("separation", 2)
+		scroll.add_child(vbox)
+		_motif_char_pages.append(scroll)
+		_populate_motif_char(vbox, char_names[i])
+
+	# Vertical divider
+	var vdiv := ColorRect.new()
+	vdiv.color = C_BORDER
+	vdiv.custom_minimum_size = Vector2(2, 0)
+	vdiv.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	page.add_child(vdiv)
+
+	# Right: detail panel
+	var right_scroll := ScrollContainer.new()
+	right_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	right_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	page.add_child(right_scroll)
+
+	var right := MarginContainer.new()
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right.add_theme_constant_override("margin_left",   20)
+	right.add_theme_constant_override("margin_top",    20)
+	right.add_theme_constant_override("margin_right",  20)
+	right.add_theme_constant_override("margin_bottom", 20)
+	right_scroll.add_child(right)
+
+	var detail := VBoxContainer.new()
+	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	detail.add_theme_constant_override("separation", 8)
+	right.add_child(detail)
+
+	_motif_detail_name = Label.new()
+	_motif_detail_name.text = "Select a module"
+	_motif_detail_name.add_theme_font_size_override("font_size", 16)
+	_motif_detail_name.add_theme_color_override("font_color", C_TEXT)
+	detail.add_child(_motif_detail_name)
+
+	_motif_detail_from = Label.new()
+	_motif_detail_from.add_theme_font_size_override("font_size", 11)
+	_motif_detail_from.add_theme_color_override("font_color", C_ACCENT)
+	detail.add_child(_motif_detail_from)
+
+	var detail_div := ColorRect.new()
+	detail_div.color = C_BORDER
+	detail_div.custom_minimum_size = Vector2(0, 1)
+	detail.add_child(detail_div)
+
+	_motif_detail_desc = Label.new()
+	_motif_detail_desc.add_theme_font_size_override("font_size", 12)
+	_motif_detail_desc.add_theme_color_override("font_color", C_TEXT)
+	_motif_detail_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_motif_detail_desc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	detail.add_child(_motif_detail_desc)
+
+	_motif_detail_cost = Label.new()
+	_motif_detail_cost.add_theme_font_size_override("font_size", 12)
+	_motif_detail_cost.add_theme_color_override("font_color", C_ACCENT)
+	detail.add_child(_motif_detail_cost)
+
+	var btn_row := HBoxContainer.new()
+	btn_row.add_theme_constant_override("separation", 8)
+	detail.add_child(btn_row)
+
+	_motif_unlock_btn = Button.new()
+	_motif_unlock_btn.text = "INSTALL"
+	_motif_unlock_btn.custom_minimum_size = Vector2(120, 36)
+	_motif_unlock_btn.add_theme_font_size_override("font_size", 13)
+	_motif_unlock_btn.visible = false
+	_motif_unlock_btn.pressed.connect(_on_motif_install_pressed)
+	btn_row.add_child(_motif_unlock_btn)
+
+	_motif_reset_btn = Button.new()
+	_motif_reset_btn.text = "RESET LINE"
+	_motif_reset_btn.custom_minimum_size = Vector2(120, 36)
+	_motif_reset_btn.add_theme_font_size_override("font_size", 13)
+	_motif_reset_btn.visible = false
+	_motif_reset_btn.pressed.connect(_on_motif_reset_pressed)
+	btn_row.add_child(_motif_reset_btn)
+
+	_motif_switch_char(0)
+	return page
+
+
+func _populate_motif_char(vbox: VBoxContainer, char_name: String) -> void:
+	var nodes : Array = MotifRegistry.get_for_character(char_name)
+	# Group by skill_name
+	var by_skill : Dictionary = {}
+	var skill_order : Array = []
+	for n in nodes:
+		var mn := n as MotifNode
+		if not by_skill.has(mn.skill_name):
+			by_skill[mn.skill_name] = []
+			skill_order.append(mn.skill_name)
+		by_skill[mn.skill_name].append(mn)
+
+	for skill in skill_order:
+		# Skill group header
+		var hdr := Label.new()
+		hdr.text = skill.to_upper()
+		hdr.add_theme_font_size_override("font_size", 10)
+		hdr.add_theme_color_override("font_color", C_DIM)
+		hdr.custom_minimum_size = Vector2(0, 22)
+		hdr.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		var hdr_pad := MarginContainer.new()
+		hdr_pad.add_theme_constant_override("margin_left", 12)
+		hdr_pad.add_child(hdr)
+		vbox.add_child(hdr_pad)
+
+		var skill_div := ColorRect.new()
+		skill_div.color = C_ACCENT
+		skill_div.custom_minimum_size = Vector2(0, 1)
+		vbox.add_child(skill_div)
+
+		for mn in by_skill[skill]:
+			var btn := Button.new()
+			btn.text = mn.motif_name
+			btn.custom_minimum_size = Vector2(0, 34)
+			btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			btn.add_theme_font_size_override("font_size", 12)
+			btn.add_theme_color_override("font_color", C_TEXT)
+			btn.add_theme_color_override("font_hover_color", C_TEXT)
+			btn.add_theme_color_override("font_pressed_color", C_TEXT)
+			btn.add_theme_color_override("font_focus_color", C_TEXT)
+			_motif_style_btn(btn, mn.motif_id)
+			var mid : String = mn.motif_id
+			btn.pressed.connect(func(): _motif_select(mid))
+			var btn_pad := MarginContainer.new()
+			btn_pad.add_theme_constant_override("margin_left", 20)
+			btn_pad.add_theme_constant_override("margin_right", 8)
+			btn_pad.add_child(btn)
+			vbox.add_child(btn_pad)
+			_motif_node_btns[mn.motif_id] = btn
+
+		var gap := Control.new()
+		gap.custom_minimum_size = Vector2(0, 6)
+		vbox.add_child(gap)
+
+
+func _motif_style_btn(btn: Button, motif_id: String) -> void:
+	var unlocked := MetaProgress.is_unlocked(motif_id)
+	var available := MetaProgress.can_unlock(motif_id)
+	var col : Color
+	if unlocked:
+		col = Color(0.18, 0.50, 0.22, 1.0)   # green
+	elif available:
+		col = Color(0.55, 0.45, 0.12, 1.0)   # amber
+	else:
+		col = Color(0.30, 0.26, 0.22, 1.0)   # grey
+	var sn := StyleBoxFlat.new()
+	sn.bg_color = col.darkened(0.7)
+	sn.border_color = col
+	sn.set_border_width_all(1)
+	sn.set_content_margin_all(6)
+	var sh := sn.duplicate() as StyleBoxFlat
+	sh.bg_color = col.darkened(0.4)
+	for st in ["normal", "focus"]: btn.add_theme_stylebox_override(st, sn)
+	for st in ["hover", "pressed"]: btn.add_theme_stylebox_override(st, sh)
+
+
+func _motif_switch_char(idx: int) -> void:
+	_motif_active_char = idx
+	for i in _motif_char_pages.size():
+		_motif_char_pages[i].visible = (i == idx)
+	for i in _motif_char_btns.size():
+		var btn : Button = _motif_char_btns[i]
+		var active := (i == idx)
+		var sbox := StyleBoxFlat.new()
+		sbox.bg_color = C_TAB_ACT if active else C_TAB_INACT
+		sbox.border_color = C_ACCENT if active else C_BORDER
+		sbox.set_border_width_all(0)
+		sbox.border_width_bottom = 2 if active else 0
+		sbox.set_content_margin_all(4)
+		for st in ["normal", "hover", "pressed", "focus"]:
+			btn.add_theme_stylebox_override(st, sbox)
+		_motif_selected_id = ""
+		_motif_detail_name.text = "Select a module"
+		_motif_detail_from.text = ""
+		_motif_detail_desc.text = ""
+		_motif_detail_cost.text = ""
+		_motif_unlock_btn.visible = false
+		_motif_reset_btn.visible = false
+
+
+func _motif_select(motif_id: String) -> void:
+	_motif_selected_id = motif_id
+	var mn := MotifRegistry.get_node_by_id(motif_id) as MotifNode
+	if mn == null:
+		return
+	_motif_detail_name.text = mn.motif_name
+	_motif_detail_from.text = mn.character + "  \u2014  " + mn.skill_name
+	_motif_detail_desc.text = mn.description
+
+	var unlocked := MetaProgress.is_unlocked(motif_id)
+	var can_inst  := MetaProgress.can_unlock(motif_id)
+	if unlocked:
+		_motif_detail_cost.text = "Installed"
+		_motif_detail_cost.add_theme_color_override("font_color", Color(0.18, 0.50, 0.22, 1.0))
+		_motif_unlock_btn.visible = false
+		_motif_reset_btn.visible = true
+	elif can_inst:
+		_motif_detail_cost.text = "Cost: %d Motifs  (available: %d)" % [mn.cost, MetaProgress.motif_points]
+		_motif_detail_cost.add_theme_color_override("font_color", Color(0.55, 0.45, 0.12, 1.0))
+		_motif_unlock_btn.visible = true
+		_motif_reset_btn.visible = false
+	else:
+		var missing := mn.requires.filter(func(r): return not MetaProgress.is_unlocked(r))
+		if missing.is_empty():
+			_motif_detail_cost.text = "Cost: %d Motifs  (available: %d)" % [mn.cost, MetaProgress.motif_points]
+			_motif_detail_cost.add_theme_color_override("font_color", C_ACCENT)
+		else:
+			var req_names : Array = []
+			for req_id in missing:
+				var rn : MotifNode = MotifRegistry.get_node_by_id(req_id)
+				req_names.append(rn.motif_name if rn else req_id)
+			_motif_detail_cost.text = "Requires: " + ", ".join(req_names)
+			_motif_detail_cost.add_theme_color_override("font_color", C_DIM)
+		_motif_unlock_btn.visible = false
+		_motif_reset_btn.visible = false
+
+
+func _on_motif_install_pressed() -> void:
+	if _motif_selected_id == "":
+		return
+	if MetaProgress.unlock_motif(_motif_selected_id):
+		_motif_select(_motif_selected_id)
+		if _motif_node_btns.has(_motif_selected_id):
+			_motif_style_btn(_motif_node_btns[_motif_selected_id], _motif_selected_id)
+		# Re-style any newly available nodes
+		for id in _motif_node_btns:
+			_motif_style_btn(_motif_node_btns[id], id)
+		if _motif_points_lbl:
+			_motif_points_lbl.text = "%d Motifs" % MetaProgress.motif_points
+
+
+func _on_motif_reset_pressed() -> void:
+	if _motif_selected_id == "":
+		return
+	var mn := MotifRegistry.get_node_by_id(_motif_selected_id) as MotifNode
+	if mn == null:
+		return
+	# Refund all modules in this skill line (selected node + anything that requires it transitively)
+	var to_refund : Array = _collect_line_from(_motif_selected_id)
+	for id in to_refund:
+		if MetaProgress.is_unlocked(id):
+			var rn := MotifRegistry.get_node_by_id(id) as MotifNode
+			if rn:
+				MetaProgress.motif_points += rn.cost
+			MetaProgress._unlocked_motifs.erase(id)
+	MetaProgress.motif_points_changed.emit(MetaProgress.motif_points)
+	MetaProgress.save_progress()
+	# Refresh UI
+	_motif_select(_motif_selected_id)
+	for id in _motif_node_btns:
+		_motif_style_btn(_motif_node_btns[id], id)
+	if _motif_points_lbl:
+		_motif_points_lbl.text = "%d Motifs" % MetaProgress.motif_points
+
+
+func _collect_line_from(root_id: String) -> Array:
+	## Return root_id plus every motif that (transitively) requires it.
+	var result : Array = [root_id]
+	var all : Array = MotifRegistry.get_all()
+	var changed := true
+	while changed:
+		changed = false
+		for n in all:
+			var mn := n as MotifNode
+			if mn.motif_id in result:
+				continue
+			for req in mn.requires:
+				if req in result:
+					result.append(mn.motif_id)
+					changed = true
+					break
+	return result
+
+
+func _refresh_motif_page() -> void:
+	if _motif_points_lbl:
+		_motif_points_lbl.text = "%d Motifs" % MetaProgress.motif_points
+	for id in _motif_node_btns:
+		_motif_style_btn(_motif_node_btns[id], id)
 
 
 # -----------------------------------------------------------------------
@@ -1344,6 +1729,35 @@ func _build_options_page() -> Control:
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	inner.add_child(hint)
 
+	# --- Session actions ---
+	var session_lbl := Label.new()
+	session_lbl.text = "SESSION"
+	session_lbl.add_theme_font_size_override("font_size", 10)
+	session_lbl.add_theme_color_override("font_color", C_DIM)
+	inner.add_child(session_lbl)
+
+	var session_div := ColorRect.new()
+	session_div.color = C_BORDER
+	session_div.custom_minimum_size = Vector2(0, 1)
+	inner.add_child(session_div)
+
+	var session_row := HBoxContainer.new()
+	session_row.add_theme_constant_override("separation", 12)
+	inner.add_child(session_row)
+
+	var restart_btn : Button = _make_btn.call("RESTART RUN")
+	restart_btn.pressed.connect(func():
+		hide_menu()
+		GameController.start_new_game())
+	session_row.add_child(restart_btn)
+
+	var menu_btn : Button = _make_btn.call("RETURN TO MENU")
+	menu_btn.pressed.connect(func():
+		hide_menu()
+		SaveManager.save_run(GameController.current_run, GameController.current_dungeon_run)
+		GameController._show_start_screen())
+	session_row.add_child(menu_btn)
+
 	return scroll
 
 # -----------------------------------------------------------------------
@@ -1355,6 +1769,8 @@ func _switch_tab(idx: int) -> void:
 		_pages[i].visible = (i == idx)
 	if idx == TAB_INVENTORY:
 		_refresh_inventory()
+	if idx == TAB_MOTIFS:
+		_refresh_motif_page()
 	for i in _tab_btns.size():
 		var btn : Button = _tab_btns[i]
 		var active := (i == idx)

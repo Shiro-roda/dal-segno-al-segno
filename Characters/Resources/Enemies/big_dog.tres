@@ -1,6 +1,6 @@
 [gd_resource type="Resource" script_class="CharacterData" format=3 uid="uid://b05yr5egt0f4o"]
 
-[ext_resource type="PackedScene" uid="uid://dqu6wxijpruaf" path="res://Characters/Scenes/BattleActors/EnemyActors/dog_bactor.tscn" id="1_dr1uf"]
+[ext_resource type="PackedScene" uid="uid://drotky4nurxxv" path="res://Characters/Scenes/BattleActors/EnemyActors/big_dog_bactor.tscn" id="1_dvmrp"]
 [ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://Systems/AnatomySys/Scripts/BodyPartData.gd" id="2_03x5i"]
 [ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://Systems/PartySys/Scripts/characterdata.gd" id="3_to7pe"]
 [ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="4_tkipu"]
@@ -61,12 +61,14 @@ metadata/_custom_type_script = "uid://badrkgc20tgv2"
 [resource]
 script = ExtResource("3_to7pe")
 display_name = "Large Hound"
+theme_color = Color(1, 0.5372549, 0, 1)
 base_max_hp = 17
 base_attack = 4
+base_flat_defense = 1
 base_max_will = 8
 tempo = 15
 exp_yield = 8
 body_parts = Array[ExtResource("2_03x5i")]([SubResource("Resource_xeo3c"), SubResource("Resource_dr1uf"), SubResource("Resource_03x5i")])
-battle_scene = ExtResource("1_dr1uf")
+battle_scene = ExtResource("1_dvmrp")
 skills = Array[ExtResource("4_tkipu")]([SubResource("Resource_57deg"), SubResource("Resource_tkipu")])
 metadata/_custom_type_script = "uid://b2t1syvrybco8"

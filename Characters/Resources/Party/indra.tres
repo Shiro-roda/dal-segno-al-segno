@@ -15,6 +15,7 @@ metadata/_custom_type_script = "uid://bewuwngi8x4ad"
 script = ExtResource("1_chardata")
 display_name = "Indra"
 description = "Servant and slave to all he meets, a zealous android of flesh and bone seeking freedom from a body that refuses to support his servitude. One day his clouds of ill-returned grace will run dry, and what fury remains will rain upon Heaven."
+theme_color = Color(0.02745098, 0.8666667, 1, 1)
 base_max_hp = 15
 base_attack = 5
 base_flat_defense = 3

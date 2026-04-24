@@ -83,6 +83,7 @@ metadata/_custom_type_script = "uid://badrkgc20tgv2"
 script = ExtResource("3_m04yi")
 display_name = "HYAD-13 \"Nephele\" Waterweaver Unit"
 log_name = "Waterweaver Unit"
+theme_color = Color(0.02745098, 0.6431373, 1, 1)
 base_max_hp = 13
 base_attack = 3
 base_flat_defense = 3

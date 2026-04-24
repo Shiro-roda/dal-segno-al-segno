@@ -47,12 +47,52 @@ var selected_body_part : BodyPartData = null
 var selected_filter : int = -1
 var input_locked := false
 var free_shot_pending := false
-var support_targeting := false  # true when picking an ally target for a support skill
-var selected_attack_skips_targeting := false  # true for AoE or struggle (no target/part selection)
+var support_targeting := false
+var selected_attack_skips_targeting := false
 var selected_is_struggle := false
+
+## Last confirmed action per character name. Keyed by actor.name.
+## Each entry: {command, target (weakref), body_part, is_struggle, filter}
+var _last_actions : Dictionary = {}
 
 func grant_free_shot() -> void:
 	free_shot_pending = true
+
+## Returns true if the active actor has a repeatable last action available.
+func can_repeat_action() -> bool:
+	if active_player_actor == null or input_locked:
+		return false
+	var la : Dictionary = _last_actions.get(active_player_actor.name, {})
+	if la.is_empty():
+		return false
+	var cmd : String = la["command"]
+	# Command must still be available
+	var available_keys : Array = active_player_actor.get_skills().map(func(s): return s["key"])
+	if cmd not in available_keys:
+		return false
+	# Target must still be alive if the command needs one
+	if cmd in ["attack", "special"] and not la["is_struggle"]:
+		var wr = la["target"]
+		if wr == null:
+			return false
+		var tgt = wr.get_ref()
+		if not is_instance_valid(tgt) or not (tgt as BattleActor).is_alive():
+			return false
+	return true
+
+## Immediately replay the actor's last confirmed action, bypassing the targeting UI.
+func repeat_last_action() -> void:
+	if not can_repeat_action():
+		return
+	var la : Dictionary = _last_actions[active_player_actor.name]
+	selected_command          = la["command"]
+	selected_is_struggle      = la["is_struggle"]
+	selected_filter           = la["filter"]
+	selected_body_part        = la["body_part"]
+	selected_attack_skips_targeting = la["is_struggle"]
+	var wr = la["target"]
+	selected_target = wr.get_ref() as BattleActor if wr != null else null
+	_on_confirm_pressed()
 
 func delay_actor_turn(actor: BattleActor) -> void:
 	# Drain the actor's tempo pool so they act much later
@@ -117,6 +157,7 @@ var ca_defaults := {}
 @onready var reticle_ui = get_parent().get_node_or_null("BattleReticleUI")
 @onready var battle_hud       : BattleHUD          = $"../BattleHUD"
 @onready var dialogue_box = $"../DialogueLayer"
+@onready var battle_menu = get_parent().get_node_or_null("BattleMenu")
 
 
 
@@ -165,8 +206,26 @@ func _ready():
 		reticle_ui.confirmed.connect(_on_radial_confirmed)
 		reticle_ui.cancelled.connect(_on_reticle_cancelled)
 		reticle_ui.filter_selected.connect(_on_radial_filter_chosen)
+		reticle_ui.repeat_action.connect(repeat_last_action)
+
+	if is_instance_valid(battle_menu):
+		battle_menu.item_used.connect(_on_battle_menu_item_used)
+		battle_menu.skill_chosen.connect(_on_battle_menu_skill_chosen)
+		battle_menu.closed.connect(_on_battle_menu_closed)
 
 	call_deferred("emit_signal", "battle_manager_ready")
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	# Open the battle menu when the player presses open_menu during their turn,
+	# but only if input isn't locked and we're in the command selection stage.
+	if event.is_action_pressed("open_menu") \
+			and not input_locked \
+			and input_stage == InputStage.COMMAND \
+			and is_instance_valid(battle_menu):
+		battle_menu.open_for_turn(active_player_actor, actors, context.run_state, removed_channels)
+		battle_menu.refresh_log(battle_hud._log_lines)
+		get_viewport().set_input_as_handled()
 	
 
 func _process(delta):
@@ -276,6 +335,11 @@ func start_battle_with_context(battle_context : BattleContext):
 
 	battle_hud.setup(actors)
 	battle_hud.refresh_queue(self)
+	# Mirror battle_log signals to battle_menu so its log stays in sync.
+	if is_instance_valid(battle_menu):
+		for actor in actors:
+			if actor.has_signal("battle_log") and not actor.battle_log.is_connected(battle_menu.push_log):
+				actor.battle_log.connect(battle_menu.push_log)
 
 
 
@@ -361,6 +425,7 @@ func spawn_enemies():
 		actor.hp = actor.max_hp
 		actor.tempo_stat = char_data.tempo
 		actor.body_parts = char_data.body_parts
+		actor.theme_col = char_data.theme_color
 
 		# Assign party_member so will rings and skill costs work.
 		if char_data.boss_party_member != null:
@@ -380,6 +445,10 @@ func spawn_enemies():
 		enemy_slots[i].add_child(actor)
 
 		actors.append(actor)
+		# Motif discovery: first time encountering this enemy type.
+		MetaProgress.notify_encounter(
+			"enemy:" + char_data.display_name.to_lower().replace(" ", "_"),
+			char_data.display_name)
 		actor.died.connect(_on_actor_died)
 		# Enemies do NOT connect to _on_turn_finished.
 		# Their turn flow is driven by handle_enemy_turn's await, not the signal.
@@ -399,8 +468,8 @@ func setup_battlefield():
 # Costs are large relative to tempo_stat (~10-15) so acting creates real debt.
 # A stat difference of 2-3 produces occasional double-turns; bonuses are scarce.
 const TEMPO_COST_ATTACK  = 100
-const TEMPO_COST_SPECIAL = 110
-const TEMPO_COST_SUPPORT = 90
+const TEMPO_COST_SPECIAL = 150
+const TEMPO_COST_SUPPORT = 120
 const TEMPO_COST_DEFAULT = 100
 
 func build_turn_queue():
@@ -539,7 +608,62 @@ func _tempo_cost_for_command(cmd: String) -> float:
 		"attack": return TEMPO_COST_ATTACK
 		"special": return TEMPO_COST_SPECIAL
 		"support": return TEMPO_COST_SUPPORT
+		"item":    return TEMPO_COST_DEFAULT
 		_: return TEMPO_COST_DEFAULT
+
+
+func _on_battle_menu_skill_chosen(actor: BattleActor, skill: Dictionary, target: BattleActor, part: BodyPartData) -> void:
+	# Route the chosen skill through the existing turn machinery.
+	selected_command       = skill.get("key", "attack")
+	selected_target        = target
+	selected_body_part     = part
+	var aoe     : bool = skill.get("aoe",     false)
+	var struggle: bool = skill.get("struggle", false)
+	selected_attack_skips_targeting = aoe or struggle
+	selected_is_struggle            = struggle
+	input_locked = true
+	input_stage  = InputStage.DONE
+	emit_signal("player_skill_used", actor, selected_command)
+	match selected_command:
+		"attack":
+			if struggle:
+				await_actor_turn(actor, func(): actor.struggle_attack(actors, actor.attack_power))
+			else:
+				var is_ammo_user : bool = actor.party_member == null or not actor.party_member.has_will()
+				if is_ammo_user:
+					var ammo_cost : int = skill.get("ammo_cost", 1)
+					if not context.run_state.spend_ammo(ammo_cost):
+						input_locked = false
+						input_stage  = InputStage.COMMAND
+						return
+				await_actor_turn(actor, func(): actor.take_turn(target, part))
+		"special":
+			var is_ammo_user : bool = actor.party_member == null or not actor.party_member.has_will()
+			if is_ammo_user and skill.has("_filter_channel"):
+				# Kendall's Unveil — apply a lens channel
+				var chan : int = skill["_filter_channel"]
+				await_actor_turn(actor, func(): actor.use_lens(chan))
+			else:
+				await_actor_turn(actor, func(): actor.use_skill("special", [target] if target else [], part))
+		"support":
+			var support_targets : Array = actors if aoe else ([target] if target else actors)
+			await_actor_turn(actor, func(): actor.use_skill("support", support_targets))
+		_:
+			await_actor_turn(actor, func(): actor.use_skill(selected_command, [target] if target else [], part))
+
+
+func _on_battle_menu_item_used(actor: BattleActor, _inst: ItemInstance, _target) -> void:
+	# Item was already applied by the menu. Spend the actor's turn.
+	selected_command = "item"
+	input_locked = true
+	input_stage = InputStage.DONE
+	await_actor_turn(actor, func(): actor.spend_turn())
+
+
+func _on_battle_menu_closed() -> void:
+	# No action taken — return focus to the reticle without consuming the turn.
+	if is_instance_valid(reticle_ui):
+		reticle_ui.set_skills_visible(true)
 
 
 # Returns an Array of {actor: BattleActor, tempo: float} dicts showing projected turn order.
@@ -638,6 +762,11 @@ func end_battle(victory: bool):
 		return
 
 	battle_ending = true
+
+	# Close the reticle immediately so stale enemy boxes don't linger
+	# and can't emit signals into a battle that's already ending.
+	if is_instance_valid(reticle_ui):
+		reticle_ui.close(true)
 
 	reset_ca_material()
 	battle_hud.reset_augur_panel()
@@ -960,6 +1089,21 @@ func _on_confirm_pressed():
 	input_locked = true
 	input_stage = InputStage.DONE
 	emit_signal("player_skill_used", active_player_actor, selected_command)
+	# Save this action so it can be repeated next turn.
+	if active_player_actor != null:
+		_last_actions[active_player_actor.name] = {
+			"command":     selected_command,
+			"target":      weakref(selected_target) if selected_target != null else null,
+			"body_part":   selected_body_part,
+			"is_struggle": selected_is_struggle,
+			"filter":      selected_filter,
+		}
+	# Motif discovery: first time using each character+skill combination.
+	if active_player_actor != null and active_player_actor.party_member != null:
+		var char_name : String = active_player_actor.name.to_lower().replace(" ", "_")
+		MetaProgress.notify_encounter(
+			"skill:" + char_name + ":" + selected_command,
+			active_player_actor.name + " — " + selected_command.capitalize())
 
 	var is_ammo_user = active_player_actor.party_member == null or not active_player_actor.party_member.has_will()
 
@@ -1038,8 +1182,14 @@ func _on_reticle_focus_requested(target: BattleActor) -> void:
 	target_cam.set_follow_damping_value(Vector3(.25, .25, .15))
 	target_cam.set_follow_offset(Vector3(-1.25, 0, .55))
 	target_cam.set_look_at_offset(Vector3(0, 0, -.2))
-	focus_target(target)
-	battle_hud.show_target(target)
+	if target.team == BattleActor.Team.PLAYER:
+		focus_actor(target)
+		_on_reticle_cancelled()
+	elif target.team == BattleActor.Team.ENEMY:
+		if input_stage == InputStage.TARGET:
+			focus_target(target)
+		battle_hud.show_target(target)
+	
 
 
 func _on_radial_target_chosen(target: BattleActor) -> void:
@@ -1047,7 +1197,10 @@ func _on_radial_target_chosen(target: BattleActor) -> void:
 	target_cam.set_follow_damping_value(Vector3(.25, .25, .15))
 	target_cam.set_follow_offset(Vector3(-1.25, 0, .55))
 	target_cam.set_look_at_offset(Vector3(0, 0, -.2))
-	focus_target(target)
+	if support_targeting:
+		focus_actor(target)
+	elif target.team == BattleActor.Team.ENEMY:
+		focus_target(target)
 	battle_hud.show_target(selected_target)
 	if support_targeting:
 		# Ally target selected for support skill — go straight to confirm
@@ -1069,10 +1222,14 @@ func _on_radial_filter_chosen(channel: int) -> void:
 
 
 func _on_radial_confirmed() -> void:
+	if battle_ending:
+		return
 	input_stage = InputStage.CONFIRM
 	_on_confirm_pressed()
 
 func _on_radial_cancelled() -> void:
+	if battle_ending:
+		return
 	# Radial dismissed without selection — stay on COMMAND, just re-open radial
 	if input_stage == InputStage.COMMAND:
 		_open_radial_for_actor(active_player_actor)
@@ -1080,6 +1237,8 @@ func _on_radial_cancelled() -> void:
 # Open the radial skill ring for a player actor.
 # Centred in the left viewport (active character side).
 func _on_reticle_skill_chosen(skill: Dictionary) -> void:
+	if battle_ending:
+		return
 	var skill_key := str(skill.get("key", ""))
 	_on_radial_skill_chosen(skill_key, skill)
 	# Derive support_targeting from skill flags, same logic as _on_command_selected.
@@ -1091,13 +1250,11 @@ func _on_reticle_skill_chosen(skill: Dictionary) -> void:
 	match skill_key:
 		"support":
 			if is_aoe:
-				support_targeting = false
+				support_targeting = true
 			elif is_ally_target:
 				support_targeting = true
-			elif is_enemy_target:
-				support_targeting = false
 			else:
-				support_targeting = true  # default: ally
+				support_targeting = false  # default: ally
 		"special":
 			support_targeting = is_ally_target
 			# Kendall's Unveil: ammo user with a special routes to FILTER (channel picker)
@@ -1112,7 +1269,7 @@ func _on_reticle_skill_chosen(skill: Dictionary) -> void:
 				return
 		_:
 			support_targeting = false
-	
+	print(support_targeting)
 	if is_aoe or is_struggle:
 		input_stage = InputStage.CONFIRM
 	else:
@@ -1123,11 +1280,14 @@ func _on_reticle_skill_chosen(skill: Dictionary) -> void:
 
 
 func _on_reticle_cancelled() -> void:
-	reset_selection() 
+	if battle_ending:
+		return
+	reset_selection()
 	input_stage = InputStage.COMMAND
 	if is_instance_valid(reticle_ui):
 		reticle_ui.set_support_targeting(false)
 	focus_idle_orbit()
+	focus_actor(active_player_actor)
 
 
 func _open_radial_for_actor(actor: BattleActor) -> void:
@@ -1139,7 +1299,7 @@ func _open_radial_for_actor(actor: BattleActor) -> void:
 
 	# Open reticle UI (new system)
 	if is_instance_valid(reticle_ui):
-		reticle_ui.open(actor, skills, enemies, allies, removed_channels, player_cam, enemy_cam, is_tense_phase())
+		reticle_ui.open(actor, skills, enemies, allies, removed_channels, player_cam, enemy_cam, is_tense_phase(), can_repeat_action())
 		emit_signal("reticle_opened")
 
 
@@ -1214,10 +1374,13 @@ func _on_command_selected(command):
 			var _is_enemy_target   = not skill_data.is_empty() and skill_data[0].get("enemy_target", false)
 			if _is_aoe_support:
 				# No targeting needed (Augur, Evade, Galvanize, Martyr, Waste)
-				support_targeting = false
+				support_targeting = true
 				input_stage = InputStage.CONFIRM
 			elif _is_ally_target:
 				# Pick an ally (Shelter, Embrace)
+				support_targeting = true
+				input_stage = InputStage.TARGET
+			elif not _is_enemy_target:
 				support_targeting = true
 				input_stage = InputStage.TARGET
 			elif _is_enemy_target:
@@ -1241,14 +1404,19 @@ func _on_target_selected(target):
 	target_cam.set_follow_offset(Vector3(-1.25, 0, .55))
 	target_cam.set_look_at_offset(Vector3(0, 0, -.2))
 
-	focus_target(target)
+	if target.team == BattleActor.Team.PLAYER:
+		focus_actor(target)
+	else:
+		focus_target(target)
 
 	if support_targeting:
 		support_targeting = false
 		input_stage = InputStage.CONFIRM
-	else:
+	elif target.team == BattleActor.Team.ENEMY:
 		battle_hud.show_target(selected_target)
 		input_stage = InputStage.PART
+	else:
+		_on_cancel_pressed()
 
 	update_ui_state()
 

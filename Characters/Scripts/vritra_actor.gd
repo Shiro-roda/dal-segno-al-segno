@@ -16,7 +16,7 @@ extends BattleActor
 
 const LEECH_DURATION            = 2
 const LEECH_WILL_RESTORE_RATIO  = 0.5
-const LEECH_CHANCE_NORMAL       = 0.6
+const WITHER_CHANCE_NORMAL       = 0.6
 const DEVOUR_WILL_COST          = 3
 const DEVOUR_DMG_MULT           = 1.8
 const DEVOUR_MAX_HP_BONUS       = 1    # gained per kill
@@ -150,7 +150,7 @@ func take_turn(target: BattleActor, part: BodyPartData = null) -> void:
 			_end_constrict()"
 
 	if party_member != null and party_member.will >= WITHER_WILL_COST:
-		await _wither(target)
+		await _wither(target, part)
 	else:
 		await _waste()
 
@@ -290,7 +290,7 @@ func _unwilling_devour(ally: BattleActor) -> void:
 			max_hp = max(1, max_hp - 1)
 			party_member.max_will += UNWILLING_MAX_WILL_BONUS
 			party_member.will = min(party_member.will, party_member.max_will)
-			log_msg("%s was consumed — flesh becomes will." % [victim_name])
+			log_msg("%s was consumed." % [victim_name])
 		else:
 			log_msg("%s was consumed." % [victim_name])
 	emit_signal("turn_finished")
@@ -328,13 +328,13 @@ func _wither(target: BattleActor, part: BodyPartData = null) -> void:
 	party_member.spend_will(WITHER_WILL_COST)
 	say_random(CHATTER_WITHER)
 	log_msg("%s sharpens their tongue on %s." % [name, target.name])
-	if randf() < LEECH_CHANCE_NORMAL:
-		var siphon = int(attack_power * WITHER_SIPHON_HP)
-		target.take_damage(attack_power - siphon, self)
+	if randf() < WITHER_CHANCE_NORMAL:
+		#var siphon = int(attack_power * WITHER_SIPHON_HP)
+		target.take_damage(attack_power, self)
 		target.modify_attack(-WITHER_ATK_REDUCTION)
-		hp = min(hp + siphon, max_hp)
-		emit_signal("hp_changed")
-		log_msg("%s cowers under %s's fangs and is drained of %d CORP." % [target.name, name, siphon])
+		#hp = min(hp + siphon, max_hp)
+		#emit_signal("hp_changed")
+		log_msg("%s cowers under %s's fangs." % [target.name, name])
 	else:
 		target.take_damage(attack_power, self)
 	if part != null and part.has_part_hp():

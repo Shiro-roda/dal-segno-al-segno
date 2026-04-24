@@ -11,9 +11,11 @@
 [resource]
 script = ExtResource("3_7uloq")
 display_name = "Tall Shadow"
+theme_color = Color(0.043137256, 0.043137256, 0.043137256, 1)
 base_max_hp = 50
 base_attack = 10
-exp_yield = 15
+base_flat_defense = 1
+exp_yield = 25
 body_parts = Array[ExtResource("2_y585m")]([ExtResource("3_sawnd"), ExtResource("4_p62b6"), ExtResource("5_fhsvt")])
 battle_scene = ExtResource("1_hkca0")
 metadata/_custom_type_script = "uid://b2t1syvrybco8"

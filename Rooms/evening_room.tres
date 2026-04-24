@@ -15,6 +15,7 @@ description = "The greatest of the least of your challenges. [+2 Connection(s)]"
 room_model = ExtResource("5_4a008")
 encounter = ExtResource("1_y5odd")
 danger_level = 3
+allows_segno = false
 max_connections = 3
 connections = Array[Vector2i]([Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(0, -1)])
 metadata/_custom_type_script = "uid://b3i3n6lphwajh"

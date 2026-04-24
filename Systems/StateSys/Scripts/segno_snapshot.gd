@@ -33,8 +33,12 @@ var party_snapshots   : Array = []
 # Serialised inventory (item_data references + stacks).
 var inventory_snapshot : Array = []
 
+# Deep copy of the dungeon grid at snapshot time.
+# Key: Vector2i position. Value: Dictionary of RoomInstance fields.
+var grid_snapshot : Dictionary = {}
 
-static func capture(run_state: RunState, pos: Vector2i, dungeon_phase: int = 0, grid_segno_pos: Vector2i = Vector2i(-999,-999), past_positions: Array = []) -> SegnoSnapshot:
+
+static func capture(run_state: RunState, pos: Vector2i, dungeon_phase: int = 0, grid_segno_pos: Vector2i = Vector2i(-999,-999), past_positions: Array = [], dungeon_grid: Dictionary = {}) -> SegnoSnapshot:
 	var snap := SegnoSnapshot.new()
 	snap.placed_at             = pos
 	snap.phase                 = dungeon_phase
@@ -74,6 +78,27 @@ static func capture(run_state: RunState, pos: Vector2i, dungeon_phase: int = 0, 
 			"stacks":     item.stacks,
 			"durability": item.durability,
 		})
+
+	# Deep-copy the dungeon grid so we can restore it on respawn.
+	snap.grid_snapshot.clear()
+	for gpos in dungeon_grid.keys():
+		var room : RoomInstance = dungeon_grid[gpos]
+		var conn_copy : Array = []
+		for c in room.explicit_connections:
+			conn_copy.append(c)
+		snap.grid_snapshot[gpos] = {
+			"room_data":           room.room_data,
+			"position":            room.position,
+			"visited":             room.visited,
+			"cleared":             room.cleared,
+			"rested":              room.rested,
+			"inverted":            room.inverted,
+			"built_connections":   room.built_connections,
+			"explicit_connections":conn_copy,
+			"al_segno_passes":     room.al_segno_passes,
+			"transpose_picks":     room.transpose_picks.duplicate(),
+			"transpose_rolled":    room.transpose_rolled,
+		}
 
 	return snap
 

@@ -201,10 +201,10 @@ func _rebuild_notes(ammo: int) -> void:
 		return
 
 	# Gap at front for time sig: reserve ~TAU * 0.12 either side of angle 0
-	var reserved := TAU * 0.15
+	var reserved := 0#TAU * 0.15
 	var available := TAU - reserved * 2.0
 	var angle_start := reserved        # start just past the reserved gap (in +angle direction)
-	var angle_step  := available / maxi(count - 1, 1) if count > 1 else 0.0
+	var angle_step  := available / maxi(count, 1) if count > 1 else 0.0
 
 	for i in count:
 		var angle := angle_start + i * angle_step

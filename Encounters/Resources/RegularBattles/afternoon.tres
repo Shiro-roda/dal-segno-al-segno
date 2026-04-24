@@ -5,7 +5,7 @@
 [ext_resource type="Resource" uid="uid://cqcjsnswptvk8" path="res://Characters/Resources/Enemies/shadow1.tres" id="3_ypw62"]
 [ext_resource type="Resource" uid="uid://c7inm1j3nh7i4" path="res://Characters/Resources/Enemies/shadow2.tres" id="4_1ji5h"]
 [ext_resource type="Script" uid="uid://b57cevaydtkqm" path="res://UI/Dialogue/Scripts/splash_line.gd" id="5_galum"]
-[ext_resource type="Resource" uid="uid://d3s71movk40pc" path="res://Audio/Tracks/magenta.tres" id="6_edh12"]
+[ext_resource type="Resource" uid="uid://d3s71movk40pc" path="res://Audio/tracks/magenta.tres" id="6_edh12"]
 [ext_resource type="Script" uid="uid://coeqyvqijtkns" path="res://Encounters/Scripts/encounterdata.gd" id="7_2uqkv"]
 [ext_resource type="Script" uid="uid://pwai87fl2rdy" path="res://UI/2D/Scripts/reticle_theme.gd" id="7_edh12"]
 

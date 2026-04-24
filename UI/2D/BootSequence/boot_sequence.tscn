@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://o8wdqbt5kmhu"]
+
+[ext_resource type="Script" uid="uid://dcej0pqmf3vn3" path="res://UI/2D/BootSequence/boot_sequence.gd" id="1_l15os"]
+
+[node name="BootSequence" type="CanvasLayer" unique_id=263777347]
+script = ExtResource("1_l15os")

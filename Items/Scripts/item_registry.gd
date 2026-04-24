@@ -51,7 +51,7 @@ func _ready() -> void:
 		"Grants +2 Ties.",
 		"tie", 2, false, true)
 	PRIMER     = _make("Primer",
-		"Grants +2 Reprises.",
+		"Grants +2 Revisions.",
 		"reprise", 2, false, true)
 	SMELLING_SALTS = _make("Smelling Salts",
 		"Revives one fallen party member with 1 CORP.",

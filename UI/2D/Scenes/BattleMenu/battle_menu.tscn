@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://buw8mtbfyla3d"]
+
+[ext_resource type="Script" uid="uid://dkqwk62kls8mn" path="res://UI/2D/Scripts/battle_menu.gd" id="1_g76xg"]
+
+[node name="BattleMenu" type="CanvasLayer" unique_id=742114328]
+script = ExtResource("1_g76xg")

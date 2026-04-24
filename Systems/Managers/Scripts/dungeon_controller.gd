@@ -66,6 +66,20 @@ func start_dungeon(run_state: RunState, dungeon_data: DungeonData):
 	enter_current_room()
 
 
+func resume_dungeon(loaded: DungeonRunState) -> void:
+	if dungeon_ui == null:
+		dungeon_ui = get_parent().get_node("DungeonUI")
+	if map_ui == null:
+		map_ui = get_tree().get_first_node_in_group("dungeon_map_3d")
+	dungeon = loaded
+	GameController.current_dungeon_run = dungeon
+	_room_choice_cache.clear()
+	map_ui.setup(dungeon, self)
+	if dungeon.dungeon_data and dungeon.dungeon_data.dungeon_track:
+		AudioManagerAuto.play_dungeon_track(dungeon.dungeon_data.dungeon_track)
+	map_ui.redraw_map()
+
+
 func move_to_room(pos : Vector2i):
 	if not dungeon.grid.has(pos):
 		return
@@ -116,6 +130,11 @@ func enter_current_room():
 		return
 
 	room.visited = true
+	# Motif discovery: first time entering each room type.
+	if data.room_type != RoomData.RoomType.ROAD:
+		var rtype_int : int = data.room_type as int
+		var rtype_key : String = "room:" + str(rtype_int)
+		MetaProgress.notify_encounter(rtype_key, data.room_name if data.room_name != "" else rtype_key)
 	# Track AL_SEGNO passes for rolling re-encounter probability.
 	if dungeon.is_battle_reprimed_transit() and \
 			room.room_data.room_type in [RoomData.RoomType.BATTLE, RoomData.RoomType.ELITE]:
@@ -191,6 +210,9 @@ func on_room_completed():
 		dui._refresh_inventory_bar()
 
 	map_ui.redraw_map()
+
+	# Autosave after every room completion.
+	SaveManager.save_run(dungeon.run_state, dungeon)
 
 
 func _place_boss_room() -> void:
@@ -434,6 +456,7 @@ const BOSS_ENCOUNTERS := {
 }
 
 func _trigger_boss_battle() -> void:
+	MetaProgress.notify_encounter("phase:al_fine", "Al Fine")
 	var run := dungeon.run_state
 	if run.boss_target == null:
 		if run.available_supports.is_empty():
@@ -603,8 +626,11 @@ func _execute_pickup(is_ds: bool) -> void:
 				room.al_segno_passes = 0  # reset per-transit pass counter
 		_spawn_treasure_rooms()
 		dungeon.phase = DungeonRunState.Phase.DS_AL_SEGNO
+		# Motif discovery: first time reaching Al Segno (DS variant).
+		MetaProgress.notify_encounter("phase:al_segno", "Al Segno")
 	else:
 		dungeon.phase = DungeonRunState.Phase.DC_AL_SEGNO
+		MetaProgress.notify_encounter("phase:dc_al_segno", "Da Capo al Segno")
 	on_room_completed()
 
 
@@ -616,7 +642,8 @@ func _do_place_segno() -> void:
 		dungeon.current_pos,
 		DungeonRunState.Phase.DAL_SEGNO,
 		dungeon.current_pos,
-		dungeon.past_segno_positions
+		dungeon.past_segno_positions,
+		dungeon.grid
 	)
 	# Compute min_dist BEFORE appending so we can measure the gap between
 	# the previous Segno (last entry in past_segno_positions) and this one.
@@ -635,6 +662,8 @@ func _do_place_segno() -> void:
 	dungeon.segno_pos         = dungeon.current_pos
 	dungeon.next_segno_target = Vector2i(-999, -999)
 	dungeon.phase             = DungeonRunState.Phase.DAL_SEGNO
+	# Motif discovery: first time reaching DAL_SEGNO phase.
+	MetaProgress.notify_encounter("phase:dal_segno", "Dal Segno")
 	# Lock the safe-phase ceiling to max party level + shrinking bonus.
 	# The bonus is generous early and ticks down each transit so the player
 	# has breathing room at first but must earn more through al Segno grinding.
@@ -1012,11 +1041,33 @@ func respawn_at_segno() -> void:
 	dungeon.current_pos          = placed_at
 	dungeon.segno_snapshot       = null
 	dungeon.past_segno_positions = snap.past_segno_positions.duplicate(true)
+
+	# Restore the dungeon grid to its state at Segno placement time.
+	if not snap.grid_snapshot.is_empty():
+		dungeon.grid.clear()
+		for gpos in snap.grid_snapshot.keys():
+			var d : Dictionary = snap.grid_snapshot[gpos]
+			var room := RoomInstance.new()
+			room.room_data           = d["room_data"]
+			room.position            = d["position"]
+			room.visited             = d["visited"]
+			room.cleared             = d["cleared"]
+			room.rested              = d["rested"]
+			room.inverted            = d["inverted"]
+			room.built_connections   = d["built_connections"]
+			room.al_segno_passes     = d["al_segno_passes"]
+			room.transpose_picks     = d["transpose_picks"].duplicate()
+			room.transpose_rolled    = d["transpose_rolled"]
+			for c in d["explicit_connections"]:
+				room.explicit_connections.append(c)
+			dungeon.grid[gpos] = room
+		_room_choice_cache.clear()
+
 	_revert_room_at(placed_at)
 	dungeon.segno_pos  = Vector2i(-999, -999)
 	dungeon.phase      = DungeonRunState.Phase.CAESURA
 	_revert_entrance_to_start_room()
-	# Restore layer visibility — GameController hid everything during the battle.
+	# Restore layer visibility
 	GameController.event_layer.visible   = false
 	GameController.battle_layer.visible  = false
 	GameController.dungeon_layer.visible = true
@@ -1026,6 +1077,8 @@ func respawn_at_segno() -> void:
 
 func end_run():
 	print("Run ended")
+	MetaProgress.on_run_ended(false)
+	SaveManager.delete_run_save()
 	GameController.start_new_game()
 
 

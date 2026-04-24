@@ -1,0 +1,83 @@
+[gd_scene format=3 uid="uid://drotky4nurxxv"]
+
+[ext_resource type="Script" uid="uid://buiokwi30hawb" path="res://Characters/Scripts/enemy_actor.gd" id="1_rq7yu"]
+[ext_resource type="Script" uid="uid://jtnowsj7i172" path="res://UI/3D/BattleDisplay/Scripts/actor_panel_3d.gd" id="2_lfxx5"]
+[ext_resource type="PackedScene" uid="uid://bl3aftctvygxl" path="res://UI/3D/BattleDisplay/Scenes/hp_display.tscn" id="3_3drdl"]
+[ext_resource type="Script" uid="uid://cyrjmvijvkbgi" path="res://UI/3D/BattleDisplay/Scripts/blood_globe.gd" id="4_771wv"]
+[ext_resource type="PackedScene" uid="uid://du3suh71satyp" path="res://UI/3D/BattleDisplay/Scenes/ring nodes/large_flesh_orb.tscn" id="5_42hjn"]
+[ext_resource type="PackedScene" uid="uid://dfksmgwfvhs8y" path="res://UI/3D/BattleDisplay/Scenes/ring nodes/small_flesh_orb.tscn" id="6_vcu5p"]
+[ext_resource type="PackedScene" uid="uid://wog7o86lkrah" path="res://UI/3D/BattleDisplay/Scenes/ring nodes/small_ice_orb.tscn" id="7_4mkqq"]
+[ext_resource type="PackedScene" uid="uid://dm1a08supvq1i" path="res://UI/3D/BattleDisplay/Scenes/will_ring.tscn" id="8_sid4w"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_12ivh"]
+albedo_color = Color(1, 0.5372549, 0, 1)
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_ridxo"]
+material = SubResource("StandardMaterial3D_12ivh")
+radius = 0.476
+height = 1.908
+
+[node name="EnemyActor" type="Node3D" unique_id=620316433]
+script = ExtResource("1_rq7yu")
+
+[node name="CameraAnchor" type="Node3D" parent="." unique_id=631189047]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3322496, 0)
+
+[node name="WorldSpacePanel" type="Node3D" parent="." unique_id=1766206424]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3754499, 0)
+script = ExtResource("2_lfxx5")
+
+[node name="HpDisplay" parent="WorldSpacePanel" unique_id=1429397145 instance=ExtResource("3_3drdl")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.54176044, 0)
+script = ExtResource("4_771wv")
+token_large_scene = ExtResource("5_42hjn")
+token_small_scene = ExtResource("6_vcu5p")
+shield_orb_scene = ExtResource("7_4mkqq")
+ring_radius = 0.32
+ring_y = 0.0
+rotate_speed = 0.45
+spring_strength = 52.0
+spring_damping = 0.95
+repel_strength = 6.0
+repel_distance = 0.09
+
+[node name="WillRing" parent="WorldSpacePanel" unique_id=887065047 instance=ExtResource("8_sid4w")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.16930032, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1708803179]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, -1, 0, 1, -4.371139e-08, 0, 0.8208523, 0)
+mesh = SubResource("CapsuleMesh_ridxo")
+
+[node name="PartAnchors" type="Node3D" parent="." unique_id=1464804298]
+
+[node name="Stomach" type="Node3D" parent="PartAnchors" unique_id=1458506730]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.80976105, -0.029438078)
+
+[node name="Hide" type="Node3D" parent="PartAnchors" unique_id=2111803010]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1084638, 0.097765684)
+
+[node name="Leg" type="Node3D" parent="PartAnchors" unique_id=658236503]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.19414806, 0.59800595, -0.41313297)
+
+[node name="BoundsRight" type="Node3D" parent="PartAnchors" unique_id=842201348]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6, 0.7, 0)
+
+[node name="BoundAnchors" type="Node3D" parent="." unique_id=206308033]
+
+[node name="BoundsRight" type="Node3D" parent="BoundAnchors" unique_id=274596244]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3201537, 0.83098173, 0.005205691)
+
+[node name="BoundsLeft" type="Node3D" parent="BoundAnchors" unique_id=678022984]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.3080083, 0.8274605, 0.09854248)
+
+[node name="BoundsTop" type="Node3D" parent="BoundAnchors" unique_id=972207164]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.037046075, 1.1214768, 0.04105264)
+
+[node name="BoundsBottom" type="Node3D" parent="BoundAnchors" unique_id=400229142]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0017098784, 0.112985134, 0.050523937)
+
+[node name="BoundsNear" type="Node3D" parent="BoundAnchors" unique_id=1890005812]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.054642916, 0.7957697, 0.7569467)
+
+[node name="BoundsFar" type="Node3D" parent="BoundAnchors" unique_id=518093660]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.045659423, 0.8133757, -0.75516105)

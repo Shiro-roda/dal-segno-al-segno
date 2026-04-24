@@ -1,6 +1,6 @@
 [gd_resource type="Resource" script_class="DungeonData" format=3 uid="uid://dpvtgkchj7i60"]
 
-[ext_resource type="Resource" uid="uid://dh41c43q5ekyx" path="res://Audio/Tracks/yellow.tres" id="1_2l6ym"]
+[ext_resource type="Resource" uid="uid://dh41c43q5ekyx" path="res://Audio/tracks/yellow.tres" id="1_2l6ym"]
 [ext_resource type="Script" uid="uid://b3i3n6lphwajh" path="res://Rooms/Types/Scripts/room_data.gd" id="2_gacfb"]
 [ext_resource type="PackedScene" uid="uid://n6jpv02bi3lq" path="res://Events/Scenes/recruit_event.tscn" id="2_vit4c"]
 [ext_resource type="Script" uid="uid://2pqfqk1bjeam" path="res://Dungeons/Scripts/dungeondata.gd" id="2_xmptu"]
@@ -40,6 +40,7 @@ icon = ExtResource("3_cjxev")
 description = "A place to rest. Your only respite, but there are no paths from here other than the way you came. [+0 Connection(s)]"
 room_model = ExtResource("7_gyugg")
 danger_level = 0
+allows_segno = false
 max_connections = 1
 room_effects = Array[ExtResource("4_w5o4c")]([SubResource("Resource_6fwsg")])
 connections = Array[Vector2i]([Vector2i(0, 0)])

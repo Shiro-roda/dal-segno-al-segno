@@ -52,9 +52,11 @@ metadata/_custom_type_script = "uid://badrkgc20tgv2"
 
 [resource]
 script = ExtResource("3_jsd0t")
-display_name = "Voracious Hound"
+display_name = "Starving Hound"
+theme_color = Color(1, 0.5372549, 0, 1)
 base_max_hp = 14
 base_attack = 3
+base_flat_defense = 1
 base_max_will = 7
 tempo = 20
 exp_yield = 6

@@ -88,7 +88,9 @@ func get_screen_rect(cam: Camera3D, vp_offset_x: float) -> Rect2:
 		return Rect2(-9999, -9999, 0, 0)
 	var w : float = max(max_x - min_x, 24.0)
 	var h : float = max(max_y - min_y, 24.0)
-	return Rect2(min_x, min_y, w, h)
+	var pad_x : float = w * 0.15
+	var pad_y : float = h * 0.15
+	return Rect2(min_x - pad_x, min_y - pad_y, w + pad_x * 2.0, h + pad_y * 2.0)
 
 
 func reveal_stats() -> void:
@@ -104,6 +106,7 @@ func reveal_stats() -> void:
 var display_name : String = ""
 ## Short name used in battle log lines. Falls back to display_name.
 var log_name : String = ""
+var theme_col : Color
 
 func get_log_name() -> String:
 	return log_name if log_name != "" else display_name if display_name != "" else name

@@ -5,6 +5,8 @@ class_name CharacterData
 ## Short name used in battle log messages. Falls back to display_name if empty.
 @export var log_name : String = ""
 @export var description : String = ""
+## Colour used to identify this character in UI elements (tempo score, etc.).
+@export var theme_color : Color = Color(0.88, 0.83, 0.74, 1.0)
 
 func get_log_name() -> String:
 	return log_name if log_name != "" else display_name

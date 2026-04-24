@@ -49,11 +49,11 @@ func _register_all() -> void:
 		true,  false, false, false, "PartAnchors/Rebuke", "Cling")
 	_add("Cling",   "attack",  "Attack at random for half damage. Has a chance to miss. Also has a chance to slow the enemy", " ",
 		false, true,  false, false, "PartAnchors/Rebuke")
-	_add("Calcify", "special", " ",                                                                    "Hue buries the foe in a glacial tomb, leaving them unable to act but guarded from harm.",
+	_add("Calcify", "special", "Paralyze the enemy, but reduce all damage to them until their next action.",                                                                    "Hue buries the foe in a glacial tomb, leaving them unable to act but guarded from harm.",
 		false, false, false, false, "PartAnchors/Umbrella")
 	_add("Shelter", "support", "Grants temporary Corpus Portions and increases the target's FLAT.",                                     "Hue shields a companion with a wall of ice.",
 		false, false, true,  false, "PartAnchors/Canopy")
-	_add("Embrace", "support", " ",                                                                    "",
+	_add("Embrace", "support", "Redirect reduced damage to Hue.",                                                                    "",
 		false, false, true,  false, "PartAnchors/Canopy")
 
 	# Indra
@@ -65,19 +65,19 @@ func _register_all() -> void:
 		true,  false, false, false, "PartAnchors/Storm")
 	_add("Galvanize", "support", "Restores Anima Portions to both companions and raises all allies' attack. Also grants you an additional Beat Bolt.", "Indra fills his comrades with the electric pride of leading the charge, restoring their will to fight and invigorating their attacks.",
 		true,  false, false, false, "PartAnchors/Nails")
-	_add("Martyr",    "support", " ",                                                                   "",
+	_add("Martyr",    "support", "Bleeds Indra and stores all damage done to him to add to his next attack.",                                                                   "",
 		true,  false, false, false, "PartAnchors/Nails")
 
 	# Vritra
-	_add("Vice",      "support", " ",                                                                   "Vritra envenoms the ally with worldly delights. Transmutates the enemy's flesh into ambrosia, restoring vitality to allies who feast upon them.",
+	_add("Vice",      "support", "Grants an ally lifesteal.",                                                                   "Vritra envenoms their ally with worldly delights.",
 		false, false, true,  false, "PartAnchors/Snakes")
-	_add("Malice",    "support", "Chosen ally enters a counter stance, restoring AP to Vritra when they retaliate.", " ",
-		false, true,  false, false, "PartAnchors/Snakes")
-	_add("Devour",    "special", "Increases Vritra's Corpus Portions by 1 if the attack kills their target.", "The serpent unfetters its yawning maw, and swallows their banquet whole. Their corpse grows stronger if their prey is left without a trace.",
+	_add("Malice",    "support", "Chosen ally enters a counter stance, restoring AP to Vritra when they retaliate.", "The serpent invites its fellows to writhe together in vitriol.",
+		false, true,  true, false, "PartAnchors/Snakes")
+	_add("Devour",    "special", "Siphons CORP from the target an increases Vritra's MAX CORP by 1 if the attack kills their target.", "The serpent unfetters its yawning maw, and swallows their banquet whole. Their corpse grows stronger if their prey is left without a trace.",
 		false, false, false, false, "PartAnchors/Stomach")
-	_add("Wither",    "attack",  "Steals CORP from the target and lowers their SHARP.",                  "Vritra inflicts the enemy with unbearable famine, lessening their strength and siphoning their vitality.",
+	_add("Wither",    "attack",  "Has a chance to lower the target's SHARP.",                  "Vritra inflicts the enemy with unbearable famine, lessening their strength and siphoning their vitality.",
 		false, false, false, false, "PartAnchors/Mouth", "Waste")
-	_add("Waste",     "attack",  " ",                                                                   "",
+	_add("Autophagy",     "attack",  " ",                                                                   "",
 		false,  true, false, false, "PartAnchors/Mouth")
 	_add("Unwilling", "special", " ",                                                                   "",
 		false, true, true,  false, "PartAnchors/Stomach")

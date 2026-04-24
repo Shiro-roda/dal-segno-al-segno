@@ -11,8 +11,10 @@
 [resource]
 script = ExtResource("2_rwi5t")
 display_name = "Banal Shadow"
+theme_color = Color(0.18120015, 0.18120003, 0.18120003, 1)
 base_max_hp = 14
-base_attack = 3
+base_attack = 4
+base_flat_defense = 1
 body_parts = Array[ExtResource("1_bc0hm")]([ExtResource("3_cs0o4"), ExtResource("4_4232s"), ExtResource("5_p0oe2")])
 battle_scene = ExtResource("1_rwi5t")
 metadata/_custom_type_script = "uid://b2t1syvrybco8"

@@ -12,7 +12,6 @@ const ACTOR_PANEL = preload("res://UI/2D/Scenes/actor_panel.tscn")
 const LOG_MAX_LINES      = 6
 const LOG_FADE_DURATION  = 0.4   # seconds each log entry fades in
 const LOG_LINE_SPACING   = 6     # extra pixels between log entries
-const CHATTER_DURATION = 2.6   # seconds a chatter line stays visible
 const QUEUE_STEPS = 6                  # how many acts ahead to project
 
 var player_panels := {}
@@ -22,8 +21,6 @@ var enemy_panels := {}
 var _log_panel      : PanelContainer
 var _log_label      : RichTextLabel
 var _log_vbox       : VBoxContainer
-var _chatter_label  : Label
-var _chatter_mat    : ShaderMaterial
 var _log_lines      : Array = []
 
 # Turn order queue strip
@@ -35,25 +32,11 @@ var _augur_labels  : Dictionary = {}  # actor -> VBoxContainer of labels
 
 
 func _ready_log() -> void:
-	# Only build once - guard against multiple setup() calls
 	if _log_vbox != null:
 		return
-	# vbox is already in the scene ($BattleLog/HBoxContainer/Log); just configure it
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.size_flags_vertical   = Control.SIZE_EXPAND_FILL
 
-	_chatter_label = Label.new()
-	_chatter_label.name = "ChatterLabel"
-	_chatter_label.add_theme_font_size_override("font_size", 18)
-	_chatter_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_chatter_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_chatter_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_chatter_label.text = ""
-	_chatter_mat = ShaderMaterial.new()
-	_chatter_mat.shader = load("res://Shaders/chatter_crt.gdshader")
-	_chatter_label.material = _chatter_mat
-	vbox.add_child(_chatter_label)
-	
 	_log_vbox = VBoxContainer.new()
 	_log_vbox.name = "LogVBox"
 	_log_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -132,30 +115,6 @@ func push_log(msg: String) -> void:
 	tw.tween_property(lbl, "modulate", Color(1, 1, 1, 1), LOG_FADE_DURATION)
 
 
-const CHATTER_COLORS : Dictionary = {
-	"Hue":    Color(3.337, 2.606, 0.311, 1.0),  # yellow
-	"Indra":  Color(0.613, 2.318, 2.708, 1.0),  # cerulean
-	"Vritra": Color(2.871, 0.0, 0.904, 1.0),
-}
-const CHATTER_DEFAULT := Color(0.88, 0.83, 0.74, 1.0)
-
-var _chatter_gen : int = 0  # incremented each push; callbacks ignore stale gens
-
-func push_chatter(msg: String, speaker: String = "") -> void:
-	if _chatter_label == null:
-		return
-	# Bump generation — any timer from a previous call will see a stale gen
-	# and do nothing when it fires.  SceneTreeTimer has no cancel().
-	_chatter_gen += 1
-	var my_gen := _chatter_gen
-	var col : Color = CHATTER_COLORS.get(speaker, CHATTER_DEFAULT)
-	_chatter_mat.set_shader_parameter("font_color", col)
-	_chatter_label.text = " " + msg
-	get_tree().create_timer(CHATTER_DURATION, false).timeout.connect(func():
-		if my_gen == _chatter_gen and is_instance_valid(_chatter_label):
-			_chatter_label.text = ""
-	, CONNECT_ONE_SHOT)
-
 const HUD_BG     := Color(0.08, 0.07, 0.06, 0.96)
 const HUD_BORDER := Color(0.35, 0.28, 0.22, 1.0)
 const HUD_ACCENT := Color(0.52, 0.42, 0.28, 1.0)
@@ -224,6 +183,53 @@ func _find_labels(nodes: Array) -> Array:
 		out.append_array(_find_labels(n.get_children()))
 	return out
 
+# Menu button — built once, shown always during battle
+var _menu_btn : Button = null
+
+func _build_menu_button() -> void:
+	if _menu_btn != null:
+		return
+	var font : Font = load(HUD_FONT) if ResourceLoader.exists(HUD_FONT) else ThemeDB.fallback_font
+	_menu_btn = Button.new()
+	_menu_btn.text = "MENU"
+	_menu_btn.anchor_left   = 0.0
+	_menu_btn.anchor_top    = 0.0
+	_menu_btn.anchor_right  = 0.0
+	_menu_btn.anchor_bottom = 0.0
+	_menu_btn.offset_left   = 10.0
+	_menu_btn.offset_top    = 10.0
+	_menu_btn.offset_right  = 90.0
+	_menu_btn.offset_bottom = 42.0
+	_menu_btn.add_theme_font_override("font", font)
+	_menu_btn.add_theme_font_size_override("font_size", 13)
+	_menu_btn.add_theme_color_override("font_color", HUD_TEXT)
+	_menu_btn.add_theme_color_override("font_hover_color", HUD_TEXT)
+	_menu_btn.add_theme_color_override("font_pressed_color", HUD_TEXT)
+	var sn := StyleBoxFlat.new()
+	sn.bg_color = Color(0.10, 0.08, 0.07, 0.92)
+	sn.border_color = HUD_ACCENT
+	sn.set_border_width_all(1)
+	sn.set_content_margin_all(6)
+	var sh := sn.duplicate() as StyleBoxFlat
+	sh.bg_color = Color(0.20, 0.10, 0.08, 0.97)
+	for st in ["normal", "focus"]: _menu_btn.add_theme_stylebox_override(st, sn)
+	for st in ["hover", "pressed"]: _menu_btn.add_theme_stylebox_override(st, sh)
+	_menu_btn.pressed.connect(_on_menu_btn_pressed)
+	add_child(_menu_btn)
+
+
+func _on_menu_btn_pressed() -> void:
+	var bm = get_tree().get_first_node_in_group("battle_manager")
+	if bm == null:
+		return
+	# Only open during the player's command stage and when not locked
+	if bm.input_locked or bm.input_stage != bm.InputStage.COMMAND:
+		return
+	var battle_menu = bm.battle_menu
+	if is_instance_valid(battle_menu):
+		battle_menu.open_for_turn(bm.active_player_actor, bm.actors, bm.context.run_state)
+
+
 func setup(actor_list : Array):
 	_ready_log()
 	_ready_queue()
@@ -238,11 +244,13 @@ func setup(actor_list : Array):
 		c.queue_free()
 
 	for actor in actor_list:
-		# Wire battle log and chatter signals for every actor
+		# Wire battle log to HUD; chatter goes to BattleSubtitles
 		if actor.has_signal("battle_log") and not actor.battle_log.is_connected(push_log):
 			actor.battle_log.connect(push_log)
-		if actor.has_signal("chatter") and not actor.chatter.is_connected(push_chatter):
-			actor.chatter.connect(push_chatter)
+		var subs = get_tree().get_first_node_in_group("battle_subtitles")
+		if subs != null and actor.has_signal("chatter") \
+				and not actor.chatter.is_connected(subs.push_chatter):
+			actor.chatter.connect(subs.push_chatter)
 
 		var panel = ACTOR_PANEL.instantiate()
 
