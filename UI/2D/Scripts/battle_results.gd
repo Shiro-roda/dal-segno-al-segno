@@ -17,6 +17,7 @@ var _party          : Array      = []
 var _exp_per_member : Dictionary = {}
 var _level_ups      : Dictionary = {}
 var _rewards        : Array      = []  # Array[Dictionary] — reward choices to pick from
+var _hp_labels      : Dictionary = {}  # PartyMemberData -> Label
 
 @onready var _bg   : ColorRect      = $BG
 @onready var _vbox : VBoxContainer  = $CenterContainer/Panel/VBox
@@ -81,7 +82,12 @@ func _build_ui() -> void:
 		var hp_str := "DEAD" if dead else "%d / %d" % [m.current_hp, max_hp]
 		var nm_col := Color(C_TEXT.r, C_TEXT.g, C_TEXT.b, 0.4) if dead else C_TEXT
 		var hp_col := C_RED if dead else C_TEXT
-		table.add_child(_make_row([cd.display_name, hp_str], [nm_col, hp_col], 16, false))
+		var row := _make_row([cd.display_name, hp_str], [nm_col, hp_col], 16, false)
+		table.add_child(row)
+		# Keep a ref to the HP label so reward_chosen can refresh it.
+		var hp_lbl : Label = row.get_child(1)
+		_hp_labels[m] = hp_lbl
+		m.hp_changed.connect(func(): _refresh_hp_label(m))
 
 	_divider(vbox)
 
@@ -191,6 +197,16 @@ func _build_ui() -> void:
 	hint.add_theme_font_size_override("font_size", 11)
 	hint.add_theme_color_override("font_color", C_DIM)
 	vbox.add_child(hint)
+
+
+func _refresh_hp_label(m: PartyMemberData) -> void:
+	var lbl : Label = _hp_labels.get(m)
+	if lbl == null or not is_instance_valid(lbl):
+		return
+	var max_hp : int = m.character.base_max_hp + m.bonus_max_hp
+	var dead   : bool = m.current_hp <= 0
+	lbl.text = "DEAD" if dead else "%d / %d" % [m.current_hp, max_hp]
+	lbl.add_theme_color_override("font_color", C_RED if dead else C_TEXT)
 
 
 func _input(event: InputEvent) -> void:

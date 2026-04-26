@@ -7,6 +7,8 @@
 [ext_resource type="Resource" uid="uid://bv8nc0eu2eq6j" path="res://Systems/AnatomySys/Resources/penumbra.tres" id="4_4232s"]
 [ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="4_dh7dq"]
 [ext_resource type="Resource" uid="uid://s8d8wab3g0yr" path="res://Systems/AnatomySys/Resources/umbra.tres" id="5_p0oe2"]
+[ext_resource type="Resource" uid="uid://l1xoe7mswn4d" path="res://Systems/SkillSys/Resources/Skills/banality.tres" id="8_p0oe2"]
+[ext_resource type="Resource" uid="uid://c15i0s4i5ocmu" path="res://Systems/SkillSys/Resources/Skills/low_dim.tres" id="9_pfu1a"]
 
 [resource]
 script = ExtResource("2_rwi5t")
@@ -15,6 +17,8 @@ theme_color = Color(0.18120015, 0.18120003, 0.18120003, 1)
 base_max_hp = 14
 base_attack = 4
 base_flat_defense = 1
+base_max_will = 7
 body_parts = Array[ExtResource("1_bc0hm")]([ExtResource("3_cs0o4"), ExtResource("4_4232s"), ExtResource("5_p0oe2")])
 battle_scene = ExtResource("1_rwi5t")
+skills = Array[ExtResource("4_dh7dq")]([ExtResource("8_p0oe2"), ExtResource("9_pfu1a")])
 metadata/_custom_type_script = "uid://b2t1syvrybco8"

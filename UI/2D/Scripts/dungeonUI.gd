@@ -125,7 +125,7 @@ func _do_rest(rest_type: String, val: int) -> void:
 	match rest_type:
 		"hp":
 			for member in rs.party_members:
-				member.current_hp = mini(member.current_hp + val, member.character.base_max_hp)
+				member.set_hp(mini(member.current_hp + val, member.character.base_max_hp))
 		"will":
 			for member in rs.party_members:
 				if member.has_will():

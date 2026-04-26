@@ -1,0 +1,353 @@
+[gd_scene format=3 uid="uid://crk45tyrcis3h"]
+
+[ext_resource type="Script" uid="uid://ooy1vi7u8mr1" path="res://Systems/Managers/Scripts/battle_manager.gd" id="1_j02n0"]
+[ext_resource type="Script" uid="uid://br7brteiolp64" path="res://RecycleBin/resources/battlestates/BattleIntroState.gd" id="2_rhq0f"]
+[ext_resource type="Script" uid="uid://b6jnbs7ito3y3" path="res://Systems/BattleSys/BattleStates/BattleStateTurn.gd" id="3_xxfeu"]
+[ext_resource type="Script" uid="uid://qre1hxk7lxh4" path="res://UI/3D/Camera/Scripts/idle_orbit_pivot.gd" id="3_yw742"]
+[ext_resource type="Script" uid="uid://csjccrhj5wnx7" path="res://addons/phantom_camera/scripts/phantom_camera/phantom_camera_3d.gd" id="4_y8mdh"]
+[ext_resource type="Script" uid="uid://8umksf8e80fw" path="res://addons/phantom_camera/scripts/resources/tween_resource.gd" id="5_8bb5l"]
+[ext_resource type="Script" uid="uid://b8hhnqsugykly" path="res://addons/phantom_camera/scripts/resources/camera_3d_resource.gd" id="6_xxfeu"]
+[ext_resource type="Script" uid="uid://bd046eokvcnu2" path="res://addons/phantom_camera/scripts/phantom_camera_host/phantom_camera_host.gd" id="7_5u8md"]
+[ext_resource type="Shader" uid="uid://cw256eg1mpaef" path="res://Shaders/blur_separator.gdshader" id="8_8bb5l"]
+[ext_resource type="Script" uid="uid://r12gfink2342" path="res://UI/2D/Scripts/battle_hud.gd" id="8_85sqs"]
+[ext_resource type="FontFile" uid="uid://c8q52n0ssb7w3" path="res://UI/Themes/Fonts/TerminalVector.ttf" id="9_i5rsa"]
+[ext_resource type="PackedScene" uid="uid://cx2gw1tu0rxpi" path="res://Systems/Managers/Scenes/audio_manager.tscn" id="10_jcu24"]
+[ext_resource type="Script" uid="uid://dy7nm6c7r8ulp" path="res://UI/2D/Scripts/BattleUI.gd" id="11_wbvnx"]
+[ext_resource type="Shader" uid="uid://btm2rulspg8el" path="res://Shaders/battleglitch.gdshader" id="12_lvunh"]
+[ext_resource type="Script" uid="uid://cyhiqc5tsl2mm" path="res://UI/2D/Scripts/battle_dialogue_box.gd" id="14_xe0bb"]
+[ext_resource type="Script" uid="uid://3t5g2wj1mm2x" path="res://Systems/Managers/Scripts/tutorial_manager.gd" id="16_y8mdh"]
+[ext_resource type="Script" uid="uid://bm3xqpsekoqep" path="res://UI/2D/Scripts/battle_reticle_ui.gd" id="16_yw742"]
+[ext_resource type="Script" uid="uid://dkqwk62kls8mn" path="res://UI/2D/Scripts/battle_menu.gd" id="17_y8mdh"]
+[ext_resource type="Script" uid="uid://r4b8b5iqvu68" path="res://UI/2D/Scripts/battle_subtitles.gd" id="18_8bb5l"]
+
+[sub_resource type="Resource" id="Resource_26idg"]
+script = ExtResource("5_8bb5l")
+duration = 0.5
+
+[sub_resource type="Resource" id="Resource_xhnwx"]
+script = ExtResource("6_xxfeu")
+metadata/_custom_type_script = "uid://b8hhnqsugykly"
+
+[sub_resource type="Resource" id="Resource_nejpu"]
+script = ExtResource("5_8bb5l")
+duration = 0.5
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_xxfeu"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_5u8md"]
+shader = ExtResource("8_8bb5l")
+shader_parameter/blur_amount = 4.0
+shader_parameter/spread = 0.02
+shader_parameter/edge_softness = 0.622000029545
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_8bb5l"]
+shader = ExtResource("8_8bb5l")
+shader_parameter/blur_amount = 4.0
+shader_parameter/spread = 0.0490000023275
+shader_parameter/edge_softness = 0.4
+
+[sub_resource type="Theme" id="Theme_itxmc"]
+default_font = ExtResource("9_i5rsa")
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hq6gs"]
+content_margin_left = 8.0
+content_margin_top = 10.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(0.1, 0.1, 0.1, 0.6)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xhnwx"]
+content_margin_left = 15.0
+content_margin_top = 10.0
+content_margin_right = 15.0
+content_margin_bottom = 10.0
+bg_color = Color(0.07815654, 0.078156434, 0.07815645, 0.73333335)
+border_width_left = 4
+border_width_top = 4
+border_color = Color(0.0048998194, 0.00489983, 0.004899827, 1)
+
+[sub_resource type="LabelSettings" id="LabelSettings_itxmc"]
+font = ExtResource("9_i5rsa")
+font_size = 22
+
+[sub_resource type="Gradient" id="Gradient_itxmc"]
+colors = PackedColorArray(1, 1, 1, 1, 0, 0, 0, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_xhnwx"]
+gradient = SubResource("Gradient_itxmc")
+
+[sub_resource type="Gradient" id="Gradient_hq6gs"]
+colors = PackedColorArray(1, 0, 0, 1, 1, 1, 0, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_hq6gs"]
+gradient = SubResource("Gradient_hq6gs")
+
+[sub_resource type="LabelSettings" id="LabelSettings_hq6gs"]
+font = ExtResource("9_i5rsa")
+font_size = 24
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_hq6gs"]
+shader = ExtResource("12_lvunh")
+shader_parameter/curvature = 5.60000008344672
+shader_parameter/vignette_multiplier = 0.20000000298024
+shader_parameter/ca_strength = 3.0000000447036
+shader_parameter/blur_strength = 0.10000000149012
+shader_parameter/brightness = 1.0
+shader_parameter/contrast = 1.0
+shader_parameter/saturation = 1.0
+shader_parameter/channel_strength = Vector3(1, 1, 1)
+shader_parameter/glitch_intensity = 0.0
+shader_parameter/noise_strength = 0.0
+shader_parameter/tear_intensity = 0.0
+shader_parameter/block_glitch = 0.0
+
+[sub_resource type="QuadMesh" id="QuadMesh_ohpiy"]
+size = Vector2(1280, 960)
+center_offset = Vector3(640, 480, 0)
+
+[node name="BattleScene" type="Node3D" unique_id=259883929]
+
+[node name="BattleManager" type="Node" parent="." unique_id=1762645527]
+script = ExtResource("1_j02n0")
+
+[node name="States" type="Node" parent="BattleManager" unique_id=576574296]
+
+[node name="BattleIntroState" type="Node" parent="BattleManager/States" unique_id=643864943]
+script = ExtResource("2_rhq0f")
+
+[node name="PlayerTurnState" type="Node" parent="BattleManager/States" unique_id=509371858]
+
+[node name="BattleTurn" type="Node" parent="BattleManager/States" unique_id=1172557339]
+script = ExtResource("3_xxfeu")
+
+[node name="CameraRig" type="Node3D" parent="." unique_id=1931292584]
+
+[node name="IdleOrbitPivot" type="Node3D" parent="CameraRig" unique_id=1532661715]
+transform = Transform3D(1, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 0, 0, 0)
+script = ExtResource("3_yw742")
+
+[node name="IdleOrbiter" type="Node3D" parent="CameraRig/IdleOrbitPivot" unique_id=1216574263]
+transform = Transform3D(1, 0, 0, 0, 0.9999998, 0, 0, 0, 0.9999998, 0, 6.3744373, 7.6217666)
+
+[node name="active_cam" type="Node3D" parent="CameraRig" unique_id=2025165075]
+transform = Transform3D(1, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, -1.3915569, 7.385764, 3.37666)
+top_level = true
+script = ExtResource("4_y8mdh")
+follow_mode = 2
+look_at_mode = 2
+tween_resource = SubResource("Resource_26idg")
+camera_3d_resource = SubResource("Resource_xhnwx")
+follow_offset = Vector3(0.2, 0, 1.5)
+follow_damping = true
+follow_damping_value = Vector3(0.2, 0.2, 0.2)
+look_at_offset = Vector3(0.2, 0, 0)
+
+[node name="target_cam" type="Node3D" parent="CameraRig" unique_id=1804288770]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.9518425, 7.48166, 1.2990618)
+top_level = true
+script = ExtResource("4_y8mdh")
+follow_mode = 2
+look_at_mode = 2
+tween_resource = SubResource("Resource_nejpu")
+host_layers = 2
+follow_damping = true
+follow_damping_value = Vector3(0.35, 0.35, 0.35)
+look_at_damping = true
+look_at_damping_value = 0.157
+metadata/_custom_type_script = "uid://csjccrhj5wnx7"
+
+[node name="ActiveAnchor" type="Node3D" parent="CameraRig" unique_id=655453041]
+
+[node name="ActiveLookAnchor" type="Node3D" parent="CameraRig" unique_id=1582796026]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.264618, 3.6070132, 0)
+
+[node name="TargetAnchor" type="Node3D" parent="CameraRig" unique_id=1572926252]
+
+[node name="TargetLookAnchor" type="Node3D" parent="CameraRig" unique_id=1898894596]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.356731, 4.459252, 0)
+
+[node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=130250288]
+offset_right = 1280.0
+offset_bottom = 960.0
+theme_override_constants/separation = 0
+alignment = 1
+
+[node name="Left_Container" type="SubViewportContainer" parent="HBoxContainer" unique_id=1776021748]
+layout_mode = 2
+size_flags_horizontal = 2
+size_flags_vertical = 8
+
+[node name="Left" type="SubViewport" parent="HBoxContainer/Left_Container" unique_id=1840474016]
+handle_input_locally = false
+size = Vector2i(640, 960)
+size_2d_override_stretch = true
+render_target_update_mode = 4
+
+[node name="PlayerActorCam" type="Camera3D" parent="HBoxContainer/Left_Container/Left" unique_id=1335861594]
+transform = Transform3D(1, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, -1.3915569, 7.385764, 3.37666)
+fov = 100.418106
+
+[node name="PhantomCameraHost" type="Node" parent="HBoxContainer/Left_Container/Left/PlayerActorCam" unique_id=774086878]
+process_priority = 300
+process_physics_priority = 300
+script = ExtResource("7_5u8md")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="HBoxContainer/Left_Container" unique_id=1888404380]
+layout_mode = 2
+
+[node name="Right_Container" type="SubViewportContainer" parent="HBoxContainer" unique_id=1715034904]
+layout_mode = 2
+size_flags_horizontal = 10
+size_flags_vertical = 0
+
+[node name="Right" type="SubViewport" parent="HBoxContainer/Right_Container" unique_id=249572341]
+handle_input_locally = false
+size = Vector2i(640, 960)
+render_target_update_mode = 4
+
+[node name="TargetCam" type="Camera3D" parent="HBoxContainer/Right_Container/Right" unique_id=30126024]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.9518425, 7.48166, 1.2990618)
+fov = 100.418106
+
+[node name="PhantomCameraHost" type="Node" parent="HBoxContainer/Right_Container/Right/TargetCam" unique_id=1124316229]
+process_priority = 300
+process_physics_priority = 300
+script = ExtResource("7_5u8md")
+host_layers = 2
+
+[node name="VSeparator" type="VSeparator" parent="." unique_id=1852598101]
+z_index = 1
+custom_minimum_size = Vector2(30, 0)
+offset_left = 625.0
+offset_right = 655.0
+offset_bottom = 960.0
+size_flags_horizontal = 6
+theme_override_constants/separation = 0
+theme_override_styles/separator = SubResource("StyleBoxEmpty_xxfeu")
+
+[node name="ColorRect" type="ColorRect" parent="VSeparator" unique_id=2120112905]
+material = SubResource("ShaderMaterial_5u8md")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ColorRect2" type="ColorRect" parent="VSeparator" unique_id=1398908933]
+material = SubResource("ShaderMaterial_8bb5l")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 11.0
+offset_right = -13.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BattleHUD" type="CanvasLayer" parent="." unique_id=1441720760]
+script = ExtResource("8_85sqs")
+
+[node name="Player Status" type="PanelContainer" parent="BattleHUD" unique_id=1050170975]
+visible = false
+offset_right = 638.0
+offset_bottom = 200.0
+theme = SubResource("Theme_itxmc")
+theme_override_styles/panel = SubResource("StyleBoxFlat_hq6gs")
+
+[node name="PlayerContainer" type="HBoxContainer" parent="BattleHUD/Player Status" unique_id=489023876]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="TargetInfo" type="PanelContainer" parent="BattleHUD" unique_id=828853757]
+visible = false
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -800.0
+offset_top = -392.0
+offset_right = -642.0
+offset_bottom = -282.0
+grow_horizontal = 0
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_xhnwx")
+
+[node name="TargetInfoBox" type="VBoxContainer" parent="BattleHUD/TargetInfo" unique_id=36994380]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="NameLabel" type="Label" parent="BattleHUD/TargetInfo/TargetInfoBox" unique_id=749312287]
+layout_mode = 2
+label_settings = SubResource("LabelSettings_itxmc")
+
+[node name="HPBar" type="TextureProgressBar" parent="BattleHUD/TargetInfo/TargetInfoBox" unique_id=598575795]
+layout_mode = 2
+size_flags_vertical = 3
+nine_patch_stretch = true
+texture_under = SubResource("GradientTexture1D_xhnwx")
+texture_progress = SubResource("GradientTexture2D_hq6gs")
+
+[node name="HPText" type="Label" parent="BattleHUD/TargetInfo/TargetInfoBox" unique_id=1974015090]
+layout_mode = 2
+label_settings = SubResource("LabelSettings_hq6gs")
+
+[node name="BattleLog" type="PanelContainer" parent="BattleHUD" unique_id=1305430076]
+visible = false
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -638.0
+offset_top = -200.0
+grow_horizontal = 0
+grow_vertical = 0
+theme = SubResource("Theme_itxmc")
+theme_override_styles/panel = SubResource("StyleBoxFlat_hq6gs")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="BattleHUD/BattleLog" unique_id=11488190]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="TurnQueue" type="VBoxContainer" parent="BattleHUD/BattleLog/HBoxContainer" unique_id=1190694953]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 2
+
+[node name="Log" type="VBoxContainer" parent="BattleHUD/BattleLog/HBoxContainer" unique_id=142707975]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+alignment = 2
+
+[node name="Audio Manager" parent="." unique_id=2102780936 instance=ExtResource("10_jcu24")]
+
+[node name="BattleUI" type="CanvasLayer" parent="." unique_id=100288458]
+script = ExtResource("11_wbvnx")
+
+[node name="MeshInstance2D" type="MeshInstance2D" parent="BattleUI" unique_id=1311925908]
+visible = false
+material = SubResource("ShaderMaterial_hq6gs")
+mesh = SubResource("QuadMesh_ohpiy")
+
+[node name="DialogueLayer" type="CanvasLayer" parent="." unique_id=1724695061]
+script = ExtResource("14_xe0bb")
+
+[node name="BattleReticleUI" type="CanvasLayer" parent="." unique_id=1898218054]
+script = ExtResource("16_yw742")
+
+[node name="TutorialManager" type="Node" parent="." unique_id=1875854761]
+script = ExtResource("16_y8mdh")
+
+[node name="BattleMenu" type="CanvasLayer" parent="." unique_id=1073381507]
+script = ExtResource("17_y8mdh")
+
+[node name="BattleSubtitles" type="CanvasLayer" parent="." unique_id=836863914]
+script = ExtResource("18_8bb5l")

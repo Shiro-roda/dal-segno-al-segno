@@ -186,6 +186,10 @@ func _find_labels(nodes: Array) -> Array:
 # Menu button — built once, shown always during battle
 var _menu_btn : Button = null
 
+# Overview toggle — bottom-centre, toggles target cam between orbit and overhead
+var _overview_btn : Button = null
+var _overview_active : bool = false
+
 func _build_menu_button() -> void:
 	if _menu_btn != null:
 		return
@@ -230,10 +234,71 @@ func _on_menu_btn_pressed() -> void:
 		battle_menu.open_for_turn(bm.active_player_actor, bm.actors, bm.context.run_state)
 
 
+func _build_overview_toggle_button() -> void:
+	if _overview_btn != null:
+		return
+	var font : Font = load(HUD_FONT) if ResourceLoader.exists(HUD_FONT) else ThemeDB.fallback_font
+	_overview_btn = Button.new()
+	_overview_btn.text = "[ OVERVIEW ]" if _overview_active else "[ ORBIT ]"
+	# Anchor to bottom-centre
+	_overview_btn.anchor_left   = 0.5
+	_overview_btn.anchor_top    = 1.0
+	_overview_btn.anchor_right  = 0.5
+	_overview_btn.anchor_bottom = 1.0
+	_overview_btn.offset_left   = -56.0
+	_overview_btn.offset_right  =  56.0
+	_overview_btn.offset_top    = -40.0
+	_overview_btn.offset_bottom = -10.0
+	_overview_btn.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_overview_btn.add_theme_font_override("font", font)
+	_overview_btn.add_theme_font_size_override("font_size", 11)
+	_overview_btn.add_theme_color_override("font_color", HUD_TEXT)
+	_overview_btn.add_theme_color_override("font_hover_color", HUD_TEXT)
+	_overview_btn.add_theme_color_override("font_pressed_color", HUD_TEXT)
+	var sn := StyleBoxFlat.new()
+	sn.bg_color = Color(0.10, 0.08, 0.07, 0.88)
+	sn.border_color = HUD_ACCENT
+	sn.set_border_width_all(1)
+	sn.set_content_margin_all(5)
+	var sh := sn.duplicate() as StyleBoxFlat
+	sh.bg_color = Color(0.22, 0.14, 0.08, 0.97)
+	sh.border_color = HUD_TEXT
+	for st in ["normal", "focus"]: _overview_btn.add_theme_stylebox_override(st, sn)
+	for st in ["hover", "pressed"]: _overview_btn.add_theme_stylebox_override(st, sh)
+	_overview_btn.pressed.connect(_on_overview_btn_pressed)
+	add_child(_overview_btn)
+
+
+func _on_overview_btn_pressed() -> void:
+	var bm = get_tree().get_first_node_in_group("battle_manager")
+	if bm == null:
+		return
+	_overview_active = not _overview_active
+	if _overview_active:
+		bm.focus_overview()
+		_overview_btn.text = "[ OVERVIEW ]"
+	else:
+		bm.focus_idle_orbit()
+		_overview_btn.text = "[ ORBIT ]"
+
+
+## Called by the battle manager whenever it switches camera mode so the
+## button label stays in sync with programmatic transitions (e.g. turn start).
+func sync_overview_button(is_overview: bool) -> void:
+	_overview_active = is_overview
+	if _overview_btn:
+		_overview_btn.text = "[ OVERVIEW ]" if is_overview else "[ ORBIT ]"
+
+
 func setup(actor_list : Array):
 	_ready_log()
 	_ready_queue()
 	_apply_hud_style()
+	_build_overview_toggle_button()
+	# Reset toggle state at the start of each battle (overview is the initial state)
+	_overview_active = true
+	if _overview_btn:
+		_overview_btn.text = "[ OVERVIEW ]"
 	# Clear log entries and state from any previous battle
 	_log_lines.clear()
 	if _log_vbox:
@@ -303,6 +368,101 @@ func reset_augur_panel() -> void:
 		for child in _augur_panel.get_node("VBox").get_children():
 			child.queue_free()
 		_augur_labels.clear()
+
+
+# ── Enemy skill announcement banner ──────────────────────────────────────────
+# Shown for ~1.8 s before the enemy acts, then fades out.
+
+var _announce_panel : PanelContainer = null
+var _announce_tween : Tween = null
+
+func announce_enemy_skill(enemy_name: String, skill_name: String, skill_summary: String) -> void:
+	if _announce_panel == null:
+		_build_announce_panel()
+	# Kill any in-flight tween so a rapid new announcement starts clean.
+	if is_instance_valid(_announce_tween):
+		_announce_tween.kill()
+
+	var font : Font = load(HUD_FONT) if ResourceLoader.exists(HUD_FONT) else ThemeDB.fallback_font
+
+	var name_lbl  : Label = _announce_panel.get_node("VBox/EnemyName")
+	var skill_lbl : Label = _announce_panel.get_node("VBox/SkillName")
+	var desc_lbl  : Label = _announce_panel.get_node("VBox/SkillDesc")
+
+	name_lbl.text  = enemy_name.to_upper()
+	skill_lbl.text = skill_name.to_upper()
+	desc_lbl.text  = skill_summary
+	desc_lbl.visible = skill_summary != ""
+
+	_announce_panel.modulate = Color(1, 1, 1, 0)
+	_announce_panel.visible  = true
+
+	_announce_tween = create_tween()
+	_announce_tween.tween_property(_announce_panel, "modulate", Color(1, 1, 1, 1), 0.18)
+	_announce_tween.tween_interval(1.6)
+	_announce_tween.tween_property(_announce_panel, "modulate", Color(1, 1, 1, 0), 0.3)
+	_announce_tween.tween_callback(func(): _announce_panel.visible = false)
+
+
+func _build_announce_panel() -> void:
+	var font : Font = load(HUD_FONT) if ResourceLoader.exists(HUD_FONT) else ThemeDB.fallback_font
+
+	_announce_panel = PanelContainer.new()
+	_announce_panel.name = "EnemySkillAnnounce"
+	# Horizontally centred, sits in the upper-middle of the screen.
+	_announce_panel.anchor_left   = 0.3
+	_announce_panel.anchor_right  = 0.7
+	_announce_panel.anchor_top    = 0.08
+	_announce_panel.anchor_bottom = 0.08
+	_announce_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_announce_panel.grow_vertical   = Control.GROW_DIRECTION_END
+
+	var sbox := StyleBoxFlat.new()
+	sbox.bg_color = Color(0.06, 0.04, 0.04, 0.94)
+	sbox.border_color = Color(0.65, 0.22, 0.22, 1.0)  # red-tinted border for enemy
+	sbox.set_border_width_all(0)
+	sbox.border_width_bottom = 2
+	sbox.border_width_top    = 2
+	sbox.set_content_margin_all(12)
+	sbox.content_margin_left  = 18
+	sbox.content_margin_right = 18
+	_announce_panel.add_theme_stylebox_override("panel", sbox)
+
+	var vbox := VBoxContainer.new()
+	vbox.name = "VBox"
+	vbox.add_theme_constant_override("separation", 4)
+	_announce_panel.add_child(vbox)
+
+	# Enemy name (small, dim)
+	var name_lbl := Label.new()
+	name_lbl.name = "EnemyName"
+	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_lbl.add_theme_font_size_override("font_size", 11)
+	name_lbl.add_theme_color_override("font_color", Color(0.65, 0.45, 0.45, 1.0))
+	if font: name_lbl.add_theme_font_override("font", font)
+	vbox.add_child(name_lbl)
+
+	# Skill name (large, prominent)
+	var skill_lbl := Label.new()
+	skill_lbl.name = "SkillName"
+	skill_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	skill_lbl.add_theme_font_size_override("font_size", 20)
+	skill_lbl.add_theme_color_override("font_color", Color(1.0, 0.82, 0.72, 1.0))
+	if font: skill_lbl.add_theme_font_override("font", font)
+	vbox.add_child(skill_lbl)
+
+	# Skill summary (small, italic-style, dim)
+	var desc_lbl := Label.new()
+	desc_lbl.name = "SkillDesc"
+	desc_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc_lbl.add_theme_font_size_override("font_size", 11)
+	desc_lbl.add_theme_color_override("font_color", Color(0.60, 0.55, 0.50, 1.0))
+	if font: desc_lbl.add_theme_font_override("font", font)
+	vbox.add_child(desc_lbl)
+
+	_announce_panel.visible = false
+	add_child(_announce_panel)
 
 
 func _build_augur_panel() -> void:

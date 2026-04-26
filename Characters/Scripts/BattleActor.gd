@@ -7,6 +7,7 @@ signal hp_changed
 signal status_applied(effect_id: String)
 signal battle_log(message: String)  # general battle narration
 signal chatter(message: String, speaker: String)  # character voice line
+signal skill_announced(actor: BattleActor, skill_name: String, skill_summary: String)  # fired before an enemy uses a skill
 
 # --- Status effect IDs ---
 const STATUS_FROZEN   = "frozen"   # tempo stops accumulating
@@ -30,6 +31,41 @@ const SLOW_TEMPO_MULT       = 0.4  # slowed actors gain 40% of normal tempo
 const LIFESTEAL_RATIO = 0.5
 const WITHER_DRAIN_CHANCE = 0.6
 
+
+# --- Actor-level FSM ---
+const STATE_IDLE   = "Idle"
+const STATE_ACTIVE = "Active"
+const STATE_ACTING = "Acting"
+const STATE_DEAD   = "Dead"
+const STATE_FROZEN = "Frozen"
+
+signal actor_state_changed(new_state: String)
+
+var _actor_states : Dictionary = {}
+var _current_actor_state : BattleActorState = null
+var current_actor_state_name : String = ""
+
+func _init_actor_states() -> void:
+	_actor_states = {
+		STATE_IDLE:   BattleActorStateIdle.new(),
+		STATE_ACTIVE: BattleActorStateActive.new(),
+		STATE_ACTING: BattleActorStateActing.new(),
+		STATE_DEAD:   BattleActorStateDead.new(),
+		STATE_FROZEN: BattleActorStateFrozen.new(),
+	}
+
+func set_actor_state(state_name: String) -> void:
+	if _current_actor_state != null:
+		_current_actor_state.exit()
+	_current_actor_state = _actor_states[state_name]
+	current_actor_state_name = state_name
+	_current_actor_state.enter(self)
+	emit_signal("actor_state_changed", state_name)
+
+## Returns true when this actor is a valid target for incoming actions.
+## Dead actors and actors mid-animation are excluded.
+func can_be_targeted() -> bool:
+	return current_actor_state_name in [STATE_IDLE, STATE_ACTIVE, STATE_FROZEN]
 
 # Active effects: Array of {id, duration} dictionaries
 var active_effects : Array = []
@@ -155,6 +191,8 @@ func _ready():
 	base_attack_power = attack_power
 	base_flat_defense = flat_defense
 	add_to_group("battle_actor")
+	_init_actor_states()
+	set_actor_state(STATE_IDLE)
 	# Deep-duplicate body_parts so runtime state (is_broken, current_part_hp, etc.)
 	# doesn't bleed between battles that share the same .tres resource.
 	var fresh : Array[BodyPartData] = []
@@ -176,6 +214,7 @@ func take_turn(target: BattleActor, part: BodyPartData = null) -> void:
 	await get_tree().create_timer(0.1).timeout
 	if not is_inside_tree():
 		return
+	set_actor_state(STATE_ACTING)
 	tick_status_effects()
 	# Encasement breaks the moment the actor takes a turn.
 	active_effects = active_effects.filter(func(e): return e["id"] != "encased")
@@ -200,6 +239,8 @@ func take_turn(target: BattleActor, part: BodyPartData = null) -> void:
 
 
 func spend_turn():
+	if current_actor_state_name != STATE_DEAD:
+		set_actor_state(STATE_IDLE)
 	emit_signal("turn_finished")
 
 
@@ -283,18 +324,22 @@ func take_damage(amount: int, attacker: BattleActor = null) -> void:
 			)
 
 
-	# Leech: any attacker hitting a leeched target regains HP.
-	# on_leech_proc also fires so characters like Vritra can restore will on top.
-	if attacker and has_status(STATUS_LEECHED):
-		var heal = max(1, amount / 2)
+	# Lifesteal: if the attacker has STATUS_LIFESTEAL, they heal on every hit
+	# regardless of which function triggered take_damage.
+	if attacker != null and is_instance_valid(attacker) and attacker.has_status(STATUS_LIFESTEAL):
+		var heal: int = max(1, int(amount * LIFESTEAL_RATIO))
 		attacker.hp = min(attacker.hp + heal, attacker.max_hp)
 		attacker.emit_signal("hp_changed")
-		log_msg("%s leeches %d CORP from %s." % [attacker.get_log_name(), heal, get_log_name()])
-		attacker.on_leech_proc(heal)
+		log_msg("%s drinks %d CORP from the wound." % [attacker.get_log_name(), heal])
+		if attacker.has_status(STATUS_MARTYR):
+			attacker.martyr_bonus_damage = max(0, attacker.martyr_bonus_damage - heal)
+			attacker.log_msg("The cup passes from %s. (-%d damage)" % [attacker.get_log_name(), heal])
 
 	if hp <= 0:
 		hp = 0
+		set_actor_state(STATE_DEAD)
 		log_msg("%s has fallen." % get_log_name())
+		say_die()
 		emit_signal("died", self)
 		# Do NOT queue_free here — manager handles cleanup in _on_actor_died
 		# so that any in-progress coroutines don't access freed nodes
@@ -332,6 +377,14 @@ func say_random(lines: Array) -> void:
 	if lines.is_empty(): return
 	say(lines[randi() % lines.size()])
 
+## Override in subclasses to speak a kill line after defeating a target.
+func say_kill() -> void:
+	pass
+
+## Override in subclasses to speak a death line when this actor is defeated.
+func say_die() -> void:
+	pass
+
 
 # --- Status effect helpers ---
 
@@ -343,6 +396,8 @@ func apply_status(effect_id: String, duration: int) -> void:
 			return
 	active_effects.append({"id": effect_id, "duration": duration})
 	emit_signal("status_applied", effect_id)
+	if _current_actor_state != null:
+		_current_actor_state.on_status_changed()
 
 ## Apply a timed flat/sharp modifier. delta > 0 = buff, < 0 = debuff.
 ## Stored in active_effects as {id, duration, stat, delta} for tick reversion.
@@ -387,6 +442,9 @@ func tick_status_effects() -> void:
 		cover_source = null
 	if not has_status(STATUS_MALICE):
 		malice_source = null
+	# Notify FSM that statuses may have changed (e.g. frozen expired)
+	if _current_actor_state != null:
+		_current_actor_state.on_status_changed()
 
 
 # Called each round by battle_manager before picking the next actor.
@@ -455,11 +513,11 @@ func enemy_take_turn(target: BattleActor) -> void:
 		return true
 	)
 
-	# Build a weighted pool: specials 30%, supports 20%, attacks fill the rest
+	# Build a weighted pool using per-skill ai_weight (falls back to key-based defaults)
 	var pool := []
-	for s in attacks:  pool.append({"skill": s, "weight": 3})
-	for s in specials: pool.append({"skill": s, "weight": 1})
-	for s in supports: pool.append({"skill": s, "weight": 2})
+	for s in attacks:  pool.append({"skill": s, "weight": s.get("ai_weight", 3)})
+	for s in specials: pool.append({"skill": s, "weight": s.get("ai_weight", 1)})
+	for s in supports: pool.append({"skill": s, "weight": s.get("ai_weight", 2)})
 
 	if pool.is_empty():
 		await take_turn(target)
@@ -477,7 +535,9 @@ func enemy_take_turn(target: BattleActor) -> void:
 			chosen_skill = entry["skill"]
 			break
 
+	var skill_name : String = chosen_skill.get("name", "")
 	var key        : String = chosen_skill.get("key", "attack")
+	var summary    : String = chosen_skill.get("summary", "")
 	var is_aoe     : bool   = chosen_skill.get("aoe", false)
 	var is_ally_t  : bool   = chosen_skill.get("ally_target", false)
 	var is_enemy_t : bool   = chosen_skill.get("enemy_target", false)
@@ -489,6 +549,10 @@ func enemy_take_turn(target: BattleActor) -> void:
 		if not (self is EnemyActor):
 			await take_turn(target)
 			return
+
+	# Announce the skill before resolving targets
+	emit_signal("skill_announced", self, skill_name if skill_name != "" else key, summary)
+	await get_tree().create_timer(0.6).timeout
 
 	# Determine targets for the chosen skill
 	var skill_targets : Array = []
@@ -504,6 +568,9 @@ func enemy_take_turn(target: BattleActor) -> void:
 		skill_targets = [neediest]
 	elif is_aoe:
 		skill_targets = opponents
+		var _mgr = get_tree().get_first_node_in_group("battle_manager")
+		if _mgr:
+			_mgr.focus_active_overview()
 	elif is_enemy_t:
 		if not opponents.is_empty():
 			skill_targets = [opponents[randi() % opponents.size()]]
@@ -517,7 +584,7 @@ func enemy_take_turn(target: BattleActor) -> void:
 			await take_turn(target)
 			return
 
-	await use_skill(key, skill_targets)
+	await use_skill(skill_name if skill_name != "" else key, skill_targets)
 
 # Returns all living actors on the opposing team.
 func get_opponents() -> Array:
@@ -576,6 +643,8 @@ func use_lens(channel: int):
 func play_attack_animation(target: BattleActor, player_mult, enemy_mult, damage : int = 0) -> void:
 	
 	var manager = get_tree().get_first_node_in_group("battle_manager")
+	if manager == null:
+		return
 	manager.active_cam.follow_damping = false
 	manager.target_cam.follow_damping = false
 	
@@ -626,6 +695,8 @@ func play_attack_animation(target: BattleActor, player_mult, enemy_mult, damage 
 			# Lifesteal buff (Vice)
 			if has_status(STATUS_LIFESTEAL):
 				target.take_damage(damage * (1 - LIFESTEAL_RATIO), self)
+				if not target.is_alive():
+					say_kill()
 				var heal = max(1, int(damage * LIFESTEAL_RATIO))
 				hp = min(hp + heal, max_hp)
 				log_msg("%s drinks %d CORP from the wound." % [get_log_name(), heal])
@@ -639,8 +710,8 @@ func play_attack_animation(target: BattleActor, player_mult, enemy_mult, damage 
 				if has_status(STATUS_MARTYR) and martyr_bonus_damage > 0:
 					log_msg("%s pours out the cup of wrath. (+%d damage)" % [get_log_name(), martyr_bonus_damage])
 				target.take_damage(final_damage, self)
-
-
+				if not target.is_alive():
+					say_kill()
 	
 
 	

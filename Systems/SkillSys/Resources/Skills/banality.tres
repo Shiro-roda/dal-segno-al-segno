@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="SkillData" format=3 uid="uid://l1xoe7mswn4d"]
+
+[ext_resource type="Script" uid="uid://4yawyrbpe6tk" path="res://Systems/SkillSys/Scripts/skill_effect.gd" id="1_0cylb"]
+[ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="2_bdwgr"]
+
+[sub_resource type="Resource" id="Resource_p0oe2"]
+script = ExtResource("1_0cylb")
+effect_type = 7
+damage_mult = 0.8
+post_delay = 1.0
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
+[sub_resource type="Resource" id="Resource_dhlmq"]
+script = ExtResource("1_0cylb")
+effect_type = 8
+status_chance = 0.6
+stat_delta = 2
+stat_duration = 4
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
+[resource]
+script = ExtResource("2_bdwgr")
+skill_name = "Banality"
+command_key = "special"
+will_cost = 3
+is_aoe = true
+effects = Array[ExtResource("1_0cylb")]([SubResource("Resource_p0oe2"), SubResource("Resource_dhlmq")])
+ai_weight = 2
+tempo_cost_override = 150
+no_animation = true
+metadata/_custom_type_script = "uid://badrkgc20tgv2"

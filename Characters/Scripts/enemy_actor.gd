@@ -18,6 +18,8 @@ var chatter_attack  : Array = []
 var chatter_special : Array = []
 var chatter_support : Array = []
 var chatter_hurt    : Array = []
+var chatter_kill    : Array = []
+var chatter_die     : Array = []
 
 
 func _ready() -> void:
@@ -35,8 +37,11 @@ func get_skills() -> Array:
 	return out
 
 
-func use_skill(command_key: String, targets: Array, _part: BodyPartData = null) -> void:
-	var sd : SkillData = _find_skill_by_key(command_key)
+func use_skill(skill_name: String, targets: Array, _part: BodyPartData = null) -> void:
+	# Try to find the skill by exact name first, then fall back to command_key match.
+	var sd : SkillData = _find_skill_by_name(skill_name)
+	if sd == null:
+		sd = _find_skill_by_key(skill_name)  # skill_name may actually be a key when called directly
 	if sd == null or sd.effects.is_empty():
 		if not targets.is_empty():
 			await take_turn(targets[0])
@@ -54,7 +59,7 @@ func use_skill(command_key: String, targets: Array, _part: BodyPartData = null) 
 			return
 
 	# Chatter
-	match command_key:
+	match sd.command_key:
 		"attack":  say_random(chatter_attack)
 		"special": say_random(chatter_special)
 		"support": say_random(chatter_support)
@@ -176,8 +181,20 @@ func _find_skill_by_key(command_key: String) -> SkillData:
 			return sd
 	return null
 
+func _find_skill_by_name(sname: String) -> SkillData:
+	for sd in skills:
+		if sd != null and sd.skill_name == sname:
+			return sd
+	return null
+
 
 func take_damage(amount: int, attacker: BattleActor = null) -> void:
 	super.take_damage(amount, attacker)
 	if is_alive():
 		say_random(chatter_hurt)
+
+func say_kill() -> void:
+	say_random(chatter_kill)
+
+func say_die() -> void:
+	say_random(chatter_die)

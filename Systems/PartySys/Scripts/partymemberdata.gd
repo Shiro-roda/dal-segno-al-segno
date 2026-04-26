@@ -2,6 +2,7 @@ extends Resource
 class_name PartyMemberData
 
 signal will_changed
+signal hp_changed
 
 @export var character : CharacterData
 
@@ -44,6 +45,12 @@ func restore_will(amount: int) -> void:
 	will_changed.emit()
 
 
+## Set current_hp and emit hp_changed. Always use this instead of assigning directly.
+func set_hp(value: int) -> void:
+	current_hp = value
+	hp_changed.emit()
+
+
 func is_skill_unlocked(key: String) -> bool:
 	return key in skill_unlocks
 
@@ -67,7 +74,7 @@ func add_exp_capped(amount: int, ceiling: int) -> Array:
 			var amt    : int    = reward.get("amount",  0)
 			var unlock : String = reward.get("unlock", "")
 			match stat:
-				"hp":    bonus_max_hp += amt; current_hp = min(current_hp + amt, character.base_max_hp + bonus_max_hp)
+				"hp":    bonus_max_hp += amt; current_hp = min(current_hp + amt, character.base_max_hp + bonus_max_hp); hp_changed.emit()
 				"sharp": bonus_attack += amt
 				"flat":  bonus_flat_defense += amt
 				"will":  max_will += amt; will = min(will + amt, max_will)
@@ -104,7 +111,7 @@ func add_exp(amount: int) -> Array:
 			var amt    : int    = reward.get("amount",  0)
 			var unlock : String = reward.get("unlock", "")
 			match stat:
-				"hp":    bonus_max_hp += amt; current_hp = min(current_hp + amt, character.base_max_hp + bonus_max_hp)
+				"hp":    bonus_max_hp += amt; current_hp = min(current_hp + amt, character.base_max_hp + bonus_max_hp); hp_changed.emit()
 				"sharp": bonus_attack += amt
 				"flat":  bonus_flat_defense += amt
 				"will":  max_will += amt; will = min(will + amt, max_will)

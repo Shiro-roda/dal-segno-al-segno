@@ -7,7 +7,7 @@ enum Phase {
 	DAL_SEGNO,    ## Segno is placed. Build freely, safe phase.
 	DC_AL_SEGNO,  ## D.C. al Segno: first transit. No building, NO reprime.
 	DS_AL_SEGNO,  ## D.S. al Segno: subsequent transits. No building, battles reprimed.
-	CAESURA,      ## Died during DAL_SEGNO. Respawned. Redo Semiosis to re-mark the Coda.
+	GRAND_PAUSE,  ## Died during DAL_SEGNO. Respawned. Redo Semiosis to re-mark the Coda.
 	AL_FINE,      ## Final transit to boss room. No building, battles reprimed.
 }
 
@@ -26,7 +26,7 @@ var phase : Phase = Phase.DA_CAPO
 var segno_pos : Vector2i = Vector2i(-999, -999)
 
 ## Coda marker position — left behind when the player dies during a transit phase.
-## During CAESURA the player must return here to place the new Segno.
+## During GRAND_PAUSE the player must return here to place the new Segno.
 var coda_pos : Vector2i = Vector2i(-999, -999)
 
 ## The grid position that has been designated as the NEXT Segno room.
@@ -40,7 +40,7 @@ var past_segno_positions : Array = []  # Array[Vector2i]
 ## Full snapshot taken when a Segno is placed. Null when no Segno is live.
 var segno_snapshot : Resource = null  # SegnoSnapshot
 
-## Level cap enforced during safe phases (DA_CAPO, CAESURA, DAL_SEGNO).
+## Level cap enforced during safe phases (DA_CAPO, GRAND_PAUSE, DAL_SEGNO).
 ## Starts at 3. On each Segno placement locks to max party level + a bonus
 ## that shrinks each transit, rewarding early exploration.
 ## No cap applies during al Segno / al fine phases.
@@ -74,6 +74,6 @@ func phase_label() -> String:
 		Phase.DAL_SEGNO:    return "D.S."
 		Phase.DC_AL_SEGNO:  return "D.C. al §"
 		Phase.DS_AL_SEGNO:  return "D.S. al §"
-		Phase.CAESURA:      return "caesura"
+		Phase.GRAND_PAUSE:  return "G.P."
 		Phase.AL_FINE:      return "al fine"
 		_: return ""

@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="SkillData" format=3 uid="uid://c3dcaup7hq0q0"]
+
+[ext_resource type="Script" uid="uid://4yawyrbpe6tk" path="res://Systems/SkillSys/Scripts/skill_effect.gd" id="1_h6n15"]
+[ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="2_1md3h"]
+
+[sub_resource type="Resource" id="Resource_8dmt8"]
+script = ExtResource("1_h6n15")
+effect_type = 10
+stat_delta = 2
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
+[resource]
+script = ExtResource("2_1md3h")
+skill_name = "Cement Self"
+command_key = "support"
+will_cost = 1
+ally_target = true
+effects = Array[ExtResource("1_h6n15")]([SubResource("Resource_8dmt8")])
+ai_weight = 2
+metadata/_custom_type_script = "uid://badrkgc20tgv2"

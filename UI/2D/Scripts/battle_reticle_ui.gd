@@ -336,9 +336,9 @@ func _repulse_boxes() -> void:
 	# Gather all active boxes into flat arrays grouped by viewport
 	var left_boxes  : Array = []
 	var right_boxes : Array = []
-	for e in _skill_boxes:
+	for e in _skill_boxes + _ally_boxes:
 		left_boxes.append(e)
-	for e in _enemy_boxes + _ally_boxes + _part_boxes:
+	for e in _enemy_boxes + _part_boxes:
 		right_boxes.append(e)
 	const MIN_DIST : float = BOX_W * 1.3
 	for group in [left_boxes, right_boxes]:
@@ -366,6 +366,17 @@ func _update_drift(delta: float) -> void:
 				continue
 			var lbl_panel : Control = e["label_panel"]
 
+			# ── Live part-HP label refresh ───────────────────────────────────
+			if e["data_type"] == "part":
+				var part := e["data"] as BodyPartData
+				if part != null and part.has_part_hp():
+					var fresh := part.part_name + "  %d/%d" % [part.current_part_hp, part.max_part_hp]
+					if e["label"] != fresh:
+						e["label"] = fresh
+						var lbl_node : Label = e.get("label_node")
+						if is_instance_valid(lbl_node):
+							lbl_node.text = fresh.to_upper()
+
 			# ── Position drift ──────────────────────────────────────────────
 			# Determine which viewport this box lives in and its centre
 			var is_right : bool = e["is_enemy"]
@@ -375,9 +386,9 @@ func _update_drift(delta: float) -> void:
 			var vp_cy : float = 480.0   # vertical centre target
 			var vp_centre := Vector2(vp_cx, vp_cy)
 
-			# ── Off-screen snap: entity boxes park in a corner row ───────
+			# ── Off-screen snap: entity boxes and off-screen skills park in a corner row ───────
 			var is_entity : bool = e["data_type"] in ["enemy", "ally", "part"]
-			if is_entity and e.get("off_screen", false):
+			if (is_entity or e["data_type"] == "skill") and e.get("off_screen", false):
 				var park : Vector2 = e.get("park_pos", e["display_pos"])
 				e["display_pos"] = (e["display_pos"] as Vector2).lerp(park, clamp(20.0 * delta, 0.0, 1.0))
 				var dp2 : Vector2 = e["display_pos"]
@@ -387,6 +398,7 @@ func _update_drift(delta: float) -> void:
 					if e["data_type"] == "enemy":
 						lbl_x = dp2.x - BOX_W * 0.5 - LABEL_PAD - lbl_panel.size.x
 					else:
+						# allies and skills: label to the right
 						lbl_x = dp2.x + BOX_W * 0.5 + LABEL_PAD
 					lbl_panel.position = Vector2(lbl_x, dp2.y - BOX_H * 0.5)
 				continue
@@ -574,7 +586,7 @@ func _anchor_screen(anchor: Node3D, is_enemy: bool) -> Vector2:
 
 ## Returns the parked position for an off-screen entity box.
 ## Enemies park in a row at the top-right of the right viewport.
-## Allies park in a row at the top-left of the right viewport.
+## Allies and skills share a column at the left edge of the left viewport.
 func _offscreen_park_pos(slot_index: int, is_enemy: bool) -> Vector2:
 	const SLOT_H : float = BOX_H + 6.0
 	const MARGIN : float = 8.0
@@ -584,8 +596,8 @@ func _offscreen_park_pos(slot_index: int, is_enemy: bool) -> Vector2:
 		# Right edge of right viewport — label will go to the left of the box
 		x = RIGHT_VP_X + RIGHT_VP_W - BOX_W * 0.5 - MARGIN
 	else:
-		# Left edge of right viewport — label goes to the right
-		x = RIGHT_VP_X + BOX_W * 0.5 + MARGIN
+		# Left edge of left viewport — allies and skills share this column
+		x = LEFT_VP_X + BOX_W * 0.5 + MARGIN
 	return Vector2(x, y)
 
 
@@ -794,12 +806,20 @@ func _make_box_entry(float_pos: Vector2, label: String,
 
 func _refresh_anchor_positions() -> void:
 	# Skill boxes → actor's skill anchors (left cam)
+	var left_park_slot : int = 0
 	for i in _skill_boxes.size():
 		var e : Dictionary = _skill_boxes[i]
 		if i < _skills.size() and is_instance_valid(_actor):
 			var anchor := _actor.get_skill_anchor(_skills[i])
 			if is_instance_valid(anchor):
-				e["anchor_screen"] = _anchor_screen(anchor, false)
+				var proj : Vector2 = _anchor_screen(anchor, false)
+				if proj.x <= -9000:
+					e["off_screen"] = true
+					e["park_pos"]   = _offscreen_park_pos(left_park_slot, false)
+					left_park_slot += 1
+				else:
+					e["off_screen"]    = false
+					e["anchor_screen"] = proj
 
 	# Enemy boxes → CameraAnchor on each enemy (right cam)
 	var enemy_park_slot : int = 0
@@ -834,7 +854,8 @@ func _refresh_anchor_positions() -> void:
 				e["screen_rect"]   = sr
 
 	# Ally boxes → CameraAnchor on each ally (right cam)
-	var ally_park_slot : int = 0
+	# Share the left-edge parking column with off-screen skills.
+	var ally_park_slot : int = left_park_slot
 	for i in _ally_boxes.size():
 		var e : Dictionary = _ally_boxes[i]
 		var raw = e["data"]
@@ -1516,6 +1537,38 @@ func _clear_all_boxes() -> void:
 	_clear_boxes(_ally_boxes)
 	_clear_boxes(_part_boxes)
 	_palette_counter = 0
+
+
+## Called by the battle manager when an actor dies mid-turn.
+## Removes that actor's box from the reticle without resetting skill selection.
+func notify_actor_died(actor: BattleActor) -> void:
+	if not _active:
+		return
+	# Remove from the tracking arrays so future rebuilds skip them
+	_enemies.erase(actor)
+	_allies.erase(actor)
+	# Find and remove the dead actor's box entry
+	for list in [_enemy_boxes, _ally_boxes]:
+		var to_remove : Dictionary = {}
+		for e in list:
+			if e.get("data") == actor:
+				to_remove = e
+				break
+		if not to_remove.is_empty():
+			if is_instance_valid(to_remove.get("box")):
+				to_remove["box"].queue_free()
+			if is_instance_valid(to_remove.get("label_panel")):
+				to_remove["label_panel"].queue_free()
+			for dn in to_remove.get("detail_nodes", []):
+				if is_instance_valid(dn): dn.queue_free()
+			if is_instance_valid(to_remove.get("tween")):
+				(to_remove["tween"] as Tween).kill()
+			list.erase(to_remove)
+	# If the dead actor was the selected target, clear that selection
+	if _sel_target == actor:
+		_sel_target = null
+		_clear_boxes(_part_boxes)
+	_draw_node.queue_redraw()
 
 
 # ── Skill targeting check ─────────────────────────────────────────────────────

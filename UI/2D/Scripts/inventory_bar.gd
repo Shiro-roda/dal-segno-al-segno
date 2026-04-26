@@ -25,7 +25,7 @@ const C_PHASE_DC   := Color(0.55, 0.50, 0.43, 1.0)  # D.C.         — dim
 const C_PHASE_DS   := Color(0.52, 0.42, 0.28, 1.0)  # D.S.         — warm gold
 const C_PHASE_DCAS := Color(0.65, 0.72, 0.45, 1.0)  # D.C. al §    — muted green (gentle transit)
 const C_PHASE_DSAS := Color(0.85, 0.60, 0.20, 1.0)  # D.S. al §    — amber warning
-const C_PHASE_CA   := Color(0.72, 0.30, 0.30, 1.0)  # caesura      — muted red
+const C_PHASE_CA   := Color(0.72, 0.30, 0.30, 1.0)  # G.P.         — muted red
 const C_PHASE_AF   := Color(0.90, 0.80, 0.30, 1.0)  # al fine      — bright gold
 
 const PIP_SIZE   := 10
@@ -397,7 +397,7 @@ func _phase_annotation(phase: int, run: RunState) -> String:
 			return "\nBring the Segno to the untouched yellow room."
 		DungeonRunState.Phase.DS_AL_SEGNO:
 			return "\nBring the Segno to its new resting place at the frontier.\n\nTake care, your enemies have returned to where you last met them."
-		DungeonRunState.Phase.CAESURA:
+		DungeonRunState.Phase.GRAND_PAUSE:
 			return "\nRepeat your search for the Segno."
 		DungeonRunState.Phase.AL_FINE:
 			return "[placeholder]"
@@ -481,8 +481,8 @@ func _refresh_display(charges: int, phase: int, excess: int = 0, rerolls: int = 
 			DungeonRunState.Phase.DS_AL_SEGNO:
 				label_text  = "D.S. al §"
 				label_color = C_PHASE_DSAS
-			DungeonRunState.Phase.CAESURA:
-				label_text  = "caesura"
+			DungeonRunState.Phase.GRAND_PAUSE:
+				label_text  = "G.P."
 				label_color = C_PHASE_CA
 			DungeonRunState.Phase.AL_FINE:
 				label_text  = "al fine"

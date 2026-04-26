@@ -78,11 +78,11 @@ func _resolve_mode() -> void:
 		_resolve_mode_tense()
 	elif dal:
 		_resolve_mode_dal_segno()
-	else:  # DA_CAPO / CAESURA
+	else:  # DA_CAPO / GRAND_PAUSE
 		_resolve_mode_safe()
 
 
-## DA_CAPO and CAESURA: Restore + Compose(Semiosis) + locked Transpose slot.
+## DA_CAPO and GRAND_PAUSE: Restore + Compose(Semiosis) + locked Transpose slot.
 func _resolve_mode_safe() -> void:
 	_mode = Mode.SAFE
 	var charges  := _run_state.segno_charges
@@ -119,7 +119,7 @@ func _resolve_mode_dal_segno() -> void:
 				"type": "restore_full", "val": 0},
 			{"name": "Transpose", "desc": "Prepared: " + summary + ".",
 				"type": "locked", "val": 0},
-			{"name": "Compose",   "desc": "Only available in Da Capo and Caesura.",
+			{"name": "Compose",   "desc": "Only available in Da Capo and Grand Pause.",
 				"type": "locked", "val": 0},
 		]
 		return
@@ -131,7 +131,7 @@ func _resolve_mode_dal_segno() -> void:
 			"type": "restore_full", "val": 0},
 		{"name": "Transpose", "desc": "Prepare resource caches for the transit ahead. Choose %d." % TRANSPOSE_PICK_COUNT,
 			"type": "open_transpose", "val": 0},
-		{"name": "Compose",   "desc": "Only available in Da Capo and Caesura.",
+		{"name": "Compose",   "desc": "Only available in Da Capo and Grand Pause.",
 			"type": "locked", "val": 0},
 	]
 
@@ -560,8 +560,8 @@ func _apply_option(opt: Dictionary, rs: RunState) -> void:
 	match opt["type"]:
 		"hp":
 			for member in rs.party_members:
-				member.current_hp = mini(member.current_hp + opt["val"],
-					member.character.base_max_hp + member.bonus_max_hp)
+				member.set_hp(mini(member.current_hp + opt["val"],
+					member.character.base_max_hp + member.bonus_max_hp))
 		"will":
 			for member in rs.party_members:
 				if member.has_will():
@@ -574,7 +574,7 @@ func _apply_option(opt: Dictionary, rs: RunState) -> void:
 			rs.increase_max_ammo(opt["val"])
 		"restore_full":
 			for member in rs.party_members:
-				member.current_hp = member.character.base_max_hp + member.bonus_max_hp
+				member.set_hp(member.character.base_max_hp + member.bonus_max_hp)
 		"semiosis":
 			rs.add_semiosis_charge()
 			if rs.has_full_segno():

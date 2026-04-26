@@ -178,13 +178,13 @@ func _build_open_button() -> void:
 	_open_btn = Button.new()
 	_open_btn.text = "ARG"
 	_open_btn.focus_mode = Control.FOCUS_NONE
-	_open_btn.anchor_left   = 0.0
+	_open_btn.anchor_left   = 0.5
 	_open_btn.anchor_top    = 0.0
-	_open_btn.anchor_right  = 0.0
+	_open_btn.anchor_right  = 0.5
 	_open_btn.anchor_bottom = 0.0
-	_open_btn.offset_left   = 10.0
+	_open_btn.offset_left   = -40.0
 	_open_btn.offset_top    = 10.0
-	_open_btn.offset_right  = 90.0
+	_open_btn.offset_right  = 40.0
 	_open_btn.offset_bottom = 40.0
 	if _font:
 		_open_btn.add_theme_font_override("font", _font)
@@ -467,8 +467,14 @@ func _skill_cost_string(sd: Dictionary, key: String) -> String:
 	if key == "attack":
 		if sd.get("struggle", false):
 			return "No cost"
-		var cost : int = sd.get("ammo_cost", 1)
-		return "%d BB" % cost
+		var cost : int = sd.get("ammo_cost", 0)
+		if cost > 0:
+			return "%d BB" % cost
+		# Will-based attacks (Rebuke, Crucify, Wither, etc.)
+		var will : int = sd.get("will_cost", 0)
+		if will > 0:
+			return "%d AP" % will
+		return "1 BB"
 	var will_cost : int = sd.get("will_cost", 0)
 	if will_cost > 0:
 		return "%d AP" % will_cost
@@ -624,6 +630,7 @@ func _make_target_card(a: BattleActor, is_ally: bool) -> Control:
 		stat_row.add_child(_lbl("SHARP %d" % a.attack_power, 10, C_DIM))
 		if a.flat_defense > 0:
 			stat_row.add_child(_lbl("FLAT %d" % a.flat_defense, 10, C_DIM))
+		stat_row.add_child(_lbl("TEMPO %d" % a.tempo_stat, 10, C_DIM))
 		inner.add_child(stat_row)
 
 	# Status effects — only when revealed
@@ -760,6 +767,8 @@ func _make_party_card(a: BattleActor) -> Control:
 	elif a.run_state != null:
 		vbox.add_child(_lbl("BB  %d / %d" % [a.run_state.ammo, a.run_state.gun_clip], 11, C_GOLD))
 
+	vbox.add_child(_lbl("TEMPO  %d" % a.tempo_stat, 11, C_DIM))
+
 	if not a.active_effects.is_empty():
 		var parts : Array = []
 		for fx in a.active_effects:
@@ -799,7 +808,7 @@ func _on_item_pressed(inst: ItemInstance) -> void:
 	_sel_part   = null
 	_phase      = _Phase.ITEM_CHOSEN
 	var cd := inst.item_data as ConsumableData
-	var needs_target := cd != null and cd.effect_type not in ["corpus_all", "will_all", "reprise", "tie"]
+	var needs_target := cd != null and cd.effect_type not in ["corpus_all", "will_all", "reprise", "tie", "flee"]
 	if needs_target:
 		_set_status("Select an ally to use %s on." % cd.item_name)
 		_refresh_enemies()   # switches to ally display if needed
@@ -828,7 +837,7 @@ func _update_confirm() -> void:
 			_confirm_btn.disabled = _sel_filter == -1
 		_Phase.ITEM_CHOSEN:
 			var cd := _sel_item.item_data as ConsumableData if _sel_item else null
-			var needs_target := cd != null and cd.effect_type not in ["corpus_all", "will_all", "reprise", "tie"]
+			var needs_target := cd != null and cd.effect_type not in ["corpus_all", "will_all", "reprise", "tie", "flee"]
 			_confirm_btn.disabled = needs_target and _sel_item_pm == null
 		_:
 			_confirm_btn.disabled = true

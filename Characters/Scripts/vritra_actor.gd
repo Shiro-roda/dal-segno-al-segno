@@ -14,7 +14,7 @@ extends BattleActor
 #                            in exchange for restoring will and some HP.
 # SUPPORT — Wither:         spends 2 will, reduces target's attack and siphons HP to Vritra.
 
-const LEECH_DURATION            = 2
+const LEECH_DURATION            = 4
 const LEECH_WILL_RESTORE_RATIO  = 0.5
 const WITHER_CHANCE_NORMAL       = 0.6
 const DEVOUR_WILL_COST          = 3
@@ -100,6 +100,18 @@ const CHATTER_HURT = [
 	" ",
 	" ",
 ]
+
+const CHATTER_KILL = [
+	" ",
+	" ",
+]
+
+const CHATTER_DIE = [
+	" ",
+	" ",
+]
+
+
 
 # Constrict state
 var constrict_target : BattleActor = null
@@ -328,15 +340,29 @@ func _wither(target: BattleActor, part: BodyPartData = null) -> void:
 	party_member.spend_will(WITHER_WILL_COST)
 	say_random(CHATTER_WITHER)
 	log_msg("%s sharpens their tongue on %s." % [name, target.name])
+	var dmg_dealt : int = attack_power
 	if randf() < WITHER_CHANCE_NORMAL:
-		#var siphon = int(attack_power * WITHER_SIPHON_HP)
-		target.take_damage(attack_power, self)
+		if has_status(STATUS_LIFESTEAL):
+			var leech_dmg : int = int(dmg_dealt * (1.0 - LIFESTEAL_RATIO))
+			var heal      : int = max(1, int(dmg_dealt * LIFESTEAL_RATIO))
+			target.take_damage(leech_dmg, self)
+			hp = min(hp + heal, max_hp)
+			emit_signal("hp_changed")
+			log_msg("%s drinks %d CORP from the wound." % [get_log_name(), heal])
+		else:
+			target.take_damage(dmg_dealt, self)
 		target.modify_attack(-WITHER_ATK_REDUCTION)
-		#hp = min(hp + siphon, max_hp)
-		#emit_signal("hp_changed")
 		log_msg("%s cowers under %s's fangs." % [target.name, name])
 	else:
-		target.take_damage(attack_power, self)
+		if has_status(STATUS_LIFESTEAL):
+			var leech_dmg : int = int(dmg_dealt * (1.0 - LIFESTEAL_RATIO))
+			var heal      : int = max(1, int(dmg_dealt * LIFESTEAL_RATIO))
+			target.take_damage(leech_dmg, self)
+			hp = min(hp + heal, max_hp)
+			emit_signal("hp_changed")
+			log_msg("%s drinks %d CORP from the wound." % [get_log_name(), heal])
+		else:
+			target.take_damage(dmg_dealt, self)
 	if part != null and part.has_part_hp():
 		var broke := part.take_part_damage(attack_power)
 		if broke:
@@ -354,3 +380,9 @@ func take_damage(amount: int, attacker: BattleActor = null) -> void:
 	super.take_damage(amount, attacker)
 	if is_alive():
 		say_random(CHATTER_HURT)
+
+func say_kill() -> void:
+	say_random(CHATTER_KILL)
+
+func say_die() -> void:
+	say_random(CHATTER_DIE)

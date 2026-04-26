@@ -59,9 +59,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1084638, 0.097765684)
 [node name="Leg" type="Node3D" parent="PartAnchors" unique_id=658236503]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.19414806, 0.59800595, -0.41313297)
 
-[node name="BoundsRight" type="Node3D" parent="PartAnchors" unique_id=842201348]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6, 0.7, 0)
-
 [node name="BoundAnchors" type="Node3D" parent="." unique_id=206308033]
 
 [node name="BoundsRight" type="Node3D" parent="BoundAnchors" unique_id=274596244]

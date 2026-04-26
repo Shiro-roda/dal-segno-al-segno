@@ -67,7 +67,7 @@ func _fire() -> void:
 
 		TriggerType.GAME_START:
 			emit_signal("triggered")
-			gc._begin_game_flow()
+			gc._begin_game_flow_with_tutorial()
 
 		TriggerType.CUSTOM:
 			emit_signal("triggered")

@@ -45,9 +45,13 @@ func _build_catalogue() -> Array:
 		{"name": ir.BONBON.item_name,     "desc": ir.BONBON.description,
 		 "type": "inventory", "item_data": ir.BONBON,     "cost": 28},
 		{"name": ir.FLOOR_MAP.item_name,  "desc": ir.FLOOR_MAP.description,
-		 "type": "inventory", "item_data": ir.FLOOR_MAP,  "cost": 22},
+		 "type": "instant", "item_data": ir.FLOOR_MAP,  "cost": 22},
 		{"name": ir.PRIMER.item_name,     "desc": ir.PRIMER.description,
-		 "type": "inventory", "item_data": ir.PRIMER,     "cost": 28},
+		 "type": "instant", "item_data": ir.PRIMER,     "cost": 28},
+		{"name": ir.RITORNELLO.item_name, "desc": ir.RITORNELLO.description,
+		 "type": "inventory", "item_data": ir.RITORNELLO, "cost": 30},
+		{"name": ir.FLEE_TOKEN.item_name, "desc": ir.FLEE_TOKEN.description,
+		 "type": "inventory", "item_data": ir.FLEE_TOKEN,  "cost": 35},
 	]
 
 ## How many distinct items appear in one shop visit (picked randomly).
@@ -245,8 +249,14 @@ func _on_buy(idx: int) -> void:
 
 func _apply_item(item: Dictionary) -> void:
 	var item_data := item.get("item_data", null) as ConsumableData
-	if item_data != null:
-		ItemRegistry.add_to_inventory(run_state, item_data)
+	if item_data == null:
+		return
+	match item.get("type", ""):
+		"instant":
+			# Apply the effect immediately — no inventory slot consumed.
+			ItemRegistry.apply_effect(run_state, item_data, null)
+		_:
+			ItemRegistry.add_to_inventory(run_state, item_data)
 
 
 func _on_leave() -> void:

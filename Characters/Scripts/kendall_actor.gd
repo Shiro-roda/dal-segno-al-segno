@@ -5,12 +5,12 @@ extends BattleActor
 # Special: Change Lens (costs ally will, not ammo — bends perception itself)
 # Support: Augur (costs ally will, whole team dodge+tempo) / Evade (free, personal)
 
-const AUGUR_WILL_COST    = 2
-const AUGUR_DODGE_TURNS  = 2
+const AUGUR_WILL_COST    = 0
+const AUGUR_DODGE_TURNS  = 4
 const AUGUR_TEMPO_BONUS  = 5.0  # flat tempo bonus to allies
-const EVADE_DODGE_TURNS  = 1
+const EVADE_DODGE_TURNS  = 2
 const EVADE_TEMPO_BONUS  = 10.0  # larger personal tempo bonus
-const PISTOL_WHIP_MULT   = 0.4
+const PISTOL_WHIP_MULT   = 0.5
 
 
 
@@ -53,6 +53,17 @@ const CHATTER_AUGUR = [
 const CHATTER_EVADE = [
 	"...",
 ]
+
+const CHATTER_KILL = [
+	" ",
+	" ",
+]
+
+const CHATTER_DIE = [
+	" ",
+	" ",
+]
+
 
 func use_lens(channel: int) -> void:
 	var manager = get_tree().get_first_node_in_group("battle_manager")

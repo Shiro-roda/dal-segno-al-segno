@@ -460,7 +460,7 @@ const CHANNEL_TEXT_TABLE : Array = [
 	{"text": "", "channel": "red", "condition": "has_segno"},
 	{"text": "", "channel": "red", "condition": "has_segno"},
 	{"text": "", "channel": "red", "condition": ""},
-	{"text": "", "channel": "red", "condition": "caesura"},
+	{"text": "", "channel": "red", "condition": "g.p."},
 	{"text": "", "channel": "red", "condition": "low_hp"},
 	{"text": "", "channel": "red", "condition": "al_segno"},
 	{"text": "", "channel": "red", "condition": ""},
@@ -477,8 +477,8 @@ const CHANNEL_TEXT_TABLE : Array = [
 	{"text": "", "channel": "red", "condition": "al_fine"},
 	{"text": "", "channel": "red", "condition": "al_fine"},
 	{"text": "", "channel": "red", "condition": "al_fine"},
-	{"text": "the hunt will begin again", "channel": "red", "condition": "caesura"},
-	{"text": "take your time", "channel": "red", "condition": "caesura"},
+	{"text": "the hunt will begin again", "channel": "red", "condition": "g.p."},
+	{"text": "take your time", "channel": "red", "condition": "g.p."},
 	# ── GREEN —───────────────────────────────────
 	{"text": "Child of Priam...", "channel": "green", "condition": ""},
 	{"text": "", "channel": "green", "condition": ""},
@@ -488,7 +488,7 @@ const CHANNEL_TEXT_TABLE : Array = [
 	{"text": "", "channel": "green", "condition": "party_size_2"},
 	{"text": "", "channel": "green", "condition": "has_segno"},
 	{"text": "You should rest", "channel": "green", "condition": "low_hp"},
-	{"text": "", "channel": "green", "condition": "caesura"},
+	{"text": "", "channel": "green", "condition": "g.p."},
 	{"text": "", "channel": "green", "condition": ""},
 	{"text": "I fear for my child.", "channel": "green", "condition": "da_capo"},
 	{"text": "Please take care of it...", "channel": "green", "condition": "da_capo"},
@@ -498,7 +498,7 @@ const CHANNEL_TEXT_TABLE : Array = [
 	{"text": "Was He yours?", "channel": "green", "condition": "dal_segno"},
 	{"text": "", "channel": "green", "condition": "dc_al_segno"},
 	{"text": "", "channel": "green", "condition": "ds_al_segno"},
-	{"text": "", "channel": "green", "condition": "caesura"},
+	{"text": "", "channel": "green", "condition": "g.p."},
 	{"text": "", "channel": "green", "condition": "al_fine"},
 	# ── BLUE —─────────────────────────────────────
 	{"text": "", "channel": "blue", "condition": ""},
@@ -507,7 +507,7 @@ const CHANNEL_TEXT_TABLE : Array = [
 	{"text": "", "channel": "blue", "condition": ""},
 	{"text": "", "channel": "blue", "condition": "high_transit"},
 	{"text": "", "channel": "blue", "condition": ""},
-	{"text": "", "channel": "blue", "condition": "caesura"},
+	{"text": "", "channel": "blue", "condition": "g.p."},
 	{"text": "", "channel": "blue", "condition": "al_segno"},
 	{"text": "", "channel": "blue", "condition": "has_segno"},
 	{"text": "", "channel": "blue", "condition": ""},
@@ -520,7 +520,7 @@ const CHANNEL_TEXT_TABLE : Array = [
 	{"text": "", "channel": "blue", "condition": "al_fine"},
 	{"text": "", "channel": "blue", "condition": "al_fine"},
 	{"text": "", "channel": "blue", "condition": "al_fine"},
-	{"text": "", "channel": "blue", "condition": "caesura"},
+	{"text": "", "channel": "blue", "condition": "g.p."},
 ]
 
 
@@ -537,8 +537,8 @@ func _check_condition(cond: String) -> bool:
 		"has_segno":
 			return dr.segno_pos != Vector2i(-999, -999) \
 				or not dr.past_segno_positions.is_empty()
-		"caesura":
-			return dr.phase == DungeonRunState.Phase.CAESURA
+		"g.p.":
+			return dr.phase == DungeonRunState.Phase.GRAND_PAUSE
 		"al_segno":
 			return dr.phase == DungeonRunState.Phase.DS_AL_SEGNO \
 				or dr.phase == DungeonRunState.Phase.DC_AL_SEGNO \

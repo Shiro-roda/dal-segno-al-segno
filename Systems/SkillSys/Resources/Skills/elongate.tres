@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="SkillData" format=3 uid="uid://dnh2oor3r3aq2"]
+
+[ext_resource type="Script" uid="uid://4yawyrbpe6tk" path="res://Systems/SkillSys/Scripts/skill_effect.gd" id="1_d8lae"]
+[ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="2_w11rs"]
+
+[sub_resource type="Resource" id="Resource_kd5oy"]
+script = ExtResource("1_d8lae")
+effect_type = 11
+stat_delta = 2
+stat_duration = 999
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
+[sub_resource type="Resource" id="Resource_d8lae"]
+script = ExtResource("1_d8lae")
+effect_type = 6
+heal_amount = 5
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
+[resource]
+script = ExtResource("2_w11rs")
+skill_name = "Elongate"
+command_key = "support"
+ally_target = true
+effects = Array[ExtResource("1_d8lae")]([SubResource("Resource_kd5oy"), SubResource("Resource_d8lae")])
+metadata/_custom_type_script = "uid://badrkgc20tgv2"

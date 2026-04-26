@@ -180,6 +180,7 @@ func show_menu() -> void:
 	if _glow_check: _glow_check.set_pressed_no_signal(_committed.glow)
 	_refresh_apply_btn()
 	_refresh_party()
+	_connect_member_hp_signals()
 	_switch_tab(_active_tab)
 	emit_signal("menu_opened")
 
@@ -187,6 +188,7 @@ func hide_menu() -> void:
 	_open = false
 	_root_panel.visible = false
 	if _dim_layer: _dim_layer.visible = false
+	_disconnect_member_hp_signals()
 	# Revert any uncommitted preview changes back to last applied state
 	if not _committed.is_empty():
 		_apply_options(_committed)
@@ -204,6 +206,24 @@ func hide_menu() -> void:
 		if _glow_check: _glow_check.set_pressed_no_signal(_committed.glow)
 		_refresh_apply_btn(_pending)
 	emit_signal("menu_closed")
+
+func _connect_member_hp_signals() -> void:
+	var run := GameController.current_run
+	if run == null:
+		return
+	for m in run.party_members:
+		if not (m as PartyMemberData).hp_changed.is_connected(_refresh_party):
+			(m as PartyMemberData).hp_changed.connect(_refresh_party)
+
+
+func _disconnect_member_hp_signals() -> void:
+	var run := GameController.current_run
+	if run == null:
+		return
+	for m in run.party_members:
+		if (m as PartyMemberData).hp_changed.is_connected(_refresh_party):
+			(m as PartyMemberData).hp_changed.disconnect(_refresh_party)
+
 
 # -----------------------------------------------------------------------
 # UI CONSTRUCTION
@@ -636,9 +656,9 @@ func _populate_skill_list() -> void:
 		{"character": "Kendall", "skills": [
 			{"name": "Shoot",       "type": "ATTACK",  "cost": "X BB [1]"},
 			{"name": "Pistol Whip", "type": "ATTACK",  "cost": "Beatless"},
-			{"name": "Augur",       "type": "SUPPORT", "cost": "2 AP (allies)"},
-			{"name": "Evade",       "type": "SUPPORT", "cost": "Ally Unwilling"},
-			{"name": "Unveil", "type": "SPECIAL", "cost": "2 AP (allies)"},
+			{"name": "Augur",       "type": "SUPPORT", "cost": "Beatless"},
+			{"name": "Evade",       "type": "SUPPORT", "cost": "Alone"},
+			{"name": "Unveil", "type": "SPECIAL", "cost": "Unknown"},
 		]},
 		{"character": "Hue", "skills": [
 			{"name": "Rebuke",  "type": "ATTACK (AoE)",  "cost": "1 AP"},
@@ -1299,7 +1319,7 @@ func _build_inventory_row(inst: ItemInstance, rs: RunState) -> VBoxContainer:
 		var btn_col := VBoxContainer.new()
 		btn_col.add_theme_constant_override("separation", 2)
 		var party_wide : bool = consumable.effect_type in ["corpus_all", "will_all",
-			"reprise", "tie"]
+			"reprise", "tie", "flee"]
 		if party_wide:
 			# Single Use button for party-wide and utility effects.
 			var use_btn := Button.new()

@@ -4,6 +4,7 @@
 [ext_resource type="PackedScene" uid="uid://dwirbrql1ih84" path="res://Characters/Scenes/BattleActors/EnemyActors/empty_bactor.tscn" id="1_mi7yb"]
 [ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://Systems/PartySys/Scripts/characterdata.gd" id="2_cupcf"]
 [ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="4_wnm8g"]
+[ext_resource type="Script" uid="uid://4yawyrbpe6tk" path="res://Systems/SkillSys/Scripts/skill_effect.gd" id="5_hx30o"]
 
 [sub_resource type="Resource" id="Resource_yn853"]
 script = ExtResource("1_8o661")
@@ -63,6 +64,80 @@ damage_multiplier = 3.0
 anchor_path = NodePath("PartAnchors/Core")
 metadata/_custom_type_script = "uid://bewuwngi8x4ad"
 
+[sub_resource type="Resource" id="Resource_agu4k"]
+script = ExtResource("5_hx30o")
+effect_type = 2
+heal_amount = 25
+heal_flat = false
+post_delay = 2.0
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
+[sub_resource type="Resource" id="Resource_j01om"]
+script = ExtResource("5_hx30o")
+effect_type = 1
+status_id = "slow"
+status_chance = 0.5
+stat_delta = 2
+stat_duration = 3
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
+[sub_resource type="Resource" id="Resource_v1buj"]
+script = ExtResource("4_wnm8g")
+skill_name = "Corporeal Peace"
+command_key = "support"
+is_aoe = true
+ally_target = true
+enemy_target = true
+effects = Array[ExtResource("5_hx30o")]([SubResource("Resource_agu4k"), SubResource("Resource_j01om")])
+metadata/_custom_type_script = "uid://badrkgc20tgv2"
+
+[sub_resource type="Resource" id="Resource_m20m4"]
+script = ExtResource("5_hx30o")
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
+[sub_resource type="Resource" id="Resource_0k03i"]
+script = ExtResource("5_hx30o")
+effect_type = 10
+stat_duration = 4
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
+[sub_resource type="Resource" id="Resource_ue3uk"]
+script = ExtResource("4_wnm8g")
+skill_name = "Dull Aching"
+command_key = "attack"
+effects = Array[ExtResource("5_hx30o")]([SubResource("Resource_m20m4"), SubResource("Resource_0k03i")])
+metadata/_custom_type_script = "uid://badrkgc20tgv2"
+
+[sub_resource type="Resource" id="Resource_uujsm"]
+script = ExtResource("5_hx30o")
+effect_type = 3
+drain_ratio = 1.0
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
+[sub_resource type="Resource" id="Resource_t5dc1"]
+script = ExtResource("5_hx30o")
+effect_type = 1
+status_id = "bleeding"
+status_chance = 0.5
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
+[sub_resource type="Resource" id="Resource_7rok7"]
+script = ExtResource("5_hx30o")
+effect_type = 1
+status_id = "lifesteal"
+status_chance = 0.5
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
+[sub_resource type="Resource" id="Resource_ty1sv"]
+script = ExtResource("4_wnm8g")
+skill_name = "Verdant Agony"
+command_key = "special"
+is_aoe = true
+ally_target = true
+enemy_target = true
+effects = Array[ExtResource("5_hx30o")]([SubResource("Resource_uujsm"), SubResource("Resource_t5dc1"), SubResource("Resource_7rok7")])
+metadata/_custom_type_script = "uid://badrkgc20tgv2"
+
 [resource]
 script = ExtResource("2_cupcf")
 display_name = "Empty One"
@@ -72,3 +147,4 @@ base_attack = 6
 exp_yield = 30
 body_parts = Array[ExtResource("1_8o661")]([SubResource("Resource_yn853"), SubResource("Resource_mi7yb"), SubResource("Resource_wnm8g"), SubResource("Resource_3jjjy"), SubResource("Resource_crdkm"), SubResource("Resource_dthue"), SubResource("Resource_mtr2k")])
 battle_scene = ExtResource("1_mi7yb")
+skills = Array[ExtResource("4_wnm8g")]([SubResource("Resource_v1buj"), SubResource("Resource_ue3uk"), SubResource("Resource_ty1sv")])

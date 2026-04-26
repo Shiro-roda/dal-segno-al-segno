@@ -2,6 +2,7 @@ extends Node
 
 
 signal battle_finished(victory: bool, exp_per_member: Dictionary, level_up_events: Dictionary)
+signal battle_fled  # emitted instead of battle_finished when the party uses Emergency Exit
 signal battle_manager_ready
 signal player_skill_used(actor: BattleActor, command_key: String)
 signal player_turn_started(actor: BattleActor)
@@ -16,7 +17,10 @@ func is_tense_phase() -> bool:
 
 var current_state : Node = null
 var battle_ending := false
+var _next_turn_running := false
+var _last_enemy_tempo_cost : float = 0.0  # set by _on_enemy_skill_announced, read in handle_enemy_turn
 var _deaths_pending : int = 0  # incremented while a death animation plays
+var _first_player_turn := true  # true until the first player turn of a battle completes its cam intro
 
 
 var context : BattleContext
@@ -148,6 +152,8 @@ var ca_defaults := {}
 
 @onready var idle_orbit_pivot: Node3D = $"../CameraRig/IdleOrbitPivot"
 @onready var idle_orbiter: Node3D = $"../CameraRig/IdleOrbitPivot/IdleOrbiter"
+@onready var overview_anchor: Node3D = $"../CameraRig/OverviewAnchor"
+@onready var ground_center_anchor: Node3D = $"../CameraRig/GroundCenterAnchor"
 
 
 
@@ -275,9 +281,13 @@ func _process(delta):
 
 
 func change_state(state_name: String):
+	var next = states.get_node_or_null(state_name)
+	if next == null:
+		push_error("BattleManager.change_state: node '%s' not found under $States" % state_name)
+		return
 	if current_state:
 		current_state.exit()
-	current_state = states.get_node(state_name)
+	current_state = next
 	current_state.enter(self)
 
 
@@ -318,20 +328,22 @@ func start_battle_with_context(battle_context : BattleContext):
 	print(context.run_state.party_members)
 	print(battlefield_root.get_children())
 
-	# Pre-position anchors and idle orbit at battlefield center
+	# Centre idle_orbit_pivot on the battlefield, then park both cameras overhead.
 	var first_player = actors.filter(func(a): return a.team == BattleActor.Team.PLAYER)
-	var first_enemy = actors.filter(func(a): return a.team == BattleActor.Team.ENEMY)
+	var first_enemy  = actors.filter(func(a): return a.team == BattleActor.Team.ENEMY)
 	var battlefield_center := Vector3.ZERO
 	if first_player.size() > 0 and first_player[0].camera_anchor:
-		active_anchor.global_position = first_player[0].camera_anchor.global_position
-		active_anchor_source = first_player[0].camera_anchor
 		battlefield_center = first_player[0].camera_anchor.global_position
 	if first_enemy.size() > 0 and first_enemy[0].camera_anchor:
-		target_anchor.global_position = first_enemy[0].camera_anchor.global_position
-		target_anchor_source = first_enemy[0].camera_anchor
 		battlefield_center = (battlefield_center + first_enemy[0].camera_anchor.global_position) * 0.5
 	idle_orbit_pivot.global_position = battlefield_center
-	focus_idle_orbit()
+	# Snap both scene anchors to battlefield center before any camera setup.
+
+	_first_player_turn = true
+	# Target cam: orbit/overview toggle (starts in overview via focus_overview).
+	focus_overview()
+	# Active cam: parked on overview so _intro_active_cam can glide it in later.
+	_park_active_cam_on_overview()
 
 	battle_hud.setup(actors)
 	battle_hud.refresh_queue(self)
@@ -351,24 +363,9 @@ func start_battle_with_context(battle_context : BattleContext):
 
 	build_turn_queue()
 	current_index = 0
-	next_turn()
-	# Play intro splash (big centred CRT text) then intro dialogue before first turn.
-	# BattleUI is hidden for the entire pre-battle sequence.
-	var battle_ui = get_node_or_null("../BattleUI")
-	var has_splash   := context.encounter.intro_splash != null and not context.encounter.intro_splash.is_empty()
-	var has_dialogue := context.encounter.intro_dialogue != null
-	if has_splash or has_dialogue:
-		if battle_ui:
-			battle_ui.hide()
-		if has_splash:
-			var splash := BattleIntroSplash.new()
-			add_child(splash)
-			await splash.play(context.encounter.intro_splash, context.run_state)
-			splash.queue_free()
-		if has_dialogue:
-			await dialogue_box.play_lines(context.encounter.intro_dialogue, context.run_state)
-		if battle_ui:
-			battle_ui.show()
+	# Hand off to the battle-level FSM. BattleIntroState plays the splash/dialogue
+	# then transitions to BattleTurn, which drives next_turn() from there.
+	change_state("BattleIntroState")
 
 func spawn_players():
 	var player_slots = battlefield_root.get_node("PlayerSlots").get_children()
@@ -452,6 +449,7 @@ func spawn_enemies():
 		actor.died.connect(_on_actor_died)
 		# Enemies do NOT connect to _on_turn_finished.
 		# Their turn flow is driven by handle_enemy_turn's await, not the signal.
+		actor.skill_announced.connect(_on_enemy_skill_announced)
 		actor.hp_changed.connect(func(): _on_hp_changed(actor))
 
 
@@ -481,8 +479,6 @@ func build_turn_queue():
 func _pick_next_actor() -> BattleActor:
 	var living = actors.filter(func(a): return a.is_alive())
 	if living.is_empty(): return null
-	for actor in living:
-		actor.tick_tempo()
 	living.sort_custom(func(a, b): return a.tempo_pool > b.tempo_pool)
 	while living[0].tempo_pool < 100:
 		for actor in living:
@@ -496,19 +492,28 @@ func next_turn():
 		return
 	if not is_inside_tree():
 		return
+	if _next_turn_running:
+		print("next_turn: RE-ENTRANT CALL — ignoring")
+		return
+	_next_turn_running = true
 	# Wait for any in-progress death animations before advancing
 	while _deaths_pending > 0 and not battle_ending:
-		if not is_inside_tree(): return
+		if not is_inside_tree():
+			_next_turn_running = false
+			return
 		await get_tree().process_frame
 	if check_victory():
+		_next_turn_running = false
 		return
 
 	var actor = _pick_next_actor()
 	if actor == null:
+		_next_turn_running = false
 		return
 
 	print("Turn: ", actor.name, " TP: ", actor.tempo_pool, " HP: ", actor.hp)
 
+	_next_turn_running = false
 	if actor.team == BattleActor.Team.PLAYER:
 		input_locked = false
 		battle_hud.set_active_actor(actor)
@@ -522,7 +527,12 @@ func handle_player_turn(actor: BattleActor) -> void:
 
 	await get_tree().process_frame
 
-	focus_actor(actor)
+	actor.set_actor_state(BattleActor.STATE_ACTIVE)
+	if _first_player_turn:
+		_first_player_turn = false
+		_intro_active_cam(actor)  # fire-and-forget: glides in, then restores damping
+	else:
+		focus_actor(actor)
 	print("handle_player_turn: active_anchor_source=", active_anchor_source, " pos=", active_anchor.global_position)
 
 	input_stage = InputStage.COMMAND
@@ -558,9 +568,14 @@ func handle_enemy_turn(actor: BattleActor) -> void:
 	if battle_ending or not is_inside_tree():
 		return
 	# Deduct tempo cost and reset bonus for enemy
+	# Use the per-skill override recorded during skill_announced, or default to TEMPO_COST_ATTACK.
 	if is_instance_valid(actor):
-		actor.tempo_pool -= TEMPO_COST_ATTACK
+		var cost : float = _last_enemy_tempo_cost if _last_enemy_tempo_cost > 0 else TEMPO_COST_ATTACK
+		_last_enemy_tempo_cost = 0
+		actor.tempo_pool -= cost
 		actor.reset_tempo_bonus()
+	else:
+		pass  # actor freed mid-animation (killed during their own turn)
 	battle_hud.refresh_queue(self)
 	if is_instance_valid(reticle_ui): reticle_ui.set_skills_visible(true)
 	next_turn()
@@ -592,14 +607,28 @@ func await_actor_turn(actor: BattleActor, action: Callable) -> void:
 		await get_tree().process_frame
 
 
+func _on_enemy_skill_announced(actor: BattleActor, skill_name: String, skill_summary: String) -> void:
+	# Capture per-skill tempo cost from the SkillData if available.
+	# EnemyActor.get_skills() returns Dicts; search for matching name.
+	if actor.has_method("get_skills"):
+		for sd in actor.get_skills():
+			if sd.get("name", "") == skill_name and sd.get("tempo_cost", 0) > 0:
+				_last_enemy_tempo_cost = float(sd["tempo_cost"])
+				break
+	# Show the announcement banner in the HUD.
+	if is_instance_valid(battle_hud):
+		battle_hud.announce_enemy_skill(actor.get_log_name(), skill_name, skill_summary)
+
 func _on_turn_finished():
-	battle_hud.target_info.hide()
 	battle_hud.set_active_actor(active_player_actor, false)
 	# Deduct tempo cost from whoever just acted
 	var cost = _tempo_cost_for_command(selected_command)
 	if active_player_actor != null and is_instance_valid(active_player_actor):
 		active_player_actor.tempo_pool -= cost
 		active_player_actor.reset_tempo_bonus()
+		# Return actor to IDLE so enemies can target them on their turn.
+		if active_player_actor.current_actor_state_name != BattleActor.STATE_DEAD:
+			active_player_actor.set_actor_state(BattleActor.STATE_IDLE)
 	battle_hud.refresh_queue(self)
 	next_turn()
 
@@ -711,6 +740,9 @@ func _on_actor_died(actor: BattleActor):
 				_exp_this_battle += cd.exp_yield
 				break
 	actors.erase(actor)
+	# Notify the reticle immediately so the dead actor's box disappears
+	if is_instance_valid(reticle_ui):
+		reticle_ui.notify_actor_died(actor)
 	_deaths_pending += 1
 	_run_death_animation(actor)
 
@@ -727,7 +759,7 @@ func _run_death_animation(actor: BattleActor) -> void:
 
 func choose_target(actor: BattleActor) -> BattleActor:
 	var possible_targets = actors.filter(func(a):
-		return a.team != actor.team and a.is_alive()
+		return a.team != actor.team and a.can_be_targeted()
 	)
 
 	if possible_targets.is_empty():
@@ -762,6 +794,7 @@ func end_battle(victory: bool):
 		return
 
 	battle_ending = true
+	change_state("BattleEnd")
 
 	# Close the reticle immediately so stale enemy boxes don't linger
 	# and can't emit signals into a battle that's already ending.
@@ -812,7 +845,7 @@ func end_battle(victory: bool):
 				var member: PartyMemberData = survivors[i]
 				var dr : DungeonRunState = GameController.current_dungeon_run
 				# Al Segno phases: no level cap — grind freely.
-				# Safe phases (DA_CAPO, CAESURA, DAL_SEGNO): cap at segno_level_ceiling.
+				# Safe phases (DA_CAPO, GRAND_PAUSE, DAL_SEGNO): cap at segno_level_ceiling.
 				var in_al_segno : bool = dr != null and dr.is_battle_reprimed_transit()
 				if in_al_segno:
 					var events = member.add_exp(share)
@@ -843,18 +876,38 @@ func end_battle(victory: bool):
 	battle_ending = false
 
 
-
+## Called when the party uses an Emergency Exit item.
+## Ends the battle immediately without victory, death, or XP.
+## Party HP is preserved at current values.
+func flee_battle() -> void:
+	if battle_ending:
+		return
+	battle_ending = true
+	change_state("BattleEnd")
+	if is_instance_valid(reticle_ui):
+		reticle_ui.close(true)
+	reset_ca_material()
+	battle_hud.reset_augur_panel()
+	save_party_state()
+	if battlefield_root:
+		battlefield_root.queue_free()
+	actors.clear()
+	turn_queue.clear()
+	await get_tree().process_frame
+	# Emit flee signal so gamecontrol returns to dungeon without game-over
+	emit_signal("battle_fled")
+	battle_ending = false
 
 
 func save_party_state():
 	# First zero out everyone — actors that died were queue_freed and won't appear below
 	for member in context.run_state.party_members:
-		member.current_hp = 0
+		member.set_hp(0)
 
 	# Overwrite with actual HP for actors still alive
 	for actor in actors:
 		if actor.team == BattleActor.Team.PLAYER and is_instance_valid(actor) and actor.party_member:
-			actor.party_member.current_hp = actor.hp
+			actor.party_member.set_hp(actor.hp)
 
 
 
@@ -1014,6 +1067,44 @@ func focus_actor(actor: BattleActor):
 	follow_anchor(active_anchor, actor.camera_anchor)
 	follow_anchor(active_look_anchor, actor.camera_anchor)
 
+
+## Authored follow-damping value for active_cam (matches the scene file).
+const ACTIVE_CAM_NORMAL_DAMPING := Vector3(0.2, 0.2, 0.2)
+## Slow follow-damping used for the intro glide at the start of the first player turn.
+const ACTIVE_CAM_INTRO_DAMPING := Vector3(0.5, 0.5, 0.5)
+## Matching slow look-at damping for the intro glide (active_cam has no look damping normally).
+const ACTIVE_CAM_INTRO_LOOK_DAMPING := 0.5
+## How long to wait for the slow glide to arrive before restoring normal damping.
+const ACTIVE_CAM_INTRO_DURATION := 2.2
+
+## Authored damping values for target_cam (match the scene file).
+const TARGET_CAM_NORMAL_DAMPING := Vector3(0.35, 0.35, 0.35)
+const TARGET_CAM_NORMAL_LOOK_DAMPING := 0.157
+## Intro damping for target_cam — same slow values as the active cam intro.
+const TARGET_CAM_INTRO_DAMPING := Vector3(0.5, 0.5, 0.5)
+const TARGET_CAM_INTRO_LOOK_DAMPING := 0.5
+
+## Parks the active cam on the overview/ground-center anchors without
+## touching the target cam or the toggle button state.
+## Called once at battle start so the cam has a position to glide from.
+func _park_active_cam_on_overview() -> void:
+	follow_anchor(active_anchor, overview_anchor)
+	follow_anchor(active_look_anchor, ground_center_anchor)
+
+
+## Called once per battle, from handle_player_turn on the very first player turn.
+## Enables slow follow + look damping so the cam glides from the overview
+## position down to the actor, then restores normal values (look damping off).
+func _intro_active_cam(actor: BattleActor) -> void:
+	active_cam.set_follow_damping_value(ACTIVE_CAM_INTRO_DAMPING)
+	active_cam.set_look_at_damping(true)
+	active_cam.set_look_at_damping_value(ACTIVE_CAM_INTRO_LOOK_DAMPING)
+	focus_actor(actor)
+	await get_tree().create_timer(ACTIVE_CAM_INTRO_DURATION).timeout
+	if is_instance_valid(active_cam):
+		active_cam.set_follow_damping_value(ACTIVE_CAM_NORMAL_DAMPING)
+		active_cam.set_look_at_damping(false)
+
 func focus_target(actor: BattleActor):
 
 	if actor == null:
@@ -1030,6 +1121,35 @@ func focus_idle_orbit():
 
 	follow_anchor(target_anchor, idle_orbiter)
 	follow_anchor(target_look_anchor, idle_orbit_pivot)
+	if is_instance_valid(battle_hud):
+		battle_hud.sync_overview_button(false)
+
+
+## Switch only the active_cam (left viewport) to the overhead overview.
+## Used when an enemy performs an AOE so the player can see the whole field.
+func focus_active_overview() -> void:
+	follow_anchor(active_anchor, overview_anchor)
+	follow_anchor(active_look_anchor, ground_center_anchor)
+
+
+## Switch only the target_cam (right viewport) to the overhead overview.
+## Used when the player confirms an AOE skill.
+func focus_target_overview() -> void:
+	follow_anchor(target_anchor, overview_anchor)
+	follow_anchor(target_look_anchor, ground_center_anchor)
+
+
+## Point the target_cam to the overhead overview anchor.
+## The active_cam is deliberately left untouched — the toggle button
+## only controls the target (right) viewport idle state.
+## overview_anchor (high up) is the follow target.
+## ground_center_anchor (battlefield center, y=0) is the look-at target.
+## Both must be positioned before this is called.
+func focus_overview() -> void:
+	follow_anchor(target_anchor, overview_anchor)
+	follow_anchor(target_look_anchor, ground_center_anchor)
+	if is_instance_valid(battle_hud):
+		battle_hud.sync_overview_button(true)
 
 
 func update_ui_state():
@@ -1055,9 +1175,9 @@ func update_ui_state():
 				battle_ui.show()
 				var targets: Array
 				if support_targeting:
-					targets = actors.filter(func(a): return a.team == active_player_actor.team and a.is_alive())
+					targets = actors.filter(func(a): return a.team == active_player_actor.team and a.can_be_targeted())
 				else:
-					targets = actors.filter(func(a): return a.team != active_player_actor.team and a.is_alive())
+					targets = actors.filter(func(a): return a.team != active_player_actor.team and a.can_be_targeted())
 				battle_ui.show_targets(targets)
 				battle_ui.set_confirm_enabled(false)
 
@@ -1088,6 +1208,8 @@ func _on_confirm_pressed():
 		return
 	input_locked = true
 	input_stage = InputStage.DONE
+	if is_instance_valid(active_player_actor):
+		active_player_actor.set_actor_state(BattleActor.STATE_ACTING)
 	emit_signal("player_skill_used", active_player_actor, selected_command)
 	# Save this action so it can be repeated next turn.
 	if active_player_actor != null:
@@ -1106,6 +1228,10 @@ func _on_confirm_pressed():
 			active_player_actor.name + " — " + selected_command.capitalize())
 
 	var is_ammo_user = active_player_actor.party_member == null or not active_player_actor.party_member.has_will()
+
+	# AOE skill confirmed — switch target viewport to overhead so the whole field is visible.
+	if selected_attack_skips_targeting and not selected_is_struggle:
+		focus_target_overview()
 
 	match selected_command:
 		"attack":
@@ -1183,8 +1309,10 @@ func _on_reticle_focus_requested(target: BattleActor) -> void:
 	target_cam.set_follow_offset(Vector3(-1.25, 0, .55))
 	target_cam.set_look_at_offset(Vector3(0, 0, -.2))
 	if target.team == BattleActor.Team.PLAYER:
+		# Show this party member's info in the HUD without disrupting the
+		# active turn — do NOT close the reticle or cancel the input stage.
+		battle_hud.show_target(target)
 		focus_actor(target)
-		_on_reticle_cancelled()
 	elif target.team == BattleActor.Team.ENEMY:
 		if input_stage == InputStage.TARGET:
 			focus_target(target)
@@ -1294,8 +1422,8 @@ func _open_radial_for_actor(actor: BattleActor) -> void:
 	if actor == null:
 		return
 	var skills  := actor.get_skills()
-	var enemies := actors.filter(func(a): return a.team != actor.team and a.is_alive())
-	var allies  := actors.filter(func(a): return a.team == actor.team and a.is_alive())
+	var enemies := actors.filter(func(a): return a.team != actor.team and a.can_be_targeted())
+	var allies  := actors.filter(func(a): return a.team == actor.team and a.can_be_targeted())
 
 	# Open reticle UI (new system)
 	if is_instance_valid(reticle_ui):

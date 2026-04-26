@@ -3,7 +3,6 @@
 [ext_resource type="Script" uid="uid://dx8r5yikyemjr" path="res://Systems/Managers/Scripts/dungeon_controller.gd" id="1_vmva4"]
 [ext_resource type="Script" uid="uid://bt4xwltdukunr" path="res://GameRoots/Scripts/dungeon_scene.gd" id="2_dk0df"]
 [ext_resource type="Script" uid="uid://snhktyfrtb0v" path="res://UI/2D/Scripts/dungeonUI.gd" id="3_nuie3"]
-[ext_resource type="PackedScene" uid="uid://cawuaxeud518f" path="res://GameRoots/Scenes/dungeon_map_3d.tscn" id="4_vordv"]
 [ext_resource type="Script" uid="uid://c5k3j7qe8qi0j" path="res://UI/2D/Scripts/inventory_bar.gd" id="5_wxrlo"]
 [ext_resource type="Script" uid="uid://cmi4bl88a2kuc" path="res://UI/2D/Scripts/party_menu.gd" id="6_vho5l"]
 [ext_resource type="Shader" uid="uid://cow4hovotygtk" path="res://Shaders/main.gdshader" id="7_mt7hb"]
@@ -59,6 +58,7 @@ center_offset = Vector3(640, 480, 0)
 [node name="GameRoot" type="Node" unique_id=1011693636]
 
 [node name="WorldLayer" type="CanvasLayer" parent="." unique_id=5428774 groups=["world_layer"]]
+layer = 201
 visible = false
 
 [node name="SubViewportContainer" type="SubViewportContainer" parent="WorldLayer" unique_id=1530188973]
@@ -72,6 +72,7 @@ stretch = true
 
 [node name="SubViewport" type="SubViewport" parent="WorldLayer/SubViewportContainer" unique_id=79616085]
 handle_input_locally = false
+audio_listener_enable_3d = true
 size = Vector2i(1280, 960)
 render_target_update_mode = 0
 
@@ -110,8 +111,6 @@ offset_right = 79.0
 offset_bottom = -437.0
 text = "[TAB]menu"
 label_settings = SubResource("LabelSettings_iusj4")
-
-[node name="DungeonMap3D" parent="." unique_id=1533421829 instance=ExtResource("4_vordv")]
 
 [node name="PhaseHUD" type="CanvasLayer" parent="." unique_id=1928952715]
 layer = 50

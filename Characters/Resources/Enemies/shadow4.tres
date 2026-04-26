@@ -6,37 +6,10 @@
 [ext_resource type="Resource" uid="uid://ymwcc5pm8aal" path="res://Systems/AnatomySys/Resources/antumbra.tres" id="3_pwp7p"]
 [ext_resource type="Resource" uid="uid://bv8nc0eu2eq6j" path="res://Systems/AnatomySys/Resources/penumbra.tres" id="4_abhgq"]
 [ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="4_g03jy"]
-[ext_resource type="Script" uid="uid://4yawyrbpe6tk" path="res://Systems/SkillSys/Scripts/skill_effect.gd" id="5_bqwqs"]
 [ext_resource type="Resource" uid="uid://s8d8wab3g0yr" path="res://Systems/AnatomySys/Resources/umbra.tres" id="5_kpxwi"]
-
-[sub_resource type="Resource" id="Resource_2331k"]
-script = ExtResource("5_bqwqs")
-effect_type = 2
-heal_amount = 6
-metadata/_custom_type_script = "uid://4yawyrbpe6tk"
-
-[sub_resource type="Resource" id="Resource_g03jy"]
-script = ExtResource("4_g03jy")
-skill_name = "Breeze"
-command_key = "support"
-will_cost = 2
-ally_target = true
-effects = Array[ExtResource("5_bqwqs")]([SubResource("Resource_2331k")])
-metadata/_custom_type_script = "uid://badrkgc20tgv2"
-
-[sub_resource type="Resource" id="Resource_pwp7p"]
-script = ExtResource("5_bqwqs")
-effect_type = 3
-drain_ratio = 1.0
-metadata/_custom_type_script = "uid://4yawyrbpe6tk"
-
-[sub_resource type="Resource" id="Resource_abhgq"]
-script = ExtResource("4_g03jy")
-skill_name = "Whisper"
-command_key = "attack"
-will_cost = 1
-effects = Array[ExtResource("5_bqwqs")]([SubResource("Resource_pwp7p")])
-metadata/_custom_type_script = "uid://badrkgc20tgv2"
+[ext_resource type="Resource" uid="uid://bi5qt7v2n0o5v" path="res://Systems/SkillSys/Resources/Skills/breeze.tres" id="8_kpxwi"]
+[ext_resource type="Resource" uid="uid://c15i0s4i5ocmu" path="res://Systems/SkillSys/Resources/Skills/low_dim.tres" id="9_abhgq"]
+[ext_resource type="Resource" uid="uid://cxn1sqafd4pbx" path="res://Systems/SkillSys/Resources/Skills/whisper.tres" id="9_wsx04"]
 
 [resource]
 script = ExtResource("3_2331k")
@@ -49,5 +22,5 @@ base_max_will = 10
 exp_yield = 7
 body_parts = Array[ExtResource("2_bqwqs")]([ExtResource("3_pwp7p"), ExtResource("4_abhgq"), ExtResource("5_kpxwi")])
 battle_scene = ExtResource("1_syh6g")
-skills = Array[ExtResource("4_g03jy")]([SubResource("Resource_g03jy"), SubResource("Resource_abhgq")])
+skills = Array[ExtResource("4_g03jy")]([ExtResource("8_kpxwi"), ExtResource("9_wsx04"), ExtResource("9_abhgq")])
 metadata/_custom_type_script = "uid://b2t1syvrybco8"

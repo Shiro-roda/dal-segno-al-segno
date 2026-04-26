@@ -12,20 +12,22 @@ const SEGNO_MIN_CANDIDATES : int = 1
 var dungeon : DungeonRunState
 
 var dungeon_ui: Control
-@onready var map_ui: Node3D = $"../../DungeonMap3D"
+var map_ui: Node3D
 
 
 func _ready():
 	add_to_group("dungeon_controller")
 
 
-func start_dungeon(run_state: RunState, dungeon_data: DungeonData):
+func start_dungeon(run_state: RunState, dungeon_data: DungeonData, map: Node3D = null):
 	print("[DC] start_dungeon called - stack: ", get_stack())
 
 	if dungeon_ui == null:
 		dungeon_ui = get_parent().get_node("DungeonUI")
 
-	if map_ui == null:
+	if map != null:
+		map_ui = map
+	elif map_ui == null:
 		map_ui = get_tree().get_first_node_in_group("dungeon_map_3d")
 
 	dungeon = DungeonRunState.new()
@@ -66,10 +68,12 @@ func start_dungeon(run_state: RunState, dungeon_data: DungeonData):
 	enter_current_room()
 
 
-func resume_dungeon(loaded: DungeonRunState) -> void:
+func resume_dungeon(loaded: DungeonRunState, map: Node3D = null) -> void:
 	if dungeon_ui == null:
 		dungeon_ui = get_parent().get_node("DungeonUI")
-	if map_ui == null:
+	if map != null:
+		map_ui = map
+	elif map_ui == null:
 		map_ui = get_tree().get_first_node_in_group("dungeon_map_3d")
 	dungeon = loaded
 	GameController.current_dungeon_run = dungeon
@@ -508,7 +512,7 @@ func open_rest_ui() -> void:
 
 ## Called when Semiosis at a rest room fills the third charge.
 ## Converts the Segno pickup room to SEGNO type. Does not reprime or lock building.
-## DA_CAPO / CAESURA: pickup room = entrance (Vector2i.ZERO)
+## DA_CAPO / GRAND_PAUSE: pickup room = entrance (Vector2i.ZERO)
 ## DAL_SEGNO:         pickup room = current segno_pos
 func on_semiosis_complete() -> void:
 	var pickup_pos : Vector2i
@@ -516,14 +520,14 @@ func on_semiosis_complete() -> void:
 		DungeonRunState.Phase.DA_CAPO:
 			# First Segno always forms at the dungeon entrance.
 			pickup_pos = Vector2i.ZERO
-		DungeonRunState.Phase.CAESURA:
+		DungeonRunState.Phase.GRAND_PAUSE:
 			# Redo Semiosis at the most recently placed Segno position.
 			if dungeon.past_segno_positions.is_empty():
 				pickup_pos = Vector2i.ZERO
 			else:
 				pickup_pos = dungeon.past_segno_positions.back() as Vector2i
 		_:
-			return  # Semiosis only applies before the first Segno or after CAESURA
+			return  # Semiosis only applies before the first Segno or after GRAND_PAUSE
 
 	var room : RoomInstance = dungeon.grid.get(pickup_pos)
 	if room != null and room.room_data != null:
@@ -544,7 +548,7 @@ func _handle_segno_room() -> void:
 	var run := dungeon.run_state
 	match dungeon.phase:
 
-		DungeonRunState.Phase.DA_CAPO, DungeonRunState.Phase.CAESURA:
+		DungeonRunState.Phase.DA_CAPO, DungeonRunState.Phase.GRAND_PAUSE:
 			if not run.has_full_segno():
 				map_ui.redraw_map()
 				return
@@ -1065,7 +1069,7 @@ func respawn_at_segno() -> void:
 
 	_revert_room_at(placed_at)
 	dungeon.segno_pos  = Vector2i(-999, -999)
-	dungeon.phase      = DungeonRunState.Phase.CAESURA
+	dungeon.phase      = DungeonRunState.Phase.GRAND_PAUSE
 	_revert_entrance_to_start_room()
 	# Restore layer visibility
 	GameController.event_layer.visible   = false
@@ -1105,7 +1109,7 @@ func apply_room_effects(room: RoomInstance) -> void:
 				for pm in run.party_members:
 					var max_hp : int = pm.character.base_max_hp + pm.bonus_max_hp
 					var heal := effect.heal_amount if effect.heal_flat else int(max_hp * effect.heal_amount / 100.0)
-					pm.current_hp = min(pm.current_hp + heal, max_hp)
+					pm.set_hp(min(pm.current_hp + heal, max_hp))
 
 			RoomEffect.EffectType.WILL_RESTORE_ON_ENTER:
 				for pm in run.party_members:

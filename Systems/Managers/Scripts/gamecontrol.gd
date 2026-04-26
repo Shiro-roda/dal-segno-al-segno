@@ -18,7 +18,7 @@ func _ready():
 
 	await _wait_for_layers()
 
-	dungeon_layer.visible = true
+	dungeon_layer.visible = false
 	battle_layer.visible = false
 	event_layer.visible = false
 
@@ -51,8 +51,8 @@ func resume_run() -> void:
 	event_layer.visible = false
 	dungeon_layer.visible = true
 	world_layer.visible = false
-	_set_dungeon_map_visible(true)
-	dungeon_controller.resume_dungeon(dungeon)
+	var map := _spawn_dungeon_map()
+	dungeon_controller.resume_dungeon(dungeon, map)
 
 
 func _wait_for_layers():
@@ -82,6 +82,7 @@ func start_new_game():
 func _show_start_screen() -> void:
 	AudioManagerAuto.fade_out_bgm()	
 	clear_layer(event_layer)
+	_free_dungeon_map()
 	var screen := preload("res://UI/2D/Scenes/start_screen.tscn").instantiate()
 	event_layer.add_child(screen)
 	dungeon_layer.visible = false
@@ -126,6 +127,7 @@ func load_world_scene(scene_path: String) -> void:
 	for c in vp.get_children(): c.queue_free()
 	var level := (load(scene_path) as PackedScene).instantiate()
 	vp.add_child(level)
+	_free_dungeon_map()
 	dungeon_layer.visible = false
 	battle_layer.visible  = false
 	event_layer.visible   = false
@@ -167,6 +169,7 @@ func _setup_run() -> void:
 	var vp := _get_world_viewport()
 	for c in vp.get_children(): c.queue_free()
 	world_layer.visible = false
+	_free_dungeon_map()
 	var run := RunState.new()
 	var member := PartyMemberData.new()
 	member.init_from_character(preload("res://Characters/Resources/Party/kendall.tres"))
@@ -183,7 +186,6 @@ func _start_tutorial_battle(run: RunState) -> void:
 	dungeon_layer.visible = false
 	event_layer.visible = false
 	battle_layer.visible = true
-	_set_dungeon_map_visible(false)
 	clear_layer(battle_layer)
 
 	var battle_scene := preload("res://GameRoots/Scenes/battle_scene.tscn").instantiate()
@@ -241,6 +243,29 @@ func _set_dungeon_map_visible(visible: bool):
 			cam.current = visible
 
 
+## Instantiate DungeonMap3D into DungeonLayer and return it.
+## If one already exists it is returned as-is.
+func _spawn_dungeon_map() -> Node3D:
+	var existing = get_tree().get_first_node_in_group("dungeon_map_3d")
+	if is_instance_valid(existing):
+		existing.visible = true
+		var cam = existing.get_node_or_null("CameraPivot/Camera3D")
+		if cam: cam.current = true
+		return existing
+	var map := preload("res://GameRoots/Scenes/dungeon_map_3d.tscn").instantiate() as Node3D
+	dungeon_layer.add_child(map)
+	return map
+
+
+## Free the DungeonMap3D if one exists, releasing all room meshes.
+func _free_dungeon_map() -> void:
+	var map = get_tree().get_first_node_in_group("dungeon_map_3d")
+	if is_instance_valid(map):
+		map.queue_free()
+	if dungeon_controller:
+		dungeon_controller.map_ui = null
+
+
 func _reset_channel_shader() -> void:
 	# Restore full RGB when leaving the dungeon.
 	var mesh := get_tree().root.get_node_or_null("GameRoot/TVOverlay/MeshInstance2D")
@@ -277,6 +302,7 @@ func start_battle(encounter, dungeon_run_state: DungeonRunState = null):
 	manager.start_battle_with_context(context)
 
 	manager.battle_finished.connect(_on_battle_finished)
+	manager.battle_fled.connect(_on_battle_fled)
 
 
 func _on_battle_finished(victory, exp_per_member: Dictionary = {}, level_up_events: Dictionary = {}):
@@ -328,6 +354,23 @@ func _on_battle_finished(victory, exp_per_member: Dictionary = {}, level_up_even
 func clear_layer(layer):
 	for child in layer.get_children():
 		child.queue_free()
+
+
+## Called when the party uses an Emergency Exit item in battle.
+## Returns to the dungeon map without clearing the room.
+func _on_battle_fled() -> void:
+	clear_layer(battle_layer)
+	battle_layer.visible = false
+	AudioManagerAuto.reset_ambience()
+	AudioManagerAuto.fade_out_bgm()
+	dungeon_layer.visible = true
+	_set_dungeon_map_visible(true)
+	var resume_tween := create_tween()
+	resume_tween.tween_callback(AudioManagerAuto.resume_dungeon_track).set_delay(0.7)
+	# Redraw map but do NOT mark room cleared — the encounter persists
+	var dc = get_tree().get_first_node_in_group("dungeon_controller")
+	if dc:
+		dc.map_ui.redraw_map()
 
 
 func start_event(event_scene: PackedScene):
@@ -399,8 +442,8 @@ func _collect_phantom_hosts(node: Node, result: Array) -> void:
 func start_dungeon(dungeon_data: DungeonData):
 	dungeon_layer.visible = true
 	world_layer.visible = false
-	_set_dungeon_map_visible(true)
-	dungeon_controller.start_dungeon(current_run, dungeon_data)
+	var map := _spawn_dungeon_map()
+	dungeon_controller.start_dungeon(current_run, dungeon_data, map)
 
 
 ## dungeon_run_state is passed so boss battles during AL_FINE
@@ -422,6 +465,7 @@ func start_boss_battle(encounter: EncounterData, dungeon_run_state: DungeonRunSt
 	context.dungeon_run_state = dungeon_run_state
 	manager.start_battle_with_context(context)
 	manager.battle_finished.connect(_on_boss_battle_finished)
+	manager.battle_fled.connect(_on_battle_fled)
 
 
 func _on_boss_battle_finished(victory: bool, exp_per_member: Dictionary = {}, level_up_events: Dictionary = {}):
@@ -453,11 +497,11 @@ func _on_boss_battle_finished(victory: bool, exp_per_member: Dictionary = {}, le
 func start_win_screen() -> void:
 	SaveManager.delete_run_save()
 	MetaProgress.on_run_ended(true)
+	_free_dungeon_map()
 	clear_layer(event_layer)
 	event_layer.visible = true
 	dungeon_layer.visible = false
 	battle_layer.visible = false
-	_set_dungeon_map_visible(false)
 	var win_scene := preload("res://UI/2D/Scenes/win_screen.tscn")
 	var win := win_scene.instantiate()
 	event_layer.add_child(win)
@@ -511,7 +555,7 @@ func _apply_battle_reward(reward: Dictionary) -> void:
 			for m in run.party_members:
 				if m.current_hp > 0:
 					var max_hp : int = m.character.base_max_hp + m.bonus_max_hp
-					m.current_hp = min(m.current_hp + amt, max_hp)
+					m.set_hp(min(m.current_hp + amt, max_hp))
 		"bb":
 			run.excess_ammo += reward.get("amount", 1)
 		"reprise":

@@ -7,6 +7,8 @@
 [ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="4_oaxon"]
 [ext_resource type="Resource" uid="uid://bv8nc0eu2eq6j" path="res://Systems/AnatomySys/Resources/penumbra.tres" id="4_r32ct"]
 [ext_resource type="Resource" uid="uid://s8d8wab3g0yr" path="res://Systems/AnatomySys/Resources/umbra.tres" id="5_mwmx6"]
+[ext_resource type="Resource" uid="uid://l1xoe7mswn4d" path="res://Systems/SkillSys/Resources/Skills/banality.tres" id="8_mwmx6"]
+[ext_resource type="Resource" uid="uid://c15i0s4i5ocmu" path="res://Systems/SkillSys/Resources/Skills/low_dim.tres" id="9_hrb5a"]
 
 [resource]
 script = ExtResource("3_wyblm")
@@ -18,4 +20,5 @@ base_flat_defense = 1
 exp_yield = 9
 body_parts = Array[ExtResource("2_oaxon")]([ExtResource("3_mi6or"), ExtResource("4_r32ct"), ExtResource("5_mwmx6")])
 battle_scene = ExtResource("1_mb5vk")
+skills = Array[ExtResource("4_oaxon")]([ExtResource("8_mwmx6"), ExtResource("9_hrb5a")])
 metadata/_custom_type_script = "uid://b2t1syvrybco8"

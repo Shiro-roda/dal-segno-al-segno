@@ -23,7 +23,7 @@ const CALCIFY_MIN_TURNS      = 1
 const CALCIFY_MAX_TURNS      = 3
 const CALCIFY_DMG_REDUCTION  = 0.5
 const SHELTER_WILL_COST      = 2
-const SHELTER_HP_AMOUNT      = 4   # reduced — Flat buff compensates
+const SHELTER_HP_AMOUNT      = 6   # reduced — Flat buff compensates
 const SHELTER_FLAT_BONUS     = 4   # temporary Flat raised while shield holds
 const SELF_HARM_HP_COST       = 3
 const SELF_HARM_WILL_RESTORE  = 2
@@ -80,6 +80,19 @@ const CHATTER_HURT = [
 	"Please, stop!",
 	" ",
 	" ",
+	" ",
+	" ",
+	" ",
+]
+
+const CHATTER_KILL = [
+	"I . . . I'm sorry . . .",
+	" ",
+]
+
+const CHATTER_DIE = [
+	"W-Wait, what are you—?!",
+	". . . Hedone . . . ? Wait, don't go . . . !",
 	" ",
 	" ",
 	" ",
@@ -250,3 +263,9 @@ func take_damage(amount: int, attacker: BattleActor = null) -> void:
 			var will_gain: Variant = max(1, int(amount * EMBRACE_WILL_RATIO))
 			party_member.restore_will(will_gain)
 			log_msg("%s endures (+%d AP)" % [name, will_gain])
+
+func say_kill() -> void:
+	say_random(CHATTER_KILL)
+
+func say_die() -> void:
+	say_random(CHATTER_DIE)

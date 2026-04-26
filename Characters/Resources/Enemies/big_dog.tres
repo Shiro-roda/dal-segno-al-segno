@@ -49,13 +49,20 @@ script = ExtResource("5_370km")
 status_chance = 0.7
 metadata/_custom_type_script = "uid://4yawyrbpe6tk"
 
+[sub_resource type="Resource" id="Resource_dvmrp"]
+script = ExtResource("5_370km")
+effect_type = 1
+status_id = "bleeding"
+status_chance = 0.4
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
 [sub_resource type="Resource" id="Resource_tkipu"]
 script = ExtResource("4_tkipu")
 skill_name = "Rend"
 command_key = "attack"
 will_cost = 1
 enemy_target = true
-effects = Array[ExtResource("5_370km")]([SubResource("Resource_to7pe")])
+effects = Array[ExtResource("5_370km")]([SubResource("Resource_to7pe"), SubResource("Resource_dvmrp")])
 metadata/_custom_type_script = "uid://badrkgc20tgv2"
 
 [resource]

@@ -218,3 +218,9 @@ func take_damage(amount: int, attacker: BattleActor = null) -> void:
 	super.take_damage(amount, attacker)
 	if is_alive():
 		say_random(CHATTER_HURT)
+
+func say_kill() -> void:
+	say_random(CHATTER_KILL)
+
+func say_die() -> void:
+	say_random(CHATTER_DIE)

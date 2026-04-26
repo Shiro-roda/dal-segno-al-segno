@@ -13,7 +13,9 @@
 [ext_resource type="Script" uid="uid://divs34wkweat7" path="res://UI/Dialogue/Scripts/dialogue_line.gd" id="7_tut"]
 [ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="8_h3xnh"]
 [ext_resource type="Script" uid="uid://cxogdp046hrx2" path="res://UI/Dialogue/Scripts/encounter_dialogue.gd" id="8_tut"]
+[ext_resource type="Resource" uid="uid://l1xoe7mswn4d" path="res://Systems/SkillSys/Resources/Skills/banality.tres" id="9_ghtej"]
 [ext_resource type="Script" uid="uid://pwai87fl2rdy" path="res://UI/2D/Scripts/reticle_theme.gd" id="9_tut"]
+[ext_resource type="Resource" uid="uid://c15i0s4i5ocmu" path="res://Systems/SkillSys/Resources/Skills/low_dim.tres" id="10_x5g26"]
 
 [sub_resource type="Resource" id="Resource_x06xt"]
 script = ExtResource("4_ndqax")
@@ -41,6 +43,7 @@ base_attack = 1
 tempo = 5
 body_parts = Array[ExtResource("4_ndqax")]([ExtResource("5_ghtej"), ExtResource("6_x5g26"), ExtResource("7_pn17s"), SubResource("Resource_x06xt"), SubResource("Resource_ndqax")])
 battle_scene = ExtResource("3_x06xt")
+skills = Array[ExtResource("8_h3xnh")]([ExtResource("9_ghtej"), ExtResource("10_x5g26")])
 metadata/_custom_type_script = "uid://b2t1syvrybco8"
 
 [sub_resource type="Resource" id="Resource_line1"]

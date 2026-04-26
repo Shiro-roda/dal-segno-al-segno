@@ -39,6 +39,7 @@ script = ExtResource("5_xs340")
 effect_type = 10
 stat_delta = 2
 stat_duration = 3
+post_delay = 1.0
 metadata/_custom_type_script = "uid://4yawyrbpe6tk"
 
 [sub_resource type="Resource" id="Resource_kfv48"]
@@ -59,7 +60,6 @@ metadata/_custom_type_script = "uid://4yawyrbpe6tk"
 script = ExtResource("4_hkqod")
 skill_name = "Defend Position"
 command_key = "attack"
-will_cost = 1
 effects = Array[ExtResource("5_xs340")]([SubResource("Resource_mj51h")])
 metadata/_custom_type_script = "uid://badrkgc20tgv2"
 

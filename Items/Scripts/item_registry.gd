@@ -16,7 +16,9 @@ var BONBON      : ConsumableData  # party-wide AP
 var FLOOR_MAP   : ConsumableData  # +2 road tiles
 var PRIMER      : ConsumableData  # +2 rerolls
 # Revival
-var SMELLING_SALTS : ConsumableData  # revive one fallen member with partial HP
+var RITORNELLO : ConsumableData  # revive one fallen member with partial HP
+# Escape
+var FLEE_TOKEN     : ConsumableData  # guarantees escape from a battle in progress
 
 
 func _ready() -> void:
@@ -53,9 +55,12 @@ func _ready() -> void:
 	PRIMER     = _make("Primer",
 		"Grants +2 Revisions.",
 		"reprise", 2, false, true)
-	SMELLING_SALTS = _make("Smelling Salts",
-		"Revives one fallen party member with 1 CORP.",
-		"revive", 1, true, true)
+	RITORNELLO = _make("Ritornello",
+		"Revives one fallen party member with 10 CORP.",
+		"revive", 10, true, true)
+	FLEE_TOKEN = _make("Caesura",
+		"Abruptly halts the current altercation. The party flees unharmed.",
+		"flee", 0, true, false)
 
 
 func _make(name: String, desc: String, effect: String,
@@ -107,6 +112,13 @@ func use_item(run: RunState, inst: ItemInstance,
 	return true
 
 
+## Directly apply a consumable's effect without consuming an inventory stack.
+## Used for instant-on-purchase items (e.g. Floor Map, Primer).
+func apply_effect(run: RunState, data: ConsumableData,
+		target: PartyMemberData = null) -> void:
+	_apply_effect(run, data, target)
+
+
 func _apply_effect(run: RunState, data: ConsumableData,
 		target: PartyMemberData = null) -> void:
 	match data.effect_type:
@@ -116,13 +128,13 @@ func _apply_effect(run: RunState, data: ConsumableData,
 			for m in members:
 				if (m as PartyMemberData).current_hp > 0:
 					var cap : int = m.character.base_max_hp + m.bonus_max_hp
-					m.current_hp = mini(m.current_hp + data.effect_amount, cap)
+					m.set_hp(mini(m.current_hp + data.effect_amount, cap))
 					_sync_actor_hp(m)
 		"corpus_all":
 			for m in run.party_members:
 				if (m as PartyMemberData).current_hp > 0:
 					var cap : int = m.character.base_max_hp + m.bonus_max_hp
-					m.current_hp = mini(m.current_hp + data.effect_amount, cap)
+					m.set_hp(mini(m.current_hp + data.effect_amount, cap))
 					_sync_actor_hp(m)
 		"will":
 			var members := [target] if target != null else run.party_members
@@ -137,13 +149,20 @@ func _apply_effect(run: RunState, data: ConsumableData,
 			var members := [target] if target != null else run.party_members
 			for m in members:
 				if (m as PartyMemberData).current_hp <= 0:
-					m.current_hp = data.effect_amount
+					m.set_hp(data.effect_amount)
 					_sync_actor_hp(m)
 					break  # single target only
 		"reprise":
 			run.reroll_charges += data.effect_amount
 		"tie":
 			run.road_tiles_remaining += data.effect_amount
+		"flee":
+			# Tell the battle manager to end the battle as an escape (no victory, no death).
+			var tree := Engine.get_main_loop() as SceneTree
+			if tree:
+				var manager = tree.get_first_node_in_group("battle_manager")
+				if manager and manager.has_method("flee_battle"):
+					manager.flee_battle()
 
 
 ## If a battle is currently active, find the BattleActor whose party_member

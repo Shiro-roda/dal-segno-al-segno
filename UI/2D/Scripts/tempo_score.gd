@@ -14,7 +14,7 @@ const GLOW_RADIUS     := 10.0    # px radius of glow halo
 const GLOW_ALPHA      := 0.22
 const LEFT_MARGIN     := 64.0    # px reserved for name labels
 const RIGHT_MARGIN    := 20.0
-const MAX_TEMPO       := 200.0   # tempo_pool ceiling for x-axis scaling
+const MAX_TEMPO       := 200.0   # tempo_pool floor for x-axis scaling
 
 var _actors        : Array  = []   # Array[BattleActor]
 var _active_actor  : BattleActor = null
@@ -51,6 +51,10 @@ func _draw() -> void:
 	var h  : float = size.y
 	var usable_w : float = w - LEFT_MARGIN - RIGHT_MARGIN
 
+	# Scale x-axis to the highest pool value so no note is ever off the right edge.
+	var max_pool : float = MAX_TEMPO
+	for a in _actors:
+		max_pool = maxf(max_pool, (a as BattleActor).tempo_pool)
 	var players : Array = _actors.filter(func(a): return (a as BattleActor).team == BattleActor.Team.PLAYER)
 	var enemies : Array = _actors.filter(func(a): return (a as BattleActor).team == BattleActor.Team.ENEMY)
 
@@ -124,8 +128,8 @@ func _draw() -> void:
 		var a    := entry["actor"] as BattleActor
 		var col  : Color = entry["color"]
 		var y    : float = (float(entry["row"]) + 0.5) * row_h
-		var pool : float = clampf(a.tempo_pool, 0.0, MAX_TEMPO)
-		var x    : float = LEFT_MARGIN + (pool / MAX_TEMPO) * usable_w
+		var pool : float = clampf(a.tempo_pool, 0.0, max_pool)
+		var x    : float = LEFT_MARGIN + (pool / max_pool) * usable_w
 		var dead : bool  = not a.is_alive()
 		var is_active : bool = (a == _active_actor)
 
