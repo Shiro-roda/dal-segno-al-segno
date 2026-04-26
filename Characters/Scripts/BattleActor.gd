@@ -95,6 +95,8 @@ var party_member : PartyMemberData
 var run_state : RunState
 @onready var camera_anchor: Node3D = $CameraAnchor
 
+
+
 var perishing := false
 var hp : int
 ## Set to true by Augur — reveals SHARP, FLAT, status lines in the reticle
@@ -737,6 +739,38 @@ func play_attack_animation(target: BattleActor, player_mult, enemy_mult, damage 
 
 	if is_inside_tree():
 		await get_tree().create_timer(1.0).timeout
+
+
+## Returns the follow anchor for this actor for the given camera role.
+## role: "active" (left cam, tracking the acting character)
+##        "target" (right cam, tracking the targeted character)
+## Looks for CameraAnchors/Follow{Role} first; falls back to CameraAnchor then self.
+func get_follow_anchor(role: String = "active") -> Node3D:
+	var ca_group := get_node_or_null("CameraAnchors")
+	if ca_group is Node3D:
+		var child_name := "Follow" + role.capitalize()
+		var child := ca_group.get_node_or_null(child_name)
+		if child is Node3D:
+			return child as Node3D
+	var ca := get_node_or_null("CameraAnchor")
+	if ca is Node3D:
+		return ca as Node3D
+	return self
+
+
+## Returns the look-at anchor for this actor for the given camera role.
+## Same role conventions as get_follow_anchor.
+func get_look_anchor(role: String = "active") -> Node3D:
+	var ca_group := get_node_or_null("CameraAnchors")
+	if ca_group is Node3D:
+		var child_name := "Look" + role.capitalize()
+		var child := ca_group.get_node_or_null(child_name)
+		if child is Node3D:
+			return child as Node3D
+	var ca := get_node_or_null("CameraAnchor")
+	if ca is Node3D:
+		return ca as Node3D
+	return self
 
 
 ## Returns the world-space Node3D anchor for a skill's origin reticle.

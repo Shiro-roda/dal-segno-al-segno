@@ -81,3 +81,17 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.054642916, 0.7957697, 0.75
 
 [node name="BoundsFar" type="Node3D" parent="BoundAnchors" unique_id=518093660]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.045659423, 0.8133757, -0.75516105)
+
+[node name="CameraAnchors" type="Node3D" parent="." unique_id=364379969]
+
+[node name="FollowActive" type="Node3D" parent="CameraAnchors" unique_id=1792865949]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.33, 2.2)
+
+[node name="LookActive" type="Node3D" parent="CameraAnchors" unique_id=18727004]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.33, 0)
+
+[node name="FollowTarget" type="Node3D" parent="CameraAnchors" unique_id=1020624896]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.25, 1.33, 2.2)
+
+[node name="LookTarget" type="Node3D" parent="CameraAnchors" unique_id=1293429886]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.33, -0.2)

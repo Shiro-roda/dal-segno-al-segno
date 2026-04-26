@@ -34,6 +34,7 @@ func start_dungeon(run_state: RunState, dungeon_data: DungeonData, map: Node3D =
 	dungeon.run_state = run_state
 	dungeon.dungeon_data = dungeon_data
 	_room_choice_cache.clear()
+	_choice_pick_counts.clear()
 
 	GameController.current_dungeon_run = dungeon
 
@@ -78,6 +79,7 @@ func resume_dungeon(loaded: DungeonRunState, map: Node3D = null) -> void:
 	dungeon = loaded
 	GameController.current_dungeon_run = dungeon
 	_room_choice_cache.clear()
+	_choice_pick_counts.clear()
 	map_ui.setup(dungeon, self)
 	if dungeon.dungeon_data and dungeon.dungeon_data.dungeon_track:
 		AudioManagerAuto.play_dungeon_track(dungeon.dungeon_data.dungeon_track)
@@ -326,6 +328,11 @@ func _can_connect(pos_a: Vector2i, pos_b: Vector2i) -> bool:
 
 
 var _room_choice_cache : Dictionary = {}
+## Tracks how many times each RoomData has been added to any slot's choice list
+## since the last full cache clear. Used to apply depletion pressure at list-
+## generation time rather than at build time, so different unbuilt slots
+## diverge from each other naturally.
+var _choice_pick_counts : Dictionary = {}
 
 ## Spend one reprise charge on a ghost slot, regenerating its choices.
 func reroll_room_choices(pos: Vector2i) -> void:
@@ -349,16 +356,21 @@ func get_room_choices(pos: Vector2i) -> Array:
 					break
 		if not allowed_types.is_empty():
 			pool = pool.filter(func(r): return r.room_type in allowed_types)
-		# Depletion weighting: count how many of each RoomData already exist in grid.
-		var counts : Dictionary = {}
+		# Depletion weighting: rooms become less likely each time they are
+		# added to any slot's choice list (tracked in _choice_pick_counts).
+		# Grid-placed copies also reduce weight, so built rooms stay rare too.
+		var grid_counts : Dictionary = {}
 		for inst in dungeon.grid.values():
 			var rd : RoomData = (inst as RoomInstance).room_data
 			if rd != null:
-				counts[rd] = counts.get(rd, 0) + 1
-		# Build a weighted list: weight = 1 / (1 + count). Weighted random draw.
+				grid_counts[rd] = grid_counts.get(rd, 0) + 1
+		# Build a weighted list: weight = 1 / (1 + grid_count + pick_count).
+		# Each time a room enters any slot's list it raises pick_count,
+		# lowering its odds for subsequent slot generations this session.
 		var weighted : Array = []
 		for r in pool:
-			var w : float = 1.0 / (1.0 + counts.get(r, 0))
+			var total_count : int = grid_counts.get(r, 0) + _choice_pick_counts.get(r, 0)
+			var w : float = 1.0 / (1.0 + total_count)
 			weighted.append({"room": r, "w": w})
 		var picked : Array = []
 		for _i in 3:
@@ -372,6 +384,8 @@ func get_room_choices(pos: Vector2i) -> Array:
 				acc += entry["w"]
 				if roll <= acc:
 					picked.append(entry["room"])
+					# Record this pick so future slot generations see the pressure.
+					_choice_pick_counts[entry["room"]] = _choice_pick_counts.get(entry["room"], 0) + 1
 					weighted.erase(entry)
 					break
 		for r in picked:
@@ -418,6 +432,7 @@ func build_room(pos: Vector2i, room_data: RoomData):
 
 	if room_data.room_type == RoomData.RoomType.ROAD:
 		_room_choice_cache.clear()
+		_choice_pick_counts.clear()
 		map_ui.redraw_map()
 	else:
 		dungeon.current_pos = pos
@@ -1066,6 +1081,7 @@ func respawn_at_segno() -> void:
 				room.explicit_connections.append(c)
 			dungeon.grid[gpos] = room
 		_room_choice_cache.clear()
+		_choice_pick_counts.clear()
 
 	_revert_room_at(placed_at)
 	dungeon.segno_pos  = Vector2i(-999, -999)

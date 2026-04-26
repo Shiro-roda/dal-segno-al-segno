@@ -487,9 +487,9 @@ func _update_drift(delta: float) -> void:
 			if e["selected"]:
 				lbl_alpha = 1.0
 			elif e.get("edge_push", false):
-				lbl_alpha = 0.15
-			else:
 				lbl_alpha = 0.55
+			else:
+				lbl_alpha = 0.75
 			# Apply colour to the label text every frame so it resets cleanly
 			# when toggling between modes. Allies turn green and enemies turn
 			# red when selected; all other states use white at varying alpha.
@@ -1134,8 +1134,26 @@ func _on_box_pressed(entry: Dictionary) -> void:
 		_deselect_all(_skill_boxes, entry)
 		if already_sel and at_anch:
 			if not _skill_needs_target(sk):
+				# AoE / struggle: second click confirms immediately.
 				emit_signal("skill_selected", sk)
 				emit_signal("confirmed")
+				return
+			else:
+				# Single-target skill already selected: deselect it so the player
+				# can re-pick. Clear all dependent state and return to free-float.
+				_sel_skill  = {}
+				_sel_target = null
+				_sel_part   = null
+				_slide_to_float(entry)
+				_clear_boxes(_part_boxes)
+				_clear_struggle_box()
+				for eb in _enemy_boxes:
+					if eb["selected"] or eb["edge_push"]:
+						_slide_to_float(eb)
+				for ab in _ally_boxes:
+					if ab["selected"]:
+						_slide_to_float(ab)
+				emit_signal("cancelled")
 				return
 		_sel_skill = sk
 		_sel_target = null
@@ -1169,9 +1187,11 @@ func _on_box_pressed(entry: Dictionary) -> void:
 			return
 		var enemy : BattleActor = data as BattleActor
 		var already_sel : bool = (_sel_target == enemy)
-		_deselect_all(_enemy_boxes, entry)
+		# Second click on the same enemy while it is already at its anchor:
+		# don't deselect and re-select — just leave state intact.
 		if already_sel and at_anch:
 			return
+		_deselect_all(_enemy_boxes, entry)
 		_sel_target = enemy
 		_sel_part = null
 		_slide_to_anchor(entry)

@@ -155,9 +155,31 @@ func _serialize_dungeon_state(dungeon: DungeonRunState) -> Dictionary:
 		var conn_arr := []
 		for c in room.explicit_connections:
 			conn_arr.append(_vec2i_to_arr(c))
+		# Inline room data for procedurally-built rooms that have no resource_path
+		# (Tie/Road, Cache/Treasure, Segno, and Boss rooms built at runtime).
+		var rpath : String = ""
+		var inline_data = null
+		if room.room_data != null:
+			rpath = room.room_data.resource_path
+			if rpath == "":
+				# Inline all fields needed to reconstruct the RoomData.
+				var conns_arr := []
+				for cv in room.room_data.connections:
+					conns_arr.append(_vec2i_to_arr(cv))
+				inline_data = {
+					"room_name":       room.room_data.room_name,
+					"room_type":       room.room_data.room_type,
+					"allows_segno":    room.room_data.allows_segno,
+					"max_connections": room.room_data.max_connections,
+					"danger_level":    room.room_data.danger_level,
+					"description":     room.room_data.description,
+					"connections":     conns_arr,
+					"room_model_path": room.room_data.room_model.resource_path if room.room_data.room_model else "",
+				}
 		grid_data.append({
 			"pos": _vec2i_to_arr(pos),
-			"room_data_path":       room.room_data.resource_path if room.room_data else "",
+			"room_data_path":       rpath,
+			"room_data_inline":     inline_data,
 			"visited":              room.visited,
 			"cleared":              room.cleared,
 			"rested":               room.rested,
@@ -333,6 +355,23 @@ func _deserialize_dungeon_state(d: Dictionary, run: RunState) -> DungeonRunState
 		var room := RoomInstance.new()
 		if rpath != "" and ResourceLoader.exists(rpath):
 			room.room_data = load(rpath)
+		else:
+			# Reconstruct procedurally-built rooms that have no saved resource path.
+			var inline = room_d.get("room_data_inline", null)
+			if inline is Dictionary:
+				var rd := RoomData.new()
+				rd.room_name       = inline.get("room_name", "")
+				rd.room_type       = inline.get("room_type", 0)
+				rd.allows_segno    = inline.get("allows_segno", false)
+				rd.max_connections = inline.get("max_connections", 4)
+				rd.danger_level    = inline.get("danger_level", 0)
+				rd.description     = inline.get("description", "")
+				for cv in inline.get("connections", []):
+					rd.connections.append(_arr_to_vec2i(cv))
+				var model_path : String = inline.get("room_model_path", "")
+				if model_path != "" and ResourceLoader.exists(model_path):
+					rd.room_model = load(model_path)
+				room.room_data = rd
 		room.position          = pos
 		room.visited           = room_d.get("visited",           false)
 		room.cleared           = room_d.get("cleared",           false)

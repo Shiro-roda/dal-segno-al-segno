@@ -154,6 +154,10 @@ var ca_defaults := {}
 @onready var idle_orbiter: Node3D = $"../CameraRig/IdleOrbitPivot/IdleOrbiter"
 @onready var overview_anchor: Node3D = $"../CameraRig/OverviewAnchor"
 @onready var ground_center_anchor: Node3D = $"../CameraRig/GroundCenterAnchor"
+@onready var player_overview_anchor: Node3D = $"../CameraRig/PlayerOverviewAnchor"
+@onready var player_ground_center_anchor: Node3D = $"../CameraRig/PlayerGroundCenterAnchor"
+@onready var enemy_overview_anchor: Node3D = $"../CameraRig/EnemyOverviewAnchor"
+@onready var enemy_ground_center_anchor: Node3D = $"../CameraRig/EnemyGroundCenterAnchor"
 
 
 
@@ -548,7 +552,6 @@ func handle_enemy_turn(actor: BattleActor) -> void:
 	await get_tree().process_frame
 	var target = choose_target(actor)
 	if target == null:
-		# No valid targets — check for victory/defeat and continue
 		if not check_victory():
 			next_turn()
 		return
@@ -556,9 +559,6 @@ func handle_enemy_turn(actor: BattleActor) -> void:
 	await get_tree().process_frame
 	focus_target(actor)
 	focus_actor(target)
-	target_cam.set_follow_damping_value(Vector3(.25, .25, .15))
-	target_cam.set_follow_offset(Vector3(-1.25, 0, .55))
-	target_cam.set_look_at_offset(Vector3(0, 0, -.2))
 	# Use enemy_take_turn for skill-aware AI (boss enemies), plain take_turn otherwise
 	if actor.get_skills().is_empty():
 		await actor.take_turn(target)
@@ -1060,12 +1060,14 @@ func follow_anchor(anchor: Node3D, source: Node3D):
 
 
 func focus_actor(actor: BattleActor):
-
 	if actor == null:
 		return
-
-	follow_anchor(active_anchor, actor.camera_anchor)
-	follow_anchor(active_look_anchor, actor.camera_anchor)
+	follow_anchor(active_anchor, actor.get_follow_anchor("active"))
+	follow_anchor(active_look_anchor, actor.get_look_anchor("active"))
+	# Restore normal damping — guards against the intro/overview glide leaving slow values active.
+	if is_instance_valid(active_cam):
+		active_cam.set_follow_damping_value(ACTIVE_CAM_NORMAL_DAMPING)
+		active_cam.set_look_at_damping(false)
 
 
 ## Authored follow-damping value for active_cam (matches the scene file).
@@ -1075,7 +1077,7 @@ const ACTIVE_CAM_INTRO_DAMPING := Vector3(0.5, 0.5, 0.5)
 ## Matching slow look-at damping for the intro glide (active_cam has no look damping normally).
 const ACTIVE_CAM_INTRO_LOOK_DAMPING := 0.5
 ## How long to wait for the slow glide to arrive before restoring normal damping.
-const ACTIVE_CAM_INTRO_DURATION := 2.2
+const ACTIVE_CAM_INTRO_DURATION := 4.0
 
 ## Authored damping values for target_cam (match the scene file).
 const TARGET_CAM_NORMAL_DAMPING := Vector3(0.35, 0.35, 0.35)
@@ -1084,12 +1086,12 @@ const TARGET_CAM_NORMAL_LOOK_DAMPING := 0.157
 const TARGET_CAM_INTRO_DAMPING := Vector3(0.5, 0.5, 0.5)
 const TARGET_CAM_INTRO_LOOK_DAMPING := 0.5
 
-## Parks the active cam on the overview/ground-center anchors without
+## Parks the active cam on the player-side overview anchors without
 ## touching the target cam or the toggle button state.
 ## Called once at battle start so the cam has a position to glide from.
 func _park_active_cam_on_overview() -> void:
-	follow_anchor(active_anchor, overview_anchor)
-	follow_anchor(active_look_anchor, ground_center_anchor)
+	follow_anchor(active_anchor, player_overview_anchor)
+	follow_anchor(active_look_anchor, player_ground_center_anchor)
 
 
 ## Called once per battle, from handle_player_turn on the very first player turn.
@@ -1106,12 +1108,15 @@ func _intro_active_cam(actor: BattleActor) -> void:
 		active_cam.set_look_at_damping(false)
 
 func focus_target(actor: BattleActor):
-
 	if actor == null:
 		return
-
-	follow_anchor(target_anchor, actor.camera_anchor)
-	follow_anchor(target_look_anchor, actor.camera_anchor)
+	follow_anchor(target_anchor, actor.get_follow_anchor("target"))
+	follow_anchor(target_look_anchor, actor.get_look_anchor("target"))
+	# Restore normal target cam damping — guards against overview/intro glide leaving slow values.
+	if is_instance_valid(target_cam):
+		target_cam.set_follow_damping_value(TARGET_CAM_NORMAL_DAMPING)
+		target_cam.set_look_at_damping(true)
+		target_cam.set_look_at_damping_value(TARGET_CAM_NORMAL_LOOK_DAMPING)
 
 
 func focus_idle_orbit():
@@ -1125,29 +1130,37 @@ func focus_idle_orbit():
 		battle_hud.sync_overview_button(false)
 
 
-## Switch only the active_cam (left viewport) to the overhead overview.
+## Switch only the active_cam (left viewport) to the player-side overhead overview.
 ## Used when an enemy performs an AOE so the player can see the whole field.
+## Applies slow damping for the glide in, then restores normal damping.
 func focus_active_overview() -> void:
-	follow_anchor(active_anchor, overview_anchor)
-	follow_anchor(active_look_anchor, ground_center_anchor)
+	active_cam.set_follow_damping_value(ACTIVE_CAM_INTRO_DAMPING)
+	active_cam.set_look_at_damping(true)
+	active_cam.set_look_at_damping_value(ACTIVE_CAM_INTRO_LOOK_DAMPING)
+	follow_anchor(active_anchor, player_overview_anchor)
+	follow_anchor(active_look_anchor, player_ground_center_anchor)
+	await get_tree().create_timer(ACTIVE_CAM_INTRO_DURATION).timeout
+	if is_instance_valid(active_cam):
+		active_cam.set_follow_damping_value(ACTIVE_CAM_NORMAL_DAMPING)
+		active_cam.set_look_at_damping(false)
 
 
-## Switch only the target_cam (right viewport) to the overhead overview.
+## Switch only the target_cam (right viewport) to the enemy-side overhead overview.
 ## Used when the player confirms an AOE skill.
 func focus_target_overview() -> void:
-	follow_anchor(target_anchor, overview_anchor)
-	follow_anchor(target_look_anchor, ground_center_anchor)
+	follow_anchor(target_anchor, enemy_overview_anchor)
+	follow_anchor(target_look_anchor, enemy_ground_center_anchor)
 
 
-## Point the target_cam to the overhead overview anchor.
+## Point the target_cam to the enemy-side overhead overview anchor.
 ## The active_cam is deliberately left untouched — the toggle button
 ## only controls the target (right) viewport idle state.
-## overview_anchor (high up) is the follow target.
-## ground_center_anchor (battlefield center, y=0) is the look-at target.
+## enemy_overview_anchor (high up, enemy side) is the follow target.
+## enemy_ground_center_anchor (enemy side, y=0) is the look-at target.
 ## Both must be positioned before this is called.
 func focus_overview() -> void:
-	follow_anchor(target_anchor, overview_anchor)
-	follow_anchor(target_look_anchor, ground_center_anchor)
+	follow_anchor(target_anchor, enemy_overview_anchor)
+	follow_anchor(target_look_anchor, enemy_ground_center_anchor)
 	if is_instance_valid(battle_hud):
 		battle_hud.sync_overview_button(true)
 
@@ -1305,12 +1318,7 @@ func _on_radial_skill_chosen(skill_key: String, skill_dict: Dictionary = {}) -> 
 
 
 func _on_reticle_focus_requested(target: BattleActor) -> void:
-	target_cam.set_follow_damping_value(Vector3(.25, .25, .15))
-	target_cam.set_follow_offset(Vector3(-1.25, 0, .55))
-	target_cam.set_look_at_offset(Vector3(0, 0, -.2))
 	if target.team == BattleActor.Team.PLAYER:
-		# Show this party member's info in the HUD without disrupting the
-		# active turn — do NOT close the reticle or cancel the input stage.
 		battle_hud.show_target(target)
 		focus_actor(target)
 	elif target.team == BattleActor.Team.ENEMY:
@@ -1322,9 +1330,6 @@ func _on_reticle_focus_requested(target: BattleActor) -> void:
 
 func _on_radial_target_chosen(target: BattleActor) -> void:
 	selected_target = target
-	target_cam.set_follow_damping_value(Vector3(.25, .25, .15))
-	target_cam.set_follow_offset(Vector3(-1.25, 0, .55))
-	target_cam.set_look_at_offset(Vector3(0, 0, -.2))
 	if support_targeting:
 		focus_actor(target)
 	elif target.team == BattleActor.Team.ENEMY:
@@ -1525,13 +1530,7 @@ func _on_command_selected(command):
 
 
 func _on_target_selected(target):
-
 	selected_target = target
-
-	target_cam.set_follow_damping_value(Vector3(.25, .25, .15))
-	target_cam.set_follow_offset(Vector3(-1.25, 0, .55))
-	target_cam.set_look_at_offset(Vector3(0, 0, -.2))
-
 	if target.team == BattleActor.Team.PLAYER:
 		focus_actor(target)
 	else:

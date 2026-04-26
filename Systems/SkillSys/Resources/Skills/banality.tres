@@ -7,6 +7,7 @@
 script = ExtResource("1_0cylb")
 effect_type = 7
 damage_mult = 0.8
+pre_delay = 1.0
 post_delay = 1.0
 metadata/_custom_type_script = "uid://4yawyrbpe6tk"
 

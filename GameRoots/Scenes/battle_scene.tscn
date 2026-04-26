@@ -134,20 +134,18 @@ script = ExtResource("3_yw742")
 transform = Transform3D(1, 0, 0, 0, 0.9999998, 0, 0, 0, 0.9999998, 0, 6.3744373, 7.6217666)
 
 [node name="active_cam" type="Node3D" parent="CameraRig" unique_id=2025165075]
-transform = Transform3D(1, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, -1.3915569, 7.385764, 3.37666)
+transform = Transform3D(1, 0, 0, 0, -4.3711392e-08, 1.0000001, 0, -1.0000001, -4.3711392e-08, -1.3915569, 609.35547, 3.37666)
 top_level = true
 script = ExtResource("4_y8mdh")
 follow_mode = 2
 look_at_mode = 2
 tween_resource = SubResource("Resource_26idg")
 camera_3d_resource = SubResource("Resource_xhnwx")
-follow_offset = Vector3(0.2, 0, 1.5)
 follow_damping = true
-follow_damping_value = Vector3(0.2, 0.2, 0.2)
-look_at_offset = Vector3(0.2, 0, 0)
+follow_damping_value = Vector3(0.773, 0.773, 0.773)
 
 [node name="target_cam" type="Node3D" parent="CameraRig" unique_id=1804288770]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.9518425, 7.48166, 3.3218737)
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 2.9518425, 609.45135, 3.3218737)
 top_level = true
 script = ExtResource("4_y8mdh")
 follow_mode = 2
@@ -155,7 +153,7 @@ look_at_mode = 2
 tween_resource = SubResource("Resource_nejpu")
 host_layers = 2
 follow_damping = true
-follow_damping_value = Vector3(0.35, 0.35, 0.35)
+follow_damping_value = Vector3(0.773, 0.773, 0.773)
 look_at_damping = true
 look_at_damping_value = 0.219
 metadata/_custom_type_script = "uid://csjccrhj5wnx7"
@@ -176,6 +174,18 @@ transform = Transform3D(1, 0, 0, 0, -3.6199901e-06, 1, 0, -1, -3.6199901e-06, 0,
 [node name="GroundCenterAnchor" type="Node3D" parent="CameraRig" unique_id=166879164]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3.9318943)
 
+[node name="PlayerOverviewAnchor" type="Node3D" parent="CameraRig" unique_id=559776828]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 2.765, 11.66, 0)
+
+[node name="EnemyOverviewAnchor" type="Node3D" parent="CameraRig" unique_id=1519324690]
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, -2.7648234, 11.660002, 0)
+
+[node name="PlayerGroundCenterAnchor" type="Node3D" parent="CameraRig" unique_id=1064316568]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.093295, 0.82706, 1.3146138)
+
+[node name="EnemyGroundCenterAnchor" type="Node3D" parent="CameraRig" unique_id=501510465]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.4375567, 1.3359194, -0.7416283)
+
 [node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=130250288]
 offset_right = 1280.0
 offset_bottom = 960.0
@@ -194,7 +204,7 @@ size_2d_override_stretch = true
 render_target_update_mode = 4
 
 [node name="PlayerActorCam" type="Camera3D" parent="HBoxContainer/Left_Container/Left" unique_id=1335861594]
-transform = Transform3D(1, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, -1.3915569, 7.385764, 3.37666)
+transform = Transform3D(1, 0, 0, 0, -4.3711392e-08, 1.0000001, 0, -1.0000001, -4.3711392e-08, -1.3915569, 609.35547, 3.37666)
 fov = 100.418106
 
 [node name="PhantomCameraHost" type="Node" parent="HBoxContainer/Left_Container/Left/PlayerActorCam" unique_id=774086878]
@@ -216,7 +226,7 @@ size = Vector2i(640, 960)
 render_target_update_mode = 4
 
 [node name="TargetCam" type="Camera3D" parent="HBoxContainer/Right_Container/Right" unique_id=30126024]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.9518425, 7.48166, 3.3218737)
+transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 2.9518425, 609.45135, 3.3218737)
 fov = 100.418106
 
 [node name="PhantomCameraHost" type="Node" parent="HBoxContainer/Right_Container/Right/TargetCam" unique_id=1124316229]
@@ -364,3 +374,27 @@ script = ExtResource("17_y8mdh")
 
 [node name="BattleSubtitles" type="CanvasLayer" parent="." unique_id=836863914]
 script = ExtResource("18_8bb5l")
+
+[node name="PlayerSlots" type="Node3D" parent="." unique_id=1091432258]
+transform = Transform3D(-0.21862021, 0, 0.9758101, 0, 1, 0, -0.9758101, 0, -0.21862021, -3.8155985, 0.82191944, 1.9634242)
+
+[node name="Slot0" type="Marker3D" parent="PlayerSlots" unique_id=922107569]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.4622717)
+
+[node name="Slot1" type="Marker3D" parent="PlayerSlots" unique_id=1472150890]
+transform = Transform3D(1.0000006, 0, 0, 0, 1, 0, 0, 0, 1.0000006, 1.9351565, 0, -0.5671482)
+
+[node name="Slot2" type="Marker3D" parent="PlayerSlots" unique_id=2032157794]
+transform = Transform3D(1.0000004, 0, 0, 0, 1, 0, 0, 0, 1.0000004, -0.77306044, 0, -2.0155625)
+
+[node name="EnemySlots" type="Node3D" parent="." unique_id=1408517864]
+transform = Transform3D(0.32642615, 0, -0.9452227, 0, 1, 0, 0.9452227, 0, 0.32642615, 2.1358902, 0.84125066, 0)
+
+[node name="Slot0" type="Marker3D" parent="EnemySlots" unique_id=726425902]
+transform = Transform3D(1.0000004, 0, 2.9802322e-08, 0, 1, 0, -2.9802322e-08, 0, 1.0000004, -2.1847105, 0, -0.4120233)
+
+[node name="Slot1" type="Marker3D" parent="EnemySlots" unique_id=1573833065]
+transform = Transform3D(1.0000001, 0, 0, 0, 1, 0, 0, 0, 1.0000001, 1.0520399, 0, -1.1712348)
+
+[node name="Slot2" type="Marker3D" parent="EnemySlots" unique_id=302856691]
+transform = Transform3D(1.0000005, 0, 5.9604645e-08, 0, 1, 0, -5.9604645e-08, 0, 1.0000005, -1.724036, 0.879663, -3.537567)
