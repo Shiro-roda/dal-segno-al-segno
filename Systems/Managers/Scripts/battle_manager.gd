@@ -1081,6 +1081,11 @@ func follow_anchor(anchor: Node3D, source: Node3D):
 	elif anchor == target_look_anchor:
 		target_look_source = source
 
+	# Snap the anchor immediately so PhantomCamera reads the correct position
+	# on the same frame it's assigned, rather than waiting for _process().
+	if source != null and is_instance_valid(source):
+		anchor.global_position = source.global_position
+
 
 func focus_actor(actor: BattleActor):
 	if actor == null:

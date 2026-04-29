@@ -305,7 +305,7 @@ func _build_bar(bar: Control) -> void:
 
 	# Annotation row — hidden until phase label is clicked
 	_annotation_lbl = Label.new()
-	_annotation_lbl.add_theme_font_size_override("font_size", 11)
+	_annotation_lbl.add_theme_font_size_override("font_size", 14)
 	_annotation_lbl.add_theme_color_override("font_color", C_DIM)
 	_annotation_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_annotation_lbl.custom_minimum_size = Vector2(440, 0)

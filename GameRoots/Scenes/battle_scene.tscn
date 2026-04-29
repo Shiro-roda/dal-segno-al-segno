@@ -134,24 +134,24 @@ script = ExtResource("3_yw742")
 transform = Transform3D(1, 0, 0, 0, 0.9999998, 0, 0, 0, 0.9999998, 0, 6.3744373, 7.6217666)
 
 [node name="active_cam" type="Node3D" parent="CameraRig" unique_id=2025165075 node_paths=PackedStringArray("look_at_target")]
-transform = Transform3D(0.60670924, -0.7949115, 0.004439742, -2.9802322e-08, 0.005585075, 0.9999845, -0.7949238, -0.6066999, 0.0033885245, -1.3915569, 609.35547, 3.37666)
+transform = Transform3D(0.28797525, -0.9575645, 0.0118630845, 2.9802322e-08, 0.012387874, 0.99992335, -0.9576379, -0.28795314, 0.0035674577, 2.765, 578.9009, 3.377)
 top_level = true
 script = ExtResource("4_y8mdh")
 follow_mode = 2
 look_at_mode = 2
-look_at_target = NodePath("../PlayerGroundCenterAnchor")
+look_at_target = NodePath("../ActiveLookAnchor")
 tween_resource = SubResource("Resource_26idg")
 camera_3d_resource = SubResource("Resource_xhnwx")
 follow_damping = true
 follow_damping_value = Vector3(0.773, 0.773, 0.773)
 
 [node name="target_cam" type="Node3D" parent="CameraRig" unique_id=1804288770 node_paths=PackedStringArray("look_at_target")]
-transform = Transform3D(0.99219716, -0.12467623, 0.00083673745, -3.0137599e-06, 0.0066871643, 0.99997765, -0.12467904, -0.9921749, 0.006634593, 2.9518425, 609.45135, 3.3218737)
+transform = Transform3D(0.6161338, 0.78759336, -0.0086958995, 1.4305115e-06, 0.011039316, 0.999939, 0.7876415, -0.6160962, 0.0068005915, -2.765, 578.9969, 3.322)
 top_level = true
 script = ExtResource("4_y8mdh")
 follow_mode = 2
 look_at_mode = 2
-look_at_target = NodePath("../EnemyGroundCenterAnchor")
+look_at_target = NodePath("../TargetLookAnchor")
 tween_resource = SubResource("Resource_nejpu")
 host_layers = 2
 follow_damping = true
@@ -163,12 +163,12 @@ metadata/_custom_type_script = "uid://csjccrhj5wnx7"
 [node name="ActiveAnchor" type="Node3D" parent="CameraRig" unique_id=655453041]
 
 [node name="ActiveLookAnchor" type="Node3D" parent="CameraRig" unique_id=1582796026]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.264618, 3.6070132, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.093295, 0.82706, 1.3146138)
 
 [node name="TargetAnchor" type="Node3D" parent="CameraRig" unique_id=1572926252]
 
 [node name="TargetLookAnchor" type="Node3D" parent="CameraRig" unique_id=1898894596]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9.356731, 4.459252, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.4375567, 1.3359194, -0.7416283)
 
 [node name="OverviewAnchor" type="Node3D" parent="CameraRig" unique_id=1177651734]
 transform = Transform3D(1, 0, 0, 0, -3.6199901e-06, 1, 0, -1, -3.6199901e-06, 0, 19.494307, 2.646183)
@@ -206,7 +206,7 @@ size_2d_override_stretch = true
 render_target_update_mode = 4
 
 [node name="PlayerActorCam" type="Camera3D" parent="HBoxContainer/Left_Container/Left" unique_id=1335861594]
-transform = Transform3D(0.60670924, -0.7949114, 0.0044397414, -2.9802322e-08, 0.0055850744, 0.9999844, -0.7949238, -0.6066998, 0.003388524, -1.3915569, 609.35547, 3.37666)
+transform = Transform3D(0.28797525, -0.95756435, 0.011863083, 2.9802322e-08, 0.012387872, 0.9999232, -0.9576379, -0.2879531, 0.0035674572, 2.765, 578.9009, 3.377)
 fov = 100.418106
 
 [node name="PhantomCameraHost" type="Node" parent="HBoxContainer/Left_Container/Left/PlayerActorCam" unique_id=774086878]
@@ -228,7 +228,7 @@ size = Vector2i(640, 960)
 render_target_update_mode = 4
 
 [node name="TargetCam" type="Camera3D" parent="HBoxContainer/Right_Container/Right" unique_id=30126024]
-transform = Transform3D(0.99219716, -0.12467623, 0.00083673745, -3.0137599e-06, 0.0066871643, 0.99997765, -0.12467904, -0.9921749, 0.006634593, 2.9518425, 609.45135, 3.3218737)
+transform = Transform3D(0.6161338, 0.7875935, -0.0086959, 1.4305115e-06, 0.011039317, 0.9999391, 0.7876415, -0.61609626, 0.006800592, -2.765, 578.9969, 3.322)
 fov = 100.418106
 
 [node name="PhantomCameraHost" type="Node" parent="HBoxContainer/Right_Container/Right/TargetCam" unique_id=1124316229]

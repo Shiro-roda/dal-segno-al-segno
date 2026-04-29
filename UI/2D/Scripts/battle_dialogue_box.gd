@@ -83,7 +83,7 @@ func _build_ui() -> void:
 	var font_ital : Font = load(FONT_ITALIC) if ResourceLoader.exists(FONT_ITALIC) else null
 
 	_speaker_lbl = Label.new()
-	_speaker_lbl.add_theme_font_size_override("font_size", 13)
+	_speaker_lbl.add_theme_font_size_override("font_size", 16)
 	if font: _speaker_lbl.add_theme_font_override("font", font)
 	_speaker_lbl.add_theme_color_override("font_color", DEFAULT_COLOR)
 	_speaker_lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.6))

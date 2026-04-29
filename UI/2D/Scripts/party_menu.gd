@@ -338,20 +338,20 @@ func _build_party_page() -> Control:
 	var vbox := VBoxContainer.new()
 	vbox.name = "PartyVBox"
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	vbox.add_theme_constant_override("separation", 1)
+	vbox.add_theme_constant_override("separation", 2)
 	page.add_child(vbox)
 
 	# Cap info row — right-aligned, shows active level ceiling.
 	_party_cap_lbl = Label.new()
 	_party_cap_lbl.text = ""
-	_party_cap_lbl.add_theme_font_size_override("font_size", 11)
+	_party_cap_lbl.add_theme_font_size_override("font_size", 12)
 	_party_cap_lbl.add_theme_color_override("font_color", C_DIM)
 	_party_cap_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_party_cap_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_party_cap_lbl.custom_minimum_size = Vector2(0, 20)
 	var cap_pad := MarginContainer.new()
 	cap_pad.add_theme_constant_override("margin_right", 14)
-	cap_pad.add_theme_constant_override("margin_top", 4)
+	cap_pad.add_theme_constant_override("margin_top", 8)
 	cap_pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cap_pad.add_child(_party_cap_lbl)
 	vbox.add_child(cap_pad)
@@ -397,7 +397,7 @@ func _make_member_header() -> Control:
 		var lbl := Label.new()
 		lbl.text = c[0]
 		lbl.custom_minimum_size = Vector2(c[1], 28)
-		lbl.add_theme_font_size_override("font_size", 11)
+		lbl.add_theme_font_size_override("font_size", 14)
 		lbl.add_theme_color_override("font_color", C_DIM)
 		lbl.horizontal_alignment = c[2]
 		lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
@@ -425,13 +425,13 @@ func _make_member_row_placeholder() -> Control:
 	# expand=true uses SIZE_EXPAND_FILL so the column grows to fill spare space.
 	var cols := [
 		["name_lbl",  160, HORIZONTAL_ALIGNMENT_LEFT,   15, C_TEXT,  true],
-		["level_lbl",  36, HORIZONTAL_ALIGNMENT_CENTER, 12, C_DIM,   false],
-		["hp_lbl",     80, HORIZONTAL_ALIGNMENT_CENTER, 12, C_TEXT,  false],
-		["will_lbl",   72, HORIZONTAL_ALIGNMENT_CENTER, 12, C_TEXT,  false],
-		["sharp_lbl",  48, HORIZONTAL_ALIGNMENT_CENTER, 12, C_TEXT,  false],
-		["flat_lbl",   40, HORIZONTAL_ALIGNMENT_CENTER, 12, C_TEXT,  false],
-		["tempo_lbl",  48, HORIZONTAL_ALIGNMENT_CENTER, 12, C_TEXT,  false],
-		["status_lbl", 60, HORIZONTAL_ALIGNMENT_LEFT,   11, C_DIM,   true],
+		["level_lbl",  36, HORIZONTAL_ALIGNMENT_CENTER, 13, C_DIM,   false],
+		["hp_lbl",     80, HORIZONTAL_ALIGNMENT_CENTER, 13, C_TEXT,  false],
+		["will_lbl",   72, HORIZONTAL_ALIGNMENT_CENTER, 13, C_TEXT,  false],
+		["sharp_lbl",  48, HORIZONTAL_ALIGNMENT_CENTER, 13, C_TEXT,  false],
+		["flat_lbl",   40, HORIZONTAL_ALIGNMENT_CENTER, 13, C_TEXT,  false],
+		["tempo_lbl",  48, HORIZONTAL_ALIGNMENT_CENTER, 13, C_TEXT,  false],
+		["status_lbl", 60, HORIZONTAL_ALIGNMENT_LEFT,   12, C_DIM,   true],
 	]
 
 	for c in cols:
@@ -454,7 +454,7 @@ func _make_member_row_placeholder() -> Control:
 	var desc_lbl := Label.new()
 	desc_lbl.name = "desc_lbl"
 	desc_lbl.text = ""
-	desc_lbl.add_theme_font_size_override("font_size", 12)
+	desc_lbl.add_theme_font_size_override("font_size", 14)
 	desc_lbl.add_theme_color_override("font_color", C_DIM)
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL

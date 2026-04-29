@@ -35,8 +35,8 @@ const NEON_PALETTE : Array = [
 const C_DETAIL      := Color(0.85, 0.90, 0.95, 0.92)
 const C_PANEL_BG    := Color(0.02, 0.02, 0.06, 0.90)
 const FONT_PATH     := "res://UI/Themes/Fonts/SpaceMono-Bold.ttf"
-const FONT_SIZE_LBL := 12
-const FONT_SIZE_DET := 11
+const FONT_SIZE_LBL := 13
+const FONT_SIZE_DET := 12
 
 # ── Box geometry ──────────────────────────────────────────────────────────────
 # Tweak these to resize and reposition everything.

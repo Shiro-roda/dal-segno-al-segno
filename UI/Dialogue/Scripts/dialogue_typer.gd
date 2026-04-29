@@ -60,6 +60,7 @@ func type_into(label: RichTextLabel, full_text: String,
 	label.clear()
 	label.append_text(full_text)
 	label.visible_ratio = 0.0
+	
 
 	var total_chars : int = label.get_total_character_count()
 	if total_chars == 0:
