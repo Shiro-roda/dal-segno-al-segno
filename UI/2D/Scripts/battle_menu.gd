@@ -658,8 +658,12 @@ func _make_target_card(a: BattleActor, is_ally: bool) -> Control:
 				part_labels.append(bp.part_name + m)
 			inner.add_child(_lbl("  " + "  ".join(part_labels), 10, C_DIM))
 
-	# Click to select
-	if not _sel_skill.is_empty():
+	# Click to select — disabled when a filter (channel-pick) skill is active,
+	# since the player must choose a channel from the parts column instead.
+	var _is_filter_skill : bool = not _sel_skill.is_empty() and \
+		_sel_skill.get("key", "") == "special" and _actor != null and \
+		(_actor.party_member == null or not _actor.party_member.has_will())
+	if not _sel_skill.is_empty() and not _is_filter_skill:
 		var cap_a := a
 		var area := Button.new()
 		area.flat = true

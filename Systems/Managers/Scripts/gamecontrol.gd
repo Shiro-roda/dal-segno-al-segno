@@ -24,11 +24,11 @@ func _ready():
 
 	await _wait_for_controllers()
 
-	# Show boot sequence on first launch, then hand off to start screen.
-	#var boot := get_tree().get_first_node_in_group("boot_sequence") as Node
-	#if boot != null and boot.has_method("show_boot"):
-	#	boot.show_boot()
-	#	await boot.finished
+	#Show boot sequence on first launch, then hand off to start screen.
+	var boot := get_tree().get_first_node_in_group("boot_sequence") as Node
+	if boot != null and boot.has_method("show_boot"):
+		boot.show_boot()
+		await boot.finished
 	_show_start_screen()
 
 

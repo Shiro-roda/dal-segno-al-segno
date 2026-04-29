@@ -481,8 +481,8 @@ func setup_battlefield():
 # Costs are large relative to tempo_stat (~10-15) so acting creates real debt.
 # A stat difference of 2-3 produces occasional double-turns; bonuses are scarce.
 const TEMPO_COST_ATTACK  = 100
-const TEMPO_COST_SPECIAL = 150
-const TEMPO_COST_SUPPORT = 120
+const TEMPO_COST_SPECIAL = 180
+const TEMPO_COST_SUPPORT = 150
 const TEMPO_COST_DEFAULT = 100
 
 func build_turn_queue():

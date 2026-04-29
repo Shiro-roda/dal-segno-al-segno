@@ -13,7 +13,7 @@ const FONT_TERM   := "res://UI/Themes/Fonts/TerminalVector.ttf"
 const C_GREEN     := Color(0.18, 1.00, 0.35, 1.0)
 const C_AMBER     := Color(1.00, 0.72, 0.08, 1.0)
 const C_RED       := Color(1.00, 0.22, 0.18, 1.0)
-const C_DIM       := Color(0.45, 0.55, 0.45, 0.7)
+const C_DIM       := Color(0.698, 0.788, 0.697, 0.7)
 const C_WHITE     := Color(0.92, 0.95, 0.92, 1.0)
 const C_BG        := Color(0.012, 0.018, 0.012, 1.0)
 const C_KEY_FACE  := Color(0.10, 0.13, 0.10, 1.0)
@@ -73,6 +73,22 @@ func show_boot() -> void:
 	_draw_node.queue_redraw()
 
 
+## Jump directly to the manual (skipping the POST sequence).
+## Call this from the main menu or party menu "MANUAL" buttons.
+func show_manual(start_page: int = 0) -> void:
+	_phase        = Phase.MANUAL
+	_manual_page  = start_page
+	_post_done    = true
+	if is_instance_valid(_manual_panel):
+		_manual_panel.queue_free()
+		_manual_panel = null
+	if is_instance_valid(_skip_hint):
+		_skip_hint.visible = false
+	show()
+	_draw_node.queue_redraw()
+	_build_manual()
+
+
 func _build_draw_node() -> void:
 	_draw_node = Control.new()
 	_draw_node.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -98,45 +114,54 @@ func _build_skip_hint() -> void:
 # ── POST line data ─────────────────────────────────────────────────────────────
 
 func _build_post_lines() -> void:
+	var hex_serial := _random_hex(4) + "-" + _random_hex(4) + "-" + _random_hex(8)
+	var hex_bios   := _random_hex(4) + "h"
+	var hex_cmos   := _random_hex(2) + "h"
 	_post_lines = [
-		_line("DALSEG SYSTEMS INC.  SEGNO/BIOS  REV 1.04C", C_WHITE, 0.0),
-		_line("COPYRIGHT (C) DALSEG SYSTEMS  ALL RIGHTS RESERVED", C_DIM, 0.14),
-		_line("", C_DIM, 0.0),
-		_line("CPU: MORTEM-II  3.20GHz  FSB:800MHz  L2:512K", C_GREEN, 0.0),
-		_line("CHECKING EXTENDED MEMORY  131072K OK", C_GREEN, 0.22),
-		_line("", C_DIM, 0.04),
-		_line("BIOS CHECKSUM ........... F4A8h  PASS", C_GREEN, 0.0),
-		_line("CMOS CONFIG ............. 09h    PASS", C_GREEN, 0.0),
-		_line("RTC: " + _rtc_string() + "                       PASS", C_GREEN, 0.0),
-		_line("", C_DIM, 0.04),
-		_line("DETECTING DEVICES:", C_WHITE, 0.0),
-		_line("  PRIMARY DISPLAY ........ ONYX-CRT  640x960  60Hz", C_GREEN, 0.0),
-		_line("  VIEWPORT SPLIT ......... 2x 638px  GAP:4px", C_GREEN, 0.0),
-		_line("  PHYSICS TIMER .......... 60 ticks/sec", C_GREEN, 0.0),
-		_line("  INPUT CONTROLLER ....... KBRD/MOUSE  OK", C_GREEN, 0.0),
-		_line("  AUDIO DEVICE ........... SEGNO-DSP  3CH  OK", C_GREEN, 0.0),
-		_line("", C_DIM, 0.04),
-		_line("LOADING ENCOUNTER KERNEL:", C_WHITE, 0.0),
-		_line("  TEMPO ENGINE ........... BASE 60Hz  OK", C_GREEN, 0.0),
-		_line("  TEMPO SLOW MULT ........ 0.40x", C_GREEN, 0.0),
-		_line("  DODGE PROBABILITY ...... 0.50", C_GREEN, 0.0),
-		_line("  STRUGGLE MISS/SELF ..... 0.35 / 0.25", C_GREEN, 0.0),
-		_line("  LIFESTEAL RATIO ........ 0.50", C_GREEN, 0.0),
-		_line("  DEFENSE FORMULA ........ DMG^2 / (DMG + FLAT)", C_GREEN, 0.0),
-		_line("", C_DIM, 0.04),
-		_line("LOADING DUNGEON KERNEL:", C_WHITE, 0.0),
-		_line("  SEGNO CHARGE CAP ....... 3", C_GREEN, 0.0),
-		_line("  SEGNO MIN DIST ......... 4 rooms (Manhattan)", C_GREEN, 0.0),
-		_line("  CEILING BONUS TABLE .... [+1,+2,+3,+2,+1, 0]", C_GREEN, 0.0),
-		_line("  GUN NATIVE CLIP ........ 6 rounds", C_GREEN, 0.0),
-		_line("", C_DIM, 0.04),
-		_line("LOADING PROGRESSION TABLE:", C_WHITE, 0.0),
-		_line("  EXP CURVE .............. [0,10,30,58,92,131...]", C_GREEN, 0.0),
-		_line("  LEVEL HARD CAP ......... 99  STATIC TABLE:15", C_GREEN, 0.0),
-		_line("", C_DIM, 0.12),
-		_line("ALL SYSTEMS NOMINAL", C_GREEN, 0.18),
-		_line("", C_DIM, 0.04),
-		_line("PRESS ANY KEY TO CONTINUE _", C_WHITE, 0.0),
+		_line("OURO BORO SYSTEMS  OUROBOY SECURITY UNIT  BIOS REV 1.04C", C_WHITE, 0.0),
+		_line("(C) OURO BORO SYSTEMS INC.  ALL RIGHTS RESERVED", C_DIM, 0.10),
+		_line("UNIT S/N: " + hex_serial, C_DIM, 0.18),
+		_line(" ", C_DIM, 0.0),
+		_line("CPU: NOUS-V  3.20GHz  FSB:800MHz  L2:512K", C_GREEN, 0.0),
+		_line("MEMORY TEST ........ 131072K", C_GREEN, 0.0),
+		_line("EXTENDED MEMORY .... 131072K OK", C_GREEN, 0.28),
+		_line(" ", C_DIM, 0.04),
+		_line("BIOS CHECKSUM ...... " + hex_bios + "  PASS", C_GREEN, 0.0),
+		_line("CMOS CONFIG ........ " + hex_cmos + "    PASS", C_GREEN, 0.0),
+		_line("RTC: " + _rtc_string() + "             PASS", C_GREEN, 0.04),
+		_line(" ", C_DIM, 0.0),
+		_line("PERIPHERAL ENUMERATION:", C_WHITE, 0.0),
+		_line("  DISPLAY .......... ONYX-CRT  640x960  PHOSPHOR-G", C_GREEN, 0.0),
+		_line("  STORAGE .......... FERRO-CELL 512K  WEAR:LOW", C_GREEN, 0.0),
+		_line("  INPUT MATRIX ..... TACTILE ARRAY  84-KEY  OK", C_GREEN, 0.0),
+		_line("  AUDIO ............ OBS-DSP  3CH MONO  OK", C_GREEN, 0.0),
+		_line("  COMM ANTENNA ..... PASSIVE  NO CARRIER", C_GREEN, 0.0),
+		
+		_line("SENSOR ARRAY INIT:", C_WHITE, 0.0),
+		_line("  BIOMETRIC OCULAR    CORPA-SCAN SUBSYSTEM  OK", C_GREEN, 0.0),
+		_line("  NEURAL MESH PORT .. DENDRITE I/F REV 2  STANDBY", C_GREEN, 0.0),
+		_line("  ENV HAZARD MON .... PARTICULATE / RAD / GAS  OK", C_GREEN, 0.0),
+		_line("  PROXIMITY ALERT ... SONAR MESH  3.0m RADIUS  OK", C_GREEN, 0.0),
+		
+		_line("STRUCTURAL SURVEY DAEMON:", C_WHITE, 0.0),
+		_line("  ZONE REGISTRY ....  LOADING KNOWN SECTORS", C_GREEN, 0.0),
+		_line("  TOPOLOGY CACHE .... PARTIAL  (UNCHARTED REGIONS FLAGGED)", C_AMBER, 0.0),
+		_line("  ARCHITECT SIGNATURE ... NOT FOUND (EXPECTED)", C_DIM, 0.0),
+		_line("  SAFELINE NET ...... DISRUPTED  CHECK ANCHOR POINTS", C_AMBER, 0.10),
+		
+		_line("SECURITY SUBSYSTEM:", C_WHITE, 1.5),
+		_line("  CIPHER ENGINE ..... ONYX-CRYPT  256-bit  OK", C_GREEN, 0.0),
+		_line("  ANIMUS CONTAMINANT LOCK ........ BIOMETRIC COMPROMISED (SEEK IMMEDIATE MEDICAL ASSISTANCE/EUTHANASIA)", C_RED, 0.0),
+		_line("  INTRUSION LOG ..... 1 EVENT(S) SINCE LAST BOOT, 1 EVENT(S) PRIOR (2 INTRUDERS FOUND)", C_AMBER, 0.0),
+		_line("  SAFEGUARD MODE .... CUSTOM(ADMIN OVERRIDE)", C_RED, 0.0),
+		_line(" ", C_DIM, 0.04),
+		_line("  WARNING: CITY AUTHORITY SIGNAL  --  NO RESPONSE", C_AMBER, 1.56),
+		_line("  WARNING: BIOMASS ENCROACHMENT DETECTED IN CACHE", C_AMBER, 0.0),
+		_line("  SYSTEM MESSAGE: have fun loser 𓆙", C_RED, 0.56),
+		_line(" ", C_DIM, 0.04),
+		_line("ALL CRITICAL SYSTEMS OPERATIONAL(QUERY RETURNED VARIABLE RESULTS)", C_AMBER, 0.22),
+		_line(" ", C_DIM, 0.04),
+		_line("PRESS ANY KEY TO CONTINUE TO PROVISIONARY MANUAL_", C_WHITE, 0.0),
 	]
 
 
@@ -358,6 +383,23 @@ func _add_label(parent: Control, text: String, pos: Vector2,
 	return lbl
 
 
+# Wrapping text block — uses RichTextLabel so wrapping works in a plain Control.
+func _add_wrapped(parent: Control, text: String, pos: Vector2,
+		width: float, height: float, fs: int = 11, col: Color = C_DIM) -> void:
+	var rtl := RichTextLabel.new()
+	rtl.bbcode_enabled = false
+	rtl.scroll_active = false
+	rtl.fit_content = false
+	rtl.text = text
+	rtl.position = pos
+	rtl.size = Vector2(width, height)
+	rtl.add_theme_font_override("normal_font", _font_mono)
+	rtl.add_theme_font_size_override("normal_font_size", fs)
+	rtl.add_theme_color_override("default_color", col)
+	rtl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(rtl)
+
+
 func _add_header(parent: Control, text: String, y: float) -> void:
 	# Horizontal rule + title
 	var cr := ColorRect.new()
@@ -402,14 +444,18 @@ const _KEY_ROWS : Array = [
 	[["SHIFT",2.4],["Z",1.0],["X",1.0],["C",1.0],["V",1.0],["B",1.0],
 	 ["N",1.0],["M",1.0],[",",1.0],[".",1.0],["/",1.0],["SHIFT",2.4]],
 	[["CTRL",1.6],["ALT",1.3],["SPACE",5.5],["ALT",1.3],["CTRL",1.6],
-	 ["<",1.0],[">",1.0],["^",1.0],["v",1.0]],
+	 ["\u2190",1.0],["\u2193",1.0],["\u2191",1.0],["\u2192",1.0]],
 ]
 
 # Keys that are active in a given context — label -> annotation
 const _DUNGEON_KEYS : Dictionary = {
 	"A": "Rotate view LEFT",
 	"D": "Rotate view RIGHT",
-	"TAB": "Party menu",
+	"\u2190": "Move LEFT",
+	"\u2192": "Move RIGHT",
+	"\u2191": "Move FORWARD",
+	"\u2193": "Move BACKWARD",
+	"TAB": "Systems Menu",
 	"Q": "Toggle channel R",
 	"W": "Toggle channel G",
 	"E": "Toggle channel B",
@@ -417,9 +463,7 @@ const _DUNGEON_KEYS : Dictionary = {
 
 const _BATTLE_KEYS : Dictionary = {
 	"ESC":   "Cancel / deselect",
-	"SPACE": "Confirm action",
-	"ENTER": "Confirm action",
-	"TAB":   "Party menu",
+	"TAB":   "Arrangement View Toggle",
 }
 
 func _page_keyboard() -> void:
@@ -430,7 +474,7 @@ func _page_keyboard() -> void:
 	bg.color = C_BG
 	p.add_child(bg)
 
-	_add_header(p, "SYSTEM KEYBOARD REFERENCE", 30)
+	_add_header(p, "OPTIONAL SYSTEM KEYBOARD REFERENCE", 30)
 
 	# Context labels
 	_add_label(p, "ACTIVE IN DUNGEON", Vector2(700, 34), 11, C_GREEN)
@@ -442,6 +486,8 @@ func _page_keyboard() -> void:
 	# Annotation table
 	_draw_key_table(p, _DUNGEON_KEYS, Vector2(60, 550),  C_GREEN,  "DUNGEON")
 	_draw_key_table(p, _BATTLE_KEYS,  Vector2(680, 550), C_AMBER, "BATTLE")
+	# Mouse / pointer entries that can't light up on the keyboard diagram
+	_draw_mouse_table(p, Vector2(60, 760))
 
 	_nav_divider(p)
 	_add_nav_bar(p)
@@ -510,6 +556,19 @@ func _draw_key_table(parent: Control, keys: Dictionary,
 		y += 19.0
 
 
+func _draw_mouse_table(parent: Control, origin: Vector2) -> void:
+	_add_label(parent, "-- CURSOR (DUNGEON) --", Vector2(origin.x, origin.y + 10), 12, C_GREEN)
+	var entries := [
+		["LMB", "Select available room space / move to a previously built room"],
+		["RMB", "Inspect room details"],
+	]
+	var y := origin.y + 32.0
+	for e in entries:
+		_add_label(parent, "[ %-5s ]" % e[0], Vector2(origin.x, y), 12, C_GREEN)
+		_add_label(parent, e[1], Vector2(origin.x + 110, y), 12, C_WHITE)
+		y += 19.0
+
+
 # ── PAGE 1: DUNGEON REFERENCE ─────────────────────────────────────────────────
 
 func _page_dungeon() -> void:
@@ -519,89 +578,63 @@ func _page_dungeon() -> void:
 	bg.color = C_BG
 	p.add_child(bg)
 
-	_add_header(p, "DUNGEON MAP  //  ROOM SYSTEM REFERENCE", 30)
+	_add_header(p, "ENVIRONMENTAL COMPOSITION SYSTEM REFERENCE", 30)
 
-	# Phase diagram
 	_draw_phase_strip(p, Vector2(60, 70))
-
-	# Room type table
-	_draw_room_table(p, Vector2(60, 280))
-
-	# Resource gloss
-	_draw_resource_gloss(p, Vector2(680, 280))
+	_draw_resource_gloss(p, Vector2(60, 590))
 
 	_nav_divider(p)
 	_add_nav_bar(p)
 
 
 func _draw_phase_strip(parent: Control, origin: Vector2) -> void:
-	_add_label(parent, "DUNGEON PHASES", origin, 13, C_WHITE)
+	_add_label(parent, "COMPOSITION PHASES", origin, 16, C_WHITE)
 	var phases := [
-		["DA CAPO",     C_GREEN,  "Build freely. Place the first Segno room."],
-		["AL SEGNO",    C_AMBER,  "Find the Segno's next resting place."],
-		["DS AL SEGNO", Color(1,0.4,0.4,1), "Tense phase. Only Struggle skills\nare available. No resource restore."],
+		["DA CAPO  /  DA CAPO AL SEGNO", C_GREEN,
+			"Compose freely and familiarize yourself with your environment. Assemble portions of the Segno at three separate chapels, then place the first Segno room. It will spawn once you return to the Atrium."],
+		["DAL SEGNO", C_AMBER,
+			"Continue to explore and grow. Once expanding past the minimum radius (visible by toggling the B channel), you will be able to return to the previous Segno room and move it to the frontier to save your progress."],
+		["DS AL SEGNO", Color(1.0, 0.4, 0.4, 1.0),
+			"Carry the Segno to a new Segno room. All previous encounters are reprimed, and the level cap on your experience is lifted. No AP or BB restore, so you will need to prepare items and stock up on BB."],
 	]
-	var x := origin.x
+	var CARD_W   : float = 1160.0
+	var CARD_H   : float = 150.0
+	var CARD_GAP : float = 10.0
+	var cy : float = origin.y + 24.0
 	for ph in phases:
-		var pname  : String = ph[0]
-		var pcol   : Color  = ph[1]
-		var pdesc  : String = ph[2]
-		# Box
+		var pname : String = ph[0]
+		var pcol  : Color  = ph[1]
+		var pdesc : String = ph[2]
 		var box := ColorRect.new()
-		box.position = Vector2(x, origin.y + 24)
-		box.size     = Vector2(270, 52)
-		box.color    = Color(pcol.r * 0.10, pcol.g * 0.10, pcol.b * 0.10, 1.0)
+		box.position = Vector2(origin.x, cy)
+		box.size     = Vector2(CARD_W, CARD_H)
+		box.color    = Color(pcol.r * 0.07, pcol.g * 0.07, pcol.b * 0.07, 1.0)
 		parent.add_child(box)
-		var edge := ColorRect.new()
-		edge.position = Vector2(x, origin.y + 24)
-		edge.size     = Vector2(270, 2)
-		edge.color    = pcol
-		parent.add_child(edge)
-		_add_label(parent, pname, Vector2(x + 8, origin.y + 28), 12, pcol)
-		_add_label(parent, pdesc, Vector2(x + 8, origin.y + 46), 10, C_DIM)
-		# Arrow
-		if ph != phases.back():
-			_add_label(parent, ">>", Vector2(x + 276, origin.y + 42), 14, C_DIM)
-		x += 296.0
-
-
-func _draw_room_table(parent: Control, origin: Vector2) -> void:
-	_add_label(parent, "ROOM TYPES", origin, 13, C_WHITE)
-	var rooms := [
-		["BATTLE",    C_RED,    "Random enemy encounter. Rewards corpus,\nwill, and run resources on victory."],
-		["SHOP",      C_AMBER,  "Spend accumulated blood-money on\nconsumables, relics, or stat upgrades."],
-		["CHAPEL",    C_GREEN,  "Full-party corpus restore. Scales with\ndistance from last Segno."],
-		["ELITE",     Color(1,0.5,0,1), "Stronger encounter. Drops rare loot\nor bonus stat upgrades."],
-		["TREASURE",  Color(0.8,0.8,0.2,1), "No combat. Party levels up immediately.\nUnlocks new skills."],
-		["BOSS",      C_RED,    "End-of-run encounter. Only spawns\nin AL FINE phase."],
-	]
-	var y := origin.y + 22.0
-	for rm in rooms:
-		var cr := ColorRect.new()
-		cr.position = Vector2(origin.x, y - 2)
-		cr.size     = Vector2(4, 32)
-		cr.color    = rm[1]
-		parent.add_child(cr)
-		_add_label(parent, "%-10s" % rm[0], Vector2(origin.x + 12, y), 12, rm[1])
-		_add_label(parent, rm[2], Vector2(origin.x + 120, y), 11, C_DIM)
-		y += 40.0
+		var bar := ColorRect.new()
+		bar.position = Vector2(origin.x, cy)
+		bar.size     = Vector2(3, CARD_H)
+		bar.color    = pcol
+		parent.add_child(bar)
+		_add_label(parent, pname, Vector2(origin.x + 16, cy + 10), 18, pcol)
+		_add_wrapped(parent, pdesc,
+				Vector2(origin.x + 16, cy + 36), CARD_W - 32, CARD_H - 44, 16, C_WHITE)
+		cy += CARD_H + CARD_GAP
 
 
 func _draw_resource_gloss(parent: Control, origin: Vector2) -> void:
-	_add_label(parent, "RESOURCES", origin, 13, C_WHITE)
+	_add_label(parent, "RESOURCES", origin, 16, C_WHITE)
 	var res := [
-		["CORPUS",   C_RED,   "Party hit points. Lost in battle, restored in chapels and with items."],
-		["ANIMA",     C_AMBER, "Skill fuel. Spent to use skills.\nRestored by rest or relics."],
-		["BEAT BOLTS",     Color(0.6,0.8,1,1), "Kendall's bullet stock. Spent each attack.\nResupplied in shops or via skills."],
-		["REPRISE",  C_GREEN, "Reroll charges for room placement.\nLimited supply per run."],
-		["ROAD TILE",C_DIM,   "Budget for room placement in AL SEGNO.\nSpent one per room placed."],
-		["CUTS",    C_AMBER, "Accumulated from battles. Spent in shops."],
+		["REVISIONS \u21ba", C_WHITE, "Reroll charges for composition selection."],
+		["TIES \u2312",      C_WHITE, "Empty rooms to serve as bridges; can be connected to all adjacent spaces."],
+		["CUTS \u20b5",      C_AMBER, "Currency optionally accumulated from combat encounters. May be spent in shop rooms for a variety of items and resources."],
 	]
-	var y := origin.y + 22.0
+	var ry := origin.y + 42.0
 	for rv in res:
-		_add_label(parent, "%-10s" % rv[0], Vector2(origin.x, y), 12, rv[1])
-		_add_label(parent, rv[2], Vector2(origin.x + 130, y), 10, C_DIM)
-		y += 38.0
+		_add_label(parent, rv[0], Vector2(origin.x, ry), 17, rv[1])
+		_add_wrapped(parent, rv[2],
+				Vector2(origin.x + 160, ry), 900.0, 38.0, 14, C_DIM)
+		ry += 62.0
+
 
 
 # ── PAGE 2: BATTLE REFERENCE ─────────────────────────────────────────────────
@@ -613,41 +646,43 @@ func _page_battle() -> void:
 	bg.color = C_BG
 	p.add_child(bg)
 
-	_add_header(p, "BATTLE SYSTEM  //  RETICLE REFERENCE", 30)
+	_add_header(p, "COMBAT MANUAL  //  AUGMENTED UNREALITY RETICLES", 30)
 
+	# Left column
 	_draw_tempo_diagram(p, Vector2(60, 70))
-	_draw_stat_gloss(p, Vector2(60, 340))
-	_draw_status_gloss(p, Vector2(680, 70))
-	_draw_reticle_legend(p, Vector2(680, 480))
+	_draw_skill_types(p, Vector2(60, 300))
+
+	# Right column
+	_draw_stat_gloss(p, Vector2(700, 70))
+	_draw_reticle_legend(p, Vector2(700, 420))
 
 	_nav_divider(p)
 	_add_nav_bar(p)
 
 
 func _draw_tempo_diagram(parent: Control, origin: Vector2) -> void:
-	_add_label(parent, "TURN ORDER  (TEMPO)", origin, 13, C_WHITE)
+	_add_label(parent, "TURN ORDER  (TEMPO)", origin, 15, C_WHITE)
 	var lines := [
-		"Each actor accumulates TEMPO each round based on their TEMPO stat.",
-		"When an actor has accumulated over 100 TEMPO (TEMPO >= 100), the actor takes their turn and loses 100-TEMPO.",
-		"SLOW halves tempo gain.",
+		"Each combatant accumulates TEMPO equal to their TEMPO stat each tick, until one or more combatants have over 100.",
+		"Combatants take their turns in descending order until none possess 100+ TEMPO, and ticks resume.",
 	]
 	var y := origin.y + 22.0
 	for ln in lines:
-		_add_label(parent, ln, Vector2(origin.x, y), 11, C_DIM)
-		y += 18.0
+		_add_wrapped(parent, ln, Vector2(origin.x, y), 560.0, 62.0, 13, C_WHITE)
+		y += 36.0
 
-	# Fake tempo bar diagram
+	# Tempo bar diagram
 	y += 8.0
-	_add_label(parent, "TEMPO BAR:", Vector2(origin.x, y), 11, C_WHITE)
+	_add_label(parent, "TEMPO SCORES:", Vector2(origin.x, y), 13, C_WHITE)
 	var bar_x := origin.x + 110
-	var bw    := 480.0
+	var bw    := 400.0
 	var actors := [
-		["Kendall",  0.72, C_GREEN],
-		["Hue",      0.55, Color(0.6,0.4,1,1)],
-		["Shadow",   0.88, C_RED],
-		["Shadow x2",0.31, Color(0.8,0.3,0.3,1)],
+		["Ally 1",    0.34, C_GREEN],
+		["Ally 2",    0.72, C_GREEN],
+		["Hostile 1", 0.15, C_RED],
+		["Hostile 2", 0.94, C_RED],
 	]
-	y += 2.0
+	y += 18.0
 	for a in actors:
 		var filled := int(bw * float(a[1]))
 		var barcr := ColorRect.new()
@@ -660,67 +695,78 @@ func _draw_tempo_diagram(parent: Control, origin: Vector2) -> void:
 		fill.size     = Vector2(filled, 14)
 		fill.color    = Color(a[2].r*0.7, a[2].g*0.7, a[2].b*0.7, 1)
 		parent.add_child(fill)
-		_add_label(parent, "%-12s" % a[0], Vector2(origin.x, y), 11, a[2])
-		_add_label(parent, "%d%%" % int(float(a[1])*100), Vector2(bar_x + bw + 6, y), 11, C_DIM)
+		_add_label(parent, "%-8s" % a[0], Vector2(origin.x, y - 1), 11, a[2])
+		_add_label(parent, "%d%%" % int(float(a[1])*100), Vector2(bar_x + bw + 6, y - 1), 14, C_WHITE)
 		y += 20.0
 
 
 func _draw_stat_gloss(parent: Control, origin: Vector2) -> void:
-	_add_label(parent, "COMBAT STATS", origin, 13, C_WHITE)
+	_add_label(parent, "COMBAT STATS", origin, 15, C_WHITE)
 	var stats := [
-		["SHARP",  Color(1,0.4,0.2,1), "Base attack power."],
-		["FLAT",   Color(0.3,0.7,1,1), "Defense. Reduces incoming damage via SHARP^2/(SHARP+FLAT)."],
+		["SHARP",  C_WHITE, "Base combat power."],
+		["FLAT",   C_WHITE, "Resistance. Reduces incoming damage at a rate of \nSHARP^2/(SHARP+FLAT)."],
 		["CORPUS", C_RED,              "Bodily integrity."],
-		["ANIMA",   C_AMBER,            "Spiritual integrity."],
+		["ANIMA",   Color(0.3,0.7,1,1),            "Spiritual integrity. Required for semimaterial entities to use their abilities, else they must fight through inferior or self-destructive means."],
+		["BEAT BOLTS", C_AMBER,       "Ammunition for your anti-immaterial firearm."] 
 	]
-	var y := origin.y + 22.0
+	var y := origin.y + 42.0
 	for sv in stats:
 		var cr := ColorRect.new()
-		cr.position = Vector2(origin.x, y - 1)
+		cr.position = Vector2(origin.x, y + 2)
 		cr.size     = Vector2(4, 18)
 		cr.color    = sv[1]
 		parent.add_child(cr)
-		_add_label(parent, "%-6s" % sv[0], Vector2(origin.x + 10, y), 12, sv[1])
-		_add_label(parent, sv[2], Vector2(origin.x + 80, y), 11, C_DIM)
-		y += 26.0
+		_add_label(parent, "%-11s" % sv[0], Vector2(origin.x + 10, y), 14, sv[1])
+		_add_wrapped(parent, sv[2], Vector2(origin.x + 110, y), 490.0, 58.0, 13, C_DIM)
+		y += 64.0
 
 
-func _draw_status_gloss(parent: Control, origin: Vector2) -> void:
-	_add_label(parent, "STATUS EFFECTS", origin, 13, C_WHITE)
-	var statuses := [
-		["BLEEDING",   C_RED,               "Takes damage each turn (10% max CORPUS)."],
-		["SLOW",       Color(0.5,0.5,1,1),  "TEMPO gain reduced to 40%."],
-		["DODGING",    Color(0.4,1,0.6,1),  "50% chance to evade any incoming attack."],
-		["SHIELD",     Color(0.8,0.8,0.3,1),"Temporary HP buffer absorbs damage first."],
-		["COVERED",    Color(0.6,0.4,1,1),  "Damage redirected to covering ally."],
-		["VICE",  C_AMBER,             "Actor heals 50% of damage dealt."],
-		["MALICE",     Color(1,0.3,0.5,1),  "Actor counterattacks on taking damage."],
-		["MARTYR",     Color(1,0.6,0.2,1),  "Converts damage taken into bonus offense."],
-		["ENCASED",    Color(0.6,0.6,0.7,1),"Reduces incoming damage 40%. Breaks on acting."],
+func _draw_skill_types(parent: Control, origin: Vector2) -> void:
+	_add_label(parent, "SKILL TYPES", origin, 14, C_WHITE)
+	var types := [
+		["ATTACK", C_GREEN,  "Basic attack. Usually costs 2 AP, or 1 BB for firearm users. -100 TEMPO"],
+		["SUPPORT",     C_AMBER,  "Assists one's allies through healing, positive status effects, or stat increases. Usually costs 1 AP -150 TEMPO"],
+		["SPECIAL", C_RED,    "Especially powerful techniques that vary from soul to soul. Usually costs 3 AP. -180 TEMPO"],
 	]
-	var y := origin.y + 22.0
-	for sv in statuses:
-		_add_label(parent, "%-12s" % sv[0], Vector2(origin.x, y), 11, sv[1])
-		_add_label(parent, sv[2], Vector2(origin.x + 140, y), 11, C_DIM)
-		y += 22.0
+	var CARD_W : float = 560.0
+	var CARD_H : float = 78.0
+	var GAP    : float = 10.0
+	var cy : float = origin.y + 22.0
+	for st in types:
+		var sname : String = st[0]
+		var scol  : Color  = st[1]
+		var sdesc : String = st[2]
+		var box := ColorRect.new()
+		box.position = Vector2(origin.x, cy)
+		box.size     = Vector2(CARD_W, CARD_H)
+		box.color    = Color(scol.r * 0.07, scol.g * 0.07, scol.b * 0.07, 1.0)
+		parent.add_child(box)
+		var bar := ColorRect.new()
+		bar.position = Vector2(origin.x, cy)
+		bar.size     = Vector2(3, CARD_H)
+		bar.color    = scol
+		parent.add_child(bar)
+		_add_label(parent, sname, Vector2(origin.x + 14, cy + 8), 12, scol)
+		_add_wrapped(parent, sdesc,
+				Vector2(origin.x + 14, cy + 30), CARD_W - 20, CARD_H - 36, 14, C_WHITE)
+		cy += CARD_H + GAP
 
 
 func _draw_reticle_legend(parent: Control, origin: Vector2) -> void:
-	_add_label(parent, "AUGMENTED UNREALITY RETICLE", origin, 13, C_WHITE)
+	_add_label(parent, "AUGMENTED UNREALITY RETICLE", origin, 16, C_WHITE)
 	var entries := [
-		[C_GREEN, "Skill reticles appear in the left viewport — click to select, click target to confirm."],
-		[C_AMBER, "Enemy reticles track your opponents in the right viewport. Click to target."],
-		[Color(0.6,0.4,1,1), "Ally reticles appear only when a support skill is selected."],
-		[C_DIM,   "Part reticles appear after selecting an enemy — target specific body parts."],
-		[C_WHITE, "Corner brackets converge on spawn. Brighter when selected."],
-		[C_DIM,   "Detail panel shows SHARP / FLAT / active status effects (requires the use of AUGUR)."],
+		[C_WHITE, "Skill reticles appear in the left viewport — click to select, click target to confirm."],
+		[C_RED, "Enemy reticles track your opponents in the right viewport. Click to target."],
+		[C_GREEN, "Ally reticles become targetable when a support skill is selected."],
+		[C_AMBER,   "Part reticles appear after selecting an enemy — target specific body parts."],
+		[C_DIM,   "Detail panel shows stats and active status effects (requires the use of AUGUR)."],
 	]
 	var y := origin.y + 22.0
 	for ev in entries:
 		var cr := ColorRect.new()
-		cr.position = Vector2(origin.x, y + 3)
+		cr.position = Vector2(origin.x, y + 6)
 		cr.size     = Vector2(10, 10)
 		cr.color    = ev[0]
 		parent.add_child(cr)
-		_add_label(parent, ev[1], Vector2(origin.x + 18, y), 11, C_DIM)
-		y += 22.0
+		_add_wrapped(parent, ev[1], Vector2(origin.x + 18, y), 520.0, 46.0, 14, C_DIM)
+		y += 40.0

@@ -12,7 +12,8 @@ const TAB_PARTY     := 0
 const TAB_SKILLS    := 1
 const TAB_INVENTORY := 2
 const TAB_BESTIARY  := 3
-const TAB_OPTIONS   := 4
+const TAB_MANUAL    := 4
+const TAB_OPTIONS   := 5
 
 var _open       := false
 var _active_tab := TAB_PARTY
@@ -107,6 +108,9 @@ func _ready() -> void:
 # -----------------------------------------------------------------------
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("open_menu"):
+		# Only available while inside a dungeon run.
+		if GameController.current_dungeon_run == null:
+			return
 		# Don't intercept during battle — the battle manager handles it there.
 		var in_battle : bool = get_tree().get_first_node_in_group("battle_manager") != null
 		if in_battle:
@@ -261,8 +265,8 @@ func _build_ui() -> void:
 	_tab_bar.add_theme_constant_override("separation", 0)
 	vbox.add_child(_tab_bar)
 
-#	var tab_names := ["PARTY", "SKILLS", "ITEMS", "MOTIFS", "OPTIONS"]
-	var tab_names := ["PARTY", "SKILLS", "ITEMS", "BESTIARY", "OPTIONS"]
+#	var tab_names := ["PARTY", "SKILLS", "ITEMS", "OPTIONS"]
+	var tab_names := ["PARTY", "SKILLS", "ITEMS", "BESTIARY", "MANUAL", "OPTIONS"]
 	for i in tab_names.size():
 		var btn := Button.new()
 		btn.text = tab_names[i]
@@ -320,6 +324,12 @@ func _build_ui() -> void:
 	content.add_child(motif_page)
 	_pages.append(motif_page)"
 
+	# Manual page
+	var manual_page := _build_manual_page()
+	manual_page.set_anchors_preset(Control.PRESET_FULL_RECT)
+	content.add_child(manual_page)
+	_pages.append(manual_page)
+	
 	# Options page
 	var options_page := _build_options_page()
 	options_page.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -2061,6 +2071,18 @@ func _build_options_page() -> Control:
 	return scroll
 
 # -----------------------------------------------------------------------
+# MANUAL PAGE
+# -----------------------------------------------------------------------
+# Clicking this tab hides the party menu and opens the boot_sequence manual
+# overlay. When the manual closes, the party menu is restored.
+# -----------------------------------------------------------------------
+func _build_manual_page() -> Control:
+	var page := Control.new()
+	page.name = "ManualPage"
+	return page
+
+
+# -----------------------------------------------------------------------
 # TAB SWITCHING
 # -----------------------------------------------------------------------
 func _switch_tab(idx: int) -> void:
@@ -2071,6 +2093,9 @@ func _switch_tab(idx: int) -> void:
 		_refresh_inventory()
 	if idx == TAB_BESTIARY:
 		_refresh_bestiary()
+	if idx == TAB_MANUAL:
+		_open_manual_from_party_menu()
+		return  # don't style the tab as active; manual opens as overlay
 	#if idx == TAB_MOTIFS:
 		#_refresh_motif_page()
 	for i in _tab_btns.size():
@@ -2090,6 +2115,36 @@ func _switch_tab(idx: int) -> void:
 # -----------------------------------------------------------------------
 # HELPERS
 # -----------------------------------------------------------------------
+## Open the boot_sequence manual as an overlay.
+## The party menu stays in memory; when the manual closes we restore to
+## the last real tab (defaulting to PARTY).
+func _open_manual_from_party_menu() -> void:
+	var nodes := get_tree().get_nodes_in_group("boot_sequence")
+	if nodes.is_empty():
+		push_warning("PartyMenu: no boot_sequence node found in group 'boot_sequence'")
+		# Fall back to party tab so we don't show an empty page
+		_switch_tab(TAB_PARTY)
+		return
+	var boot = nodes[0]
+	if not boot.has_method("show_manual"):
+		_switch_tab(TAB_PARTY)
+		return
+	# Hide the party menu panel while the manual is open
+	_root_panel.visible = false
+	if _dim_layer: _dim_layer.visible = false
+	if not boot.finished.is_connected(_on_party_manual_closed):
+		boot.finished.connect(_on_party_manual_closed, CONNECT_ONE_SHOT)
+	boot.show_manual()
+
+
+func _on_party_manual_closed() -> void:
+	# Restore party menu, switching back to PARTY tab
+	_root_panel.visible = true
+	if _dim_layer: _dim_layer.visible = true
+	_active_tab = TAB_PARTY
+	_switch_tab(TAB_PARTY)
+
+
 func _padded(child: Control, h: int, v: int) -> MarginContainer:
 	var m := MarginContainer.new()
 	m.add_theme_constant_override("margin_left",   h)

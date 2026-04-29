@@ -75,6 +75,11 @@ func _build_main_menu() -> void:
 		_font, func(): _build_new_game_menu()))
 
 	_col.add_child(_make_btn(
+		"MANUAL",
+		"View the keyboard & combat reference.",
+		_font, func(): _open_manual()))
+
+	_col.add_child(_make_btn(
 		"QUIT GAME",
 		"",
 		_font, func(): emit_signal("quit_game")))
@@ -171,3 +176,20 @@ func _make_btn(label: String, hint: String, font: Font, callback: Callable, disa
 		wrap.add_child(hint_lbl)
 
 	return wrap
+
+
+## Open the boot_sequence manual directly (skipping the POST sequence).
+func _open_manual() -> void:
+	var nodes := get_tree().get_nodes_in_group("boot_sequence")
+	if nodes.is_empty():
+		push_warning("StartScreen: no boot_sequence node found in group 'boot_sequence'")
+		return
+	var boot = nodes[0]
+	if boot.has_method("show_manual"):
+		if not boot.finished.is_connected(_on_manual_closed):
+			boot.finished.connect(_on_manual_closed, CONNECT_ONE_SHOT)
+		boot.show_manual()
+
+
+func _on_manual_closed() -> void:
+	pass  # Manual just hides itself; start screen stays as-is.
