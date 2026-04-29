@@ -61,19 +61,25 @@ func push_chatter(msg: String, speaker_name: String = "") -> void:
 	row.modulate = Color(1, 1, 1, 0)
 	_vbox.add_child(row)
 
-	# Single label — just the message, in the speaker's colour
-	var lbl := Label.new()
+	# RichTextLabel — supports [i]...[/i] and other BBCode in chatter strings.
+	var lbl := RichTextLabel.new()
+	lbl.bbcode_enabled = true
+	lbl.fit_content = true
 	lbl.text = msg
-	lbl.add_theme_font_size_override("font_size", FONT_SIZE_MSG)
-	lbl.add_theme_color_override("font_color", spkr_col)
-	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.add_theme_font_size_override("normal_font_size",  FONT_SIZE_MSG)
+	lbl.add_theme_font_size_override("italic_font_size",  FONT_SIZE_MSG)
+	lbl.add_theme_font_size_override("bold_font_size",    FONT_SIZE_MSG)
+	lbl.add_theme_color_override("default_color", spkr_col)
+	lbl.scroll_active = false
 	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	lbl.set_anchors_preset(Control.PRESET_FULL_RECT)
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if _font:
-		lbl.add_theme_font_override("font", _font)
+		lbl.add_theme_font_override("normal_font", _font)
+		lbl.add_theme_font_override("italic_font", _font)
 	if _shader != null:
 		var mat := ShaderMaterial.new()
 		mat.shader = _shader
@@ -129,10 +135,14 @@ func _resolve_speaker_color(speaker_name: String) -> Color:
 		return C_DEFAULT_SPKR
 	var actors := get_tree().get_nodes_in_group("battle_actor")
 	for a in actors:
-		if (a as BattleActor).display_name == speaker_name:
-			var pm = (a as BattleActor).party_member
-			if pm != null and pm.character != null:
-				var col : Color = pm.character.theme_color
+		var ba := a as BattleActor
+		if ba.display_name == speaker_name or ba.name == speaker_name:
+			# Prefer the party_member's authored theme color (player characters).
+			if ba.party_member != null and ba.party_member.character != null:
+				var col : Color = ba.party_member.character.theme_color
 				if col.r != 1.0 or col.g != 1.0 or col.b != 1.0:
 					return col
+			# Fall back to the actor's own theme_col (set for enemies from CharacterData).
+			if ba.theme_col != Color(0, 0, 0, 0) and ba.theme_col != Color():
+				return ba.theme_col
 	return FALLBACK_COLORS.get(speaker_name, C_DEFAULT_SPKR)

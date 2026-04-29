@@ -87,11 +87,15 @@ func _process(_delta: float) -> void:
 
 # ── Public API ───────────────────────────────────────────────────────────────
 
+var _item_used_this_turn : bool = false
+
+
 func open_for_turn(actor: BattleActor, all_actors: Array, run_state: RunState, removed_channels: int = 0) -> void:
 	_actor            = actor
 	_all_actors       = all_actors
 	_run_state        = run_state
 	_removed_channels = removed_channels
+	_item_used_this_turn = false
 	_reset_selection()
 	_refresh_skills()
 	_refresh_enemies()
@@ -798,7 +802,12 @@ func _refresh_items() -> void:
 		var cd := inst.item_data as ConsumableData
 		var cap : ItemInstance = inst
 		var btn := _btn("%s ×%d" % [cd.item_name, inst.stacks], func(): _on_item_pressed(cap))
+		if _item_used_this_turn:
+			btn.disabled = true
+			btn.tooltip_text = "Already used an item this turn."
 		_item_col.add_child(btn)
+	if _item_used_this_turn:
+		_item_col.add_child(_lbl("1 item per turn.", 10, C_DIM))
 
 
 func _on_item_pressed(inst: ItemInstance) -> void:
@@ -882,12 +891,10 @@ func _do_item_confirm() -> void:
 	if not used:
 		_set_status("Cannot use that item right now.")
 		return
-	var actor := _actor
-	var inst  := _sel_item
-	var pm    := _sel_item_pm
-	_open = false
-	_panel.hide()
-	item_used.emit(actor, inst, pm)
+	_item_used_this_turn = true
+	# Don't close or spend the turn — reset selection and let the player act.
+	_reset_to_initial()
+	_set_status("Item used. Choose your action.")
 
 
 func _reset_selection() -> void:

@@ -33,53 +33,53 @@ func get_dict(sname: String, overrides: Dictionary = {}) -> Dictionary:
 
 func _register_all() -> void:
 	# Kendall
-	_add("Shoot",       "attack",  "Fire your equipped weapon at a single target.",                       "Blasphemous lethality lies in your hands. Take aim and dispel the fantasias that take refuge here.",
+	_add("Shoot",       "attack",  "Fire your equipped weapon at a single target for 100% SHARP.",                       "Blasphemous lethality lies in your hands. Take aim and dispel the fantasias that take refuge here.",
 		false, false, false, false, "PartAnchors/Gun", "Pistol Whip")
-	_add("Pistol Whip", "attack",  "Attack at random for half damage. Has a chance to miss.",              "Short of arms, yet not devoid of alternatives.",
+	_add("Pistol Whip", "attack",  "Attack at random for 50% SHARP. Has a 35% chance to miss.",              "Short of arms, yet not devoid of alternatives.",
 		false, true,  false, false, "PartAnchors/Gun")
 	_add("Unveil", "special", "Reveal weak points at the risk of uncovering memetic hazards.",        "Strip away the pretenses of perception itself to expose your foe's most intimate and fragile disfigurements.\n\nUnderstand that the price of understanding may be more than you can afford.",
 		false, false, false, false, "PartAnchors/Eyes")
-	_add("Augur",       "support", "Grants dodge chance and heightened tempo to all allies. Also reveals enemy specifications.", "Portentious signs only you can see are all around you, and your companions may benefit from your discernment.",
+	_add("Augur",       "support", "Grants 50% dodge chance for 4 turns and + 5 TEMPO to all allies. Also reveals enemy specifications.", "Portentious signs only you can see are all around you, and your companions may benefit from your discernment.",
 		true,  false, false, false, "PartAnchors/Oracle")
-	_add("Evade",       "support", "Increase your tempo and dodge chance for a short time.",               "",
+	_add("Evade",       "support", "Gain a 50% dodge chance and + 10 TEMPO for 2 turns.",               "",
 		true,  false, false, false, "PartAnchors/Oracle")
 
 	# Hue
-	_add("Rebuke",  "attack",  "Attack all enemies, with a chance to slow each one.",                  "Hue stymies the enemy with a chilling mist and admonishment.",
-		true,  false, false, false, "PartAnchors/Rebuke", "Cling", 1)
-	_add("Cling",   "attack",  "Attack at random for half damage. Has a chance to miss. Also has a chance to slow the enemy", " ",
+	_add("Rebuke",  "attack",  "Attack all enemies for 100% SHARP, with a chance to reduce their TEMPO stats to 40%.",                  "Hue stymies the enemy with a chilling mist and admonishment.",
+		true,  false, false, false, "PartAnchors/Rebuke", "Cling", 2)
+	_add("Cling",   "attack",  "Attack at random for 50% SHARP. Has a 35% chance to miss, and a 25% chance to harm Hue. Also has a 75% chance to slow the enemy to 40% TEMPO for one turn.", " ",
 		false, true,  false, false, "PartAnchors/Rebuke")
-	_add("Calcify", "special", "Paralyze the enemy, but reduce all damage to them until their next action.",                                                                    "Hue buries the foe in a glacial tomb, leaving them unable to act but guarded from harm.",
+	_add("Calcify", "special", "Paralyze the enemy for 3-6 turns, but reduce all damage to them by 50% until their next action.",                                                                    "Hue buries the foe in a glacial tomb, leaving them unable to act but guarded from harm.",
 		false, false, false, false, "PartAnchors/Umbrella", "", 3)
-	_add("Shelter", "support", "Grants temporary CORP and increases the target's FLAT.",                                     "Hue shields a companion with a wall of ice.",
-		false, false, true,  false, "PartAnchors/Canopy", "", 2)
-	_add("Embrace", "support", "Redirect reduced damage to Hue.",                                                                    "",
+	_add("Shelter", "support", "Grants 10 temporary CORP and increases the target's FLAT by 4 while the temporary CORP remains.",                                     "Hue shields a companion with a wall of ice.",
+		false, false, true,  false, "PartAnchors/Canopy", "", 1)
+	_add("Embrace", "support", "Redirect attacks against the target to Hue with 50% reduced damage, for 2 turns.",                                                                    "",
 		false, false, true,  false, "PartAnchors/Canopy")
 
 	# Indra
-	_add("Crucify",   "attack",  "Has a chance to bleed the enemy for two turns, 10% of their MAX CORP.", "The zealot lunges forth to assail the enemy with hammer and nail, perforating their flesh and spilling their ichor.",
-		false, false, false, false, "PartAnchors/Hammer", "Clobber", 1)
-	_add("Clobber",   "attack",  "Attack at random for half damage. Has a chance to miss.",              " ",
+	_add("Crucify",   "attack",  "Attack the enemy for 100% SHARP. Has a 50% chance to bleed the enemy for 10% of their MAX CORP for 2 turns.", "The zealot lunges forth to assail the enemy with hammer and nail, perforating their flesh and spilling their ichor.",
+		false, false, false, false, "PartAnchors/Hammer", "Clobber", 2)
+	_add("Clobber",   "attack",  "Attack at random for 50% SHARP. Has a 35% chance to miss, and a 25% chance to harm Indra.",              " ",
 		false, true,  false, false, "PartAnchors/Hammer")
-	_add("Fulminate", "special", "Deals slightly increased damage to all enemies.",                      "The mountains quake before him, and the hills melt away.",
+	_add("Fulminate", "special", "Attack all enemies for 170% SHARP.",                      "The mountains quake before him, and the hills melt away.",
 		true,  false, false, false, "PartAnchors/Storm", "", 3)
-	_add("Galvanize", "support", "Restores AP to both companions and raises all allies' attack. Also grants you an additional BB.", "Indra fills his comrades with the electric pride of leading the charge, restoring their will to fight and invigorating their attacks.",
-		true,  false, false, false, "PartAnchors/Nails", "", 2)
-	_add("Martyr",    "support", "Bleeds Indra and stores all damage done to him to add to his next attack.",                                                                   "",
+	_add("Galvanize", "support", "Grants + 2 SHARP to all allies and 2 AP to both companions. Also grants you an additional BB.", "Indra fills his comrades with the electric pride of leading the charge, restoring their will to fight and invigorating their attacks.",
+		true,  false, false, false, "PartAnchors/Nails", "", 1)
+	_add("Martyr",    "support", "Bleeds Indra for 10% MAX CORP and stores all damage done to him to add to his next attack for 3 turns.",                                                                   "",
 		true,  false, false, false, "PartAnchors/Nails")
 
 	# Vritra
-	_add("Vice",      "support", "Grants an ally lifesteal.",                                                                   "Vritra envenoms their ally with worldly delights.",
-		false, false, true,  false, "PartAnchors/Snakes", "", 2)
-	_add("Malice",    "support", "Chosen ally enters a counter stance, restoring AP to Vritra when they retaliate.", "The serpent invites its fellows to writhe together in vitriol.",
-		false, true,  true, false, "PartAnchors/Snakes", "", 2)
-	_add("Devour",    "special", "Siphons CORP from the target an increases Vritra's MAX CORP by 1 if the attack kills their target.", "The serpent unfetters its yawning maw, and swallows their banquet whole. Their corpse grows stronger if their prey is left without a trace.",
+	_add("Vice",      "support", "Grants an ally 50% lifesteal.",                                                                   "Vritra envenoms their ally with worldly delights.",
+		false, false, true,  false, "PartAnchors/Snakes", "Malice", 1)
+	_add("Malice",    "support", "Chosen ally enters a counter stance, restoring 50% of their attack's damage as AP to Vritra when they retaliate.", "The serpent invites its fellows to writhe together in vitriol.",
+		false, true,  true, false, "PartAnchors/Snakes",)
+	_add("Devour",    "special", "Attack for 180% SHARP. Siphons CORP from the target and increases Vritra's MAX CORP by 1 if the attack kills their target.", "The serpent unfetters its yawning maw, and swallows their banquet whole. Their proliferant corpse grows stronger if their prey is left without a trace.",
 		false, false, false, false, "PartAnchors/Stomach", "", 3)
-	_add("Wither",    "attack",  "Has a chance to lower the target's SHARP.",                  "Vritra inflicts the enemy with unbearable famine, lessening their strength and siphoning their vitality.",
-		false, false, false, false, "PartAnchors/Mouth", "Waste", 1)
+	_add("Wither",    "attack",  "Attack for 100% SHARP. Has a 60% chance to lower the target's SHARP by 2.",                  "Vritra berates the enemy and inflicts them with unbearable famine, lessening their strength and siphoning their vitality.",
+		false, false, false, false, "PartAnchors/Mouth", "Waste", 2)
 	_add("Autophagy",     "attack",  " ",                                                                   "",
 		false,  true, false, false, "PartAnchors/Mouth")
-	_add("Unwilling", "special", " ",                                                                   "",
+	_add("Anthropophagy", "special", " ",                                                                   "",
 		false, true, true,  false, "PartAnchors/Stomach")
 
 

@@ -206,6 +206,15 @@ func enter_current_room():
 func on_room_completed():
 	print("[DC] on_room_completed at ", dungeon.current_pos, " grid size=", dungeon.grid.size())
 	var room : RoomInstance = dungeon.grid[dungeon.current_pos]
+
+	# Record enemy names on first clear of a battle room, before marking cleared.
+	if not room.cleared and room.room_data != null and \
+			room.room_data.room_type in [RoomData.RoomType.BATTLE, RoomData.RoomType.ELITE] and \
+			room.room_data.encounter != null and room.defeated_enemy_names.is_empty():
+		for char_data in room.room_data.encounter.enemies:
+			if char_data != null and char_data.display_name != "":
+				room.defeated_enemy_names.append(char_data.display_name)
+
 	room.cleared = true
 
 	if room.room_data != null and room.room_data.room_type == RoomData.RoomType.RECRUIT:
@@ -396,6 +405,46 @@ func get_room_choices(pos: Vector2i) -> Array:
 
 func cancel_build():
 	pass
+
+
+## BFS over explicit_connections. Returns Array[Vector2i] from `from_pos` to
+## `to_pos` (inclusive) following placed, connected rooms, or [] if unreachable.
+func find_path(from_pos: Vector2i, to_pos: Vector2i) -> Array:
+	if from_pos == to_pos:
+		return [from_pos]
+	var prev  : Dictionary = {from_pos: from_pos}
+	var queue : Array      = [from_pos]
+	while not queue.is_empty():
+		var cur : Vector2i = queue.pop_front()
+		var room : RoomInstance = dungeon.grid.get(cur)
+		if room == null:
+			continue
+		for nb in room.explicit_connections:
+			if prev.has(nb) or not dungeon.grid.has(nb):
+				continue
+			prev[nb] = cur
+			if nb == to_pos:
+				var path : Array = []
+				var step : Vector2i = to_pos
+				while step != from_pos:
+					path.push_front(step)
+					step = prev[step]
+				path.push_front(from_pos)
+				return path
+			queue.append(nb)
+	return []
+
+
+## True when the current phase is an al Segno transit (free navigation is locked).
+func is_transit_phase() -> bool:
+	if dungeon == null:
+		return false
+	match dungeon.phase:
+		DungeonRunState.Phase.DC_AL_SEGNO, \
+		DungeonRunState.Phase.DS_AL_SEGNO, \
+		DungeonRunState.Phase.AL_FINE:
+			return true
+	return false
 
 
 func build_room(pos: Vector2i, room_data: RoomData):
@@ -695,6 +744,12 @@ func _do_place_segno() -> void:
 	dungeon.segno_level_ceiling = min(locked_level + bonus, LevelTable.MAX_LEVEL)
 	dungeon.segno_transit_count += 1
 	_spawn_suggested_elite()
+	# Full restore on Segno placement: CORP, AP, and BB.
+	for pm in run.party_members:
+		if pm.current_hp > 0:
+			pm.set_hp(pm.character.base_max_hp + pm.bonus_max_hp)
+		pm.will = pm.max_will
+	run.ammo = run.gun_clip  # fully reload the gun (excess pool is already available)
 	_show_segno_event(false, replacing)
 
 

@@ -12,6 +12,8 @@ var _pan_press_pos : Vector2 = Vector2.ZERO
 const PAN_DRAG_THRESHOLD := 6.0
 var _room_mesh_hovered := false  # true whenever the cursor is over any room mesh
 
+var _hop_path : Array = []  # pending hop positions; non-empty = hop in progress
+
 # ── Player position marker ─────────────────────────────────────────────────────
 var _player_marker     : MeshInstance3D = null
 var _marker_tween      : Tween          = null
@@ -234,6 +236,32 @@ func _try_move_player(dir: Vector2i) -> void:
 	controller.move_to_room(target)
 
 
+## Walk the player along a pre-computed path one room at a time, waiting for
+## redraw_map() to finish animating before each hop.
+## The first element of `path` is the player's current position; it is skipped.
+func _hop_along_path(path: Array) -> void:
+	_hop_path = path.duplicate()
+	if _hop_path.size() <= 1:
+		_hop_path.clear()
+		return
+	_hop_path.pop_front()  # discard current position
+	_advance_hop()
+
+
+func _advance_hop() -> void:
+	if _hop_path.is_empty() or controller == null or dungeon == null:
+		_hop_path.clear()
+		return
+	var next_pos : Vector2i = _hop_path.pop_front()
+	_pending_marker_target = next_pos
+	controller.move_to_room(next_pos)
+	# redraw_map() is called inside move_to_room -> enter_current_room.
+	# We wait one animation frame (MARKER_TRAVEL_T) before advancing further.
+	if not _hop_path.is_empty():
+		await get_tree().create_timer(MARKER_TRAVEL_T + 0.05).timeout
+		_advance_hop()
+
+
 ## Called by DungeonRoom3D on mouse_entered/mouse_exited to track hover state.
 ## Pan is blocked whenever the cursor is over any room mesh.
 func notify_room_hovered(hovered: bool) -> void:
@@ -387,7 +415,8 @@ func redraw_map():
 		map_root.add_child(node)
 
 	_draw_corridors()
-	draw_available_positions()
+	if _hop_path.is_empty():
+		draw_available_positions()
 	# Capture the pending target before _spawn_player_marker clears state,
 	# then animate the marker from the old room to the new one.
 	var _animate_to := _pending_marker_target
@@ -1388,6 +1417,34 @@ func _build_detail_card(data: RoomData, origin: Vector2) -> Control:
 	div2.custom_minimum_size = Vector2(0, 1)
 	vbox.add_child(div2)
 
+	# Enemies — shown for battle/elite rooms whose encounter enemies the player
+	# has already faced (keyed in RunState.defeated_enemies by display_name).
+	var is_battle_room : bool = data.room_type == RoomData.RoomType.BATTLE \
+		or data.room_type == RoomData.RoomType.ELITE
+	if is_battle_room and data.encounter != null:
+		var run : RunState = GameController.current_run
+		var known_names : Array = []
+		for char_data in data.encounter.enemies:
+			if char_data != null and char_data.display_name != "" \
+					and run != null and run.defeated_enemies.has(char_data.display_name):
+				known_names.append(char_data.display_name)
+		if not known_names.is_empty():
+			var enemy_hdr := Label.new()
+			enemy_hdr.text = "ENEMIES"
+			enemy_hdr.add_theme_font_size_override("font_size", 10)
+			enemy_hdr.add_theme_color_override("font_color", C_ACCENT)
+			vbox.add_child(enemy_hdr)
+			var enemy_lbl := Label.new()
+			enemy_lbl.text = ", ".join(known_names)
+			enemy_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			enemy_lbl.add_theme_font_size_override("font_size", 11)
+			enemy_lbl.add_theme_color_override("font_color", C_TEXT)
+			vbox.add_child(enemy_lbl)
+			var enemy_div := ColorRect.new()
+			enemy_div.color = C_BORDER
+			enemy_div.custom_minimum_size = Vector2(0, 1)
+			vbox.add_child(enemy_div)
+
 	# Confirm / Cancel row
 	var btn_row := HBoxContainer.new()
 	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -1679,6 +1736,24 @@ func show_room_info(grid_pos: Vector2i, instance: RoomInstance, screen_pos: Vect
 		desc_lbl.add_theme_font_size_override("font_size", 11)
 		desc_lbl.add_theme_color_override("font_color", C_DIM)
 		vbox.add_child(desc_lbl)
+
+	# Enemies (battle rooms cleared at least once)
+	if not instance.defeated_enemy_names.is_empty():
+		var enemy_div := ColorRect.new()
+		enemy_div.color = C_BORDER
+		enemy_div.custom_minimum_size = Vector2(0, 1)
+		vbox.add_child(enemy_div)
+		var enemy_hdr := Label.new()
+		enemy_hdr.text = "Enemies"
+		enemy_hdr.add_theme_font_size_override("font_size", 10)
+		enemy_hdr.add_theme_color_override("font_color", C_ACCENT)
+		vbox.add_child(enemy_hdr)
+		var enemy_lbl := Label.new()
+		enemy_lbl.text = ", ".join(instance.defeated_enemy_names)
+		enemy_lbl.add_theme_font_size_override("font_size", 11)
+		enemy_lbl.add_theme_color_override("font_color", C_TEXT)
+		enemy_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		vbox.add_child(enemy_lbl)
 
 	# Position: clamp to viewport
 	var vp := get_viewport().get_visible_rect().size

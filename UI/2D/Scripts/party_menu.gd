@@ -11,7 +11,7 @@ signal menu_closed
 const TAB_PARTY     := 0
 const TAB_SKILLS    := 1
 const TAB_INVENTORY := 2
-const TAB_MOTIFS    := 3
+const TAB_BESTIARY  := 3
 const TAB_OPTIONS   := 4
 
 var _open       := false
@@ -262,7 +262,7 @@ func _build_ui() -> void:
 	vbox.add_child(_tab_bar)
 
 #	var tab_names := ["PARTY", "SKILLS", "ITEMS", "MOTIFS", "OPTIONS"]
-	var tab_names := ["PARTY", "SKILLS", "ITEMS", "OPTIONS"]
+	var tab_names := ["PARTY", "SKILLS", "ITEMS", "BESTIARY", "OPTIONS"]
 	for i in tab_names.size():
 		var btn := Button.new()
 		btn.text = tab_names[i]
@@ -307,6 +307,12 @@ func _build_ui() -> void:
 	inventory_page.set_anchors_preset(Control.PRESET_FULL_RECT)
 	content.add_child(inventory_page)
 	_pages.append(inventory_page)
+
+	# Bestiary page
+	var bestiary_page := _build_bestiary_page()
+	bestiary_page.set_anchors_preset(Control.PRESET_FULL_RECT)
+	content.add_child(bestiary_page)
+	_pages.append(bestiary_page)
 
 	# Motif Tree page
 	"var motif_page := _build_motif_page()
@@ -617,8 +623,8 @@ func _build_skills_page() -> Control:
 	
 	# Summary lives below the meta row so it can wrap properly.
 	_skill_detail_summary = Label.new()
-	_skill_detail_summary.add_theme_font_size_override("font_size", 12)
-	_skill_detail_summary.add_theme_color_override("font_color", C_DIM)
+	_skill_detail_summary.add_theme_font_size_override("font_size", 13)
+	_skill_detail_summary.add_theme_color_override("font_color", C_TEXT)
 	_skill_detail_summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_skill_detail_summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	detail.add_child(_skill_detail_summary)
@@ -632,8 +638,8 @@ func _build_skills_page() -> Control:
 
 	# Description
 	_skill_detail_desc = Label.new()
-	_skill_detail_desc.add_theme_font_size_override("font_size", 13)
-	_skill_detail_desc.add_theme_color_override("font_color", C_TEXT)
+	_skill_detail_desc.add_theme_font_size_override("font_size", 11)
+	_skill_detail_desc.add_theme_color_override("font_color", C_DIM)
 	_skill_detail_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_skill_detail_desc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_skill_detail_desc.custom_minimum_size   = Vector2(0, 0)
@@ -661,23 +667,23 @@ func _populate_skill_list() -> void:
 			{"name": "Unveil", "type": "SPECIAL", "cost": "Unknown"},
 		]},
 		{"character": "Hue", "skills": [
-			{"name": "Rebuke",  "type": "ATTACK (AoE)",  "cost": "1 AP"},
+			{"name": "Rebuke",  "type": "ATTACK (AoE)",  "cost": "2 AP"},
 			{"name": "Cling",   "type": "ATTACK",  "cost": "Unwilling"},
-			{"name": "Shelter", "type": "SUPPORT", "cost": "2 AP"},
+			{"name": "Shelter", "type": "SUPPORT", "cost": "1 AP"},
 			{"name": "Embrace", "type": "SUPPORT", "cost": "Unwilling"},
 			{"name": "Calcify", "type": "SPECIAL", "cost": "3 AP"},
 		]},
 		{"character": "Indra", "skills": [
-			{"name": "Crucify",   "type": "ATTACK",  "cost": "1 AP"},
+			{"name": "Crucify",   "type": "ATTACK",  "cost": "2 AP"},
 			{"name": "Clobber",   "type": "ATTACK",  "cost": "Unwilling"},
-			{"name": "Galvanize", "type": "SUPPORT", "cost": "2 AP"},
+			{"name": "Galvanize", "type": "SUPPORT", "cost": "1 AP"},
 			{"name": "Martyr",    "type": "SUPPORT", "cost": "Unwilling"},
 			{"name": "Fulminate", "type": "SPECIAL (AoE)", "cost": "3 AP"},
 		]},
 		{"character": "Vritra", "skills": [
-			{"name": "Wither",      "type": "ATTACK", "cost": "1 AP"},
+			{"name": "Wither",      "type": "ATTACK", "cost": "2 AP"},
 			{"name": "Waste",       "type": "ATTACK", "cost": "Unwilling"},
-			{"name": "Vice",        "type": "SUPPORT",  "cost": "2 AP"},
+			{"name": "Vice",        "type": "SUPPORT",  "cost": "1 AP"},
 			{"name": "Malice", "type": "SUPPORT",  "cost": "Unwilling"},
 			{"name": "Devour",      "type": "SPECIAL", "cost": "3 AP"},
 		]},
@@ -1116,6 +1122,280 @@ func _refresh_motif_page() -> void:
 		_motif_points_lbl.text = "%d Motifs" % MetaProgress.motif_points
 	for id in _motif_node_btns:
 		_motif_style_btn(_motif_node_btns[id], id)
+
+
+# -----------------------------------------------------------------------
+# BESTIARY PAGE
+# -----------------------------------------------------------------------
+# Layout: left = scrollable enemy list  |  right = detail panel
+# -----------------------------------------------------------------------
+var _bestiary_list_vbox   : VBoxContainer
+var _bestiary_detail_vbox : VBoxContainer
+var _bestiary_selected    : CharacterData = null
+
+func _build_bestiary_page() -> Control:
+	var page := HBoxContainer.new()
+	page.name = "BestiaryPage"
+	page.add_theme_constant_override("separation", 0)
+
+	# --- Left: scrollable enemy list ---
+	var left := ScrollContainer.new()
+	left.custom_minimum_size = Vector2(240, 0)
+	left.size_flags_horizontal = Control.SIZE_FILL
+	left.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+	left.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	page.add_child(left)
+
+	_bestiary_list_vbox = VBoxContainer.new()
+	_bestiary_list_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_bestiary_list_vbox.add_theme_constant_override("separation", 0)
+	left.add_child(_bestiary_list_vbox)
+
+	# Vertical divider
+	var vdiv := ColorRect.new()
+	vdiv.color = C_BORDER
+	vdiv.custom_minimum_size = Vector2(2, 0)
+	vdiv.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	page.add_child(vdiv)
+
+	# --- Right: scrollable detail panel ---
+	const RIGHT_W : int = MENU_W - 240 - 2
+	var right_scroll := ScrollContainer.new()
+	right_scroll.custom_minimum_size   = Vector2(RIGHT_W, 0)
+	right_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right_scroll.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+	right_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	page.add_child(right_scroll)
+
+	var right_margin := MarginContainer.new()
+	right_margin.custom_minimum_size = Vector2(RIGHT_W, 0)
+	right_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right_margin.add_theme_constant_override("margin_left",   24)
+	right_margin.add_theme_constant_override("margin_top",    24)
+	right_margin.add_theme_constant_override("margin_right",  84)
+	right_margin.add_theme_constant_override("margin_bottom", 24)
+	right_scroll.add_child(right_margin)
+
+	_bestiary_detail_vbox = VBoxContainer.new()
+	_bestiary_detail_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_bestiary_detail_vbox.add_theme_constant_override("separation", 10)
+	right_margin.add_child(_bestiary_detail_vbox)
+
+	# Placeholder
+	var placeholder := Label.new()
+	placeholder.name = "placeholder"
+	placeholder.text = "Select an enemy to view its details."
+	placeholder.add_theme_font_size_override("font_size", 13)
+	placeholder.add_theme_color_override("font_color", C_DIM)
+	placeholder.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_bestiary_detail_vbox.add_child(placeholder)
+
+	return page
+
+
+func _refresh_bestiary() -> void:
+	if _bestiary_list_vbox == null:
+		return
+	for c in _bestiary_list_vbox.get_children():
+		c.queue_free()
+
+	var rs : RunState = GameController.current_run
+	if rs == null or rs.defeated_enemies.is_empty():
+		var empty := Label.new()
+		empty.text = "No enemies encountered yet."
+		empty.add_theme_font_size_override("font_size", 13)
+		empty.add_theme_color_override("font_color", C_DIM)
+		empty.custom_minimum_size = Vector2(0, 48)
+		empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		empty.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_bestiary_list_vbox.add_child(empty)
+		return
+
+	var hdr := Label.new()
+	hdr.text = "ENCOUNTERED"
+	hdr.add_theme_font_size_override("font_size", 10)
+	hdr.add_theme_color_override("font_color", C_DIM)
+	hdr.custom_minimum_size = Vector2(0, 24)
+	hdr.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	var hdr_pad := MarginContainer.new()
+	hdr_pad.add_theme_constant_override("margin_left", 16)
+	hdr_pad.add_child(hdr)
+	_bestiary_list_vbox.add_child(hdr_pad)
+
+	var hdr_div := ColorRect.new()
+	hdr_div.color = C_ACCENT
+	hdr_div.custom_minimum_size = Vector2(0, 1)
+	_bestiary_list_vbox.add_child(hdr_div)
+
+	for enemy_name in rs.defeated_enemies:
+		var cd : CharacterData = rs.defeated_enemies[enemy_name]
+		var btn := Button.new()
+		btn.text = cd.display_name
+		btn.custom_minimum_size = Vector2(0, 36)
+		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		btn.add_theme_font_size_override("font_size", 13)
+		btn.add_theme_color_override("font_color", C_TEXT)
+		btn.add_theme_color_override("font_hover_color", C_TEXT)
+		btn.add_theme_color_override("font_pressed_color", C_TEXT)
+		btn.add_theme_color_override("font_focus_color", C_TEXT)
+		var flat := StyleBoxFlat.new()
+		flat.bg_color = Color(0, 0, 0, 0)
+		flat.set_content_margin_all(0)
+		var flat_hover := StyleBoxFlat.new()
+		flat_hover.bg_color = Color(0.72, 0.18, 0.18, 0.18)
+		flat_hover.set_content_margin_all(0)
+		btn.add_theme_stylebox_override("normal",  flat)
+		btn.add_theme_stylebox_override("focus",   flat)
+		btn.add_theme_stylebox_override("pressed", flat_hover)
+		btn.add_theme_stylebox_override("hover",   flat_hover)
+		var captured_cd := cd
+		btn.pressed.connect(func(): _show_bestiary_detail(captured_cd))
+		var btn_pad := MarginContainer.new()
+		btn_pad.add_theme_constant_override("margin_left", 16)
+		btn_pad.add_theme_constant_override("margin_right", 8)
+		btn_pad.add_child(btn)
+		_bestiary_list_vbox.add_child(btn_pad)
+
+		var div := ColorRect.new()
+		div.color = Color(C_BORDER.r, C_BORDER.g, C_BORDER.b, 0.4)
+		div.custom_minimum_size = Vector2(0, 1)
+		_bestiary_list_vbox.add_child(div)
+
+
+## Rebuild the right-hand detail panel for the selected enemy.
+func _show_bestiary_detail(cd: CharacterData) -> void:
+	_bestiary_selected = cd
+	if _bestiary_detail_vbox == null:
+		return
+	for c in _bestiary_detail_vbox.get_children():
+		c.queue_free()
+
+	# Name
+	var name_lbl := Label.new()
+	name_lbl.text = cd.display_name.to_upper()
+	name_lbl.add_theme_font_size_override("font_size", 20)
+	name_lbl.add_theme_color_override("font_color", C_TEXT)
+	_bestiary_detail_vbox.add_child(name_lbl)
+
+	# Description
+	if cd.description != "":
+		var desc_lbl := Label.new()
+		desc_lbl.text = cd.description
+		desc_lbl.add_theme_font_size_override("font_size", 12)
+		desc_lbl.add_theme_color_override("font_color", C_TEXT)
+		desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		desc_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_bestiary_detail_vbox.add_child(desc_lbl)
+
+	var stat_div := ColorRect.new()
+	stat_div.color = C_ACCENT
+	stat_div.custom_minimum_size = Vector2(0, 1)
+	_bestiary_detail_vbox.add_child(stat_div)
+
+	# Stats row
+	var stats_hbox := HBoxContainer.new()
+	stats_hbox.add_theme_constant_override("separation", 24)
+	_bestiary_detail_vbox.add_child(stats_hbox)
+
+	var stat_entries := [
+		["CORP",  str(cd.base_max_hp)],
+		["SHARP", str(cd.base_attack)],
+		["FLAT",  str(cd.base_flat_defense)],
+		["TEMPO", str(cd.tempo)],
+	]
+	if cd.base_max_will > 0:
+		stat_entries.append(["AP", str(cd.base_max_will)])
+
+	for entry in stat_entries:
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 2)
+		var key_lbl := Label.new()
+		key_lbl.text = entry[0]
+		key_lbl.add_theme_font_size_override("font_size", 9)
+		key_lbl.add_theme_color_override("font_color", C_DIM)
+		col.add_child(key_lbl)
+		var val_lbl := Label.new()
+		val_lbl.text = entry[1]
+		val_lbl.add_theme_font_size_override("font_size", 14)
+		val_lbl.add_theme_color_override("font_color", C_TEXT)
+		col.add_child(val_lbl)
+		stats_hbox.add_child(col)
+
+	# Skills
+	if not cd.skills.is_empty():
+		var skills_div := ColorRect.new()
+		skills_div.color = C_BORDER
+		skills_div.custom_minimum_size = Vector2(0, 1)
+		_bestiary_detail_vbox.add_child(skills_div)
+
+		var skills_hdr := Label.new()
+		skills_hdr.text = "SKILLS"
+		skills_hdr.add_theme_font_size_override("font_size", 10)
+		skills_hdr.add_theme_color_override("font_color", C_DIM)
+		_bestiary_detail_vbox.add_child(skills_hdr)
+
+		for skill in cd.skills:
+			var sd := skill as SkillData
+			if sd == null:
+				continue
+			var skill_row := VBoxContainer.new()
+			skill_row.add_theme_constant_override("separation", 6)
+			_bestiary_detail_vbox.add_child(skill_row)
+
+			var skill_name_lbl := Label.new()
+			skill_name_lbl.text = sd.skill_name
+			skill_name_lbl.add_theme_font_size_override("font_size", 13)
+			skill_name_lbl.add_theme_color_override("font_color", C_TEXT)
+			skill_row.add_child(skill_name_lbl)
+
+			var skill_meta := HBoxContainer.new()
+			skill_meta.add_theme_constant_override("separation", 10)
+			skill_row.add_child(skill_meta)
+
+			var type_lbl := Label.new()
+			type_lbl.text = sd.command_key.to_upper()
+			if sd.is_aoe: type_lbl.text += " (AoE)"
+			type_lbl.add_theme_font_size_override("font_size", 10)
+			type_lbl.add_theme_color_override("font_color", C_ACCENT)
+			skill_meta.add_child(type_lbl)
+
+			if sd.will_cost > 0:
+				var cost_lbl := Label.new()
+				cost_lbl.text = "%d AP" % sd.will_cost
+				cost_lbl.add_theme_font_size_override("font_size", 10)
+				cost_lbl.add_theme_color_override("font_color", C_DIM)
+				skill_meta.add_child(cost_lbl)
+
+			if sd.summary != "":
+				var summ := RichTextLabel.new()
+				summ.bbcode_enabled = true
+				summ.fit_content = true
+				summ.scroll_active = false
+				summ.text = sd.summary
+				summ.add_theme_font_size_override("normal_font_size", 13)
+				summ.add_theme_font_size_override("italic_font_size", 13)
+				summ.add_theme_color_override("default_color", C_TEXT)
+				summ.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				summ.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				skill_row.add_child(summ)
+
+			if sd.description != "":
+				var desc := RichTextLabel.new()
+				desc.bbcode_enabled = true
+				desc.fit_content = true
+				desc.scroll_active = false
+				desc.text = sd.description
+				desc.add_theme_font_size_override("normal_font_size", 11)
+				desc.add_theme_font_size_override("italic_font_size", 11)
+				desc.add_theme_color_override("default_color", C_DIM)
+				desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				desc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				skill_row.add_child(desc)
+
+			var skill_sep := ColorRect.new()
+			skill_sep.color = Color(C_BORDER.r, C_BORDER.g, C_BORDER.b, 0.35)
+			skill_sep.custom_minimum_size = Vector2(0, 1)
+			_bestiary_detail_vbox.add_child(skill_sep)
 
 
 # -----------------------------------------------------------------------
@@ -1789,8 +2069,10 @@ func _switch_tab(idx: int) -> void:
 		_pages[i].visible = (i == idx)
 	if idx == TAB_INVENTORY:
 		_refresh_inventory()
-	if idx == TAB_MOTIFS:
-		_refresh_motif_page()
+	if idx == TAB_BESTIARY:
+		_refresh_bestiary()
+	#if idx == TAB_MOTIFS:
+		#_refresh_motif_page()
 	for i in _tab_btns.size():
 		var btn : Button = _tab_btns[i]
 		var active := (i == idx)

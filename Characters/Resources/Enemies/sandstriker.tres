@@ -4,7 +4,9 @@
 [ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://Systems/AnatomySys/Scripts/BodyPartData.gd" id="2_aosx2"]
 [ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://Systems/PartySys/Scripts/characterdata.gd" id="3_rfy4i"]
 [ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="4_iwg7w"]
-[ext_resource type="Script" uid="uid://4yawyrbpe6tk" path="res://Systems/SkillSys/Scripts/skill_effect.gd" id="5_g61yg"]
+[ext_resource type="Resource" uid="uid://6e84b6gn0mr5" path="res://Systems/SkillSys/Resources/Skills/fulgurite.tres" id="5_rfy4i"]
+[ext_resource type="Resource" uid="uid://bsl5l5jj6ntln" path="res://Systems/SkillSys/Resources/Skills/thunderstroke.tres" id="6_iwg7w"]
+[ext_resource type="Resource" uid="uid://bmrp6n8ri6w2l" path="res://Systems/SkillSys/Resources/Skills/glass_blow.tres" id="7_g61yg"]
 
 [sub_resource type="Resource" id="Resource_wjeql"]
 script = ExtResource("2_aosx2")
@@ -35,73 +37,11 @@ damage_multiplier = 1.6
 anchor_path = NodePath("PartAnchors/Core")
 metadata/_custom_type_script = "uid://bewuwngi8x4ad"
 
-[sub_resource type="Resource" id="Resource_d6vbc"]
-script = ExtResource("5_g61yg")
-damage_mult = 0.5
-damage_bonus = 1
-metadata/_custom_type_script = "uid://4yawyrbpe6tk"
-
-[sub_resource type="Resource" id="Resource_0b30r"]
-script = ExtResource("5_g61yg")
-effect_type = 8
-status_chance = 0.4
-stat_delta = 2
-stat_duration = 3
-metadata/_custom_type_script = "uid://4yawyrbpe6tk"
-
-[sub_resource type="Resource" id="Resource_a1v5w"]
-script = ExtResource("4_iwg7w")
-skill_name = "Fulgurite"
-command_key = "special"
-will_cost = 2
-is_aoe = true
-effects = Array[ExtResource("5_g61yg")]([SubResource("Resource_d6vbc"), SubResource("Resource_0b30r")])
-metadata/_custom_type_script = "uid://badrkgc20tgv2"
-
-[sub_resource type="Resource" id="Resource_aw8mu"]
-script = ExtResource("5_g61yg")
-damage_mult = 0.6
-metadata/_custom_type_script = "uid://4yawyrbpe6tk"
-
-[sub_resource type="Resource" id="Resource_f5eda"]
-script = ExtResource("5_g61yg")
-damage_mult = 0.6
-damage_bonus = 2
-status_chance = 0.5
-metadata/_custom_type_script = "uid://4yawyrbpe6tk"
-
-[sub_resource type="Resource" id="Resource_3i1v2"]
-script = ExtResource("5_g61yg")
-damage_mult = 0.6
-status_chance = 0.2
-metadata/_custom_type_script = "uid://4yawyrbpe6tk"
-
-[sub_resource type="Resource" id="Resource_5qr5v"]
-script = ExtResource("4_iwg7w")
-skill_name = "Thunderstroke"
-command_key = "attack"
-will_cost = 1
-effects = Array[ExtResource("5_g61yg")]([SubResource("Resource_aw8mu"), SubResource("Resource_f5eda"), SubResource("Resource_3i1v2")])
-metadata/_custom_type_script = "uid://badrkgc20tgv2"
-
-[sub_resource type="Resource" id="Resource_g4775"]
-script = ExtResource("5_g61yg")
-damage_mult = 0.4
-status_chance = 0.6
-metadata/_custom_type_script = "uid://4yawyrbpe6tk"
-
-[sub_resource type="Resource" id="Resource_o8tlb"]
-script = ExtResource("4_iwg7w")
-skill_name = "Glass Blow"
-command_key = "struggle"
-is_struggle = true
-effects = Array[ExtResource("5_g61yg")]([SubResource("Resource_g4775")])
-metadata/_custom_type_script = "uid://badrkgc20tgv2"
-
 [resource]
 script = ExtResource("3_rfy4i")
 display_name = "HYAD-01 \"Astrape\" Sandstriker Unit"
 log_name = "Sandstriker Unit"
+description = "Their design had never been to bear arms. The starry onyxbound nymphs were sent to hang in the sky, prayers of dry fortune rising to meet them. Discontent to see the people still desert dying, they fell to the sand as righteous bolts refusing their own fragility."
 theme_color = Color(0.02745098, 0.32941177, 1, 1)
 base_max_hp = 15
 base_attack = 7
@@ -111,5 +51,5 @@ tempo = 16
 exp_yield = 10
 body_parts = Array[ExtResource("2_aosx2")]([SubResource("Resource_wjeql"), SubResource("Resource_ra5o5"), SubResource("Resource_8xe6t")])
 battle_scene = ExtResource("1_3i1v2")
-skills = Array[ExtResource("4_iwg7w")]([SubResource("Resource_a1v5w"), SubResource("Resource_5qr5v"), SubResource("Resource_o8tlb")])
+skills = Array[ExtResource("4_iwg7w")]([ExtResource("5_rfy4i"), ExtResource("6_iwg7w"), ExtResource("7_g61yg")])
 metadata/_custom_type_script = "uid://b2t1syvrybco8"

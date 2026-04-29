@@ -12,9 +12,9 @@ const LEVEL_REWARDS : Dictionary = {
 	"kendall": [
 		[{"stat": "", "amount": 0, "unlock": ""}],  # level 0 placeholder
 		[{"stat": "", "amount": 0, "unlock": ""}],  # level 1 placeholder
-		[{"stat": "sharp", "amount": 1, "unlock": "Augur"}, {"stat": "tempo", "amount": 1, "unlock": ""}],  # level 2
+		[{"stat": "sharp", "amount": 1, "unlock": ""}, {"stat": "tempo", "amount": 1, "unlock": ""}],  # level 2
 		[{"stat": "hp", "amount": 1, "unlock": ""}],  # level 3
-		[{"stat": "tempo", "amount": 1, "unlock": "Unveil"}],  # level 4
+		[{"stat": "tempo", "amount": 1, "unlock": ""}],  # level 4
 		[{"stat": "sharp", "amount": 2, "unlock": ""}, {"stat": "tempo", "amount": 2, "unlock": ""}],  # level 5
 		[{"stat": "hp", "amount": 2, "unlock": ""}],  # level 6
 		[{"stat": "tempo", "amount": 2, "unlock": ""}],  # level 7
@@ -51,7 +51,7 @@ const LEVEL_REWARDS : Dictionary = {
 		[{"stat": "sharp", "amount": 1, "unlock": "Galvanize"}],  # level 2
 		[{"stat": "flat", "amount": 1, "unlock": ""}, {"stat": "will", "amount": 2, "unlock": ""}],  # level 3
 		[{"stat": "tempo", "amount": 2, "unlock": "Fulminate"}],  # level 4
-		[{"stat": "flat", "amount": 1, "unlock": ""}, {"stat": "hp", "amount": 1, "unlock": ""}],  # level 5
+		[{"stat": "flat", "amount": 1, "unlock": ""}, {"stat": "hp", "amount": 3, "unlock": ""}],  # level 5
 		[{"stat": "will", "amount": 3, "unlock": ""}],  # level 6
 		[{"stat": "flat", "amount": 2, "unlock": ""}, {"stat": "tempo", "amount": 2, "unlock": ""}],  # level 7
 		[{"stat": "sharp", "amount": 1, "unlock": ""}],  # level 8
@@ -59,7 +59,7 @@ const LEVEL_REWARDS : Dictionary = {
 		[{"stat": "hp", "amount": 2, "unlock": ""}, {"stat": "tempo", "amount": 2, "unlock": ""}],  # level 10
 		[{"stat": "flat", "amount": 2, "unlock": ""}, {"stat": "sharp", "amount": 2, "unlock": ""}],  # level 11
 		[{"stat": "will", "amount": 3, "unlock": ""}],  # level 12
-		[{"stat": "flat", "amount": 3, "unlock": ""}, {"stat": "hp", "amount": 2, "unlock": ""}],  # level 13
+		[{"stat": "flat", "amount": 3, "unlock": ""}, {"stat": "hp", "amount": 5, "unlock": ""}],  # level 13
 		[{"stat": "sharp", "amount": 2, "unlock": ""}],  # level 14
 		[{"stat": "flat", "amount": 3, "unlock": ""}, {"stat": "will", "amount": 4, "unlock": ""}],  # level 15
 	],
@@ -68,8 +68,8 @@ const LEVEL_REWARDS : Dictionary = {
 		[{"stat": "", "amount": 0, "unlock": ""}],  # level 1 placeholder
 		[{"stat": "tempo", "amount": 1, "unlock": "Vice"}],  # level 2
 		[{"stat": "sharp", "amount": 1, "unlock": ""}, {"stat": "will", "amount": 2, "unlock": ""}],  # level 3
-		[{"stat": "hp", "amount": 2, "unlock": ""}],  # level 4
-		[{"stat": "sharp", "amount": 1, "unlock": "Devour"}, {"stat": "tempo", "amount": 1, "unlock": ""}],  # level 5
+		[{"stat": "hp", "amount": 2, "unlock": "Devour"}],  # level 4
+		[{"stat": "sharp", "amount": 1, "unlock": ""}, {"stat": "tempo", "amount": 1, "unlock": ""}],  # level 5
 		[{"stat": "will", "amount": 2, "unlock": ""}],  # level 6
 		[{"stat": "hp", "amount": 2, "unlock": ""}, {"stat": "sharp", "amount": 1, "unlock": ""}],  # level 7
 		[{"stat": "tempo", "amount": 2, "unlock": ""}],  # level 8

@@ -45,12 +45,11 @@ const CHATTER_VICE = [
 const CHATTER_MALICE = [
 	"You owe me at least this much.",
 	"Don't just stand there!",
-	" ",
+	"They don't regret it at all . . .",
 	" ",
 	" ",
 ]
 const CHATTER_CONSTRICT = [
-	"Sh-Shiiittt... can't... breathe... I guess I got too excited~",
 	" ",
 	" ",
 	" ",
@@ -102,12 +101,13 @@ const CHATTER_HURT = [
 ]
 
 const CHATTER_KILL = [
-	" ",
+	"Mmm, tasty . . .",
+	"Oops!",
 	" ",
 ]
 
 const CHATTER_DIE = [
-	" ",
+	"Sh-Shiiittt... can't... breathe... I guess I got too excited~",
 	" ",
 ]
 
@@ -138,7 +138,7 @@ func get_skills() -> Array:
 		if can_devour:
 			skills.insert(1, SkillDirectory.get_dict("Devour"))
 		elif has_devour_bonus:
-			skills.insert(1, SkillDirectory.get_dict("Unwilling"))
+			skills.insert(1, SkillDirectory.get_dict("Anthropophagy"))
 	return skills
 
 
@@ -169,6 +169,10 @@ func take_turn(target: BattleActor, part: BodyPartData = null) -> void:
 
 
 func use_skill(command_key: String, targets: Array, part: BodyPartData = null) -> void:
+	tick_status_effects()
+	if not is_alive():
+		emit_signal("turn_finished")
+		return
 	match command_key:
 		"special":
 			var t = targets[0] if not targets.is_empty() else null
@@ -211,9 +215,6 @@ func _vice(target: BattleActor, part: BodyPartData = null) -> void:
 
 func _malice(target: BattleActor) -> void:
 
-	if not party_member.spend_will(MALICE_WILL_COST):
-		spend_turn()
-		return
 
 	say_random(CHATTER_MALICE)
 
@@ -269,11 +270,11 @@ func _devour(target: BattleActor, part: BodyPartData = null) -> void:
 	say_random(CHATTER_DEVOUR)
 	log_msg("The beast grows voracious.")
 	await play_attack_animation(target, 3.0, 3.0, damage)
-	if part != null and part.has_part_hp():
+	if part != null and part.has_part_hp() and is_instance_valid(target):
 		var broke := part.take_part_damage(attack_power)
 		if broke:
 			target._on_part_broken(part)
-	if not target.is_alive():
+	if not is_instance_valid(target) or not target.is_alive():
 		max_hp += DEVOUR_MAX_HP_BONUS
 		if party_member:
 			party_member.bonus_max_hp += DEVOUR_MAX_HP_BONUS
@@ -344,7 +345,7 @@ func _wither(target: BattleActor, part: BodyPartData = null) -> void:
 	if randf() < WITHER_CHANCE_NORMAL:
 		if has_status(STATUS_LIFESTEAL):
 			var leech_dmg : int = int(dmg_dealt * (1.0 - LIFESTEAL_RATIO))
-			var heal      : int = max(1, int(dmg_dealt * LIFESTEAL_RATIO))
+			var heal      : int = max(1, int(dmg_dealt))
 			target.take_damage(leech_dmg, self)
 			hp = min(hp + heal, max_hp)
 			emit_signal("hp_changed")
@@ -356,7 +357,7 @@ func _wither(target: BattleActor, part: BodyPartData = null) -> void:
 	else:
 		if has_status(STATUS_LIFESTEAL):
 			var leech_dmg : int = int(dmg_dealt * (1.0 - LIFESTEAL_RATIO))
-			var heal      : int = max(1, int(dmg_dealt * LIFESTEAL_RATIO))
+			var heal      : int = max(1, int(dmg_dealt))
 			target.take_damage(leech_dmg, self)
 			hp = min(hp + heal, max_hp)
 			emit_signal("hp_changed")

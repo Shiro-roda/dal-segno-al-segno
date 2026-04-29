@@ -228,7 +228,7 @@ func _on_area_3d_input_event(camera, event, position, normal, shape_idx):
 		var map_ui : Node3D = get_tree().get_first_node_in_group("dungeon_map_3d")
 		if room_instance != null:
 			# If adjacent and can connect, propose the connection.
-			# Otherwise attempt normal movement.
+			# Otherwise attempt normal movement (single step or multi-hop).
 			var cur := controller.dungeon.current_pos
 			var diff := grid_pos - cur
 			var is_adjacent : bool = (abs(diff.x) + abs(diff.y)) == 1
@@ -236,10 +236,18 @@ func _on_area_3d_input_event(camera, event, position, normal, shape_idx):
 					and controller._can_connect(cur, grid_pos):
 				if map_ui:
 					map_ui.show_connection_proposals(cur, [grid_pos], controller)
-			else:
+			elif is_adjacent:
+				# Normal single-step move.
 				if map_ui:
 					map_ui._pending_marker_target = grid_pos
 				controller.move_to_room(grid_pos)
+			else:
+				# Far room clicked — try multi-hop if not in a transit phase.
+				if controller.is_transit_phase():
+					return
+				var path := controller.find_path(cur, grid_pos)
+				if path.size() > 1 and map_ui:
+					map_ui._hop_along_path(path)
 		else:
 			# Ghost cube clicked — ask map to show choices near click position
 			if map_ui == null:

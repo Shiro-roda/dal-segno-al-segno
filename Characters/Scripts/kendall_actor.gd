@@ -29,10 +29,8 @@ func get_skills() -> Array:
 
 	var skills = [shoot_dict]
 
-	if party_member != null and party_member.is_skill_unlocked("Augur"):
-		skills.append(SkillDirectory.get_dict("Augur" if supports_have_will else "Evade"))
-	if lens_unlocked and supports_have_will:
-		skills.insert(1, SkillDirectory.get_dict("Unveil"))
+	skills.append(SkillDirectory.get_dict("Augur" if party_member != null else "Evade"))
+	skills.append(SkillDirectory.get_dict("Unveil"))
 	return skills
 
 
@@ -83,6 +81,10 @@ func use_lens(channel: int) -> void:
 
 
 func use_skill(command_key: String, targets: Array, part: BodyPartData = null) -> void:
+	tick_status_effects()
+	if not is_alive():
+		emit_signal("turn_finished")
+		return
 	match command_key:
 		"special":
 			# routing handled by battle_manager (lens filter UI)

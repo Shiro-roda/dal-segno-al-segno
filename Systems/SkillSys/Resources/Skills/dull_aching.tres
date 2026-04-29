@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="SkillData" format=3 uid="uid://bwpax4ykg15hb"]
+
+[ext_resource type="Script" uid="uid://4yawyrbpe6tk" path="res://Systems/SkillSys/Scripts/skill_effect.gd" id="1_uvxe1"]
+[ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="2_s3ea8"]
+
+[sub_resource type="Resource" id="Resource_m20m4"]
+script = ExtResource("1_uvxe1")
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
+[sub_resource type="Resource" id="Resource_0k03i"]
+script = ExtResource("1_uvxe1")
+effect_type = 10
+stat_duration = 4
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
+[resource]
+script = ExtResource("2_s3ea8")
+skill_name = "Dull Aching"
+command_key = "attack"
+summary = "Attacks for 100% SHARP, and increases the target's FLAT by 1 for 4 turns."
+effects = Array[ExtResource("1_uvxe1")]([SubResource("Resource_m20m4"), SubResource("Resource_0k03i")])
+metadata/_custom_type_script = "uid://badrkgc20tgv2"

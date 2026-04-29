@@ -336,9 +336,9 @@ func _repulse_boxes() -> void:
 	# Gather all active boxes into flat arrays grouped by viewport
 	var left_boxes  : Array = []
 	var right_boxes : Array = []
-	for e in _skill_boxes + _ally_boxes:
+	for e in _skill_boxes + _ally_boxes + _part_boxes:
 		left_boxes.append(e)
-	for e in _enemy_boxes + _part_boxes:
+	for e in _enemy_boxes:
 		right_boxes.append(e)
 	const MIN_DIST : float = BOX_W * 1.3
 	for group in [left_boxes, right_boxes]:
@@ -1437,8 +1437,8 @@ func _clear_repeat_button() -> void:
 func _build_repeat_button() -> void:
 	_clear_repeat_button()
 	# Position at the bottom of the skill box column, in the left viewport.
-	var base_x : float = LEFT_VP_X + LEFT_VP_W * 0.82
-	var base_y : float = 660.0  # near bottom of left viewport
+	var base_x : float = LEFT_VP_X + LEFT_VP_W * 0.1
+	var base_y : float = 960 - base_x  # near bottom of left viewport
 	var half   : Vector2 = Vector2(BOX_W, BOX_H) * 0.5
 
 	var btn := Button.new()

@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="SkillData" format=3 uid="uid://bsl5l5jj6ntln"]
+
+[ext_resource type="Script" uid="uid://4yawyrbpe6tk" path="res://Systems/SkillSys/Scripts/skill_effect.gd" id="1_mj6ow"]
+[ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="2_qnydr"]
+
+[sub_resource type="Resource" id="Resource_aw8mu"]
+script = ExtResource("1_mj6ow")
+damage_mult = 0.6
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
+[sub_resource type="Resource" id="Resource_f5eda"]
+script = ExtResource("1_mj6ow")
+damage_mult = 0.6
+damage_bonus = 2
+status_chance = 0.5
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
+[sub_resource type="Resource" id="Resource_3i1v2"]
+script = ExtResource("1_mj6ow")
+damage_mult = 0.6
+status_chance = 0.2
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
+[resource]
+script = ExtResource("2_qnydr")
+skill_name = "Thunderstroke"
+command_key = "attack"
+summary = "Attacks for 60% SHARP, with a 50% chance to attack a second time, and a 20% chance to attack a third time."
+will_cost = 1
+effects = Array[ExtResource("1_mj6ow")]([SubResource("Resource_aw8mu"), SubResource("Resource_f5eda"), SubResource("Resource_3i1v2")])
+metadata/_custom_type_script = "uid://badrkgc20tgv2"

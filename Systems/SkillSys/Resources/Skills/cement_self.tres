@@ -7,13 +7,14 @@
 script = ExtResource("1_h6n15")
 effect_type = 10
 stat_delta = 2
-post_delay = 1.0
+post_delay = 2.0
 metadata/_custom_type_script = "uid://4yawyrbpe6tk"
 
 [resource]
 script = ExtResource("2_1md3h")
 skill_name = "Cement Self"
 command_key = "support"
+summary = "Increases the target's FLAT by 2 for 2 turns."
 will_cost = 1
 ally_target = true
 effects = Array[ExtResource("1_h6n15")]([SubResource("Resource_8dmt8")])

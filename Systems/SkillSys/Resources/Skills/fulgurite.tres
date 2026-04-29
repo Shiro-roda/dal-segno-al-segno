@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="SkillData" format=3 uid="uid://6e84b6gn0mr5"]
+
+[ext_resource type="Script" uid="uid://4yawyrbpe6tk" path="res://Systems/SkillSys/Scripts/skill_effect.gd" id="1_5va05"]
+[ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="2_5t13a"]
+
+[sub_resource type="Resource" id="Resource_d6vbc"]
+script = ExtResource("1_5va05")
+effect_type = 7
+damage_mult = 0.5
+damage_bonus = 1
+pre_delay = 1.0
+post_delay = 1.0
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
+[sub_resource type="Resource" id="Resource_0b30r"]
+script = ExtResource("1_5va05")
+effect_type = 8
+status_chance = 0.5
+stat_delta = 2
+stat_duration = 3
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
+[resource]
+script = ExtResource("2_5t13a")
+skill_name = "Fulgurite"
+command_key = "special"
+summary = "Attacks all enemies for 50% SHARP, with a 50% chance to reduce their FLAT by 2 for 3 turns."
+description = "A song of glass."
+will_cost = 2
+is_aoe = true
+effects = Array[ExtResource("1_5va05")]([SubResource("Resource_d6vbc"), SubResource("Resource_0b30r")])
+metadata/_custom_type_script = "uid://badrkgc20tgv2"

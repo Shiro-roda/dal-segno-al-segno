@@ -419,6 +419,7 @@ func spawn_enemies():
 		actor.name         = char_data.display_name
 		actor.display_name = char_data.display_name
 		actor.log_name     = char_data.get_log_name()
+		actor.character_data = char_data
 		actor.team = BattleActor.Team.ENEMY
 		actor.max_hp = char_data.base_max_hp
 		actor.attack_power = char_data.base_attack
@@ -442,6 +443,16 @@ func spawn_enemies():
 		# Copy skill loadout from CharacterData into EnemyActor if applicable.
 		if actor is EnemyActor and not char_data.skills.is_empty():
 			actor.skills = char_data.skills.duplicate()
+
+		# Copy chatter lines from CharacterData into EnemyActor.
+		if actor is EnemyActor:
+			actor.chatter_attack  = Array(char_data.chatter_attack)
+			actor.chatter_special = Array(char_data.chatter_special)
+			actor.chatter_support = Array(char_data.chatter_support)
+			actor.chatter_hurt    = Array(char_data.chatter_hurt)
+			actor.chatter_low_hp  = Array(char_data.chatter_low_hp)
+			actor.chatter_kill    = Array(char_data.chatter_kill)
+			actor.chatter_die     = Array(char_data.chatter_die)
 
 		enemy_slots[i].add_child(actor)
 
@@ -567,6 +578,9 @@ func handle_enemy_turn(actor: BattleActor) -> void:
 	# Guard: battle may have ended during the enemy's animation
 	if battle_ending or not is_inside_tree():
 		return
+	# Return the enemy to IDLE so can_be_targeted() works on subsequent player turns.
+	if is_instance_valid(actor) and actor.current_actor_state_name != BattleActor.STATE_DEAD:
+		actor.set_actor_state(BattleActor.STATE_IDLE)
 	# Deduct tempo cost and reset bonus for enemy
 	# Use the per-skill override recorded during skill_announced, or default to TEMPO_COST_ATTACK.
 	if is_instance_valid(actor):
@@ -681,12 +695,10 @@ func _on_battle_menu_skill_chosen(actor: BattleActor, skill: Dictionary, target:
 			await_actor_turn(actor, func(): actor.use_skill(selected_command, [target] if target else [], part))
 
 
-func _on_battle_menu_item_used(actor: BattleActor, _inst: ItemInstance, _target) -> void:
-	# Item was already applied by the menu. Spend the actor's turn.
-	selected_command = "item"
-	input_locked = true
-	input_stage = InputStage.DONE
-	await_actor_turn(actor, func(): actor.spend_turn())
+func _on_battle_menu_item_used(_actor: BattleActor, _inst: ItemInstance, _target) -> void:
+	# Item use no longer spends the turn — the menu stays open and the player
+	# must still choose a skill action. This handler is kept for signal compatibility.
+	pass
 
 
 func _on_battle_menu_closed() -> void:
@@ -735,10 +747,21 @@ func get_projected_queue(steps: int = 8) -> Array:
 
 func _on_actor_died(actor: BattleActor):
 	if actor.team == BattleActor.Team.ENEMY:
-		for cd in context.encounter.enemies:
-			if cd.display_name == actor.name:
-				_exp_this_battle += cd.exp_yield
-				break
+		var cd : CharacterData = actor.character_data
+		if cd != null:
+			_exp_this_battle += cd.exp_yield
+			var run := context.run_state
+			if run != null and not run.defeated_enemies.has(cd.display_name):
+				run.defeated_enemies[cd.display_name] = cd
+		else:
+			# Fallback: search by display_name for actors without character_data set.
+			for fallback_cd in context.encounter.enemies:
+				if fallback_cd.get_log_name() == actor.log_name:
+					_exp_this_battle += fallback_cd.exp_yield
+					var run := context.run_state
+					if run != null and not run.defeated_enemies.has(fallback_cd.display_name):
+						run.defeated_enemies[fallback_cd.display_name] = fallback_cd
+					break
 	actors.erase(actor)
 	# Notify the reticle immediately so the dead actor's box disappears
 	if is_instance_valid(reticle_ui):

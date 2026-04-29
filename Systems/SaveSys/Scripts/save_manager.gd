@@ -122,6 +122,7 @@ func _serialize_run_state(run: RunState) -> Dictionary:
 		"boss_battle_triggered": run.boss_battle_triggered,
 		"party":               party,
 		"inventory":           inventory,
+		"defeated_enemies":    _serialize_char_array(run.defeated_enemies.values()),
 	}
 
 
@@ -189,6 +190,7 @@ func _serialize_dungeon_state(dungeon: DungeonRunState) -> Dictionary:
 			"al_segno_passes":      room.al_segno_passes,
 			"transpose_picks":      room.transpose_picks.duplicate(),
 			"transpose_rolled":     room.transpose_rolled,
+			"defeated_enemy_names": room.defeated_enemy_names.duplicate(),
 		})
 
 	var snap_data = null
@@ -294,6 +296,12 @@ func _deserialize_run_state(d: Dictionary) -> RunState:
 		if ResourceLoader.exists(path):
 			run.available_supports.append(load(path))
 
+	for path in d.get("defeated_enemies", []):
+		if ResourceLoader.exists(path):
+			var cd : CharacterData = load(path)
+			if cd and cd.display_name != "":
+				run.defeated_enemies[cd.display_name] = cd
+
 	for pm_d in d.get("party", []):
 		var pm := _deserialize_party_member(pm_d)
 		if pm:
@@ -381,6 +389,7 @@ func _deserialize_dungeon_state(d: Dictionary, run: RunState) -> DungeonRunState
 		room.al_segno_passes   = room_d.get("al_segno_passes",   0)
 		room.transpose_picks   = Array(room_d.get("transpose_picks", []))
 		room.transpose_rolled  = room_d.get("transpose_rolled",  false)
+		room.defeated_enemy_names = Array(room_d.get("defeated_enemy_names", []))
 		for c_arr in room_d.get("explicit_connections", []):
 			room.explicit_connections.append(_arr_to_vec2i(c_arr))
 		dungeon.grid[pos] = room

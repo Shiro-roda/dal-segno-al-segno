@@ -18,6 +18,7 @@ theme_color = Color(0.16685283, 0.16685283, 0.16685283, 1)
 base_max_hp = 16
 base_attack = 3
 base_flat_defense = 3
+base_max_will = 8
 exp_yield = 5
 body_parts = Array[ExtResource("1_tpfi6")]([ExtResource("3_6xgbe"), ExtResource("4_ftkpk"), ExtResource("5_8c0wo")])
 battle_scene = ExtResource("1_v3wxi")

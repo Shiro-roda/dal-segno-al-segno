@@ -13,6 +13,7 @@ metadata/_custom_type_script = "uid://4yawyrbpe6tk"
 script = ExtResource("2_ug4mu")
 skill_name = "Breeze"
 command_key = "support"
+summary = "Heals all allies for 6 CORP."
 will_cost = 2
 ally_target = true
 effects = Array[ExtResource("1_3d7pp")]([SubResource("Resource_2331k")])

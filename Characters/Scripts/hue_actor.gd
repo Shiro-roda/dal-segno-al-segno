@@ -15,16 +15,16 @@ extends BattleActor
 # SUPPORT — Embrace:         free (no will). Hue covers an ally — redirects incoming
 #                             damage to himself with a 15% reduction for 2 turns.
 
-const REBUKE_WILL_COST       = 1
+const REBUKE_WILL_COST       = 2
 const REBUKE_DMG_MULT        = 1
 const REBUKE_SLOW_CHANCE     = 0.45
 const CALCIFY_WILL_COST      = 3
-const CALCIFY_MIN_TURNS      = 1
-const CALCIFY_MAX_TURNS      = 3
+const CALCIFY_MIN_TURNS      = 3
+const CALCIFY_MAX_TURNS      = 6
 const CALCIFY_DMG_REDUCTION  = 0.5
-const SHELTER_WILL_COST      = 2
-const SHELTER_HP_AMOUNT      = 6   # reduced — Flat buff compensates
-const SHELTER_FLAT_BONUS     = 4   # temporary Flat raised while shield holds
+const SHELTER_WILL_COST      = 1
+const SHELTER_HP_AMOUNT      = 10   
+const SHELTER_FLAT_BONUS     = 4   
 const SELF_HARM_HP_COST       = 3
 const SELF_HARM_WILL_RESTORE  = 2
 const EMBRACE_DURATION        = 2
@@ -132,6 +132,10 @@ func take_turn(target: BattleActor, part: BodyPartData = null) -> void:
 
 
 func use_skill(command_key: String, targets: Array, part: BodyPartData = null) -> void:
+	tick_status_effects()
+	if not is_alive():
+		emit_signal("turn_finished")
+		return
 	match command_key:
 		"special":
 			var t = targets[0] if not targets.is_empty() else null

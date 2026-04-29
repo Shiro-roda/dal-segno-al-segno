@@ -11,6 +11,7 @@ metadata/_custom_type_script = "uid://4yawyrbpe6tk"
 script = ExtResource("2_cqvq2")
 skill_name = "Low Dim"
 command_key = "attack"
+summary = "Attacks for 100% SHARP."
 effects = Array[ExtResource("1_yg6a2")]([SubResource("Resource_6qd3x")])
 ai_weight = 4
 metadata/_custom_type_script = "uid://badrkgc20tgv2"

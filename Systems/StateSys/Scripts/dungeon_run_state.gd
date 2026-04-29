@@ -52,7 +52,7 @@ var segno_transit_count : int = 0
 
 ## Ceiling bonus per transit (index = transit number, 0-based).
 ## Third placement is generous; bonus shrinks to 0 after several transits.
-const CEILING_BONUSES : Array = [1, 2, 3, 2, 1, 0]
+const CEILING_BONUSES : Array = [2, 3, 2, 1, 0]
 
 ## Minimum distance required for the next Segno target from every anchor.
 ## First placement uses SEGNO_MIN_DIST (set by DungeonController).

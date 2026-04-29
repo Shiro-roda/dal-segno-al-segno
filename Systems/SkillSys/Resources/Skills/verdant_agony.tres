@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="SkillData" format=3 uid="uid://b420230svif63"]
+
+[ext_resource type="Script" uid="uid://4yawyrbpe6tk" path="res://Systems/SkillSys/Scripts/skill_effect.gd" id="1_q6338"]
+[ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="2_a34wg"]
+
+[sub_resource type="Resource" id="Resource_uujsm"]
+script = ExtResource("1_q6338")
+effect_type = 3
+drain_ratio = 1.0
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
+[sub_resource type="Resource" id="Resource_t5dc1"]
+script = ExtResource("1_q6338")
+effect_type = 1
+status_id = "bleeding"
+status_chance = 0.5
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
+[sub_resource type="Resource" id="Resource_7rok7"]
+script = ExtResource("1_q6338")
+effect_type = 1
+status_id = "lifesteal"
+status_chance = 0.5
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
+[resource]
+script = ExtResource("2_a34wg")
+skill_name = "Verdant Agony"
+command_key = "special"
+summary = "Drains 100% SHARP of ALL combatants' MAX CORP, with a 50% chance to inflict bleed and a 50% chance to grant lifesteal."
+is_aoe = true
+ally_target = true
+enemy_target = true
+effects = Array[ExtResource("1_q6338")]([SubResource("Resource_uujsm"), SubResource("Resource_t5dc1"), SubResource("Resource_7rok7")])
+metadata/_custom_type_script = "uid://badrkgc20tgv2"

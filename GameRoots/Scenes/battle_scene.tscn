@@ -133,23 +133,25 @@ script = ExtResource("3_yw742")
 [node name="IdleOrbiter" type="Node3D" parent="CameraRig/IdleOrbitPivot" unique_id=1216574263]
 transform = Transform3D(1, 0, 0, 0, 0.9999998, 0, 0, 0, 0.9999998, 0, 6.3744373, 7.6217666)
 
-[node name="active_cam" type="Node3D" parent="CameraRig" unique_id=2025165075]
-transform = Transform3D(1, 0, 0, 0, -4.3711392e-08, 1.0000001, 0, -1.0000001, -4.3711392e-08, -1.3915569, 609.35547, 3.37666)
+[node name="active_cam" type="Node3D" parent="CameraRig" unique_id=2025165075 node_paths=PackedStringArray("look_at_target")]
+transform = Transform3D(0.60670924, -0.7949115, 0.004439742, -2.9802322e-08, 0.005585075, 0.9999845, -0.7949238, -0.6066999, 0.0033885245, -1.3915569, 609.35547, 3.37666)
 top_level = true
 script = ExtResource("4_y8mdh")
 follow_mode = 2
 look_at_mode = 2
+look_at_target = NodePath("../PlayerGroundCenterAnchor")
 tween_resource = SubResource("Resource_26idg")
 camera_3d_resource = SubResource("Resource_xhnwx")
 follow_damping = true
 follow_damping_value = Vector3(0.773, 0.773, 0.773)
 
-[node name="target_cam" type="Node3D" parent="CameraRig" unique_id=1804288770]
-transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 2.9518425, 609.45135, 3.3218737)
+[node name="target_cam" type="Node3D" parent="CameraRig" unique_id=1804288770 node_paths=PackedStringArray("look_at_target")]
+transform = Transform3D(0.99219716, -0.12467623, 0.00083673745, -3.0137599e-06, 0.0066871643, 0.99997765, -0.12467904, -0.9921749, 0.006634593, 2.9518425, 609.45135, 3.3218737)
 top_level = true
 script = ExtResource("4_y8mdh")
 follow_mode = 2
 look_at_mode = 2
+look_at_target = NodePath("../EnemyGroundCenterAnchor")
 tween_resource = SubResource("Resource_nejpu")
 host_layers = 2
 follow_damping = true
@@ -204,7 +206,7 @@ size_2d_override_stretch = true
 render_target_update_mode = 4
 
 [node name="PlayerActorCam" type="Camera3D" parent="HBoxContainer/Left_Container/Left" unique_id=1335861594]
-transform = Transform3D(1, 0, 0, 0, -4.3711392e-08, 1.0000001, 0, -1.0000001, -4.3711392e-08, -1.3915569, 609.35547, 3.37666)
+transform = Transform3D(0.60670924, -0.7949114, 0.0044397414, -2.9802322e-08, 0.0055850744, 0.9999844, -0.7949238, -0.6066998, 0.003388524, -1.3915569, 609.35547, 3.37666)
 fov = 100.418106
 
 [node name="PhantomCameraHost" type="Node" parent="HBoxContainer/Left_Container/Left/PlayerActorCam" unique_id=774086878]
@@ -226,7 +228,7 @@ size = Vector2i(640, 960)
 render_target_update_mode = 4
 
 [node name="TargetCam" type="Camera3D" parent="HBoxContainer/Right_Container/Right" unique_id=30126024]
-transform = Transform3D(1, 0, 0, 0, -4.371139e-08, 1, 0, -1, -4.371139e-08, 2.9518425, 609.45135, 3.3218737)
+transform = Transform3D(0.99219716, -0.12467623, 0.00083673745, -3.0137599e-06, 0.0066871643, 0.99997765, -0.12467904, -0.9921749, 0.006634593, 2.9518425, 609.45135, 3.3218737)
 fov = 100.418106
 
 [node name="PhantomCameraHost" type="Node" parent="HBoxContainer/Right_Container/Right/TargetCam" unique_id=1124316229]

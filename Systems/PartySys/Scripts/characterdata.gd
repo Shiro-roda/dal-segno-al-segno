@@ -21,6 +21,23 @@ func get_log_name() -> String:
 ## Optional skill loadout for data-driven enemies (used by EnemyActor).
 @export var skills : Array[SkillData] = []
 
+## Enemy chatter lines. Populated for enemy CharacterData resources.
+## EnemyActor copies these arrays at spawn time.
+## chatter_attack  — said when using an attack skill
+## chatter_special — said when using a special skill
+## chatter_support — said when using a support skill
+## chatter_hurt    — said when taking damage (while still alive)
+## chatter_low_hp  — said once when HP first drops below 50%
+## chatter_kill    — said after killing a player character
+## chatter_die     — said when this enemy is defeated
+@export var chatter_attack  : Array[String] = []
+@export var chatter_special : Array[String] = []
+@export var chatter_support : Array[String] = []
+@export var chatter_hurt    : Array[String] = []
+@export var chatter_low_hp  : Array[String] = []
+@export var chatter_kill    : Array[String] = []
+@export var chatter_die     : Array[String] = []
+
 # Optional: pre-built PartyMemberData for boss enemies that use support actor scripts.
 # Assign via BossBuilder so the actor has will, skill unlocks, etc.
 var boss_party_member : PartyMemberData = null

@@ -93,6 +93,9 @@ var flat_modifier : int = 0
 @export var aabb_anchors : Array[NodePath] = []
 var party_member : PartyMemberData
 var run_state : RunState
+## The CharacterData resource this actor was spawned from. Set by BattleManager
+## for enemy actors so bestiary registration doesn't rely on name matching.
+var character_data : CharacterData = null
 @onready var camera_anchor: Node3D = $CameraAnchor
 
 
@@ -498,9 +501,25 @@ func use_skill(command_key: String, targets: Array, part: BodyPartData = null) -
 # Consults get_skills(), picks an action, and executes it.
 # Falls back to take_turn(target) if no skills are available.
 func enemy_take_turn(target: BattleActor) -> void:
+	# Tick statuses at the start of the turn (mirrors take_turn).
+	# take_turn() also calls this, so it's covered on the no-skills fallback path.
 	var skills := get_skills()
 	if skills.is_empty():
 		await take_turn(target)
+		return
+	# Skills path: tick here since use_skill() won't.
+	await get_tree().create_timer(0.1).timeout
+	if not is_inside_tree():
+		return
+	set_actor_state(STATE_ACTING)
+	tick_status_effects()
+	active_effects = active_effects.filter(func(e): return e["id"] != "encased")
+	if not is_alive() or not is_inside_tree():
+		emit_signal("turn_finished")
+		return
+	if has_status(STATUS_FROZEN):
+		log_msg("%s is frozen and cannot act." % get_log_name())
+		spend_turn()
 		return
 
 	var opponents : Array = get_opponents()
@@ -624,7 +643,7 @@ func struggle_attack(all_actors: Array, base_damage: int) -> void:
 	if hit_part:
 		var part = visible_parts[randi() % visible_parts.size()]
 		log_msg("%s found the will to strike %s's %s." % [get_log_name(), target.get_log_name(), part.part_name])
-		await play_attack_animation(target, 1.0, 1.0, int((base_damage * 0.5) * part.damage_multiplier))
+		await play_attack_animation(target, 1.0, 1.0, int((base_damage) * part.damage_multiplier))
 		if part.is_cognitohazard:
 			perishing = true
 	else:

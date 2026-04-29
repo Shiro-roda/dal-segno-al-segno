@@ -67,6 +67,11 @@ var money : int = 0
 var run_flags : Dictionary = {}
 var run_modifiers : Array = []
 
+## All enemies encountered during this run, keyed by display_name.
+## Values are CharacterData resources (preserved even after enemies die).
+## Used by the Bestiary tab in the party menu.
+var defeated_enemies : Dictionary = {}  # display_name -> CharacterData
+
 ## Kendall's equipped guns. Up to two slots: "gun_primary" and "gun_secondary".
 ## Values are GunData resources, or null if the slot is empty.
 var gun_primary   : GunData = null

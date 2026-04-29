@@ -4,7 +4,8 @@
 [ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://Systems/AnatomySys/Scripts/BodyPartData.gd" id="2_gt7t7"]
 [ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://Systems/PartySys/Scripts/characterdata.gd" id="3_jsd0t"]
 [ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="4_gt7t7"]
-[ext_resource type="Script" uid="uid://4yawyrbpe6tk" path="res://Systems/SkillSys/Scripts/skill_effect.gd" id="5_tboxw"]
+[ext_resource type="Resource" uid="uid://ba3a5ntwrutcw" path="res://Systems/SkillSys/Resources/Skills/sieze.tres" id="5_grb33"]
+[ext_resource type="Resource" uid="uid://ccmbx5gxo3qe0" path="res://Systems/SkillSys/Resources/Skills/gnaw.tres" id="6_r1pkh"]
 
 [sub_resource type="Resource" id="Resource_xeo3c"]
 script = ExtResource("2_gt7t7")
@@ -22,34 +23,6 @@ damage_multiplier = 1.5
 anchor_path = NodePath("PartAnchors/Stomach")
 metadata/_custom_type_script = "uid://bewuwngi8x4ad"
 
-[sub_resource type="Resource" id="Resource_1a84j"]
-script = ExtResource("5_tboxw")
-effect_type = 3
-drain_ratio = 1.0
-metadata/_custom_type_script = "uid://4yawyrbpe6tk"
-
-[sub_resource type="Resource" id="Resource_b5uk0"]
-script = ExtResource("4_gt7t7")
-skill_name = "Seize"
-command_key = "attack"
-will_cost = 1
-enemy_target = true
-effects = Array[ExtResource("5_tboxw")]([SubResource("Resource_1a84j")])
-metadata/_custom_type_script = "uid://badrkgc20tgv2"
-
-[sub_resource type="Resource" id="Resource_1qcvj"]
-script = ExtResource("5_tboxw")
-damage_mult = 0.5
-metadata/_custom_type_script = "uid://4yawyrbpe6tk"
-
-[sub_resource type="Resource" id="Resource_57deg"]
-script = ExtResource("4_gt7t7")
-skill_name = "Gnaw"
-command_key = "attack"
-is_struggle = true
-effects = Array[ExtResource("5_tboxw")]([SubResource("Resource_1qcvj")])
-metadata/_custom_type_script = "uid://badrkgc20tgv2"
-
 [resource]
 script = ExtResource("3_jsd0t")
 display_name = "Starving Hound"
@@ -58,9 +31,9 @@ base_max_hp = 14
 base_attack = 3
 base_flat_defense = 1
 base_max_will = 7
-tempo = 17
+tempo = 20
 exp_yield = 6
 body_parts = Array[ExtResource("2_gt7t7")]([SubResource("Resource_xeo3c"), SubResource("Resource_3wasn")])
 battle_scene = ExtResource("1_jsd0t")
-skills = Array[ExtResource("4_gt7t7")]([SubResource("Resource_b5uk0"), SubResource("Resource_57deg")])
+skills = Array[ExtResource("4_gt7t7")]([ExtResource("5_grb33"), ExtResource("6_r1pkh")])
 metadata/_custom_type_script = "uid://b2t1syvrybco8"

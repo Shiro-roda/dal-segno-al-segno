@@ -28,6 +28,10 @@ var explicit_connections : Array = []  # Array[Vector2i]
 ## Used to calculate rolling re-encounter chance on subsequent passes.
 var al_segno_passes : int = 0
 
+## Enemy display names recorded when the room's battle was first cleared.
+## Shown in the room's detail card after clearing.
+var defeated_enemy_names : Array = []  # Array[String]
+
 ## True when this room cannot accept any more corridors.
 func is_connection_full() -> bool:
 	if room_data == null:

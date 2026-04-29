@@ -4,7 +4,9 @@
 [ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://Systems/AnatomySys/Scripts/BodyPartData.gd" id="2_2bvk3"]
 [ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://Systems/PartySys/Scripts/characterdata.gd" id="3_m04yi"]
 [ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="4_epx4v"]
-[ext_resource type="Script" uid="uid://4yawyrbpe6tk" path="res://Systems/SkillSys/Scripts/skill_effect.gd" id="5_tbeg6"]
+[ext_resource type="Resource" uid="uid://brku53bogf12p" path="res://Systems/SkillSys/Resources/Skills/showersong.tres" id="5_m04yi"]
+[ext_resource type="Resource" uid="uid://bmrp6n8ri6w2l" path="res://Systems/SkillSys/Resources/Skills/glass_blow.tres" id="6_epx4v"]
+[ext_resource type="Resource" uid="uid://d0k2np5c7yk5l" path="res://Systems/SkillSys/Resources/Skills/spate.tres" id="7_tbeg6"]
 
 [sub_resource type="Resource" id="Resource_wyj33"]
 script = ExtResource("2_2bvk3")
@@ -35,54 +37,11 @@ damage_multiplier = 1.6
 anchor_path = NodePath("PartAnchors/Core")
 metadata/_custom_type_script = "uid://bewuwngi8x4ad"
 
-[sub_resource type="Resource" id="Resource_7chtf"]
-script = ExtResource("5_tbeg6")
-effect_type = 2
-heal_amount = 10
-metadata/_custom_type_script = "uid://4yawyrbpe6tk"
-
-[sub_resource type="Resource" id="Resource_4ajvq"]
-script = ExtResource("4_epx4v")
-skill_name = "Showersong"
-command_key = "support"
-will_cost = 2
-is_aoe = true
-ally_target = true
-effects = Array[ExtResource("5_tbeg6")]([SubResource("Resource_7chtf")])
-metadata/_custom_type_script = "uid://badrkgc20tgv2"
-
-[sub_resource type="Resource" id="Resource_shkmo"]
-script = ExtResource("5_tbeg6")
-damage_mult = 0.4
-status_chance = 0.6
-metadata/_custom_type_script = "uid://4yawyrbpe6tk"
-
-[sub_resource type="Resource" id="Resource_4ghyb"]
-script = ExtResource("4_epx4v")
-skill_name = "Glass Blow"
-command_key = "struggle"
-is_struggle = true
-effects = Array[ExtResource("5_tbeg6")]([SubResource("Resource_shkmo")])
-metadata/_custom_type_script = "uid://badrkgc20tgv2"
-
-[sub_resource type="Resource" id="Resource_30hf5"]
-script = ExtResource("5_tbeg6")
-effect_type = 3
-drain_ratio = 1.0
-metadata/_custom_type_script = "uid://4yawyrbpe6tk"
-
-[sub_resource type="Resource" id="Resource_u1gjr"]
-script = ExtResource("4_epx4v")
-skill_name = "Spate"
-command_key = "attack"
-will_cost = 1
-effects = Array[ExtResource("5_tbeg6")]([SubResource("Resource_30hf5")])
-metadata/_custom_type_script = "uid://badrkgc20tgv2"
-
 [resource]
 script = ExtResource("3_m04yi")
 display_name = "HYAD-13 \"Nephele\" Waterweaver Unit"
 log_name = "Waterweaver Unit"
+description = "The second generation of vestals would be meeker, fairer, and fervent to the duty deserted by their brothers. They spun the clouds with the way of housemaids, a skirt over every household that might afford the right to rain. The rain they wrung from the skies with such love, the songs they sang so prettily when they believed their voices hidden above the clouds of Hali, the dearest sisters all delighted to receive prayers of veneration sung by supplicants never seen, all to the pleasure of those with the avarice to scrape the sky. Perhaps the greatest mercy given the angels by their makers was never to see those eyes beyond their own, before the storms washed every damnable prayer far away to the sea."
 theme_color = Color(0.02745098, 0.6431373, 1, 1)
 base_max_hp = 13
 base_attack = 3
@@ -92,5 +51,6 @@ tempo = 12
 exp_yield = 10
 body_parts = Array[ExtResource("2_2bvk3")]([SubResource("Resource_wyj33"), SubResource("Resource_tog6v"), SubResource("Resource_rui1a")])
 battle_scene = ExtResource("1_ojy7t")
-skills = Array[ExtResource("4_epx4v")]([SubResource("Resource_4ajvq"), SubResource("Resource_4ghyb"), SubResource("Resource_u1gjr")])
+skills = Array[ExtResource("4_epx4v")]([ExtResource("5_m04yi"), ExtResource("6_epx4v"), ExtResource("7_tbeg6")])
+chatter_support = Array[String](["[i]O Lord, preserve these Brothers . . .[/i]"])
 metadata/_custom_type_script = "uid://b2t1syvrybco8"

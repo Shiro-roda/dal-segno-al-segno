@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="SkillData" format=3 uid="uid://ccmbx5gxo3qe0"]
+
+[ext_resource type="Script" uid="uid://4yawyrbpe6tk" path="res://Systems/SkillSys/Scripts/skill_effect.gd" id="1_qf2k0"]
+[ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="2_53wah"]
+
+[sub_resource type="Resource" id="Resource_1qcvj"]
+script = ExtResource("1_qf2k0")
+damage_mult = 0.5
+metadata/_custom_type_script = "uid://4yawyrbpe6tk"
+
+[resource]
+script = ExtResource("2_53wah")
+skill_name = "Gnaw"
+command_key = "attack"
+summary = "Attacls at random for 50% SHARP."
+is_struggle = true
+enemy_target = true
+effects = Array[ExtResource("1_qf2k0")]([SubResource("Resource_1qcvj")])
+metadata/_custom_type_script = "uid://badrkgc20tgv2"

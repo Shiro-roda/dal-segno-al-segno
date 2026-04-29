@@ -6,7 +6,7 @@
 [sub_resource type="Resource" id="Resource_kd5oy"]
 script = ExtResource("1_d8lae")
 effect_type = 11
-stat_delta = 2
+stat_delta = 3
 stat_duration = 999
 metadata/_custom_type_script = "uid://4yawyrbpe6tk"
 
@@ -20,6 +20,8 @@ metadata/_custom_type_script = "uid://4yawyrbpe6tk"
 script = ExtResource("2_w11rs")
 skill_name = "Elongate"
 command_key = "support"
+summary = "Heals the target for 5 CORP and increases their SHARP by 3."
 ally_target = true
 effects = Array[ExtResource("1_d8lae")]([SubResource("Resource_kd5oy"), SubResource("Resource_d8lae")])
+ai_weight = 2
 metadata/_custom_type_script = "uid://badrkgc20tgv2"

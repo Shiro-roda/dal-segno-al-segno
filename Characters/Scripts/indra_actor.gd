@@ -13,10 +13,10 @@ extends BattleActor
 const BLEED_DURATION          = 3
 const BLEED_CHANCE_NORMAL     = 0.5
 const FULMINATE_WILL_COST     = 3
-const FULMINATE_DMG_MULT      = 0.7   # each enemy takes 70% of normal attack
-const GALVANIZE_WILL_COST     = 2
+const FULMINATE_DMG_MULT      = 1.7   # each enemy takes 170% of normal attack
+const GALVANIZE_WILL_COST     = 1
 const GALVANIZE_ATK_BONUS     = 2
-const GALVANIZE_WILL_BONUS    = 1
+const GALVANIZE_WILL_BONUS    = 3
 const MARTYR_HP_COST          = 4
 const MARTYR_WILL_RESTORE     = 3
 const MARTYR_DURATION = 3
@@ -132,6 +132,10 @@ func take_turn(target: BattleActor, part: BodyPartData = null) -> void:
 
 
 func use_skill(command_key: String, targets: Array, part: BodyPartData = null) -> void:
+	tick_status_effects()
+	if not is_alive():
+		emit_signal("turn_finished")
+		return
 	match command_key:
 		"special":
 			var manager = get_tree().get_first_node_in_group("battle_manager")
@@ -149,7 +153,7 @@ func use_skill(command_key: String, targets: Array, part: BodyPartData = null) -
 # --- Skills ---
 
 func _crucify(target: BattleActor, part: BodyPartData) -> void:
-	if not party_member.spend_will(1):
+	if not party_member.spend_will(2):
 		var manager = get_tree().get_first_node_in_group("battle_manager")
 		await struggle_attack(manager.actors, attack_power)
 		return
@@ -189,7 +193,8 @@ func _galvanize(all_actors: Array) -> void:
 	log_msg("%s rouses his companions." % [name])
 	for s in supports:
 		s.modify_attack(GALVANIZE_ATK_BONUS)
-		s.party_member.restore_will(GALVANIZE_WILL_BONUS)
+		if randf() < 0.5:
+			s.party_member.restore_will(GALVANIZE_WILL_BONUS)
 	# Grant Kendall a free shot: flag on the manager
 	var manager = get_tree().get_first_node_in_group("battle_manager")
 	manager.grant_free_shot()

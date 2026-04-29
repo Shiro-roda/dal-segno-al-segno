@@ -4,7 +4,9 @@
 [ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://Systems/AnatomySys/Scripts/BodyPartData.gd" id="2_y1w52"]
 [ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://Systems/PartySys/Scripts/characterdata.gd" id="3_8dcge"]
 [ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="4_hkqod"]
-[ext_resource type="Script" uid="uid://4yawyrbpe6tk" path="res://Systems/SkillSys/Scripts/skill_effect.gd" id="5_xs340"]
+[ext_resource type="Resource" uid="uid://fh2r4g3vn7ca" path="res://Systems/SkillSys/Resources/Skills/establish_beachhead.tres" id="5_8dcge"]
+[ext_resource type="Resource" uid="uid://clniceq73j72m" path="res://Systems/SkillSys/Resources/Skills/defend_position.tres" id="6_hkqod"]
+[ext_resource type="Resource" uid="uid://cicjgc7h416ci" path="res://Systems/SkillSys/Resources/Skills/patch_up.tres" id="7_xs340"]
 
 [sub_resource type="Resource" id="Resource_6tkd5"]
 script = ExtResource("2_y1w52")
@@ -34,54 +36,11 @@ damage_multiplier = 1.6
 anchor_path = NodePath("PartAnchors/Core")
 metadata/_custom_type_script = "uid://bewuwngi8x4ad"
 
-[sub_resource type="Resource" id="Resource_nakio"]
-script = ExtResource("5_xs340")
-effect_type = 10
-stat_delta = 2
-stat_duration = 3
-post_delay = 1.0
-metadata/_custom_type_script = "uid://4yawyrbpe6tk"
-
-[sub_resource type="Resource" id="Resource_kfv48"]
-script = ExtResource("4_hkqod")
-skill_name = "Establish Beachhead"
-command_key = "support"
-will_cost = 2
-is_aoe = true
-ally_target = true
-effects = Array[ExtResource("5_xs340")]([SubResource("Resource_nakio")])
-metadata/_custom_type_script = "uid://badrkgc20tgv2"
-
-[sub_resource type="Resource" id="Resource_mj51h"]
-script = ExtResource("5_xs340")
-metadata/_custom_type_script = "uid://4yawyrbpe6tk"
-
-[sub_resource type="Resource" id="Resource_p3l41"]
-script = ExtResource("4_hkqod")
-skill_name = "Defend Position"
-command_key = "attack"
-effects = Array[ExtResource("5_xs340")]([SubResource("Resource_mj51h")])
-metadata/_custom_type_script = "uid://badrkgc20tgv2"
-
-[sub_resource type="Resource" id="Resource_sfd0r"]
-script = ExtResource("5_xs340")
-effect_type = 2
-heal_amount = 3
-metadata/_custom_type_script = "uid://4yawyrbpe6tk"
-
-[sub_resource type="Resource" id="Resource_d1hle"]
-script = ExtResource("4_hkqod")
-skill_name = "Patch Up"
-command_key = "support"
-will_cost = 2
-ally_target = true
-effects = Array[ExtResource("5_xs340")]([SubResource("Resource_sfd0r")])
-metadata/_custom_type_script = "uid://badrkgc20tgv2"
-
 [resource]
 script = ExtResource("3_8dcge")
 display_name = "HYAD-02 \"Bronte\" Steel Sapper Unit"
 log_name = "Steel Sapper Unit"
+description = "Having bent under the displeasure of a new mother with the same voice as the old, the rebels had been given new labors better suited than airier purposes, new songs that would never reach the Heavens again. Having fallen for the sake of standing among men, the masters of both would have them trample their mortal brothers in rubble. The city built upon that foundational burial had been first in the tower of tombs to follow."
 theme_color = Color(0.02745098, 0.32941177, 1, 1)
 base_max_hp = 21
 base_attack = 3
@@ -90,5 +49,6 @@ base_max_will = 11
 exp_yield = 11
 body_parts = Array[ExtResource("2_y1w52")]([SubResource("Resource_6tkd5"), SubResource("Resource_dh4ty"), SubResource("Resource_p36iu")])
 battle_scene = ExtResource("1_uyhun")
-skills = Array[ExtResource("4_hkqod")]([SubResource("Resource_kfv48"), SubResource("Resource_p3l41"), SubResource("Resource_d1hle")])
+skills = Array[ExtResource("4_hkqod")]([ExtResource("5_8dcge"), ExtResource("6_hkqod"), ExtResource("7_xs340")])
+chatter_support = Array[String](["Take refuge, Sister."])
 metadata/_custom_type_script = "uid://b2t1syvrybco8"
