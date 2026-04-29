@@ -37,6 +37,7 @@ func get_log_name() -> String:
 @export var chatter_low_hp  : Array[String] = []
 @export var chatter_kill    : Array[String] = []
 @export var chatter_die     : Array[String] = []
+@export var chatter_turn_start : Array[String] = []
 
 # Optional: pre-built PartyMemberData for boss enemies that use support actor scripts.
 # Assign via BossBuilder so the actor has will, skill unlocks, etc.

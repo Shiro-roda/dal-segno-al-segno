@@ -453,6 +453,7 @@ func spawn_enemies():
 			actor.chatter_low_hp  = Array(char_data.chatter_low_hp)
 			actor.chatter_kill    = Array(char_data.chatter_kill)
 			actor.chatter_die     = Array(char_data.chatter_die)
+			actor.chatter_turn_start = Array(char_data.chatter_turn_start)
 
 		enemy_slots[i].add_child(actor)
 
@@ -552,6 +553,7 @@ func handle_player_turn(actor: BattleActor) -> void:
 
 	input_stage = InputStage.COMMAND
 	update_ui_state()
+	actor.say_turn_start()
 	emit_signal("player_turn_started", actor)
 
 
@@ -570,6 +572,7 @@ func handle_enemy_turn(actor: BattleActor) -> void:
 	await get_tree().process_frame
 	focus_target(actor)
 	focus_actor(target)
+	actor.say_turn_start()
 	# Use enemy_take_turn for skill-aware AI (boss enemies), plain take_turn otherwise
 	if actor.get_skills().is_empty():
 		await actor.take_turn(target)

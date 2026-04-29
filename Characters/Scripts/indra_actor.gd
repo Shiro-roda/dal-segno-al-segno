@@ -229,3 +229,6 @@ func say_kill() -> void:
 
 func say_die() -> void:
 	say_random(CHATTER_DIE)
+
+func say_turn_start() -> void:
+	say_random(CHATTER_TURN_START)

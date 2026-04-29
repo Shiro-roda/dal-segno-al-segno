@@ -62,6 +62,12 @@ const CHATTER_DIE = [
 	" ",
 ]
 
+const CHATTER_TURN_START = [
+	". . .",
+	". . .",
+	" ",
+]
+
 
 func use_lens(channel: int) -> void:
 	var manager = get_tree().get_first_node_in_group("battle_manager")
@@ -146,3 +152,12 @@ func _supports_have_will() -> bool:
 
 func _make_skill(label: String, key: String, _slot: String) -> Dictionary:
 	return {"name": label, "key": key}
+
+func say_kill() -> void:
+	say_random(CHATTER_KILL)
+
+func say_die() -> void:
+	say_random(CHATTER_DIE)
+
+func say_turn_start() -> void:
+	say_random(CHATTER_TURN_START)

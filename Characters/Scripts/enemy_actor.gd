@@ -21,6 +21,7 @@ var chatter_hurt    : Array = []
 var chatter_low_hp  : Array = []
 var chatter_kill    : Array = []
 var chatter_die     : Array = []
+var chatter_turn_start : Array = []
 
 ## Set to true the first time the low-HP line fires, so it only plays once per battle.
 var _low_hp_chatter_fired : bool = false
@@ -207,3 +208,6 @@ func say_kill() -> void:
 
 func say_die() -> void:
 	say_random(chatter_die)
+
+func say_turn_start() -> void:
+	say_random(chatter_turn_start)

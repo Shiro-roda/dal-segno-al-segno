@@ -98,6 +98,17 @@ const CHATTER_DIE = [
 	" ",
 ]
 
+const CHATTER_TURN_START = [
+	"I'm ready!",
+	"Just stay right behind me! . . . please?",
+	"I'll find a way!",
+	"Is it over yet . . . ?",
+	" ",
+	" ",
+	" ",
+	" ",
+]
+
 
 func get_skills() -> Array:
 	var has_will      = party_member != null and party_member.will > 0
@@ -273,3 +284,6 @@ func say_kill() -> void:
 
 func say_die() -> void:
 	say_random(CHATTER_DIE)
+
+func say_turn_start() -> void:
+	say_random(CHATTER_TURN_START)

@@ -35,7 +35,7 @@ const UNWILLING_WILL_RESTORE     = 4
 const UNWILLING_MAX_WILL_BONUS   = 1
 
 const CHATTER_VICE = [
-	"Hey tasty~",
+	"Just one bite . . .",
 	"C'mere... just want a hug, is all...",
 	"Don't they look soooo good?",
 	" ",
@@ -71,6 +71,11 @@ const CHATTER_UNWILLING = [
 ]
 const CHATTER_WITHER = [
 	"Pipe down!",
+	"Oh nah you chopped as hell.",
+	"Get OUT of my sight.",
+	"You're not him lil guy </3",
+	" ",
+	" ",
 ]
 const CHATTER_WASTE = [
 	"Fuuuuck, I'm hungry...",
@@ -84,9 +89,6 @@ const CHATTER_DRAIN = [
 	"*SLUUURRPP*",
 	"Ugh, it's all stringy and shit.",
 	"Just a bite ~<3",
-	" ",
-	" ",
-	" ",
 	" ",
 ]
 const CHATTER_HURT = [
@@ -107,7 +109,20 @@ const CHATTER_KILL = [
 ]
 
 const CHATTER_DIE = [
-	"Sh-Shiiittt... can't... breathe... I guess I got too excited~",
+	"Sh-Shiiittt... can't... breathe... I guess I got too excited ~",
+	" ",
+]
+
+const CHATTER_TURN_START = [
+	"Ugghh, I'm booored, KK . . .", 
+	"Hey tasty~",
+	"Who's the lucky snack this time ~ ?",
+	"Still listening?",
+	"That hunky junk still working for ya?",
+	"Ughh just hurry up, it's fucking itching! \nI'm about to start peeling this shit off.",
+	" ",
+	" ",
+	" ",
 	" ",
 ]
 
@@ -267,7 +282,6 @@ func _devour(target: BattleActor, part: BodyPartData = null) -> void:
 	party_member.spend_will(DEVOUR_WILL_COST)
 	var victim = target.get_log_name()
 	var damage := int(attack_power * DEVOUR_DMG_MULT)
-	say_random(CHATTER_DEVOUR)
 	log_msg("The beast grows voracious.")
 	await play_attack_animation(target, 3.0, 3.0, damage)
 	if part != null and part.has_part_hp() and is_instance_valid(target):
@@ -275,10 +289,17 @@ func _devour(target: BattleActor, part: BodyPartData = null) -> void:
 		if broke:
 			target._on_part_broken(part)
 	if not is_instance_valid(target) or not target.is_alive():
+		say_random(CHATTER_DEVOUR)
 		max_hp += DEVOUR_MAX_HP_BONUS
 		if party_member:
 			party_member.bonus_max_hp += DEVOUR_MAX_HP_BONUS
 		log_msg("%s was devoured — the beast yet grows voracious." % [victim])
+	else:
+		var heal      : int = max(1, int(damage * (1.0 - LIFESTEAL_RATIO)))
+		say_random(CHATTER_DRAIN)
+		hp = min(hp + heal, max_hp)
+		emit_signal("hp_changed")
+		log_msg("%s drinks %d CORP from the wound." % [get_log_name(), heal])
 	emit_signal("turn_finished")
 
 
@@ -339,7 +360,7 @@ func _waste() -> void:
 
 func _wither(target: BattleActor, part: BodyPartData = null) -> void:
 	party_member.spend_will(WITHER_WILL_COST)
-	say_random(CHATTER_WITHER)
+	
 	log_msg("%s sharpens their tongue on %s." % [name, target.name])
 	var dmg_dealt : int = attack_power
 	if randf() < WITHER_CHANCE_NORMAL:
@@ -347,11 +368,13 @@ func _wither(target: BattleActor, part: BodyPartData = null) -> void:
 			var leech_dmg : int = int(dmg_dealt * (1.0 - LIFESTEAL_RATIO))
 			var heal      : int = max(1, int(dmg_dealt))
 			target.take_damage(leech_dmg, self)
+			say_random(CHATTER_DRAIN)
 			hp = min(hp + heal, max_hp)
 			emit_signal("hp_changed")
 			log_msg("%s drinks %d CORP from the wound." % [get_log_name(), heal])
 		else:
 			target.take_damage(dmg_dealt, self)
+			say_random(CHATTER_WITHER)
 		target.modify_attack(-WITHER_ATK_REDUCTION)
 		log_msg("%s cowers under %s's fangs." % [target.name, name])
 	else:
@@ -359,11 +382,13 @@ func _wither(target: BattleActor, part: BodyPartData = null) -> void:
 			var leech_dmg : int = int(dmg_dealt * (1.0 - LIFESTEAL_RATIO))
 			var heal      : int = max(1, int(dmg_dealt))
 			target.take_damage(leech_dmg, self)
+			say_random(CHATTER_DRAIN)
 			hp = min(hp + heal, max_hp)
 			emit_signal("hp_changed")
 			log_msg("%s drinks %d CORP from the wound." % [get_log_name(), heal])
 		else:
 			target.take_damage(dmg_dealt, self)
+			say_random(CHATTER_WITHER)
 	if part != null and part.has_part_hp():
 		var broke := part.take_part_damage(attack_power)
 		if broke:
@@ -387,3 +412,6 @@ func say_kill() -> void:
 
 func say_die() -> void:
 	say_random(CHATTER_DIE)
+
+func say_turn_start() -> void:
+	say_random(CHATTER_TURN_START)

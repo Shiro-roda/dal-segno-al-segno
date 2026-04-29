@@ -390,6 +390,10 @@ func say_kill() -> void:
 func say_die() -> void:
 	pass
 
+## Override in subclasses to speak a line at the start of this actor's turn.
+func say_turn_start() -> void:
+	pass
+
 
 # --- Status effect helpers ---
 
