@@ -23,6 +23,11 @@ var _log_label      : RichTextLabel
 var _log_vbox       : VBoxContainer
 var _log_lines      : Array = []
 
+# ATB bar widgets keyed by BattleActor
+var _atb_bars : Dictionary = {}
+# Button overlay for player actors — clicking issues an order
+var _atb_buttons : Dictionary = {}
+
 # Turn order queue strip
 var _queue_labels : Array = []
 
@@ -305,6 +310,16 @@ func setup(actor_list : Array):
 		for c in _log_vbox.get_children():
 			c.free()  # free() not queue_free() — must be synchronous
 
+	# Build ATB bars if we're starting in ATB mode.
+	if BattleSettings.battle_mode == BattleSettings.BattleMode.ATB:
+		_build_atb_strip(actor_list)
+	else:
+		# Remove any leftover ATB strip from a previous ATB battle.
+		if _atb_strip != null:
+			_atb_strip.queue_free()
+			_atb_strip = null
+		_atb_bars.clear()
+
 	for c in player_container.get_children():
 		c.queue_free()
 
@@ -512,3 +527,112 @@ func _make_augur_entry(enemy: BattleActor) -> VBoxContainer:
 	entry.add_child(atk_lbl)
 
 	return entry
+
+
+# ── ATB bar strip ─────────────────────────────────────────────────────────────────
+
+## Container holding all ATB bars.  Created lazily on first ATB battle.
+var _atb_strip : VBoxContainer = null
+
+## Builds one ProgressBar + name Label per actor and stores them in _atb_bars.
+## Placed at the right edge of the screen, above the TargetInfo panel.
+func _build_atb_strip(actor_list: Array) -> void:
+	if _atb_strip != null:
+		_atb_strip.queue_free()
+		_atb_strip = null
+	_atb_bars.clear()
+	_atb_buttons.clear()
+
+	var font : Font = load(HUD_FONT) if ResourceLoader.exists(HUD_FONT) else ThemeDB.fallback_font
+
+	_atb_strip = VBoxContainer.new()
+	_atb_strip.name = "ATBStrip"
+	_atb_strip.anchor_left   = 1.0
+	_atb_strip.anchor_top    = 0.5
+	_atb_strip.anchor_right  = 1.0
+	_atb_strip.anchor_bottom = 0.5
+	_atb_strip.offset_left   = -160.0
+	_atb_strip.offset_right  = -10.0
+	_atb_strip.offset_top    = -60.0
+	_atb_strip.offset_bottom =  110.0
+	_atb_strip.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_atb_strip.grow_vertical   = Control.GROW_DIRECTION_BOTH
+	_atb_strip.add_theme_constant_override("separation", 6)
+	add_child(_atb_strip)
+
+	# Show all actors (players on top, enemies below) sorted by team then name.
+	var sorted := actor_list.filter(func(a): return a.team == BattleActor.Team.PLAYER)
+	sorted.append_array(actor_list.filter(func(a): return a.team == BattleActor.Team.ENEMY))
+
+	for actor in sorted:
+		var row := VBoxContainer.new()
+		row.add_theme_constant_override("separation", 2)
+
+		var lbl := Label.new()
+		lbl.text = actor.get_log_name().to_upper()
+		lbl.add_theme_font_size_override("font_size", 10)
+		var col := Color(0.75, 0.95, 1.0, 1.0) if actor.team == BattleActor.Team.PLAYER \
+					else Color(1.0, 0.55, 0.55, 1.0)
+		lbl.add_theme_color_override("font_color", col)
+		if font:
+			lbl.add_theme_font_override("font", font)
+		row.add_child(lbl)
+
+		var bar := ProgressBar.new()
+		bar.min_value = 0.0
+		bar.max_value = 100.0
+		bar.value = actor.tempo_pool
+		bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		bar.custom_minimum_size = Vector2(0, 8)
+		bar.show_percentage = false
+		# Style the bar
+		var fill := StyleBoxFlat.new()
+		fill.bg_color = col
+		bar.add_theme_stylebox_override("fill", fill)
+		var bg := StyleBoxFlat.new()
+		bg.bg_color = Color(0.1, 0.1, 0.12, 0.85)
+		bar.add_theme_stylebox_override("background", bg)
+		row.add_child(bar)
+
+		_atb_strip.add_child(row)
+		_atb_bars[actor] = bar
+
+		# Player actors get a transparent button overlay so the player can
+		# click them to issue orders when their bar is full.
+		if actor.team == BattleActor.Team.PLAYER:
+			var btn := Button.new()
+			btn.flat = true
+			btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			btn.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+			# Invisible until ready
+			btn.modulate = Color(1, 1, 1, 0)
+			btn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			var _actor: BattleActor = actor  # capture for lambda
+			btn.pressed.connect(func():
+				var bm = get_tree().get_first_node_in_group("battle_manager")
+				if bm != null:
+					bm._atb_player_issue_order(_actor)
+			)
+			row.add_child(btn)
+			_atb_buttons[actor] = btn
+
+## Update ATB bar values.  Called every _process frame from battle_manager in ATB mode.
+func refresh_atb_bars(actor_list: Array) -> void:
+	for actor in actor_list:
+		if _atb_bars.has(actor):
+			(_atb_bars[actor] as ProgressBar).value = actor.tempo_pool
+		if _atb_buttons.has(actor):
+			var btn : Button = _atb_buttons[actor]
+			var ready : bool = actor.tempo_pool >= 100.0
+			btn.mouse_filter = Control.MOUSE_FILTER_STOP if ready else Control.MOUSE_FILTER_IGNORE
+			# Pulse the label alpha so it's obvious this character is ready.
+			var pulse := (sin(Time.get_ticks_msec() * 0.005) * 0.5 + 0.5) if ready else 0.0
+			btn.modulate = Color(1, 1, 1, pulse)
+
+## Show or hide the ATB strip.  Called at battle start based on BattleSettings.
+func set_atb_strip_visible(v: bool) -> void:
+	if _atb_strip != null:
+		_atb_strip.visible = v
+	# Also hide the CTB projected queue when ATB is active.
+	if is_instance_valid(_queue_vbox):
+		_queue_vbox.get_parent().visible = not v  # hides the BattleLog/HBoxContainer/TurnQueue column

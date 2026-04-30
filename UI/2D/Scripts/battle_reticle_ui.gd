@@ -106,6 +106,61 @@ var _tense_phase     : bool  = false
 var _palette_counter : int   = 0
 var _time            : float = 0.0
 
+## Set of BattleActors whose ATB gauge is full and can receive orders.
+## Updated each frame by the battle manager via set_actor_ready().
+var _ready_actors : Array[BattleActor] = []
+
+func set_actor_ready(actor: BattleActor, ready: bool) -> void:
+	if ready:
+		if actor not in _ready_actors:
+			_ready_actors.append(actor)
+	else:
+		_ready_actors.erase(actor)
+
+# ── Keyboard navigation ───────────────────────────────────────────────────────
+# _kb_list: which box array the keyboard cursor is currently in.
+#   "ally"  → browsing player characters (left viewport, no skill yet)
+#   "skill" → browsing skill list for the commanded actor
+#   "enemy" → browsing enemies (right viewport)
+#   "part"  → browsing body parts of the selected enemy
+var _kb_list  : String = "ally"   # current active list
+var _kb_index : int    = 0        # index within the current active list
+
+## Returns the box array for the current keyboard list, filtering out dead/hidden entries.
+func _kb_active_list() -> Array:
+	match _kb_list:
+		"ally":  return _ally_boxes.filter(func(e): return is_instance_valid(e.get("box")) and e["box"].visible)
+		"skill": return _skill_boxes.filter(func(e): return is_instance_valid(e.get("box")) and e["box"].visible)
+		"enemy": return _enemy_boxes.filter(func(e): return is_instance_valid(e.get("box")) and e["box"].visible)
+		"part":  return _part_boxes.filter(func(e):  return is_instance_valid(e.get("box")) and e["box"].visible)
+	return []
+
+## Clamp _kb_index to the current list size and highlight the focused entry.
+func _kb_refresh_highlight() -> void:
+	var list := _kb_active_list()
+	if list.is_empty():
+		return
+	_kb_index = clampi(_kb_index, 0, list.size() - 1)
+	# Slide the focused entry toward its anchor; deselect the rest.
+	for i in list.size():
+		var e : Dictionary = list[i]
+		if i == _kb_index:
+			if not e["selected"]:
+				e["selected"]    = true
+				e["click_pulse"] = 0.5
+		else:
+			if e["selected"] and not e.get("at_anchor", false):
+				e["selected"] = false
+
+## Switch to a different list and reset the cursor to the nearest valid entry.
+func _kb_switch_list(new_list: String) -> void:
+	# Deselect current
+	for e in _kb_active_list():
+		e["selected"] = false
+	_kb_list  = new_list
+	_kb_index = 0
+	_kb_refresh_highlight()
+
 var _draw_node    : Node2D = null
 
 ## Set before calling open() to choose the colour scheme.
@@ -151,6 +206,8 @@ func open(actor: BattleActor, skills: Array, enemies: Array, allies: Array,
 	_active            = true
 	_clear_all_boxes()
 	_clear_struggle_box()
+	_kb_list  = "ally"
+	_kb_index = 0
 	show()
 	_build_skill_boxes()
 	_build_enemy_boxes()
@@ -187,6 +244,53 @@ func reset_selection() -> void:
 	set_support_targeting(false)
 	emit_signal("cancelled")
 
+
+## Destroy skill boxes and reset selection state.
+## Called in ATB mode after a player's turn ends, without touching ally/enemy boxes.
+func clear_skills() -> void:
+	_sel_skill  = {}
+	_sel_target = null
+	_sel_part   = null
+	_actor      = null
+	_clear_struggle_box()
+	_clear_repeat_button()
+	_clear_boxes(_part_boxes)
+	_clear_boxes(_skill_boxes)
+	for eb in _enemy_boxes:
+		eb["selected"]  = false
+		eb["at_anchor"] = false
+		eb["edge_push"] = false
+		_hide_detail(eb)
+	for ab in _ally_boxes:
+		if ab["selected"]:
+			_slide_to_float(ab)
+	# Return keyboard cursor to ally browsing.
+	_kb_list  = "ally"
+	_kb_index = 0
+
+## Swap out skill boxes for a new actor without disturbing ally/enemy boxes.
+## Called in ATB mode when the player clicks a ready character.
+func refresh_for_actor(actor: BattleActor, skills: Array,
+		removed_mask: int, tense_phase: bool, can_repeat: bool) -> void:
+	_actor        = actor
+	_skills       = skills
+	_removed_mask = removed_mask
+	_tense_phase  = tense_phase
+	_sel_skill    = {}
+	_sel_target   = null
+	_sel_part     = null
+	_clear_struggle_box()
+	_clear_repeat_button()
+	_clear_boxes(_part_boxes)
+	_clear_boxes(_skill_boxes)
+	_palette_counter = _enemy_boxes.size() + _ally_boxes.size()  # avoid palette collisions
+	_build_skill_boxes()
+	if can_repeat:
+		_build_repeat_button()
+	# Keyboard cursor jumps to skill list so player can navigate immediately.
+	_kb_list  = "skill"
+	_kb_index = 0
+	_kb_refresh_highlight()
 
 ## Hide/show skill boxes without destroying them (e.g. during enemy turns).
 func set_skills_visible(visible_: bool) -> void:
@@ -645,17 +749,15 @@ func _build_ally_boxes() -> void:
 		if not is_instance_valid(ally) or not ally.is_alive():
 			continue
 		var float_pos := _ally_float_pos(i, n)
-		var entry := _make_box_entry(float_pos, ally.display_name, ally, true, "ally")
-		# Ally boxes are always clickable — they show details when no skill
-		# is selected, and act as targets when a support skill is selected.
-		# Seed screen_rect, display_pos, and anchor immediately.
+		# is_enemy = false → ally boxes live in the LEFT viewport, projected via left cam
+		var entry := _make_box_entry(float_pos, ally.display_name, ally, false, "ally")
 		var ca := ally.get_node_or_null("CameraAnchor")
 		var anchor_node : Node3D = ca if ca is Node3D else ally
-		var initial_pos : Vector2 = _anchor_screen(anchor_node, true)
+		var initial_pos : Vector2 = _anchor_screen(anchor_node, false)
 		if initial_pos.x > -9000:
 			entry["anchor_screen"] = initial_pos
 			entry["display_pos"]   = initial_pos
-			entry["screen_rect"]   = ally.get_screen_rect(_right_cam, RIGHT_VP_X)
+			entry["screen_rect"]   = ally.get_screen_rect(_left_cam, LEFT_VP_X)
 		_ally_boxes.append(entry)
 
 
@@ -699,7 +801,7 @@ func _part_float_pos(i: int, n: int) -> Vector2:
 
 func _ally_float_pos(i: int, _n: int) -> Vector2:
 	var phase : float = float(i) * (TAU / 5.0) + 1.2
-	return Vector2(RIGHT_VP_X + RIGHT_VP_W * 0.5 + cos(phase) * 120.0,
+	return Vector2(LEFT_VP_X + LEFT_VP_W * 0.5 + cos(phase) * 120.0,
 				   600.0 + sin(phase) * 100.0)
 
 
@@ -853,8 +955,7 @@ func _refresh_anchor_positions() -> void:
 				e["anchor_screen"] = proj
 				e["screen_rect"]   = sr
 
-	# Ally boxes → CameraAnchor on each ally (right cam)
-	# Share the left-edge parking column with off-screen skills.
+	# Ally boxes → CameraAnchor on each ally (LEFT cam — players are on the left)
 	var ally_park_slot : int = left_park_slot
 	for i in _ally_boxes.size():
 		var e : Dictionary = _ally_boxes[i]
@@ -865,7 +966,7 @@ func _refresh_anchor_positions() -> void:
 		if ally != null:
 			var ca := ally.get_node_or_null("CameraAnchor")
 			var anchor : Node3D = ca if ca is Node3D else ally
-			var proj : Vector2 = _anchor_screen(anchor, true)
+			var proj : Vector2 = _anchor_screen(anchor, false)
 			if proj.x <= -9000:
 				e["off_screen"]    = true
 				e["park_pos"]      = _offscreen_park_pos(ally_park_slot, false)
@@ -874,7 +975,7 @@ func _refresh_anchor_positions() -> void:
 			else:
 				e["off_screen"]    = false
 				e["anchor_screen"] = proj
-				e["screen_rect"]   = ally.get_screen_rect(_right_cam, RIGHT_VP_X)
+				e["screen_rect"]   = ally.get_screen_rect(_left_cam, LEFT_VP_X)
 
 	# Part boxes → part anchors on selected target (right cam)
 	for e in _part_boxes:
@@ -913,6 +1014,12 @@ func _draw_box_set(entries: Array) -> void:
 			var alpha2 : float = pulse2 * (1.0 if sel2 else 0.55)
 			var th2    : ReticleTheme = _active_theme()
 			var neon2  : Color = th2.get_neon(e["data_type"], int(e.get("palette_idx", 0)))
+			# Ready allies always show green, even when off-screen.
+			var _off_ally : Variant = e["data"]
+			if e["data_type"] == "ally" and _off_ally is BattleActor \
+					and (_off_ally as BattleActor) in _ready_actors:
+				var t_sec3 : float = Time.get_ticks_msec() * 0.001
+				neon2 = Color(0.15, 1.0, 0.45, 0.75 + 0.25 * sin(t_sec3 * 2.5))
 			var dim_col := Color(neon2.r * 0.5, neon2.g * 0.5, neon2.b * 0.5, alpha2)
 			# Draw corner brackets at the parked box size
 			var park_rect := Rect2(dp2 - half2, half2 * 2.0)
@@ -927,8 +1034,21 @@ func _draw_box_set(entries: Array) -> void:
 		var t_sec     : float = Time.get_ticks_msec() * 0.001
 		var locked    : bool  = e.get("_locked", false)
 		var coloured  : bool  = (e["data_type"] == "skill" or not _sel_skill.is_empty()) and not locked
+		# Ready allies are always drawn coloured (green) even with no skill selected.
+		var _ally_data_check : Variant = e["data"]
+		if e["data_type"] == "ally" and _ally_data_check is BattleActor \
+				and (_ally_data_check as BattleActor) in _ready_actors:
+			coloured = true
 		var th        : ReticleTheme = _active_theme()
 		var base_neon : Color = th.get_neon(e["data_type"], int(e.get("palette_idx", 0)))
+		# Ready ally boxes pulse bright green so the player can immediately spot
+		# who they can command.
+		var _is_ready_ally : bool = e["data_type"] == "ally" and \
+				e["data"] is BattleActor and (e["data"] as BattleActor) in _ready_actors
+		if _is_ready_ally:
+			var t_sec2 : float = Time.get_ticks_msec() * 0.001
+			var green_pulse : float = 0.75 + 0.25 * sin(t_sec2 * 2.5)
+			base_neon = Color(0.15, 1.0, 0.45, green_pulse)
 		var cycle_on  : bool  = coloured and th.allow_hue_cycle()
 		# In VAPORWAVE mode, drift the hue over time for cycling effect
 		var hue_drifted : Color = base_neon
@@ -1210,28 +1330,34 @@ func _on_box_pressed(entry: Dictionary) -> void:
 		if not is_instance_valid(data):
 			return
 		var ally : BattleActor = data as BattleActor
-		if _sel_skill.is_empty() or (_sel_target != null and _sel_target.team == BattleActor.Team.ENEMY):
-			# No skill selected — reset all other selections first, then show
-			# ally details and focus camera; do not set _sel_target.
-			_deselect_all(_skill_boxes, {})
-			_sel_skill  = {}
-			_sel_target = null
-			_sel_part   = null
-			_clear_boxes(_part_boxes)
-			_clear_struggle_box()
-			for eb in _enemy_boxes:
-				if eb["selected"] or eb["edge_push"]:
-					_slide_to_float(eb)
-			_deselect_all(_ally_boxes, entry)
-			_slide_to_anchor(entry)
-			emit_signal("focus_requested", ally)
-		else:
-			# Support skill selected — commit as target.
+		# If a support skill is selected, commit as target.
+		if not _sel_skill.is_empty() and _support_targeting:
 			_deselect_all(_ally_boxes, entry)
 			_sel_target = ally
 			_sel_part   = null
 			_slide_to_anchor(entry)
 			emit_signal("target_selected", ally)
+			return
+		# Always select/focus this ally visually.
+		_deselect_all(_skill_boxes, {})
+		_sel_skill  = {}
+		_sel_target = null
+		_sel_part   = null
+		_clear_boxes(_part_boxes)
+		_clear_struggle_box()
+		for eb in _enemy_boxes:
+			if eb["selected"] or eb["edge_push"]:
+				_slide_to_float(eb)
+		_deselect_all(_ally_boxes, entry)
+		_slide_to_anchor(entry)
+		# If gauge is full, open command menu for this actor.
+		if ally in _ready_actors:
+			var bm = get_tree().get_first_node_in_group("battle_manager")
+			if bm != null:
+				bm._atb_player_issue_order(ally)
+		else:
+			# Not ready yet — just focus camera on them.
+			emit_signal("focus_requested", ally)
 
 	elif dtype == "part":
 		if _sel_skill.is_empty():
@@ -1251,21 +1377,14 @@ func _on_box_pressed(entry: Dictionary) -> void:
 # ── Slide animation ───────────────────────────────────────────────────────────
 
 func _slide_to_anchor(entry: Dictionary) -> void:
-	entry["selected"]     = true
-	entry["click_pulse"]  = 0.75
-
-	var lbl_node : Label = entry["label_node"]
+	entry["selected"]    = true
+	entry["at_anchor"]   = true   # immediate — second click confirms without waiting
+	entry["click_pulse"] = 0.75
 	if is_instance_valid(entry.get("tween")):
 		(entry["tween"] as Tween).kill()
-	# Wait for drift to land (~travel time), then mark at_anchor and show detail
-	var cap_entry := entry
-	var tw := create_tween()
-	tw.tween_interval(TWEEN_TIME * 1.5)
-	tw.tween_callback(func():
-		if cap_entry["selected"]:
-			cap_entry["at_anchor"] = true
-			_show_detail(cap_entry))
-	entry["tween"] = tw
+		entry["tween"] = null
+	# Show detail immediately too
+	_show_detail(entry)
 
 
 func _slide_to_float(entry: Dictionary) -> void:
@@ -1603,24 +1722,122 @@ func _skill_needs_target(sk: Dictionary) -> bool:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not _active: return
-	# Right-click deselects everything and returns to free-float
+
+	# Right-click: cancel / step back
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
 		reset_selection()
+		get_viewport().set_input_as_handled()
 		return
-	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+
+	if not (event is InputEventKey and event.pressed):
+		return
+
+	# ESC: step back one level
+	if event.keycode == KEY_ESCAPE:
 		if _sel_part != null:
 			_sel_part = null
 			_deselect_all(_part_boxes, {})
+			_kb_switch_list("enemy")
 		elif _sel_target != null:
 			_sel_target = null
 			_deselect_all(_enemy_boxes, {})
 			_clear_boxes(_part_boxes)
+			_kb_switch_list("enemy")
 		elif not _sel_skill.is_empty():
 			_sel_skill = {}
 			_deselect_all(_skill_boxes, {})
-			# Reset all enemy boxes back to white floating state
 			for eb in _enemy_boxes:
 				eb["selected"]  = false
 				eb["at_anchor"] = false
 				eb["edge_push"] = false
 				_hide_detail(eb)
+			_kb_switch_list("skill")
+		else:
+			reset_selection()
+		get_viewport().set_input_as_handled()
+		return
+
+	# Derive current phase for arrow-key semantics.
+	# A: no skill — browsing actors
+	# B: skill list open (actor commanded)
+	# C: skill chosen, picking enemy target
+	# D: enemy chosen, picking body part
+	var phase : String
+	if not _sel_skill.is_empty() and not _part_boxes.is_empty():
+		phase = "D"
+	elif not _sel_skill.is_empty() and _sel_target == null:
+		phase = "C"
+	elif not _sel_skill.is_empty():
+		phase = "D"
+	elif not _skill_boxes.is_empty():
+		phase = "B"
+	else:
+		phase = "A"
+
+	match event.keycode:
+
+		KEY_LEFT, KEY_RIGHT:
+			var dir : int = 1 if event.keycode == KEY_RIGHT else -1
+			match phase:
+				"A":
+					if _kb_list == "enemy":
+						_kb_index = (_kb_index + dir + _enemy_boxes.size()) % max(_enemy_boxes.size(), 1)
+					else:
+						_kb_list  = "ally"
+						_kb_index = (_kb_index + dir + _ally_boxes.size()) % max(_ally_boxes.size(), 1)
+				"B":
+					_kb_list  = "skill"
+					_kb_index = (_kb_index + dir + _skill_boxes.size()) % max(_skill_boxes.size(), 1)
+				"C":
+					_kb_list  = "enemy"
+					_kb_index = (_kb_index + dir + _enemy_boxes.size()) % max(_enemy_boxes.size(), 1)
+				"D":
+					_kb_list  = "part"
+					_kb_index = (_kb_index + dir + _part_boxes.size()) % max(_part_boxes.size(), 1)
+			_kb_refresh_highlight()
+			get_viewport().set_input_as_handled()
+
+		KEY_UP, KEY_DOWN:
+			# Up/Down switches team side.
+			# Left viewport (ally/skill) -> right viewport (enemy); and vice versa.
+			match phase:
+				"A":
+					if _kb_list in ["ally", "skill"]:
+						_kb_switch_list("enemy")
+					else:
+						_kb_switch_list("ally")
+				"B":
+					# Cancel the active command, return to ally browsing.
+					reset_selection()
+				"C":
+					# Step back to skill list.
+					_sel_skill = {}
+					_deselect_all(_skill_boxes, {})
+					for eb in _enemy_boxes:
+						eb["selected"]  = false
+						eb["at_anchor"] = false
+						eb["edge_push"] = false
+						_hide_detail(eb)
+					_kb_switch_list("skill")
+				"D":
+					# Step back to enemy list.
+					_sel_part = null
+					_deselect_all(_part_boxes, {})
+					_kb_switch_list("enemy")
+			get_viewport().set_input_as_handled()
+
+		KEY_SPACE, KEY_ENTER:
+			var list := _kb_active_list()
+			if list.is_empty():
+				return
+			_kb_index = clampi(_kb_index, 0, list.size() - 1)
+			var entry : Dictionary = list[_kb_index]
+			_on_box_pressed(entry)
+			# After skill confirm: if it needs a target, jump cursor to enemies.
+			if entry["data_type"] == "skill" and not _sel_skill.is_empty() \
+					and _skill_needs_target(_sel_skill):
+				_kb_switch_list("enemy")
+			# After enemy confirm: if parts appeared, jump cursor to parts.
+			elif entry["data_type"] == "enemy" and not _part_boxes.is_empty():
+				_kb_switch_list("part")
+			get_viewport().set_input_as_handled()

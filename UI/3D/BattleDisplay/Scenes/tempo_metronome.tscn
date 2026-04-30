@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://b6thxpyi174qb"]
+
+[ext_resource type="Script" uid="uid://bwx4yqpeyc3oo" path="res://UI/3D/BattleDisplay/Scripts/tempo_metronome.gd" id="1_y7sga"]
+
+[node name="TempoMetronome" type="Node3D" unique_id=479744807]
+script = ExtResource("1_y7sga")

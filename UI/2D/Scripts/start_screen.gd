@@ -75,6 +75,11 @@ func _build_main_menu() -> void:
 		_font, func(): _build_new_game_menu()))
 
 	_col.add_child(_make_btn(
+		"SETTINGS",
+		"Battle mode, ATB speed, and accessibility.",
+		_font, func(): _build_settings_menu()))
+
+	_col.add_child(_make_btn(
 		"MANUAL",
 		"View the keyboard & combat reference.",
 		_font, func(): _open_manual()))
@@ -125,6 +130,95 @@ func _build_new_game_menu() -> void:
 		"BACK",
 		"",
 		_font, func(): _build_main_menu()))
+
+
+func _build_settings_menu() -> void:
+	_clear_col()
+
+	var title := Label.new()
+	title.text = "SETTINGS"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_font_override("font", _font)
+	title.add_theme_color_override("font_color", C_TEXT)
+	_col.add_child(title)
+
+	var rule := ColorRect.new()
+	rule.color = C_ACCENT
+	rule.custom_minimum_size = Vector2(420, 1)
+	_col.add_child(rule)
+
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(0, 6)
+	_col.add_child(spacer)
+
+	# ── Battle Mode ──────────────────────────────────────────────────────────
+	_col.add_child(_make_section_label("BATTLE MODE"))
+
+	var is_atb := BattleSettings.battle_mode == BattleSettings.BattleMode.ATB
+	_col.add_child(_make_btn(
+		"ATB — ACTIVE TIME" + ("  ◄" if is_atb else ""),
+		"Tempo bars fill in real time. Time pressure.",
+		_font, func():
+			BattleSettings.battle_mode = BattleSettings.BattleMode.ATB
+			_build_settings_menu()))
+
+	_col.add_child(_make_btn(
+		"CTB — TURN BASED" + ("  ◄" if not is_atb else ""),
+		"Fully paused between turns. No time pressure.",
+		_font, func():
+			BattleSettings.battle_mode = BattleSettings.BattleMode.CTB
+			_build_settings_menu()))
+
+	# ── ATB Submode ───────────────────────────────────────────────────────────
+	_col.add_child(_make_section_label("ATB SUBMODE  (ATB only)"))
+
+	var is_wait := BattleSettings.atb_submode == BattleSettings.ATBSubmode.WAIT
+	_col.add_child(_make_btn(
+		"WAIT" + ("  ◄" if is_wait else ""),
+		"Bars pause while you choose an action.",
+		_font, func():
+			BattleSettings.atb_submode = BattleSettings.ATBSubmode.WAIT
+			_build_settings_menu(),
+		not is_atb))
+
+	_col.add_child(_make_btn(
+		"ACTIVE" + ("  ◄" if not is_wait else ""),
+		"Bars keep filling while you choose. Maximum pressure.",
+		_font, func():
+			BattleSettings.atb_submode = BattleSettings.ATBSubmode.ACTIVE
+			_build_settings_menu(),
+		not is_atb))
+
+	# ── ATB Speed ─────────────────────────────────────────────────────────────
+	_col.add_child(_make_section_label(
+		"ATB SPEED  (ATB only)  —  %.0f%%" % (BattleSettings.atb_speed_multiplier * 100)))
+
+	var speeds := [["SLOW (50%)", 0.5], ["NORMAL (100%)", 1.0],
+				   ["FAST (150%)", 1.5], ["VERY FAST (200%)", 2.0]]
+	for pair in speeds:
+		var label_str : String = pair[0]
+		var val       : float  = pair[1]
+		var active    := absf(BattleSettings.atb_speed_multiplier - val) < 0.01
+		_col.add_child(_make_btn(
+			label_str + ("  ◄" if active else ""),
+			"", _font,
+			func():
+				BattleSettings.atb_speed_multiplier = val
+				_build_settings_menu(),
+			not is_atb))
+
+	_col.add_child(_make_btn("BACK", "", _font, func(): _build_main_menu()))
+
+
+func _make_section_label(text: String) -> Label:
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.add_theme_font_size_override("font_size", 11)
+	lbl.add_theme_font_override("font", _font)
+	lbl.add_theme_color_override("font_color", C_DIM)
+	return lbl
 
 
 func _clear_col() -> void:

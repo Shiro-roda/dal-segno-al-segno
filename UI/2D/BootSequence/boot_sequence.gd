@@ -464,6 +464,10 @@ const _DUNGEON_KEYS : Dictionary = {
 const _BATTLE_KEYS : Dictionary = {
 	"ESC":   "Cancel / deselect",
 	"TAB":   "Arrangement View Toggle",
+	"\u2190": "Cycle LEFT",
+	"\u2192": "Cycle RIGHT",
+	"\u2191": "Cycle FORWARD",
+	"\u2193": "Move BACKWARD",
 }
 
 func _page_keyboard() -> void:

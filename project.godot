@@ -37,6 +37,8 @@ SaveManager="*uid://du7igqvp5we8j"
 MotifRegistry="*uid://h4rl04ej04rq"
 MetaProgress="*uid://lgos2n2isx0l"
 MCPRuntime="*uid://bmxsx0apnxbgi"
+BattleSettings="*res://Systems/BattleSys/BattleSettings.gd"
+AutobattleStrategies="*res://Systems/BattleSys/AutobattleStrategies.gd"
 
 [dialogic]
 

@@ -134,3 +134,9 @@ theme_override_styles/normal = SubResource("StyleBoxEmpty_p0etj")
 text = "AMMO: 20/20"
 label_settings = SubResource("LabelSettings_p0etj")
 horizontal_alignment = 1
+
+[node name="TempoBar" type="ProgressBar" parent="ActorPanelVBox" unique_id=851141046]
+custom_minimum_size = Vector2(0, 6)
+layout_mode = 2
+size_flags_horizontal = 3
+show_percentage = false

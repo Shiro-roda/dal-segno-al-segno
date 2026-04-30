@@ -32,6 +32,36 @@ var turn_queue : Array[BattleActor] = []
 var current_index : int = 0
 
 
+# ── ATB / Time system ────────────────────────────────────────────────────────
+## Central time-scale authority for this battle.  Created at battle start.
+## Drives arrangement-view slow-time, haste fields, cutscene freezes, etc.
+var time_controller : BattleTimeController = null
+
+## Actors whose ATB bar just hit 100 and are waiting for command input.
+## In ATB mode this is used only for enemies — players go into _atb_ready_players.
+var _atb_ready_queue : Array[BattleActor] = []
+
+## Player-team actors whose tempo bar is full and are waiting for orders.
+## The player can freely select any of these to command. Not a queue.
+var _atb_ready_players : Array[BattleActor] = []
+
+## True while an action animation is executing (player or enemy).
+## Enemies will not fire while this is true.
+var _action_executing := false
+
+## True while the player has selected a ready character and the radial is open.
+var _player_menu_open := false
+
+## Legacy read-only alias for external code.
+var _atb_turn_processing : bool :
+	get: return _action_executing or _player_menu_open
+	set(v):
+		if not v:
+			_action_executing = false
+			_player_menu_open = false
+		else:
+			_action_executing = true
+
 var active_player_actor : BattleActor
 var enemy_player_actor : BattleActor
 @onready var active_anchor: Node3D = $"../CameraRig/ActiveAnchor"
@@ -280,9 +310,131 @@ func _process(delta):
 		active_cam.follow_damping = true
 		target_cam.follow_damping = true
 
+	# ── ATB real-time tick ────────────────────────────────────────────────────
+	if BattleSettings.battle_mode == BattleSettings.BattleMode.ATB:
+		_tick_atb(delta)
+
+	# ── BattleTimeController: arrangement gauge & modifiers ──────────────────
+	if time_controller != null:
+		var auto_closed := time_controller.tick_arrangement(delta)
+		if auto_closed:
+			# Arrangement view was force-closed due to empty gauge — notify UI
+			_on_arrangement_view_force_closed()
 
 
+# ── ATB helpers ──────────────────────────────────────────────────────────────
 
+## ATB fill rate per second per tempo_stat point.
+## At 0.45, a character with tempo_stat 10 takes ~22 seconds to fill a bar.
+const ATB_BASE_RATE : float = 0.45
+
+## Real-time ATB tick — called every _process frame when in ATB mode.
+## Fills all living actors' tempo_pool using time_controller's effective scale.
+func _tick_atb(delta: float) -> void:
+	if battle_ending or not is_inside_tree():
+		return
+	# Only tick once the BattleTurn state is active (not during intro/end).
+	if current_state == null or current_state.name != "BattleTurn":
+		return
+	# In WAIT submode, pause OTHER player bars while the current player is
+	# browsing menus (input not yet locked).  Bars fill freely while idle,
+	# while an action is executing (input_locked = true), and between turns.
+	var freeze_players := false
+	if BattleSettings.atb_submode == BattleSettings.ATBSubmode.WAIT:
+		# In WAIT submode, freeze OTHER player bars while the active player is
+		# browsing the menu. _player_menu_open is true exactly during this window.
+		freeze_players = _player_menu_open
+
+	var scale := 1.0
+	if time_controller != null:
+		scale = time_controller.effective_scale()
+	scale *= BattleSettings.atb_speed_multiplier
+	var dt := delta * scale
+
+	for actor in actors:
+		if not actor.is_alive():
+			continue
+		if actor.has_status(BattleActor.STATUS_FROZEN):
+			continue
+		if freeze_players and actor.team == BattleActor.Team.PLAYER:
+			continue
+		# Don't over-fill — cap at 100 and handle the trigger below.
+		if actor.tempo_pool >= 100.0:
+			continue
+		var gain := float(actor.tempo_stat)
+		if actor.has_status(BattleActor.STATUS_SLOW):
+			gain *= BattleActor.SLOW_TEMPO_MULT
+		actor.tempo_pool = minf(actor.tempo_pool + gain * ATB_BASE_RATE * dt, 100.0)
+
+	# After ticking, check who just hit 100.
+	_check_atb_triggers()
+	# Refresh the HUD bar strip every frame so bars visually fill in real time.
+	if is_instance_valid(battle_hud):
+		battle_hud.refresh_atb_bars(actors)
+
+## Check actors whose bars just filled and route them appropriately.
+func _check_atb_triggers() -> void:
+	for actor in actors:
+		if not actor.is_alive() or actor.tempo_pool < 100.0:
+			continue
+		if actor.team == BattleActor.Team.PLAYER:
+			# Player actors go into the ready-set, not the queue.
+			# The player selects who to command from the HUD.
+			if actor not in _atb_ready_players:
+				_atb_ready_players.append(actor)
+				_on_player_actor_ready(actor)
+		else:
+			if actor not in _atb_ready_queue:
+				_atb_ready_queue.append(actor)
+	# Fire waiting enemies if no animation is running.
+	if not _action_executing:
+		_fire_next_enemy_turn()
+
+## Fire the next enemy in the queue, if any and no animation is running.
+func _fire_next_enemy_turn() -> void:
+	if _action_executing or _atb_ready_queue.is_empty():
+		return
+	var actor : BattleActor = _atb_ready_queue.pop_front()
+	if not is_instance_valid(actor) or not actor.is_alive():
+		_fire_next_enemy_turn()  # skip dead/freed
+		return
+	_action_executing = true
+	_run_atb_actor_turn(actor)
+
+## Kept for legacy call-sites (enemy-turn finish, etc.).
+func _fire_next_atb_turn() -> void:
+	_fire_next_enemy_turn()
+
+## Called the moment a player actor's bar fills.
+## Marks them ready in the reticle so clicking their box opens the command menu.
+func _on_player_actor_ready(actor: BattleActor) -> void:
+	# Don't change actor state or move camera — the player surveys the field
+	# at their own pace and chooses who to command.
+	if is_instance_valid(reticle_ui):
+		reticle_ui.set_actor_ready(actor, true)
+	if is_instance_valid(battle_hud):
+		battle_hud.set_active_actor(actor, true)
+
+func _run_atb_actor_turn(actor: BattleActor) -> void:
+	if battle_ending or not is_inside_tree():
+		_action_executing = false
+		return
+	if check_victory():
+		_action_executing = false
+		return
+	# Only enemies are routed through here now.
+	# Player turns are started by _atb_player_issue_order when the player
+	# selects a ready character.
+	await handle_enemy_turn(actor)
+	_action_executing = false
+	_fire_next_enemy_turn()
+
+## Called by BattleTimeController (via _process) when the arrangement gauge
+## runs dry and the view auto-closes.
+func _on_arrangement_view_force_closed() -> void:
+	# Future: play a brief UI flash, push a log message, etc.
+	if is_instance_valid(battle_hud):
+		battle_hud.push_log("[ARRANGEMENT CLOSED — gauge empty]")
 
 func change_state(state_name: String):
 	var next = states.get_node_or_null(state_name)
@@ -304,6 +456,13 @@ func start_battle_with_context(battle_context : BattleContext):
 
 	context = battle_context
 	_exp_this_battle = 0
+
+	# Initialise the time controller for this battle.
+	time_controller = BattleTimeController.new()
+	_atb_ready_queue.clear()
+	_atb_ready_players.clear()
+	_action_executing = false
+	_player_menu_open = false
 	
 	removed_channels = context.encounter.forced_removed_channels
 	if is_instance_valid(reticle_ui):
@@ -351,6 +510,12 @@ func start_battle_with_context(battle_context : BattleContext):
 
 	battle_hud.setup(actors)
 	battle_hud.refresh_queue(self)
+	# Open the reticle once at battle start and leave it open permanently.
+	# Ally boxes start unready; set_actor_ready() gates command access.
+	if is_instance_valid(reticle_ui) and BattleSettings.battle_mode == BattleSettings.BattleMode.ATB:
+		var enemies := actors.filter(func(a): return a.team == BattleActor.Team.ENEMY and a.can_be_targeted())
+		var allies  := actors.filter(func(a): return a.team == BattleActor.Team.PLAYER)
+		reticle_ui.open(null, [], enemies, allies, removed_channels, player_cam, enemy_cam, is_tense_phase(), false)
 	# Mirror battle_log signals to battle_menu so its log stays in sync.
 	if is_instance_valid(battle_menu):
 		for actor in actors:
@@ -496,9 +661,11 @@ func _pick_next_actor() -> BattleActor:
 	var living = actors.filter(func(a): return a.is_alive())
 	if living.is_empty(): return null
 	living.sort_custom(func(a, b): return a.tempo_pool > b.tempo_pool)
+	# Apply the time-scale to each tick so the speed modifier affects CTB too.
+	var scale := time_controller.effective_scale() if time_controller != null else 1.0
 	while living[0].tempo_pool < 100:
 		for actor in living:
-			actor.tick_tempo()
+			actor.tick_tempo(scale)
 		living.sort_custom(func(a, b): return a.tempo_pool > b.tempo_pool)
 	return living[0]
 
@@ -507,6 +674,10 @@ func next_turn():
 	if battle_ending:
 		return
 	if not is_inside_tree():
+		return
+	# In ATB mode the real-time ticker owns turn sequencing — next_turn() is a
+	# CTB concept.  Just return so the ticker can continue naturally.
+	if BattleSettings.battle_mode == BattleSettings.BattleMode.ATB:
 		return
 	if _next_turn_running:
 		print("next_turn: RE-ENTRANT CALL — ignoring")
@@ -537,6 +708,29 @@ func next_turn():
 	else:
 		await handle_enemy_turn(actor)
 
+## Called when the player taps/clicks a ready character in the HUD to issue orders.
+## Actor must be in _atb_ready_players. Opens the radial and sets up the turn.
+func _atb_player_issue_order(actor: BattleActor) -> void:
+	if actor not in _atb_ready_players:
+		return
+	if _player_menu_open or _action_executing:
+		return
+	_player_menu_open = true
+	input_locked = false
+	actor.set_actor_state(BattleActor.STATE_ACTIVE)
+	battle_hud.set_active_actor(actor, true)
+	handle_player_turn(actor)  # not awaited — returns after opening the radial
+
+## Returns both camera viewports to the overview/ground-centre anchors.
+## Called after a turn finishes or when a player actor becomes ready.
+func _return_camera_to_overview() -> void:
+	follow_anchor(active_anchor, player_overview_anchor)
+	follow_anchor(active_look_anchor, player_ground_center_anchor)
+	follow_anchor(target_anchor, enemy_overview_anchor)
+	follow_anchor(target_look_anchor, enemy_ground_center_anchor)
+	if is_instance_valid(battle_hud):
+		battle_hud.sync_overview_button(true)
+
 func handle_player_turn(actor: BattleActor) -> void:
 
 	active_player_actor = actor
@@ -544,12 +738,31 @@ func handle_player_turn(actor: BattleActor) -> void:
 	await get_tree().process_frame
 
 	actor.set_actor_state(BattleActor.STATE_ACTIVE)
-	if _first_player_turn:
+	# In ATB mode, always focus the chosen actor — no special intro glide.
+	if BattleSettings.battle_mode == BattleSettings.BattleMode.ATB:
+		focus_actor(actor)
+	elif _first_player_turn:
 		_first_player_turn = false
-		_intro_active_cam(actor)  # fire-and-forget: glides in, then restores damping
+		_intro_active_cam(actor)
 	else:
 		focus_actor(actor)
-	print("handle_player_turn: active_anchor_source=", active_anchor_source, " pos=", active_anchor.global_position)
+
+	# ── Autobattle ───────────────────────────────────────────────────
+	if BattleSettings.is_autobattling():
+		var strategy := BattleSettings.get_autobattle_strategy()
+		var action : Dictionary = strategy.call(actor, self)
+		if not action.is_empty():
+			# Apply the action dict — mirrors repeat_last_action() logic.
+			selected_command          = action.get("command", "attack")
+			selected_is_struggle      = action.get("is_struggle", false)
+			selected_filter           = action.get("filter", -1)
+			selected_body_part        = action.get("body_part", null)
+			selected_attack_skips_targeting = action.get("is_struggle", false)
+			var wr = action.get("target")
+			selected_target = wr.get_ref() as BattleActor if wr != null else null
+			_on_confirm_pressed()
+			return
+		# Strategy returned {} — fall through to normal player input.
 
 	input_stage = InputStage.COMMAND
 	update_ui_state()
@@ -561,7 +774,11 @@ func handle_player_turn(actor: BattleActor) -> void:
 
 
 func handle_enemy_turn(actor: BattleActor) -> void:
-	if is_instance_valid(reticle_ui): reticle_ui.set_skills_visible(false)
+	# In ATB mode, the reticle is persistent — skills only appear when a player
+	# is actively commanding, so don't hide/show them here.
+	# In CTB mode, hide skills during the enemy turn.
+	if is_instance_valid(reticle_ui) and BattleSettings.battle_mode != BattleSettings.BattleMode.ATB:
+		reticle_ui.set_skills_visible(false)
 	await get_tree().process_frame
 	var target = choose_target(actor)
 	if target == null:
@@ -591,11 +808,18 @@ func handle_enemy_turn(actor: BattleActor) -> void:
 		_last_enemy_tempo_cost = 0
 		actor.tempo_pool -= cost
 		actor.reset_tempo_bonus()
+		# Erase from the ready queue — same race as the player side.
+		_atb_ready_queue.erase(actor)
 	else:
 		pass  # actor freed mid-animation (killed during their own turn)
 	battle_hud.refresh_queue(self)
-	if is_instance_valid(reticle_ui): reticle_ui.set_skills_visible(true)
-	next_turn()
+	# In CTB mode, restore skill visibility after enemy turn ends.
+	if is_instance_valid(reticle_ui) and BattleSettings.battle_mode != BattleSettings.BattleMode.ATB:
+		reticle_ui.set_skills_visible(true)
+	# In CTB mode drive to the next turn; in ATB the caller (_run_atb_actor_turn)
+	# clears _atb_turn_processing and fires the queue after this coroutine returns.
+	if BattleSettings.battle_mode != BattleSettings.BattleMode.ATB:
+		next_turn()
 
 
 
@@ -608,6 +832,9 @@ func handle_enemy_turn(actor: BattleActor) -> void:
 
 
 func await_actor_turn(actor: BattleActor, action: Callable) -> void:
+	# Player has committed their command — menu closes, animation begins.
+	_player_menu_open = false
+	_action_executing = true
 	var finished = false
 
 	var on_finish = func():
@@ -646,8 +873,29 @@ func _on_turn_finished():
 		# Return actor to IDLE so enemies can target them on their turn.
 		if active_player_actor.current_actor_state_name != BattleActor.STATE_DEAD:
 			active_player_actor.set_actor_state(BattleActor.STATE_IDLE)
+		# Erase from the ready queue — _check_atb_triggers may have re-queued
+		# this actor in the same frame before the cost was deducted.
+		_atb_ready_queue.erase(active_player_actor)
 	battle_hud.refresh_queue(self)
-	next_turn()
+	if BattleSettings.battle_mode == BattleSettings.BattleMode.ATB:
+		# Remove from the player ready-set.
+		_atb_ready_players.erase(active_player_actor)
+		# Clear skill boxes; leave ally/enemy boxes alive.
+		if is_instance_valid(reticle_ui):
+			reticle_ui.clear_skills()
+			reticle_ui.set_actor_ready(active_player_actor, false)
+		# Clear locks.
+		_action_executing = false
+		_player_menu_open = false
+		# Return camera to overview so the player can survey the field.
+		_return_camera_to_overview()
+		# Unhighlight the actor in HUD.
+		if is_instance_valid(battle_hud):
+			battle_hud.set_active_actor(active_player_actor, false)
+		# Fire any pending enemy turns.
+		_fire_next_enemy_turn()
+	else:
+		next_turn()
 
 func _tempo_cost_for_command(cmd: String) -> float:
 	match cmd:
@@ -729,11 +977,12 @@ func get_projected_queue(steps: int = 8) -> Array:
 		for a in living:
 			if pools[a] > pools[top]:
 				top = a
+		var proj_scale := time_controller.effective_scale() if time_controller != null else 1.0
 		while pools[top] < 100.0:
 			for a in living:
 				if a.has_status(BattleActor.STATUS_FROZEN):
 					continue
-				var gain = float(a.tempo_stat)
+				var gain = float(a.tempo_stat) * proj_scale
 				if a.has_status(BattleActor.STATUS_SLOW):
 					gain *= BattleActor.SLOW_TEMPO_MULT
 				pools[a] += gain
@@ -766,6 +1015,9 @@ func _on_actor_died(actor: BattleActor):
 						run.defeated_enemies[fallback_cd.display_name] = fallback_cd
 					break
 	actors.erase(actor)
+	# Remove from the ATB queue immediately so _fire_next_atb_turn never
+	# tries to pop a soon-to-be-freed instance.
+	_atb_ready_queue.erase(actor)
 	# Notify the reticle immediately so the dead actor's box disappears
 	if is_instance_valid(reticle_ui):
 		reticle_ui.notify_actor_died(actor)
@@ -780,6 +1032,9 @@ func _run_death_animation(actor: BattleActor) -> void:
 	if is_instance_valid(actor):
 		actor.queue_free()
 	_deaths_pending -= 1
+	# In ATB mode, check victory after every death since next_turn() is never called.
+	if BattleSettings.battle_mode == BattleSettings.BattleMode.ATB:
+		check_victory()
 
 
 
@@ -1206,7 +1461,11 @@ func update_ui_state():
 		InputStage.COMMAND:
 			if active_player_actor:
 				focus_actor(active_player_actor)
-			focus_idle_orbit()
+			# In CTB mode, also park the target cam on the idle orbit.
+			# In ATB mode the overview cameras are set by _return_camera_to_overview
+			# and we don't want to override them here.
+			if BattleSettings.battle_mode != BattleSettings.BattleMode.ATB:
+				focus_idle_orbit()
 			battle_ui.hide()  # hide legacy panel during radial
 			_open_radial_for_actor(active_player_actor)
 
@@ -1446,6 +1705,21 @@ func _on_reticle_skill_chosen(skill: Dictionary) -> void:
 func _on_reticle_cancelled() -> void:
 	if battle_ending:
 		return
+	if BattleSettings.battle_mode == BattleSettings.BattleMode.ATB:
+		# In ATB, cancelled means the player cleared their current selection
+		# (right-click deselected a skill/target). Release the active command
+		# so the player can choose again or survey the field.
+		reset_selection()
+		input_stage = InputStage.COMMAND
+		if is_instance_valid(reticle_ui):
+			reticle_ui.set_support_targeting(false)
+			reticle_ui.clear_skills()
+		_player_menu_open = false
+		if is_instance_valid(active_player_actor) \
+				and active_player_actor.current_actor_state_name != BattleActor.STATE_DEAD:
+			active_player_actor.set_actor_state(BattleActor.STATE_IDLE)
+		_return_camera_to_overview()
+		return
 	reset_selection()
 	input_stage = InputStage.COMMAND
 	if is_instance_valid(reticle_ui):
@@ -1457,13 +1731,17 @@ func _on_reticle_cancelled() -> void:
 func _open_radial_for_actor(actor: BattleActor) -> void:
 	if actor == null:
 		return
-	var skills  := actor.get_skills()
-	var enemies := actors.filter(func(a): return a.team != actor.team and a.can_be_targeted())
-	var allies  := actors.filter(func(a): return a.team == actor.team and a.can_be_targeted())
+	var skills := actor.get_skills()
 
-	# Open reticle UI (new system)
 	if is_instance_valid(reticle_ui):
-		reticle_ui.open(actor, skills, enemies, allies, removed_channels, player_cam, enemy_cam, is_tense_phase(), can_repeat_action())
+		if BattleSettings.battle_mode == BattleSettings.BattleMode.ATB:
+			# Reticle is already open with ally/enemy boxes — just swap the skills.
+			reticle_ui.refresh_for_actor(actor, skills, removed_channels, is_tense_phase(), can_repeat_action())
+		else:
+			# CTB: rebuild everything for this actor's turn.
+			var enemies := actors.filter(func(a): return a.team != actor.team and a.can_be_targeted())
+			var allies  := actors.filter(func(a): return a.team == actor.team and a.can_be_targeted())
+			reticle_ui.open(actor, skills, enemies, allies, removed_channels, player_cam, enemy_cam, is_tense_phase(), can_repeat_action())
 		emit_signal("reticle_opened")
 
 

@@ -1,0 +1,287 @@
+extends Node3D
+## TempoMetronome — 3D world-space tempo display.
+##
+## Visual language matches the HP/Will rings: floating 3D note meshes on rings.
+##
+##   PENDULUM RING (outer)
+##     A single half_note orbits a ring — but instead of constant rotation,
+##     it oscillates back and forth like a metronome pendulum tracing an arc.
+##     Oscillation frequency scales with tempo_pool: slow lazy swing when empty,
+##     urgent rapid tick when full.
+##
+##   FILL RING (inner)
+##     A ring of up to FILL_STEPS eighth_notes that accumulates token-by-token
+##     as tempo_pool climbs to 100, mirroring the HP/Will token patterns.
+##     At full, all tokens glow and the pendulum snaps hard before pool resets.
+##
+## Integration: identical to WillRing / BloodGlobe.
+##   actor_panel_3d.gd calls setup(actor) automatically.
+
+# ── Scenes ────────────────────────────────────────────────────────────────────
+
+const PENDULUM_NOTE_SCENE := preload("res://UI/3D/BattleDisplay/Scenes/ring nodes/half_note.tscn")
+const FILL_NOTE_SCENE     := preload("res://UI/3D/BattleDisplay/Scenes/ring nodes/eighth_note.tscn")
+
+# ── Tuning ────────────────────────────────────────────────────────────────────
+
+## Outer ring radius — pendulum note orbits this arc.
+const PEND_RADIUS   : float = 0.30
+## How many degrees either side of centre the pendulum swings (at full pool).
+const SWING_DEG     : float = 75.0
+## Oscillation frequency at pool = 0 (Hz). Slow, lazy.
+const FREQ_MIN      : float = 0.55
+## Oscillation frequency at pool = 100 (Hz). Urgent.
+const FREQ_MAX      : float = 2.8
+## Damping — keeps the driven oscillator from blowing up.
+const DAMPING       : float = 0.06
+
+## Inner fill ring radius.
+const FILL_RADIUS   : float = 0.17
+## Number of fill tokens at max pool.
+const FILL_STEPS    : int   = 8
+
+## Lift above WorldSpacePanel so we clear blood globe (+0.355) and will ring.
+const PANEL_Y_OFFSET : float = 0.72
+
+## Colours for the pendulum bob material tint (modulate on the node).
+const C_IDLE  := Color(0.55, 1.00, 0.60, 1.0)   # green tint, relaxed
+const C_READY := Color(0.80, 1.00, 0.55, 1.0)   # bright lime, ready
+const C_GOLD  := Color(0.83, 0.69, 0.22, 1.0)   # restore to original note gold
+
+# ── Internal state ────────────────────────────────────────────────────────────
+
+var _actor  = null
+var _camera : Node3D = null
+
+# Pendulum oscillator state (angle in radians on the ring, 0 = top)
+var _pend_angle  : float = 0.0
+var _pend_angvel : float = 0.0
+
+# Pendulum note node
+var _pend_root : Node3D = null
+var _pend_note : Node3D = null
+
+# Fill ring
+var _fill_root   : Node3D = null
+var _fill_tokens : Array  = []   # Node3D instances currently visible
+
+var _last_fill_count : int = -1
+var _was_ready       : bool = false
+
+
+# ── Setup ─────────────────────────────────────────────────────────────────────
+
+func setup(actor) -> void:
+	_actor  = actor
+	position.y = PANEL_Y_OFFSET
+	_build()
+	# Seed with random phase so characters aren't in sync.
+	_pend_angle  = randf_range(-0.3, 0.3)
+	_pend_angvel = randf_range(-1.0, 1.0)
+
+
+# ── Build ─────────────────────────────────────────────────────────────────────
+
+func _build() -> void:
+	# ── Pendulum ring root ──
+	_pend_root = Node3D.new()
+	_pend_root.name = "PendulumRoot"
+	add_child(_pend_root)
+
+	if PENDULUM_NOTE_SCENE:
+		_pend_note = PENDULUM_NOTE_SCENE.instantiate()
+	else:
+		# Fallback: sphere
+		var mi := MeshInstance3D.new()
+		var mesh := SphereMesh.new()
+		mesh.radius = 0.055; mesh.height = 0.11
+		mi.mesh = mesh
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = C_IDLE
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mi.set_surface_override_material(0, mat)
+		_pend_note = mi
+
+	_pend_note.name = "PendulumNote"
+	# Scale up — the pendulum note should read clearly above the other rings.
+	_pend_note.scale = Vector3(1.6, 1.6, 1.6)
+	_pend_root.add_child(_pend_note)
+
+	# ── Fill ring root ──
+	_fill_root = Node3D.new()
+	_fill_root.name = "FillRoot"
+	add_child(_fill_root)
+	# Slow gentle counter-rotation to match the ring aesthetic.
+	_fill_root.set_meta("angle", 0.0)
+
+
+func _spawn_fill_tokens(count: int) -> void:
+	# Free existing.
+	for node in _fill_tokens:
+		if is_instance_valid(node):
+			node.queue_free()
+	_fill_tokens.clear()
+
+	for i in count:
+		var node : Node3D
+		if FILL_NOTE_SCENE:
+			node = FILL_NOTE_SCENE.instantiate()
+		else:
+			var mi := MeshInstance3D.new()
+			var mesh := SphereMesh.new()
+			mesh.radius = 0.028; mesh.height = 0.056
+			mi.mesh = mesh
+			var mat := StandardMaterial3D.new()
+			mat.albedo_color = C_IDLE
+			mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			mi.set_surface_override_material(0, mat)
+			node = mi
+
+		node.name = "FillNote%d" % i
+		var angle := (TAU / count) * i
+		node.position = Vector3(sin(angle) * FILL_RADIUS, 0.0, cos(angle) * FILL_RADIUS)
+		_fill_root.add_child(node)
+		_fill_tokens.append(node)
+
+
+# ── Process ───────────────────────────────────────────────────────────────────
+
+func _process(delta: float) -> void:
+	if _actor == null or not is_instance_valid(_actor):
+		return
+
+	var pool : float = clampf(_actor.tempo_pool, 0.0, 100.0)
+	var t    : float = pool / 100.0
+
+	_tick_pendulum(delta, t)
+	_tick_fill(t)
+	_tick_ready(t)
+	_tick_fill_spin(delta)
+	_update_billboard()
+
+
+func _tick_pendulum(delta: float, t: float) -> void:
+	# Frequency scales with tempo fill.
+	var freq  : float = lerpf(FREQ_MIN, FREQ_MAX, t)
+	var omega : float = freq * TAU
+
+	# Desired half-amplitude scales with pool so the swing is barely visible when empty.
+	var max_a : float = deg_to_rad(SWING_DEG) * maxf(t, 0.05)
+
+	# Driven oscillator: restoring force + driving toward full amplitude.
+	var restoring : float = -omega * omega * _pend_angle
+	var driving   : float = 0.0
+	if absf(_pend_angle) < max_a:
+		driving = sign(_pend_angvel + 0.001) * (max_a - absf(_pend_angle)) * omega * 3.0
+	var damp_force : float = -2.0 * DAMPING * omega * _pend_angvel
+
+	_pend_angvel += (restoring + driving + damp_force) * delta
+	_pend_angle   = clampf(_pend_angle + _pend_angvel * delta, -max_a * 1.05, max_a * 1.05)
+
+	# Place note on the arc: angle 0 = "top" of ring (furthest from camera in local space).
+	if _pend_note:
+		_pend_note.position = Vector3(
+			sin(_pend_angle) * PEND_RADIUS,
+			0.0,
+			cos(_pend_angle) * PEND_RADIUS
+		)
+		# Tilt the note to follow the arc tangent so it always faces "outward".
+		_pend_note.rotation.y = -_pend_angle
+
+
+func _tick_fill(t: float) -> void:
+	var target_count : int = roundi(t * FILL_STEPS)
+	if target_count != _last_fill_count:
+		_last_fill_count = target_count
+		_spawn_fill_tokens(target_count)
+
+
+func _tick_ready(t: float) -> void:
+	var ready : bool = t >= 0.999
+
+	if ready and not _was_ready:
+		# Hard kick for a satisfying "tick" snap.
+		_pend_angvel = sign(_pend_angvel + 0.001) * deg_to_rad(SWING_DEG) * 22.0
+		# Flash all fill tokens bright.
+		for node in _fill_tokens:
+			if is_instance_valid(node):
+				_tint_note(node, C_READY)
+		# Tween albedo back to gold over 0.5 s.
+		var tw := create_tween()
+		tw.tween_method(func(c: Color):
+			for node in _fill_tokens:
+				if is_instance_valid(node): _tint_note(node, c),
+			C_READY, C_GOLD, 0.5)
+
+	if _pend_note:
+		var bob_col : Color = C_READY if ready else C_IDLE.lerp(C_READY, t * t)
+		_tint_note(_pend_note, bob_col)
+
+	_was_ready = ready
+
+
+func _tick_fill_spin(delta: float) -> void:
+	if not _fill_root:
+		return
+	var angle : float = _fill_root.get_meta("angle", 0.0)
+	angle += 0.35 * delta
+	_fill_root.set_meta("angle", angle)
+	_fill_root.rotation.y = angle
+
+
+# ── Tinting ───────────────────────────────────────────────────────────────────
+
+## Walk all MeshInstance3D descendants of a note Node3D and override albedo.
+## Uses surface_override so the shared scene material is never mutated.
+func _tint_note(note: Node3D, col: Color) -> void:
+	for mi in _get_mesh_instances(note):
+		var orig : Material = mi.get_surface_override_material(0)
+		var mat  : StandardMaterial3D
+		if orig is StandardMaterial3D:
+			mat = orig
+		else:
+			# First call: bake a fresh override from the mesh's own material.
+			var base = mi.mesh.surface_get_material(0) if mi.mesh else null
+			mat = base.duplicate() if base is StandardMaterial3D else StandardMaterial3D.new()
+			mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			mi.set_surface_override_material(0, mat)
+		mat.albedo_color = col
+
+
+func _get_mesh_instances(node: Node) -> Array:
+	var result : Array = []
+	if node is MeshInstance3D:
+		result.append(node)
+	for child in node.get_children():
+		result.append_array(_get_mesh_instances(child))
+	return result
+
+
+# ── Billboard ─────────────────────────────────────────────────────────────────
+
+func _update_billboard() -> void:
+	if not _camera and _actor != null:
+		_camera = _find_phantom_cam()
+	if not _camera:
+		return
+	var dx : float = _camera.global_position.x - global_position.x
+	var dz : float = _camera.global_position.z - global_position.z
+	if dx * dx + dz * dz > 0.0001:
+		var is_enemy : bool = _actor != null and _actor.get("team") == 1
+		var flip : float = PI if is_enemy else 0.0
+		rotation.y = atan2(dx, dz) - PI * 0.5 + flip
+
+
+func _find_phantom_cam() -> Node3D:
+	var is_enemy : bool = _actor != null and _actor.get("team") == 1
+	var cam_name := "target_cam" if is_enemy else "active_cam"
+	var scene_root := get_tree().get_first_node_in_group("battle_scene")
+	if scene_root:
+		return scene_root.get_node_or_null("CameraRig/" + cam_name)
+	var node : Node = self
+	while node:
+		var rig := node.get_node_or_null("CameraRig")
+		if rig:
+			return rig.get_node_or_null(cam_name)
+		node = node.get_parent()
+	return null

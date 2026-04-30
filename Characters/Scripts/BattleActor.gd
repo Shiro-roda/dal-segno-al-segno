@@ -458,10 +458,11 @@ func tick_status_effects() -> void:
 
 # Called each round by battle_manager before picking the next actor.
 # Adds tempo based on stat, modified by slow/freeze.
-func tick_tempo() -> void:
+# scale: optional time-scale multiplier from BattleTimeController (default 1.0).
+func tick_tempo(scale: float = 1.0) -> void:
 	if has_status(STATUS_FROZEN):
 		return  # no tempo gain while frozen
-	var gain : float = float(tempo_stat)
+	var gain : float = float(tempo_stat) * scale
 	if has_status(STATUS_SLOW):
 		gain *= SLOW_TEMPO_MULT
 	# Small jitter breaks ties between equal-stat actors without distorting the scale.
