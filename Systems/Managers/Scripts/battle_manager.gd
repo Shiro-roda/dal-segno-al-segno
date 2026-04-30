@@ -345,7 +345,7 @@ func _tick_atb(delta: float) -> void:
 		# browsing the menu. _player_menu_open is true exactly during this window.
 		freeze_players = _player_menu_open
 
-	var scale := 1.0
+	var scale := 1.5
 	if time_controller != null:
 		scale = time_controller.effective_scale()
 	scale *= BattleSettings.atb_speed_multiplier
@@ -788,7 +788,7 @@ func handle_enemy_turn(actor: BattleActor) -> void:
 	battle_hud.show_target(actor)
 	await get_tree().process_frame
 	focus_target(actor)
-	focus_actor(target)
+	#focus_actor(target)
 	actor.say_turn_start()
 	# Use enemy_take_turn for skill-aware AI (boss enemies), plain take_turn otherwise
 	if actor.get_skills().is_empty():

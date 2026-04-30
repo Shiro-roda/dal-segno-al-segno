@@ -1,9 +1,9 @@
 [gd_resource type="Resource" script_class="BattleTrack" format=3 uid="uid://csg2bw5kmgf41"]
 
-[ext_resource type="AudioStream" uid="uid://c6vk22w16omn1" path="res://Audio/Assets/mp3/Cyan Blue ver.mp3" id="1_mmv4a"]
-[ext_resource type="Script" uid="uid://bffo416012lhw" path="res://Audio/Scripts/battle_audio_settings.gd" id="1_usp5q"]
-[ext_resource type="AudioStream" uid="uid://euhvpx68qe44" path="res://Audio/Assets/mp3/Cyan Green ver.mp3" id="2_5pddu"]
-[ext_resource type="Script" uid="uid://xwx6wvfy78m2" path="res://Audio/Scripts/battletrack.gd" id="3_2eyya"]
+[ext_resource type="AudioStream" uid="uid://c6vk22w16omn1" path="res://audio/Assets/mp3/Cyan Blue ver.mp3" id="1_mmv4a"]
+[ext_resource type="Script" uid="uid://bffo416012lhw" path="res://audio/Scripts/battle_audio_settings.gd" id="1_usp5q"]
+[ext_resource type="AudioStream" uid="uid://euhvpx68qe44" path="res://audio/Assets/mp3/Cyan Green ver.mp3" id="2_5pddu"]
+[ext_resource type="Script" uid="uid://xwx6wvfy78m2" path="res://audio/Scripts/battletrack.gd" id="3_2eyya"]
 
 [sub_resource type="Resource" id="Resource_pohtr"]
 script = ExtResource("1_usp5q")
