@@ -1,6 +1,6 @@
 [gd_resource type="Resource" script_class="DungeonData" format=3 uid="uid://dpvtgkchj7i60"]
 
-[ext_resource type="Resource" uid="uid://dh41c43q5ekyx" path="res://Audio/tracks/yellow.tres" id="1_2l6ym"]
+[ext_resource type="Resource" uid="uid://dh41c43q5ekyx" path="res://audio/tracks/yellow.tres" id="1_2l6ym"]
 [ext_resource type="Script" uid="uid://b3i3n6lphwajh" path="res://Rooms/Types/Scripts/room_data.gd" id="2_gacfb"]
 [ext_resource type="PackedScene" uid="uid://n6jpv02bi3lq" path="res://Events/Scenes/recruit_event.tscn" id="2_vit4c"]
 [ext_resource type="Script" uid="uid://2pqfqk1bjeam" path="res://Dungeons/Scripts/dungeondata.gd" id="2_xmptu"]

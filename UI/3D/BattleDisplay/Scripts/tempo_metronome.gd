@@ -1,55 +1,73 @@
 extends Node3D
 ## TempoCentrifuge — 3D world-space tempo display.
 ##
-## A ring of green orbs orbits the character.  Each orb represents 10 tempo.
-## As more orbs are added the ring spins faster and expands outward,
-## like a centrifuge spinning up under load.
+## Behaviour:
+##   < 20 tempo  : one large, dim, inert central orb.
+##   20–39 tempo : 2 orbs spin slowly.
+##   40–79 tempo : 4 orbs spin at medium speed.
+##   80–99 tempo : 8 orbs spin faster.
+##   100 tempo   : all orbs converge to the centre, forming one large bright orb
+##                 ("ready" state).  Dims back out after the actor's turn.
 ##
-## Integration: identical to WillRing / BloodGlobe.
-##   actor_panel_3d.gd calls setup(actor) automatically.
-
-# ── Scenes ────────────────────────────────────────────────────────────────────
+## Integration: actor_panel_3d.gd calls setup(actor) automatically.
 
 const ORB_SCENE := preload("res://UI/3D/BattleDisplay/Scenes/ring nodes/small_orb.tscn")
 
 # ── Tuning ────────────────────────────────────────────────────────────────────
 
-## Radius at 1 orb.
-const RADIUS_MIN  : float = 0.18
-## Radius at 10 orbs (full pool).
-const RADIUS_MAX  : float = 0.38
+## Ring radius for the orbiting configurations.
+const RING_RADIUS   : float = 0.26
+## Scale of each individual spinning orb.
+const ORB_SCALE     : float = 1.2
+## Scale of the single central orb (idle / ready state).
+const CENTER_SCALE  : float = 2.4
 
-## Spin speed (rad/s) at 1 orb.
-const SPEED_MIN   : float = 1.2
-## Spin speed (rad/s) at 10 orbs.
-const SPEED_MAX   : float = 9.0
+## Spin speeds (rad/s) per tier — the ring accelerates as tempo fills.
+## These are the speeds at the entry threshold; actual speed is interpolated
+## continuously within each tier proportional to how far through it the pool is.
+const SPEED_2   : float = 0.6   # 2-orb tier (20–39 tempo)
+const SPEED_4   : float = 1.4   # 4-orb tier (40–59 tempo)
+const SPEED_6   : float = 2.8   # 6-orb tier (60–79 tempo)
+const SPEED_8   : float = 5.2   # 8-orb tier (80–99 tempo)
 
-## Orb size scale (applied to each instance).
-const ORB_SCALE   : float = 1.5
-
-## Y position relative to WorldSpacePanel — above blood globe (+0.355) and will ring.
+## Y offset above the WorldSpacePanel origin.
 const PANEL_Y_OFFSET : float = 0.65
 
-## Orb colour at low count — dim green.
-const C_DIM   := Color(0.15, 0.55, 0.20, 1.0)
-## Orb colour at full (10 orbs) — bright lime.
-const C_FULL  := Color(0.40, 1.00, 0.45, 1.0)
-## Flash colour when pool hits 100 and resets.
-const C_FLASH := Color(0.75, 1.00, 0.60, 1.0)
+## Central idle orb — dim, no emission.
+const C_IDLE        := Color(0.12, 0.40, 0.16, 1.0)
+## Orbiting orbs — mid-green.
+const C_ORB         := Color(0.25, 0.80, 0.35, 1.0)
+## Ready orb — bright lime.
+const C_READY       := Color(0.60, 1.00, 0.65, 1.0)
+## Emission multiplier for orbiting orbs.
+const EMIT_ORB      : float = 0.55
+## Emission multiplier for the ready orb.
+const EMIT_READY    : float = 1.4
+
+## How quickly the ready orb dims after the turn is spent (alpha decay per second).
+const READY_DIM_SPEED : float = 2.5
 
 # ── Internal state ────────────────────────────────────────────────────────────
 
-var _actor        = null
-var _camera       : Node3D = null
+var _actor       = null
+var _camera      : Node3D = null
 
-var _ring_root    : Node3D = null   # all orbs are children; this node rotates
-var _ring_angle   : float  = 0.0
+var _ring_root   : Node3D = null
+var _ring_angle  : float  = 0.0
 
-var _orbs         : Array  = []     # Array[MeshInstance3D]
-var _orb_mats     : Array  = []     # Array[StandardMaterial3D] — one per orb
+var _orbs        : Array  = []
+var _orb_mats    : Array  = []
 
-var _last_count   : int    = -1
-var _was_ready    : bool   = false
+## Which tier we are currently displaying.
+## 0 = idle centre, 2 = 2-orb, 4 = 4-orb, 8 = 8-orb, 100 = ready.
+var _current_tier : int   = 0
+
+## True while we are in the "ready" converged state.
+var _was_ready    : bool  = false
+## Tracks when the actor last took a turn so we can dim the ready orb.
+var _last_tempo   : float = -1.0
+## Dim alpha for the ready orb (fades from 1 → 0 after the turn is spent).
+var _ready_alpha  : float = 1.0
 
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
@@ -57,10 +75,10 @@ var _was_ready    : bool   = false
 func setup(actor) -> void:
 	_actor = actor
 	position.y = PANEL_Y_OFFSET
-
 	_ring_root = Node3D.new()
 	_ring_root.name = "RingRoot"
 	add_child(_ring_root)
+	_rebuild_tier(0)
 
 
 # ── Process ───────────────────────────────────────────────────────────────────
@@ -69,114 +87,148 @@ func _process(delta: float) -> void:
 	if _actor == null or not is_instance_valid(_actor):
 		return
 
-	var pool  : float = clampf(_actor.tempo_pool, 0.0, 100.0)
-	var t     : float = pool / 100.0
-	# Each orb = 10 tempo, so max 10 orbs.  Always show at least 0.
-	var count : int   = int(pool / 10.0)   # 0..10 (truncate, not round)
+	var pool : float = clampf(_actor.tempo_pool, 0.0, 100.0)
+	var tier : int   = _pool_to_tier(pool)
 
-	_tick_orbs(count, t)
-	_tick_spin(delta, count)
-	_tick_ready(t)
+	if tier != _current_tier:
+		_current_tier = tier
+		_rebuild_tier(tier)
+
+	_tick_spin(delta, tier)
+	_tick_ready_dim(delta, pool)
 	_update_billboard()
 
 
-# ── Orb management ────────────────────────────────────────────────────────────
+# ── Tier logic ────────────────────────────────────────────────────────────────
 
-func _tick_orbs(count: int, t: float) -> void:
-	if count == _last_count:
-		return
-	_last_count = count
-	_rebuild_orbs(count, t)
+func _pool_to_tier(pool: float) -> int:
+	if pool >= 100.0:
+		return 100
+	elif pool >= 80.0:
+		return 8
+	elif pool >= 60.0:
+		return 6
+	elif pool >= 40.0:
+		return 4
+	elif pool >= 20.0:
+		return 2
+	else:
+		return 0
 
 
-func _rebuild_orbs(count: int, t: float) -> void:
-	# Free all existing orbs.
+func _rebuild_tier(tier: int) -> void:
+	# Free existing orbs.
 	for orb in _orbs:
 		if is_instance_valid(orb):
 			orb.queue_free()
 	_orbs.clear()
 	_orb_mats.clear()
 
-	if count <= 0:
-		return
+	match tier:
+		0:
+			# Single large dim centre orb, no orbit.
+			_spawn_orb(Vector3.ZERO, CENTER_SCALE, C_IDLE, 0.0)
+		2, 4, 6, 8:
+			# Evenly spaced orbiting orbs.
+			for i in tier:
+				var angle : float = (TAU / tier) * i
+				var pos := Vector3(sin(angle) * RING_RADIUS, 0.0, cos(angle) * RING_RADIUS)
+				_spawn_orb(pos, ORB_SCALE, C_ORB, EMIT_ORB)
+		100:
+			# Single large bright centre orb.
+			_ready_alpha = 1.0
+			_was_ready   = true
+			_spawn_orb(Vector3.ZERO, CENTER_SCALE, C_READY, EMIT_READY)
+		_:
+			pass
 
-	var radius : float = _radius_for(count)
-	var col    : Color = C_DIM.lerp(C_FULL, t)
 
-	for i in count:
-		var angle : float = (TAU / count) * i
+## Instantiate one orb, add to the ring root, track it.
+func _spawn_orb(local_pos: Vector3, scale_f: float, col: Color, emit_mult: float) -> void:
+	var node  : Node3D
+	var mat   : StandardMaterial3D
 
-		var node  : Node3D
-		var mat   : StandardMaterial3D
-
-		if ORB_SCENE:
-			node = ORB_SCENE.instantiate()
-			# The scene's MeshInstance3D holds the material — grab and override it.
-			var mi : MeshInstance3D = node.get_child(0) if node.get_child_count() > 0 else null
-			if mi and mi is MeshInstance3D:
-				mat = StandardMaterial3D.new()
-				mat.shading_mode       = BaseMaterial3D.SHADING_MODE_UNSHADED
-				mat.emission_enabled   = true
-				mat.albedo_color       = col
-				mat.emission           = col * 0.4
-				mi.set_surface_override_material(0, mat)
-		else:
-			# Fallback: build a sphere inline.
-			var mi := MeshInstance3D.new()
-			var mesh := SphereMesh.new()
-			mesh.radius = 0.03
-			mesh.height = 0.06
-			mi.mesh = mesh
+	if ORB_SCENE:
+		node = ORB_SCENE.instantiate()
+		var mi : MeshInstance3D = node.get_child(0) if node.get_child_count() > 0 else null
+		if mi and mi is MeshInstance3D:
 			mat = StandardMaterial3D.new()
 			mat.shading_mode     = BaseMaterial3D.SHADING_MODE_UNSHADED
-			mat.emission_enabled = true
+			mat.emission_enabled = emit_mult > 0.0
 			mat.albedo_color     = col
-			mat.emission         = col * 0.4
+			mat.emission         = col * emit_mult
 			mi.set_surface_override_material(0, mat)
-			node = mi
+	else:
+		var mi2 := MeshInstance3D.new()
+		var mesh := SphereMesh.new()
+		mesh.radius = 0.03
+		mesh.height = 0.06
+		mi2.mesh = mesh
+		mat = StandardMaterial3D.new()
+		mat.shading_mode     = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.emission_enabled = emit_mult > 0.0
+		mat.albedo_color     = col
+		mat.emission         = col * emit_mult
+		mi2.set_surface_override_material(0, mat)
+		node = mi2
 
-		node.scale    = Vector3.ONE * ORB_SCALE
-		node.position = Vector3(sin(angle) * radius, 0.0, cos(angle) * radius)
-		_ring_root.add_child(node)
-		_orbs.append(node)
-		_orb_mats.append(mat)
+	node.scale    = Vector3.ONE * scale_f
+	node.position = local_pos
+	_ring_root.add_child(node)
+	_orbs.append(node)
+	_orb_mats.append(mat)
 
 
-# ── Spin & radius ─────────────────────────────────────────────────────────────
+# ── Spin ──────────────────────────────────────────────────────────────────────
 
-func _tick_spin(delta: float, count: int) -> void:
-	if not _ring_root or count <= 0:
+func _tick_spin(delta: float, tier: int) -> void:
+	if not _ring_root:
 		return
-	var speed : float = lerpf(SPEED_MIN, SPEED_MAX, float(count - 1) / 9.0)
-	_ring_angle      += speed * delta
+	var pool : float = clampf(_actor.tempo_pool, 0.0, 100.0)
+	# Compute speed continuously proportional to pool within each tier band.
+	# This gives smooth acceleration rather than discrete jumps.
+	var speed : float = 0.0
+	match tier:
+		2:
+			# 20–39: interpolate from SPEED_2 entry up to SPEED_4 entry
+			var t := (pool - 20.0) / 20.0
+			speed = lerpf(SPEED_2, SPEED_4, t)
+		4:
+			var t := (pool - 40.0) / 20.0
+			speed = lerpf(SPEED_4, SPEED_6, t)
+		6:
+			var t := (pool - 60.0) / 20.0
+			speed = lerpf(SPEED_6, SPEED_8, t)
+		8:
+			var t := (pool - 80.0) / 20.0
+			speed = lerpf(SPEED_8, SPEED_8 * 1.4, t)
+		_:
+			speed = 0.0
+	_ring_angle          += speed * delta
 	_ring_root.rotation.y = _ring_angle
 
 
-func _radius_for(count: int) -> float:
-	if count <= 1:
-		return RADIUS_MIN
-	return lerpf(RADIUS_MIN, RADIUS_MAX, float(count - 1) / 9.0)
+# ── Ready dim ─────────────────────────────────────────────────────────────────
+
+## After the actor's turn is taken their tempo_pool drops back below 100.
+## We detect that transition and fade the ready orb out.
+func _tick_ready_dim(delta: float, pool: float) -> void:
+	if not _was_ready:
+		return
+	if pool < 99.0:
+		# Turn was just taken — begin dimming.
+		_ready_alpha = maxf(0.0, _ready_alpha - READY_DIM_SPEED * delta)
+		if _ready_alpha <= 0.0:
+			_was_ready = false
+		var dim_col := Color(C_READY.r, C_READY.g, C_READY.b, _ready_alpha)
+		_set_orb_colour(dim_col, EMIT_READY * _ready_alpha)
 
 
-# ── Ready flash ───────────────────────────────────────────────────────────────
-
-func _tick_ready(t: float) -> void:
-	var ready : bool = t >= 0.999
-
-	if ready and not _was_ready:
-		# Flash all orbs bright then tween back.
-		_set_orb_colour(C_FLASH)
-		var tw := create_tween()
-		tw.tween_method(_set_orb_colour, C_FLASH, C_FULL, 0.4)
-
-	_was_ready = ready
-
-
-func _set_orb_colour(col: Color) -> void:
+func _set_orb_colour(col: Color, emit_mult: float = EMIT_ORB) -> void:
 	for mat in _orb_mats:
 		if mat is StandardMaterial3D:
-			mat.albedo_color = col
-			mat.emission     = col * 0.4
+			mat.albedo_color     = col
+			mat.emission         = Color(col.r, col.g, col.b, 1.0) * emit_mult
 
 
 # ── Billboard ─────────────────────────────────────────────────────────────────

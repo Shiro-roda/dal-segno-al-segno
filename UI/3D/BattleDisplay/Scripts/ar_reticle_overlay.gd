@@ -187,8 +187,10 @@ func _get_bound_points(actor) -> Array:
 	## then falls back to CameraAnchor ± 1m.
 	var points : Array = []
 
-	var bt : Node3D = actor.get_node_or_null("BoundsTop")
-	var bb : Node3D = actor.get_node_or_null("BoundsBottom")
+	var bt : Node3D = actor.get_node_or_null("BoundsTop") \
+				or actor.get_node_or_null("BoundAnchors/BoundsTop")
+	var bb : Node3D = actor.get_node_or_null("BoundsBottom") \
+				or actor.get_node_or_null("BoundAnchors/BoundsBottom")
 	if bt and bb:
 		points.append(bt.global_position)
 		points.append(bb.global_position)

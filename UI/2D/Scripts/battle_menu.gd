@@ -33,6 +33,9 @@ extends CanvasLayer
 signal skill_chosen(actor: BattleActor, skill: Dictionary, target: BattleActor, part: BodyPartData)
 signal item_used(actor: BattleActor, item_inst: ItemInstance, target_member: PartyMemberData)
 signal closed()
+## Emitted when the player selects a ready actor to command — before any skill is chosen.
+## Battle manager uses this to populate the floating reticle's skill boxes.
+signal actor_commanding(actor: BattleActor)
 
 # ── Style ────────────────────────────────────────────────────────────────────
 const C_BG      := Color(0.051, 0.039, 0.039, 1.0)
@@ -672,6 +675,7 @@ func _on_ready_actor_selected(actor: BattleActor) -> void:
 	if actor_lbl: actor_lbl.text = _actor.display_name.to_upper()
 	_build_section_picker()
 	_set_status("Choose SKILLS or ITEMS."); _kb_set_stage(Stage.SECTION)
+	actor_commanding.emit(actor)
 
 func _on_any_actor_selected(actor: BattleActor) -> void:
 	## Select a non-ready actor to pre-queue their next action.
@@ -703,6 +707,7 @@ func _build_section_picker() -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 0)
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	row.add_child(skills_btn)
 	row.add_child(items_btn)
 	_section_col.add_child(row)
@@ -780,12 +785,10 @@ func _refresh_tab_highlight() -> void:
 	if not is_instance_valid(row): return
 	var active_sn := StyleBoxFlat.new()
 	active_sn.bg_color = Color(0.18, 0.13, 0.04); active_sn.border_color = C_GOLD
-	active_sn.set_border_width_all(1); active_sn.border_width_bottom = 0
-	active_sn.set_content_margin_all(7)
+	active_sn.set_border_width_all(2); active_sn.set_content_margin_all(8)
 	var inactive_sn := StyleBoxFlat.new()
 	inactive_sn.bg_color = Color(0.07, 0.06, 0.05); inactive_sn.border_color = C_BORDER
-	inactive_sn.set_border_width_all(1); inactive_sn.border_width_bottom = 0
-	inactive_sn.set_content_margin_all(7)
+	inactive_sn.set_border_width_all(1); inactive_sn.set_content_margin_all(8)
 	for i in row.get_child_count():
 		var b := row.get_child(i) as Button
 		if b == null: continue

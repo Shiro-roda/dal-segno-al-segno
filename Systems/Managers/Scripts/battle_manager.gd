@@ -252,6 +252,7 @@ func _ready():
 		battle_menu.item_used.connect(_on_battle_menu_item_used)
 		battle_menu.skill_chosen.connect(_on_battle_menu_skill_chosen)
 		battle_menu.closed.connect(_on_battle_menu_closed)
+		battle_menu.actor_commanding.connect(_on_battle_menu_actor_commanding)
 
 	call_deferred("emit_signal", "battle_manager_ready")
 
@@ -968,6 +969,30 @@ func _on_battle_menu_closed() -> void:
 	# No action taken — return focus to the reticle without consuming the turn.
 	if is_instance_valid(reticle_ui):
 		reticle_ui.set_skills_visible(true)
+
+## Called when the battle_menu selects a ready actor to command.
+## Populates the floating reticle's skill boxes so the player can also
+## confirm actions directly from the 3D overlay.
+func _on_battle_menu_actor_commanding(actor: BattleActor) -> void:
+	if not is_instance_valid(actor):
+		return
+	if BattleSettings.battle_mode == BattleSettings.BattleMode.ATB:
+		if actor not in _atb_ready_players:
+			return
+		if _action_executing:
+			return
+		# Don't guard on _player_menu_open — the menu itself is what triggered this.
+		_player_menu_open = true
+		input_locked = false
+		actor.set_actor_state(BattleActor.STATE_ACTIVE)
+		battle_hud.set_active_actor(actor, true)
+		handle_player_turn(actor)  # not awaited — arms input and opens reticle skills
+		return
+	# CTB fallback: just populate reticle skills.
+	if not is_instance_valid(reticle_ui):
+		return
+	active_player_actor = actor
+	_open_radial_for_actor(actor)
 
 
 # Returns an Array of {actor: BattleActor, tempo: float} dicts showing projected turn order.
