@@ -114,7 +114,7 @@ script = ExtResource("3_yw742")
 transform = Transform3D(1, 0, 0, 0, 0.9999998, 0, 0, 0, 0.9999998, 0, 6.3744373, 7.6217666)
 
 [node name="active_cam" type="Node3D" parent="CameraRig" unique_id=2025165075 node_paths=PackedStringArray("look_at_target")]
-transform = Transform3D(0.28797525, -0.9575645, 0.011863082, 2.9802322e-08, 0.012387874, 0.99992317, -0.9576379, -0.28795314, 0.003567457, 2.765, 578.9009, 3.377)
+transform = Transform3D(0.28797525, -0.9575645, 0.011863081, 2.9802322e-08, 0.012387874, 0.9999231, -0.9576379, -0.28795314, 0.0035674567, 2.765, 578.9009, 3.377)
 top_level = true
 script = ExtResource("4_y8mdh")
 follow_mode = 2

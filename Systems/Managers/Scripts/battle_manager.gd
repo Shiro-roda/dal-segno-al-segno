@@ -242,6 +242,7 @@ func _ready():
 		reticle_ui.skill_selected.connect(_on_reticle_skill_chosen)
 		reticle_ui.target_selected.connect(_on_radial_target_chosen)
 		reticle_ui.focus_requested.connect(_on_reticle_focus_requested)
+		reticle_ui.actor_commanding.connect(_on_battle_menu_actor_commanding)
 		reticle_ui.part_selected.connect(_on_radial_part_chosen)
 		reticle_ui.confirmed.connect(_on_radial_confirmed)
 		reticle_ui.cancelled.connect(_on_reticle_cancelled)
@@ -982,6 +983,9 @@ func _on_battle_menu_actor_commanding(actor: BattleActor) -> void:
 		if _action_executing:
 			return
 		# Don't guard on _player_menu_open — the menu itself is what triggered this.
+		# But do guard against re-issuing to the already-active actor to prevent double-open.
+		if _player_menu_open and actor == active_player_actor:
+			return
 		_player_menu_open = true
 		input_locked = false
 		actor.set_actor_state(BattleActor.STATE_ACTIVE)

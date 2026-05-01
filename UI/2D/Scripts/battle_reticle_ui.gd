@@ -17,6 +17,7 @@ extends CanvasLayer
 signal skill_selected(skill: Dictionary)
 signal target_selected(target: BattleActor)
 signal focus_requested(target: BattleActor)
+signal actor_commanding(actor: BattleActor)  ## emitted when a ready ally is clicked to issue orders in the session view
 signal part_selected(part: BodyPartData)
 signal confirmed
 signal cancelled
@@ -1377,9 +1378,12 @@ func _on_box_pressed(entry: Dictionary) -> void:
 				_slide_to_float(eb)
 		_deselect_all(_ally_boxes, entry)
 		_slide_to_anchor(entry)
-		# Clicking an ally box just focuses the camera — the battle menu
-		# is opened via TAB or the ARG button only.
-		emit_signal("focus_requested", ally)
+		# If this ally is ready (ATB gauge full), open their skill reticle.
+		# Otherwise just focus the camera.
+		if ally in _ready_actors:
+			emit_signal("actor_commanding", ally)
+		else:
+			emit_signal("focus_requested", ally)
 
 	elif dtype == "part":
 		if _sel_skill.is_empty():

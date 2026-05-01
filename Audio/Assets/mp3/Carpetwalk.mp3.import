@@ -3,12 +3,12 @@
 importer="mp3"
 type="AudioStreamMP3"
 uid="uid://bpuvfinlse0hl"
-path="res://.godot/imported/Carpetwalk.mp3-1f02b710b1901a8854183a1c4139b302.mp3str"
+path="res://.godot/imported/Carpetwalk.mp3-47a56141a73e00a7196ace0b77ae8174.mp3str"
 
 [deps]
 
-source_file="res://audio/Assets/mp3/Carpetwalk.mp3"
-dest_files=["res://.godot/imported/Carpetwalk.mp3-1f02b710b1901a8854183a1c4139b302.mp3str"]
+source_file="res://Audio/Assets/mp3/Carpetwalk.mp3"
+dest_files=["res://.godot/imported/Carpetwalk.mp3-47a56141a73e00a7196ace0b77ae8174.mp3str"]
 
 [params]
 
