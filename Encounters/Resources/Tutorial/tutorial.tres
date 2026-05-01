@@ -2,48 +2,13 @@
 
 [ext_resource type="PackedScene" uid="uid://ceaxxejcpwwch" path="res://Environments/Battlefields/Scenes/battle_field_morning.tscn" id="1_tut"]
 [ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://Systems/PartySys/Scripts/characterdata.gd" id="2_tut"]
-[ext_resource type="PackedScene" uid="uid://433fpucnuqkf" path="res://Characters/Scenes/BattleActors/EnemyActors/shadow_bactor.tscn" id="3_x06xt"]
-[ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://Systems/AnatomySys/Scripts/BodyPartData.gd" id="4_ndqax"]
+[ext_resource type="Resource" uid="uid://5rp1me3j67gv" path="res://Characters/Resources/Enemies/tut_shadow.tres" id="3_d15t5"]
 [ext_resource type="Script" uid="uid://b57cevaydtkqm" path="res://UI/Dialogue/Scripts/splash_line.gd" id="4_tut"]
-[ext_resource type="Resource" uid="uid://ymwcc5pm8aal" path="res://Systems/AnatomySys/Resources/antumbra.tres" id="5_ghtej"]
 [ext_resource type="Resource" uid="uid://dh41c43q5ekyx" path="res://Audio/tracks/yellow.tres" id="5_tut"]
 [ext_resource type="Script" uid="uid://coeqyvqijtkns" path="res://Encounters/Scripts/encounterdata.gd" id="6_tut"]
-[ext_resource type="Resource" uid="uid://bv8nc0eu2eq6j" path="res://Systems/AnatomySys/Resources/penumbra.tres" id="6_x5g26"]
-[ext_resource type="Resource" uid="uid://s8d8wab3g0yr" path="res://Systems/AnatomySys/Resources/umbra.tres" id="7_pn17s"]
 [ext_resource type="Script" uid="uid://divs34wkweat7" path="res://UI/Dialogue/Scripts/dialogue_line.gd" id="7_tut"]
-[ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="8_h3xnh"]
 [ext_resource type="Script" uid="uid://cxogdp046hrx2" path="res://UI/Dialogue/Scripts/encounter_dialogue.gd" id="8_tut"]
 [ext_resource type="Script" uid="uid://pwai87fl2rdy" path="res://UI/2D/Scripts/reticle_theme.gd" id="9_tut"]
-[ext_resource type="Resource" uid="uid://c15i0s4i5ocmu" path="res://Systems/SkillSys/Resources/Skills/low_dim.tres" id="10_x5g26"]
-
-[sub_resource type="Resource" id="Resource_x06xt"]
-script = ExtResource("4_ndqax")
-part_name = "Rotten Penumbra"
-required_removed_mask = 2
-damage_multiplier = 1.1
-is_cognitohazard = true
-anchor_path = NodePath("PartAnchors/Head")
-metadata/_custom_type_script = "uid://bewuwngi8x4ad"
-
-[sub_resource type="Resource" id="Resource_ndqax"]
-script = ExtResource("4_ndqax")
-part_name = "Putrid Penumbra"
-required_removed_mask = 4
-damage_multiplier = 2.0
-is_cognitohazard = true
-anchor_path = NodePath("PartAnchors/Head")
-metadata/_custom_type_script = "uid://bewuwngi8x4ad"
-
-[sub_resource type="Resource" id="Resource_kjasc"]
-script = ExtResource("2_tut")
-display_name = "Helpless Shadow"
-base_max_hp = 24
-base_attack = 1
-tempo = 5
-body_parts = Array[ExtResource("4_ndqax")]([ExtResource("5_ghtej"), ExtResource("6_x5g26"), ExtResource("7_pn17s"), SubResource("Resource_x06xt"), SubResource("Resource_ndqax")])
-battle_scene = ExtResource("3_x06xt")
-skills = Array[ExtResource("8_h3xnh")]([ExtResource("10_x5g26")])
-metadata/_custom_type_script = "uid://b2t1syvrybco8"
 
 [sub_resource type="Resource" id="Resource_line1"]
 script = ExtResource("7_tut")
@@ -92,7 +57,7 @@ metadata/_custom_type_script = "uid://pwai87fl2rdy"
 [resource]
 script = ExtResource("6_tut")
 battlefield_scene = ExtResource("1_tut")
-enemies = Array[ExtResource("2_tut")]([SubResource("Resource_kjasc")])
+enemies = Array[ExtResource("2_tut")]([ExtResource("3_d15t5")])
 intro_splash = Array[ExtResource("4_tut")]([SubResource("Resource_splash1"), SubResource("Resource_tldio"), SubResource("Resource_d15t5"), SubResource("Resource_xds4p")])
 intro_dialogue = SubResource("Resource_dialogue")
 override_music = ExtResource("5_tut")

@@ -18,7 +18,55 @@ const TAB_OPTIONS   := 5
 var _open       := false
 var _active_tab := TAB_PARTY
 
-# Root panel
+# ── Keyboard navigation ───────────────────────────────────────────────────────
+# Arrow keys navigate within the active page; Left/Right switch tabs.
+var _kb_item_index : int    = 0
+var _kb_focused_btn : Button = null
+
+func _kb_page_buttons() -> Array:
+	"""
+	Return all enabled Buttons that are directly or shallowly accessible
+	in the currently active page.
+	"""
+	if _active_tab >= _pages.size():
+		return []
+	var page : Control = _pages[_active_tab]
+	var result : Array = []
+	_collect_buttons(page, result)
+	return result
+
+func _collect_buttons(node: Node, out: Array) -> void:
+	for child in node.get_children():
+		if child is Button and not (child as Button).disabled:
+			out.append(child)
+		elif child is Control:
+			_collect_buttons(child, out)
+
+## Highlight the focused button.
+func _kb_apply_focus() -> void:
+	var list := _kb_page_buttons()
+	# Clear old highlight
+	if is_instance_valid(_kb_focused_btn):
+		_kb_clear_btn_focus(_kb_focused_btn)
+		_kb_focused_btn = null
+	if list.is_empty():
+		return
+	_kb_item_index = clampi(_kb_item_index, 0, list.size() - 1)
+	_kb_focused_btn = list[_kb_item_index]
+	var focused_sbox := StyleBoxFlat.new()
+	focused_sbox.bg_color = Color(0.72, 0.18, 0.18, 0.22)
+	focused_sbox.border_color = Color(0.92, 0.76, 0.28, 1.0)  # gold
+	focused_sbox.set_border_width_all(2)
+	focused_sbox.set_content_margin_all(6)
+	_kb_focused_btn.add_theme_stylebox_override("normal", focused_sbox)
+
+func _kb_clear_btn_focus(btn: Button) -> void:
+	var normal_sbox := StyleBoxFlat.new()
+	normal_sbox.bg_color = Color(0, 0, 0, 0)
+	normal_sbox.set_content_margin_all(0)
+	btn.remove_theme_stylebox_override("normal")
+
+# ── Root panel ─────────────────────────────────────────────────────────────────
 var _root_panel   : PanelContainer
 var _tab_bar      : HBoxContainer
 var _tab_btns     : Array = []
@@ -120,6 +168,64 @@ func _input(event: InputEvent) -> void:
 		else:
 			show_menu()
 		get_viewport().set_input_as_handled()
+		return
+
+	if not _open:
+		return
+
+	if not (event is InputEventKey and event.pressed):
+		return
+	var kc : int = (event as InputEventKey).keycode
+
+	if kc == KEY_ESCAPE:
+		hide_menu()
+		get_viewport().set_input_as_handled()
+		return
+
+	if kc == KEY_LEFT:
+		var next_tab : int = (_active_tab - 1 + _tab_btns.size()) % _tab_btns.size()
+		_switch_tab(next_tab)
+		_kb_item_index = 0
+		call_deferred("_kb_apply_focus")
+		get_viewport().set_input_as_handled()
+		return
+
+	if kc == KEY_RIGHT:
+		var next_tab : int = (_active_tab + 1) % _tab_btns.size()
+		_switch_tab(next_tab)
+		_kb_item_index = 0
+		call_deferred("_kb_apply_focus")
+		get_viewport().set_input_as_handled()
+		return
+
+	if kc == KEY_UP:
+		var list := _kb_page_buttons()
+		if not list.is_empty():
+			_kb_item_index = (_kb_item_index - 1 + list.size()) % list.size()
+			_kb_apply_focus()
+		get_viewport().set_input_as_handled()
+		return
+
+	if kc == KEY_DOWN:
+		var list := _kb_page_buttons()
+		if not list.is_empty():
+			_kb_item_index = (_kb_item_index + 1) % list.size()
+			_kb_apply_focus()
+		get_viewport().set_input_as_handled()
+		return
+
+	if kc == KEY_SPACE or kc == KEY_ENTER or kc == KEY_KP_ENTER:
+		# Special case: manual tab — open the manual overlay on confirm
+		if _active_tab == TAB_MANUAL:
+			_open_manual_from_party_menu()
+			get_viewport().set_input_as_handled()
+			return
+		var list := _kb_page_buttons()
+		if not list.is_empty():
+			_kb_item_index = clampi(_kb_item_index, 0, list.size() - 1)
+			(list[_kb_item_index] as Button).emit_signal("pressed")
+			call_deferred("_kb_apply_focus")
+		get_viewport().set_input_as_handled()
 
 # -----------------------------------------------------------------------
 func _build_dim_overlay() -> void:
@@ -186,6 +292,8 @@ func show_menu() -> void:
 	_refresh_party()
 	_connect_member_hp_signals()
 	_switch_tab(_active_tab)
+	_kb_item_index = 0
+	call_deferred("_kb_apply_focus")
 	emit_signal("menu_opened")
 
 func hide_menu() -> void:
@@ -2094,10 +2202,16 @@ func _switch_tab(idx: int) -> void:
 	if idx == TAB_BESTIARY:
 		_refresh_bestiary()
 	if idx == TAB_MANUAL:
-		_open_manual_from_party_menu()
-		return  # don't style the tab as active; manual opens as overlay
+		# Manual page: show a prompt label instead of immediately opening it.
+		# The actual open happens when the player presses Space/Enter.
+		_pages[TAB_MANUAL].visible = true
+		_style_tab_buttons(idx)
+		return  # don't fall through to the shared tab styling below
 	#if idx == TAB_MOTIFS:
 		#_refresh_motif_page()
+	_style_tab_buttons(idx)
+
+func _style_tab_buttons(idx: int) -> void:
 	for i in _tab_btns.size():
 		var btn : Button = _tab_btns[i]
 		var active := (i == idx)

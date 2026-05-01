@@ -257,14 +257,15 @@ func _ready():
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	# Open the battle menu when the player presses open_menu during their turn,
-	# but only if input isn't locked and we're in the command selection stage.
-	if event.is_action_pressed("open_menu") \
-			and not input_locked \
-			and input_stage == InputStage.COMMAND \
-			and is_instance_valid(battle_menu):
-		battle_menu.open_for_turn(active_player_actor, actors, context.run_state, removed_channels)
-		battle_menu.refresh_log(battle_hud._log_lines)
+	# TAB always toggles the battle menu — no guards.
+	if event.is_action_pressed("open_menu") and is_instance_valid(battle_menu):
+		if battle_menu._open:
+			battle_menu.close_panel()
+			_player_menu_open = false
+		else:
+			_player_menu_open = true
+			battle_menu.sync_and_open(actors, context.run_state, removed_channels)
+			battle_menu.refresh_log(battle_hud._log_lines)
 		get_viewport().set_input_as_handled()
 	
 
@@ -406,14 +407,15 @@ func _fire_next_atb_turn() -> void:
 	_fire_next_enemy_turn()
 
 ## Called the moment a player actor's bar fills.
-## Marks them ready in the reticle so clicking their box opens the command menu.
+## Marks them ready in the reticle and opens the battle menu.
 func _on_player_actor_ready(actor: BattleActor) -> void:
-	# Don't change actor state or move camera — the player surveys the field
-	# at their own pace and chooses who to command.
 	if is_instance_valid(reticle_ui):
 		reticle_ui.set_actor_ready(actor, true)
 	if is_instance_valid(battle_hud):
 		battle_hud.set_active_actor(actor, true)
+	if is_instance_valid(battle_menu):
+		battle_menu.notify_actor_ready(actor, actors, context.run_state, removed_channels)
+		battle_menu.refresh_log(battle_hud._log_lines)
 
 func _run_atb_actor_turn(actor: BattleActor) -> void:
 	if battle_ending or not is_inside_tree():
@@ -880,6 +882,9 @@ func _on_turn_finished():
 	if BattleSettings.battle_mode == BattleSettings.BattleMode.ATB:
 		# Remove from the player ready-set.
 		_atb_ready_players.erase(active_player_actor)
+		# Notify battle menu so it can clear glow and reset actor selection.
+		if is_instance_valid(battle_menu):
+			battle_menu.notify_actor_unready(active_player_actor)
 		# Clear skill boxes; leave ally/enemy boxes alive.
 		if is_instance_valid(reticle_ui):
 			reticle_ui.clear_skills()
@@ -907,6 +912,13 @@ func _tempo_cost_for_command(cmd: String) -> float:
 
 
 func _on_battle_menu_skill_chosen(actor: BattleActor, skill: Dictionary, target: BattleActor, part: BodyPartData) -> void:
+	# Mark actor as actively taking their turn now that skill is confirmed.
+	if actor != null:
+		active_player_actor = actor
+		actor.set_actor_state(BattleActor.STATE_ACTIVE)
+		if is_instance_valid(battle_hud):
+			battle_hud.set_active_actor(actor, true)
+	_player_menu_open = false
 	# Route the chosen skill through the existing turn machinery.
 	selected_command       = skill.get("key", "attack")
 	selected_target        = target

@@ -1,0 +1,81 @@
+extends CanvasLayer
+## CRT channel-switch flash overlay.
+## Plays a brief two-phase effect:
+##   Phase 1 (cut):  white horizontal scan bar sweeps top→bottom over ~0.08 s,
+##                   accompanied by heavy static fill.
+##   Phase 2 (settle): static fades, scan residue dissolves over ~0.18 s.
+## Self-destructs when finished.  Instantiate, add_child, call play().
+
+const SCAN_DURATION  : float = 0.08
+const SETTLE_DURATION: float = 0.18
+const SCAN_BAR_H     : float = 0.18   # fraction of screen height
+const STATIC_LINES   : int   = 80
+
+var _t       : float = 0.0
+var _phase   : int   = 0      # 0 = scan, 1 = settle
+var _rng     := RandomNumberGenerator.new()
+
+# Cached viewport size — set in play()
+var _vp      : Vector2 = Vector2(1280, 720)
+
+func _ready() -> void:
+	layer = 120   # above everything
+	mouse_filter_target = MOUSE_FILTER_IGNORE if has_method("set_mouse_filter") else 0
+
+func play(vp_size: Vector2) -> void:
+	_vp = vp_size
+	_rng.randomize()
+	set_process(true)
+	queue_redraw()
+
+func _process(delta: float) -> void:
+	_t += delta
+	var phase_dur : float = SCAN_DURATION if _phase == 0 else SETTLE_DURATION
+	if _t >= phase_dur:
+		_t -= phase_dur
+		_phase += 1
+		if _phase >= 2:
+			queue_free()
+			return
+	queue_redraw()
+
+func _draw() -> void:
+	var w : float = _vp.x
+	var h : float = _vp.y
+	var phase_dur : float = SCAN_DURATION if _phase == 0 else SETTLE_DURATION
+	var p : float = clampf(_t / phase_dur, 0.0, 1.0)
+
+	if _phase == 0:
+		# ── Scan phase ─────────────────────────────────────────────────────
+		# White fill behind scan bar fades out fast at edges
+		var static_alpha : float = 1.0 - p * 0.4
+		_draw_static(w, h, static_alpha)
+
+		# Scan bar: bright white stripe moving top→bottom
+		var bar_y : float = (p - SCAN_BAR_H * 0.5) * h
+		var bar_h : float = SCAN_BAR_H * h
+		var bar_col := Color(1.0, 1.0, 1.0, 0.92 * (1.0 - p * 0.3))
+		draw_rect(Rect2(0, bar_y, w, bar_h), bar_col)
+
+		# Leading bright edge
+		draw_rect(Rect2(0, bar_y, w, 3.0), Color(1.0, 1.0, 1.0, 1.0))
+
+	else:
+		# ── Settle phase ───────────────────────────────────────────────────
+		var static_alpha : float = (1.0 - p) * 0.55
+		_draw_static(w, h, static_alpha)
+
+func _draw_static(w: float, h: float, alpha: float) -> void:
+	if alpha <= 0.01:
+		return
+	# Sparse horizontal noise bands
+	_rng.seed = int(Time.get_ticks_msec() / 16)   # ~60fps bucket — stable per frame
+	for _i in STATIC_LINES:
+		var y  : float = _rng.randf() * h
+		var lh : float = _rng.randf_range(1.0, 6.0)
+		var bri: float = _rng.randf_range(0.55, 1.0)
+		var a  : float = alpha * _rng.randf_range(0.4, 1.0)
+		draw_rect(Rect2(0, y, w, lh), Color(bri, bri, bri, a))
+
+	# Dark overlay so static doesn't blow out the frame
+	draw_rect(Rect2(0, 0, w, h), Color(0.0, 0.0, 0.0, alpha * 0.35))

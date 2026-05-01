@@ -125,6 +125,7 @@ func set_actor_ready(actor: BattleActor, ready: bool) -> void:
 #   "part"  → browsing body parts of the selected enemy
 var _kb_list  : String = "ally"   # current active list
 var _kb_index : int    = 0        # index within the current active list
+var _kb_filter_index : int = 0    # index within the RGB filter panel buttons
 
 ## Returns the box array for the current keyboard list, filtering out dead/hidden entries.
 func _kb_active_list() -> Array:
@@ -371,7 +372,7 @@ func show_filter_options(removed_mask: int = 0) -> void:
 	for ch in channels:
 		var btn := Button.new()
 		btn.text = ch["label"]
-		btn.focus_mode = Control.FOCUS_NONE
+		btn.focus_mode = Control.FOCUS_ALL
 		btn.custom_minimum_size = Vector2(60, 54)
 		var already_used : bool = (removed_mask & int(ch["channel"])) != 0
 		if _font: btn.add_theme_font_override("font", _font)
@@ -405,12 +406,38 @@ func show_filter_options(removed_mask: int = 0) -> void:
 		hbox.add_child(btn)
 	add_child(panel)
 	_filter_panel = panel
+	_kb_filter_index = 0
+	call_deferred("_kb_filter_apply_highlight")
 
 
 func _hide_filter_panel() -> void:
 	if is_instance_valid(_filter_panel):
 		_filter_panel.queue_free()
 	_filter_panel = null
+
+## Returns the enabled RGB buttons inside _filter_panel, in order.
+func _kb_filter_buttons() -> Array:
+	if not is_instance_valid(_filter_panel):
+		return []
+	var result : Array = []
+	for child in _filter_panel.get_children():
+		if child is HBoxContainer:
+			for btn in child.get_children():
+				if btn is Button and not (btn as Button).disabled:
+					result.append(btn)
+	return result
+
+## Highlight the currently selected filter button and dim the others.
+func _kb_filter_apply_highlight() -> void:
+	var btns := _kb_filter_buttons()
+	if btns.is_empty(): return
+	_kb_filter_index = clampi(_kb_filter_index, 0, btns.size() - 1)
+	for i in btns.size():
+		var btn := btns[i] as Button
+		if i == _kb_filter_index:
+			btn.grab_focus()
+		else:
+			btn.release_focus()
 
 
 ## Switch between enemy targeting and ally targeting.
@@ -1350,14 +1377,9 @@ func _on_box_pressed(entry: Dictionary) -> void:
 				_slide_to_float(eb)
 		_deselect_all(_ally_boxes, entry)
 		_slide_to_anchor(entry)
-		# If gauge is full, open command menu for this actor.
-		if ally in _ready_actors:
-			var bm = get_tree().get_first_node_in_group("battle_manager")
-			if bm != null:
-				bm._atb_player_issue_order(ally)
-		else:
-			# Not ready yet — just focus camera on them.
-			emit_signal("focus_requested", ally)
+		# Clicking an ally box just focuses the camera — the battle menu
+		# is opened via TAB or the ARG button only.
+		emit_signal("focus_requested", ally)
 
 	elif dtype == "part":
 		if _sel_skill.is_empty():
@@ -1722,6 +1744,35 @@ func _skill_needs_target(sk: Dictionary) -> bool:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not _active: return
+
+	# ── Filter panel (RGB channel picker) intercepts all input ──────────────
+	if is_instance_valid(_filter_panel):
+		if not (event is InputEventKey and event.pressed):
+			return
+		var kc : int = (event as InputEventKey).keycode
+		var btns := _kb_filter_buttons()
+		if kc == KEY_LEFT or kc == KEY_UP:
+			_kb_filter_index = (_kb_filter_index - 1 + max(btns.size(), 1)) % max(btns.size(), 1)
+			_kb_filter_apply_highlight()
+			get_viewport().set_input_as_handled()
+			return
+		elif kc == KEY_RIGHT or kc == KEY_DOWN:
+			_kb_filter_index = (_kb_filter_index + 1) % max(btns.size(), 1)
+			_kb_filter_apply_highlight()
+			get_viewport().set_input_as_handled()
+			return
+		elif kc == KEY_SPACE or kc == KEY_ENTER or kc == KEY_KP_ENTER:
+			if not btns.is_empty():
+				_kb_filter_index = clampi(_kb_filter_index, 0, btns.size() - 1)
+				(btns[_kb_filter_index] as Button).emit_signal("pressed")
+			get_viewport().set_input_as_handled()
+			return
+		elif kc == KEY_ESCAPE:
+			_hide_filter_panel()
+			get_viewport().set_input_as_handled()
+			return
+		get_viewport().set_input_as_handled()
+		return
 
 	# Right-click: cancel / step back
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:

@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="CharacterData" format=3 uid="uid://5rp1me3j67gv"]
+
+[ext_resource type="PackedScene" uid="uid://433fpucnuqkf" path="res://Characters/Scenes/BattleActors/EnemyActors/shadow_bactor.tscn" id="1_xp3vt"]
+[ext_resource type="Script" uid="uid://bewuwngi8x4ad" path="res://Systems/AnatomySys/Scripts/BodyPartData.gd" id="2_di13d"]
+[ext_resource type="Resource" uid="uid://ymwcc5pm8aal" path="res://Systems/AnatomySys/Resources/antumbra.tres" id="3_ne8ul"]
+[ext_resource type="Resource" uid="uid://bv8nc0eu2eq6j" path="res://Systems/AnatomySys/Resources/penumbra.tres" id="4_o4ntu"]
+[ext_resource type="Resource" uid="uid://s8d8wab3g0yr" path="res://Systems/AnatomySys/Resources/umbra.tres" id="5_e0uw2"]
+[ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://Systems/PartySys/Scripts/characterdata.gd" id="6_c8uyo"]
+[ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="7_4tnlv"]
+[ext_resource type="Resource" uid="uid://c15i0s4i5ocmu" path="res://Systems/SkillSys/Resources/Skills/low_dim.tres" id="8_kuqff"]
+
+[sub_resource type="Resource" id="Resource_x06xt"]
+script = ExtResource("2_di13d")
+part_name = "Rotten Penumbra"
+required_removed_mask = 2
+damage_multiplier = 1.1
+is_cognitohazard = true
+anchor_path = NodePath("PartAnchors/Head")
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[sub_resource type="Resource" id="Resource_ndqax"]
+script = ExtResource("2_di13d")
+part_name = "Putrid Penumbra"
+required_removed_mask = 4
+damage_multiplier = 2.0
+is_cognitohazard = true
+anchor_path = NodePath("PartAnchors/Head")
+metadata/_custom_type_script = "uid://bewuwngi8x4ad"
+
+[resource]
+script = ExtResource("6_c8uyo")
+display_name = "Helpless Shadow"
+base_max_hp = 24
+base_attack = 1
+tempo = 5
+body_parts = Array[ExtResource("2_di13d")]([ExtResource("3_ne8ul"), ExtResource("4_o4ntu"), ExtResource("5_e0uw2"), SubResource("Resource_x06xt"), SubResource("Resource_ndqax")])
+battle_scene = ExtResource("1_xp3vt")
+skills = Array[ExtResource("7_4tnlv")]([ExtResource("8_kuqff")])
+metadata/_custom_type_script = "uid://b2t1syvrybco8"

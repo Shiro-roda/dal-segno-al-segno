@@ -61,6 +61,10 @@ var arrangement_gauge : float = ARRANGEMENT_GAUGE_MAX
 ## True while the Arrangement View modifier is active.
 var arrangement_view_active : bool = false
 
+## True while the battle menu is open (even if the slowdown has lapsed).
+## While true, the gauge will not recharge.
+var menu_open : bool = false
+
 # ── Signals ───────────────────────────────────────────────────────────────────
 
 ## Emitted when the effective scale changes.  Useful for UI pulse effects.
@@ -94,6 +98,7 @@ func effective_scale() -> float:
 ## Open Arrangement View.  Applies slowdown and starts draining the gauge.
 ## Returns false (and does nothing) if the gauge is empty.
 func open_arrangement_view() -> bool:
+	menu_open = true
 	if arrangement_gauge <= 0.0:
 		return false
 	arrangement_view_active = true
@@ -102,6 +107,7 @@ func open_arrangement_view() -> bool:
 
 ## Close Arrangement View and remove the slowdown modifier.
 func close_arrangement_view() -> void:
+	menu_open = false
 	arrangement_view_active = false
 	remove_modifier("arrangement_view")
 
@@ -115,7 +121,8 @@ func tick_arrangement(delta: float) -> bool:
 			arrangement_gauge = 0.0
 			close_arrangement_view()
 			auto_closed = true
-	else:
+	elif not menu_open:
+		# Only recharge when the menu is fully closed.
 		arrangement_gauge = minf(
 			arrangement_gauge + ARRANGEMENT_CHARGE_RATE * delta,
 			ARRANGEMENT_GAUGE_MAX

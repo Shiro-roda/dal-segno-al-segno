@@ -23,7 +23,7 @@ const CALCIFY_MIN_TURNS      = 3
 const CALCIFY_MAX_TURNS      = 6
 const CALCIFY_DMG_REDUCTION  = 0.5
 const SHELTER_WILL_COST      = 1
-const SHELTER_HP_AMOUNT      = 10   
+const SHELTER_HP_AMOUNT      = 8   
 const SHELTER_FLAT_BONUS     = 4   
 const SELF_HARM_HP_COST       = 3
 const SELF_HARM_WILL_RESTORE  = 2
@@ -91,8 +91,8 @@ const CHATTER_KILL = [
 ]
 
 const CHATTER_DIE = [
-	"W-Wait, what are you—?!",
-	". . . Hedone . . . ? Wait, don't go . . . !",
+	"W-Wait, you don't—!",
+	"M-miss . . . Halcyon . . . ? Wait, don't go . . . !",
 	" ",
 	" ",
 	" ",

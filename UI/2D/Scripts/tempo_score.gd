@@ -19,6 +19,7 @@ const MAX_TEMPO       := 200.0   # tempo_pool floor for x-axis scaling
 var _actors        : Array  = []   # Array[BattleActor]
 var _active_actor  : BattleActor = null
 var _font          : Font   = null
+var _gauge_ratio   : float  = 1.0  # arrangement gauge 0..1
 
 # Fallback colours if CharacterData has no theme_color set
 const _FALLBACK_COLORS : Array = [
@@ -37,9 +38,10 @@ func setup(actors: Array, active: BattleActor, font: Font) -> void:
 	queue_redraw()
 
 
-func refresh(actors: Array, active: BattleActor) -> void:
+func refresh(actors: Array, active: BattleActor, gauge_ratio: float = 1.0) -> void:
 	_actors       = actors
 	_active_actor = active
+	_gauge_ratio  = gauge_ratio
 	queue_redraw()
 
 
@@ -170,6 +172,30 @@ func _draw() -> void:
 			draw_line(Vector2(tx, top_y - 4), Vector2(tx, bottom_y + 4),
 				tick_col, 0.6)
 
+
+	# ── Arrangement gauge bar ────────────────────────────────────────────────
+	# Drawn as a thin horizontal fill bar along the very bottom of the widget.
+	var gauge_h   : float = 3.0
+	var gauge_y   : float = h - gauge_h
+	var gauge_w   : float = usable_w * clampf(_gauge_ratio, 0.0, 1.0)
+	var gauge_col : Color
+	if _gauge_ratio > 0.5:
+		gauge_col = Color(0.92, 0.76, 0.28, 0.80)                           # gold
+	elif _gauge_ratio > 0.2:
+		gauge_col = Color(0.92, 0.55, 0.18, 0.85)                           # amber
+	else:
+		gauge_col = Color(0.90, 0.28, 0.28, 0.90)                           # red
+	# Track background
+	draw_rect(Rect2(LEFT_MARGIN, gauge_y, usable_w, gauge_h),
+		Color(0.20, 0.18, 0.16, 0.40))
+	# Fill
+	if gauge_w > 0.0:
+		draw_rect(Rect2(LEFT_MARGIN, gauge_y, gauge_w, gauge_h), gauge_col)
+	# Label
+	if _font != null:
+		var lbl_col := Color(gauge_col.r, gauge_col.g, gauge_col.b, 0.65)
+		draw_string(_font, Vector2(4.0, gauge_y + gauge_h),
+			"ARG", HORIZONTAL_ALIGNMENT_LEFT, LEFT_MARGIN - 8, 9, lbl_col)
 
 func _actor_color(a: BattleActor, fallback_idx: int) -> Color:
 	var char_data = null

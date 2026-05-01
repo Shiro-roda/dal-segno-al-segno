@@ -17,7 +17,8 @@ const C_DIM       := Color(0.698, 0.788, 0.697, 0.7)
 const C_WHITE     := Color(0.92, 0.95, 0.92, 1.0)
 const C_BG        := Color(0.012, 0.018, 0.012, 1.0)
 const C_KEY_FACE  := Color(0.10, 0.13, 0.10, 1.0)
-const C_KEY_LIT   := Color(0.08, 0.55, 0.22, 1.0)
+const C_KEY_LIT_DUN   := Color(0.08, 0.55, 0.22, 1.0)
+const C_KEY_LIT_BAT     := Color(0.69, 0.365, 0.0, 1.0)
 const C_KEY_EDGE  := Color(0.30, 0.40, 0.30, 0.85)
 const LINE_H      := 22.0
 const CHAR_DELAY  := 0.0000   # seconds per character in typewriter
@@ -468,6 +469,8 @@ const _BATTLE_KEYS : Dictionary = {
 	"\u2192": "Cycle RIGHT",
 	"\u2191": "Cycle FORWARD",
 	"\u2193": "Move BACKWARD",
+	"SPACE": "Confirm Selection",
+	"ENTER": "Confirm Selection",
 }
 
 func _page_keyboard() -> void:
@@ -482,14 +485,14 @@ func _page_keyboard() -> void:
 
 	# Context labels
 	_add_label(p, "ACTIVE IN DUNGEON", Vector2(700, 34), 11, C_GREEN)
-	_add_label(p, "ACTIVE IN BATTLE",  Vector2(900, 34), 11, C_AMBER)
+	_add_label(p, "ACTIVE IN BATTLE",  Vector2(900, 34), 11, C_RED)
 
 	# Draw keyboard
 	_draw_keyboard(p, Vector2(60, 80))
 
 	# Annotation table
 	_draw_key_table(p, _DUNGEON_KEYS, Vector2(60, 550),  C_GREEN,  "DUNGEON")
-	_draw_key_table(p, _BATTLE_KEYS,  Vector2(680, 550), C_AMBER, "BATTLE")
+	_draw_key_table(p, _BATTLE_KEYS,  Vector2(680, 550), C_RED, "BATTLE")
 	# Mouse / pointer entries that can't light up on the keyboard diagram
 	_draw_mouse_table(p, Vector2(60, 760))
 
@@ -516,8 +519,8 @@ func _draw_keyboard(parent: Control, origin: Vector2) -> void:
 			# Is this key relevant?
 			var in_dun : bool = klabel in _DUNGEON_KEYS
 			var in_bat : bool = klabel in _BATTLE_KEYS
-			var face   : Color = C_KEY_LIT if (in_dun or in_bat) else C_KEY_FACE
-			var edge   : Color = C_GREEN if in_dun else (C_AMBER if in_bat else C_KEY_EDGE)
+			var face   : Color = C_AMBER if (in_bat and in_dun) else C_RED if in_bat else C_KEY_LIT_DUN if in_dun else C_KEY_FACE
+			var edge   : Color = C_AMBER if (in_bat and in_dun) else C_GREEN if in_dun else (C_RED if in_bat else C_KEY_EDGE)
 
 			# Key body
 			var cr := ColorRect.new()
@@ -542,7 +545,7 @@ func _draw_keyboard(parent: Control, origin: Vector2) -> void:
 			lbl.position = Vector2(x + 5, y + 6)
 			lbl.add_theme_font_override("font", _font_mono)
 			lbl.add_theme_font_size_override("font_size", 9)
-			var text_col : Color = C_GREEN if in_dun else (C_AMBER if in_bat else C_DIM)
+			var text_col : Color = C_BG if (in_bat and in_dun) else C_WHITE if (in_bat or in_dun) else C_DIM
 			lbl.add_theme_color_override("font_color", text_col)
 			lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			parent.add_child(lbl)

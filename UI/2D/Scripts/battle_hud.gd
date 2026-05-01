@@ -231,12 +231,16 @@ func _on_menu_btn_pressed() -> void:
 	var bm = get_tree().get_first_node_in_group("battle_manager")
 	if bm == null:
 		return
-	# Only open during the player's command stage and when not locked
-	if bm.input_locked or bm.input_stage != bm.InputStage.COMMAND:
+	# Only open when not locked and there are ready players
+	if bm.input_locked or bm._atb_ready_players.is_empty():
 		return
 	var battle_menu = bm.battle_menu
 	if is_instance_valid(battle_menu):
-		battle_menu.open_for_turn(bm.active_player_actor, bm.actors, bm.context.run_state)
+		if battle_menu._open:
+			battle_menu.close_panel()
+		else:
+			battle_menu.open_for_turn(null, bm.actors, bm.context.run_state, bm.removed_channels)
+			battle_menu.refresh_log(_log_lines)
 
 
 func _build_overview_toggle_button() -> void:
@@ -607,12 +611,8 @@ func _build_atb_strip(actor_list: Array) -> void:
 			# Invisible until ready
 			btn.modulate = Color(1, 1, 1, 0)
 			btn.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			var _actor: BattleActor = actor  # capture for lambda
-			btn.pressed.connect(func():
-				var bm = get_tree().get_first_node_in_group("battle_manager")
-				if bm != null:
-					bm._atb_player_issue_order(_actor)
-			)
+			# The button is purely visual (pulsing indicator).
+			# The battle menu is opened via TAB or the ARG button only.
 			row.add_child(btn)
 			_atb_buttons[actor] = btn
 

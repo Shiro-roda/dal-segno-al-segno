@@ -441,6 +441,35 @@ func play_ui(stream: AudioStream):
 	ui_player.stream = stream
 	ui_player.play()
 
+## Fade BGM + SFX buses nearly silent when the arrangement/battle menu opens.
+## Restores them when it closes.  UI bus is intentionally untouched.
+var _arrangement_mute_tween : Tween = null
+const ARR_MUTE_DB    := -60.0
+const ARR_FADE_IN    := 0.06   # fast cut (feed goes dark)
+const ARR_FADE_OUT   := 0.18   # slightly slower restore
+
+func arrangement_mute() -> void:
+	if is_instance_valid(_arrangement_mute_tween): _arrangement_mute_tween.kill()
+	var sfx_bus_idx := AudioServer.get_bus_index("SFX")
+	_arrangement_mute_tween = create_tween().set_parallel(true)
+	_arrangement_mute_tween.tween_method(
+		func(v): AudioServer.set_bus_volume_db(bgm_bus, v),
+		AudioServer.get_bus_volume_db(bgm_bus), ARR_MUTE_DB, ARR_FADE_IN)
+	_arrangement_mute_tween.tween_method(
+		func(v): AudioServer.set_bus_volume_db(sfx_bus_idx, v),
+		AudioServer.get_bus_volume_db(sfx_bus_idx), ARR_MUTE_DB, ARR_FADE_IN)
+
+func arrangement_unmute() -> void:
+	if is_instance_valid(_arrangement_mute_tween): _arrangement_mute_tween.kill()
+	var sfx_bus_idx := AudioServer.get_bus_index("SFX")
+	_arrangement_mute_tween = create_tween().set_parallel(true)
+	_arrangement_mute_tween.tween_method(
+		func(v): AudioServer.set_bus_volume_db(bgm_bus, v),
+		AudioServer.get_bus_volume_db(bgm_bus), 0.0, ARR_FADE_OUT)
+	_arrangement_mute_tween.tween_method(
+		func(v): AudioServer.set_bus_volume_db(sfx_bus_idx, v),
+		AudioServer.get_bus_volume_db(sfx_bus_idx), 0.0, ARR_FADE_OUT)
+
 func duck_bgm(strength: float = -6.0, duration: float = 0.3):
 
 	var start_db = AudioServer.get_bus_volume_db(bgm_bus)

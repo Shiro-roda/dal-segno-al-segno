@@ -168,7 +168,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.093295, 0.82706, 1.3146138
 [node name="EnemyGroundCenterAnchor" type="Node3D" parent="CameraRig" unique_id=501510465]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.4375567, 1.3359194, -0.7416283)
 
-[node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=130250288]
+[node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=130250288 groups=["battle_viewport_split"]]
 offset_right = 1280.0
 offset_bottom = 960.0
 theme_override_constants/separation = 0

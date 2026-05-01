@@ -18,6 +18,66 @@ const FONT_PATH  := "res://UI/Themes/Fonts/TerminalVector.ttf"
 var _font : Font
 var _col  : VBoxContainer
 
+# ── Keyboard navigation ──────────────────────────────────────────────────────
+var _kb_index : int    = 0
+var _kb_btn   : Button = null  # currently highlighted button
+
+func _menu_buttons() -> Array:
+	var result : Array = []
+	for child in _col.get_children():
+		# Buttons are wrapped in VBoxContainers by _make_btn
+		if child is VBoxContainer:
+			for sub in (child as VBoxContainer).get_children():
+				if sub is Button and not (sub as Button).disabled:
+					result.append(sub)
+					break
+		elif child is Button and not (child as Button).disabled:
+			result.append(child)
+	return result
+
+func _kb_apply_focus() -> void:
+	# Restore previous button's original stylebox before moving focus
+	if is_instance_valid(_kb_btn):
+		if _kb_btn.has_meta("kb_orig_normal"):
+			_kb_btn.add_theme_stylebox_override("normal", _kb_btn.get_meta("kb_orig_normal"))
+		else:
+			_kb_btn.remove_theme_stylebox_override("normal")
+		_kb_btn = null
+	var list := _menu_buttons()
+	if list.is_empty():
+		return
+	_kb_index = clampi(_kb_index, 0, list.size() - 1)
+	_kb_btn = list[_kb_index]
+	# Save the current normal stylebox so we can restore it on blur
+	var orig := _kb_btn.get_theme_stylebox("normal")
+	_kb_btn.set_meta("kb_orig_normal", orig)
+	var focused := StyleBoxFlat.new()
+	focused.bg_color = C_HOVER
+	focused.border_color = C_TEXT
+	focused.set_border_width_all(1)
+	focused.set_content_margin_all(12)
+	_kb_btn.add_theme_stylebox_override("normal", focused)
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not (event is InputEventKey and event.pressed):
+		return
+	var kc : int = (event as InputEventKey).keycode
+	var list := _menu_buttons()
+	if list.is_empty():
+		return
+	if kc == KEY_UP:
+		_kb_index = (_kb_index - 1 + list.size()) % list.size()
+		_kb_apply_focus()
+		get_viewport().set_input_as_handled()
+	elif kc == KEY_DOWN:
+		_kb_index = (_kb_index + 1) % list.size()
+		_kb_apply_focus()
+		get_viewport().set_input_as_handled()
+	elif kc == KEY_SPACE or kc == KEY_ENTER or kc == KEY_KP_ENTER:
+		_kb_index = clampi(_kb_index, 0, list.size() - 1)
+		(list[_kb_index] as Button).emit_signal("pressed")
+		get_viewport().set_input_as_handled()
+
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	_font = load(FONT_PATH) if ResourceLoader.exists(FONT_PATH) else ThemeDB.fallback_font
@@ -41,7 +101,7 @@ func _ready() -> void:
 
 
 func _build_main_menu() -> void:
-	_clear_col()
+	await _clear_col()
 
 	# Title
 	var title := Label.new()
@@ -88,11 +148,12 @@ func _build_main_menu() -> void:
 		"QUIT GAME",
 		"",
 		_font, func(): emit_signal("quit_game")))
+	_kb_apply_focus()
 
 
 
 func _build_new_game_menu() -> void:
-	_clear_col()
+	await _clear_col()
 
 	var title := Label.new()
 	title.text = "NEW GAME"
@@ -130,10 +191,11 @@ func _build_new_game_menu() -> void:
 		"BACK",
 		"",
 		_font, func(): _build_main_menu()))
+	_kb_apply_focus()
 
 
 func _build_settings_menu() -> void:
-	_clear_col()
+	await _clear_col()
 
 	var title := Label.new()
 	title.text = "SETTINGS"
@@ -209,6 +271,7 @@ func _build_settings_menu() -> void:
 			not is_atb))
 
 	_col.add_child(_make_btn("BACK", "", _font, func(): _build_main_menu()))
+	_kb_apply_focus()
 
 
 func _make_section_label(text: String) -> Label:
@@ -225,6 +288,8 @@ func _clear_col() -> void:
 	for c in _col.get_children():
 		c.queue_free()
 	await get_tree().process_frame
+	_kb_index = 0
+	_kb_btn   = null
 
 
 func _make_btn(label: String, hint: String, font: Font, callback: Callable, disabled: bool = false) -> Control:

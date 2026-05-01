@@ -5,6 +5,57 @@ extends Control
 
 var dungeon : DungeonRunState
 
+# ── Keyboard navigation ──────────────────────────────────────────────
+var _kb_index : int    = 0
+var _kb_focused_btn : Button = null
+
+func _kb_list_buttons() -> Array:
+	var result : Array = []
+	if not is_instance_valid(room_list):
+		return result
+	for child in room_list.get_children():
+		if child is Button and not (child as Button).disabled:
+			result.append(child)
+	return result
+
+func _kb_apply_focus() -> void:
+	if is_instance_valid(_kb_focused_btn):
+		_kb_focused_btn.remove_theme_stylebox_override("normal")
+		_kb_focused_btn = null
+	var list := _kb_list_buttons()
+	if list.is_empty():
+		return
+	_kb_index = clampi(_kb_index, 0, list.size() - 1)
+	_kb_focused_btn = list[_kb_index]
+	var sbox := StyleBoxFlat.new()
+	sbox.bg_color = Color(0.15, 0.45, 0.15, 0.30)
+	sbox.border_color = Color(0.30, 0.90, 0.45, 1.0)
+	sbox.set_border_width_all(2)
+	sbox.set_content_margin_all(4)
+	_kb_focused_btn.add_theme_stylebox_override("normal", sbox)
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not (event is InputEventKey and event.pressed):
+		return
+	var kc : int = (event as InputEventKey).keycode
+	var list := _kb_list_buttons()
+	if list.is_empty():
+		return
+	if kc == KEY_UP:
+		_kb_index = (_kb_index - 1 + list.size()) % list.size()
+		_kb_apply_focus()
+		get_viewport().set_input_as_handled()
+	elif kc == KEY_DOWN:
+		_kb_index = (_kb_index + 1) % list.size()
+		_kb_apply_focus()
+		get_viewport().set_input_as_handled()
+	elif kc == KEY_SPACE or kc == KEY_ENTER or kc == KEY_KP_ENTER:
+		_kb_index = clampi(_kb_index, 0, list.size() - 1)
+		(list[_kb_index] as Button).emit_signal("pressed")
+		_kb_index = 0
+		call_deferred("_kb_apply_focus")
+		get_viewport().set_input_as_handled()
+
 func _ready() -> void:
 	add_to_group("dungeon_ui")
 
@@ -42,6 +93,9 @@ func setup(controller_dungeon : DungeonRunState):
 
 
 		room_list.add_child(button)
+	_kb_index = 0
+	call_deferred("_kb_apply_focus")
+
 
 func show_rest_screen():
 
@@ -111,6 +165,8 @@ func show_rest_screen():
 		var v = option["val"]
 		btn.pressed.connect(func(): _do_rest(t, v))
 		room_list.add_child(btn)
+	_kb_index = 0
+	call_deferred("_kb_apply_focus")
 
 	# Segno placement is now handled exclusively through the SEGNO room type.
 	# No legacy button needed here.
@@ -168,9 +224,11 @@ func show_room_choices(dungeon: DungeonRunState, controller: DungeonController):
 			)
 
 			room_list.add_child(button)
+	_kb_index = 0
+	call_deferred("_kb_apply_focus")
+
 
 func clear_room_list():
-
 	if room_list == null:
 		push_error("RoomList node missing!")
 		return
