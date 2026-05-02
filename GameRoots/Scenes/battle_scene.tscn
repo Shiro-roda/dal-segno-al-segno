@@ -114,7 +114,7 @@ script = ExtResource("3_yw742")
 transform = Transform3D(1, 0, 0, 0, 0.9999998, 0, 0, 0, 0.9999998, 0, 6.3744373, 7.6217666)
 
 [node name="active_cam" type="Node3D" parent="CameraRig" unique_id=2025165075 node_paths=PackedStringArray("look_at_target")]
-transform = Transform3D(0.28797525, -0.9575645, 0.011863081, 2.9802322e-08, 0.012387874, 0.9999231, -0.9576379, -0.28795314, 0.0035674567, 2.765, 578.9009, 3.377)
+transform = Transform3D(0.28797525, -0.9575645, 0.011863081, 2.9802322e-08, 0.012387874, 0.99992305, -0.9576379, -0.28795314, 0.0035674565, 2.765, 578.9009, 3.377)
 top_level = true
 script = ExtResource("4_y8mdh")
 follow_mode = 2
@@ -304,15 +304,15 @@ label_settings = SubResource("LabelSettings_hq6gs")
 
 [node name="BattleLog" type="PanelContainer" parent="BattleHUD" unique_id=1305430076]
 visible = false
-anchors_preset = 3
+anchors_preset = -1
 anchor_left = 1.0
-anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = -638.0
-offset_top = -200.0
+offset_top = 10.0
+offset_bottom = -10.0
 grow_horizontal = 0
-grow_vertical = 0
+grow_vertical = 2
 theme = SubResource("Theme_itxmc")
 theme_override_styles/panel = SubResource("StyleBoxFlat_hq6gs")
 
@@ -324,13 +324,11 @@ theme_override_constants/separation = 0
 custom_minimum_size = Vector2(100, 0)
 layout_mode = 2
 size_flags_horizontal = 3
-alignment = 2
 
 [node name="Log" type="VBoxContainer" parent="BattleHUD/BattleLog/HBoxContainer" unique_id=142707975]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 2.0
-alignment = 2
 
 [node name="Audio Manager" parent="." unique_id=2102780936 instance=ExtResource("10_jcu24")]
 

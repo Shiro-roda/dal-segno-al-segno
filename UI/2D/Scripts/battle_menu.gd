@@ -192,7 +192,11 @@ var _action_top  : PanelContainer
 var _action_bot  : PanelContainer
 var _skill_scroll : ScrollContainer
 var _item_scroll  : ScrollContainer
-var _enemy_col_style : StyleBoxFlat  # live ref to col3 panel stylebox for tinting
+var _enemy_col_style  : StyleBoxFlat  # live ref to col3 panel stylebox for tinting
+var _action_bot_style : StyleBoxFlat  # live ref to col2 bottom stylebox for tinting
+var _cool_divider     : ColorRect     # col2-bottom header rule, tinted with enemy colour
+var _enemy_divider    : ColorRect     # col3 header rule, tinted with enemy colour
+var _log_scroll       : ScrollContainer  # col4 scroll container — auto-scrolled on new log entries
 
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
@@ -289,11 +293,16 @@ func refresh_log(lines: Array) -> void:
 	if not is_instance_valid(_log_col): return
 	for c in _log_col.get_children(): c.queue_free()
 	for i in range(lines.size() - 1, -1, -1): _log_col.add_child(_make_log_line(lines[i]))
+	if is_instance_valid(_log_scroll):
+		await get_tree().process_frame
+		_log_scroll.scroll_vertical = _log_scroll.get_v_scroll_bar().max_value
 
 func push_log(msg: String) -> void:
 	if not is_instance_valid(_log_col): return
 	_log_col.add_child(_make_log_line(msg))
-	while _log_col.get_child_count() > 12: _log_col.get_child(0).free()
+	if is_instance_valid(_log_scroll):
+		await get_tree().process_frame
+		_log_scroll.scroll_vertical = _log_scroll.get_v_scroll_bar().max_value
 
 func _make_log_line(msg: String) -> Label:
 	var lbl := Label.new(); lbl.text = msg
@@ -538,9 +547,12 @@ func _build_panel() -> void:
 	bs.set_border_width_all(1); bs.border_width_right = 0; bs.border_width_top = 0
 	bs.set_content_margin_all(10)
 	_action_bot.add_theme_stylebox_override("panel", bs); col2.add_child(_action_bot)
+	_action_bot_style = bs
 	var bi := VBoxContainer.new(); bi.add_theme_constant_override("separation", 6); _action_bot.add_child(bi)
 	bi.add_child(_lbl("COMPONENTS", 11, C_DIM))
-	bi.add_child(_hrule(Color(C_BLUE.r, C_BLUE.g, C_BLUE.b, 0.35)))
+	var cd := _hrule(Color(C_BLUE.r, C_BLUE.g, C_BLUE.b, 0.35))
+	_cool_divider = cd
+	bi.add_child(cd)
 	var ptsc := ScrollContainer.new(); ptsc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	ptsc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED; bi.add_child(ptsc)
 	_part_col = VBoxContainer.new(); _part_col.add_theme_constant_override("separation", 3)
@@ -555,7 +567,9 @@ func _build_panel() -> void:
 	_enemy_col_style = c3s
 	var c3i := VBoxContainer.new(); c3i.add_theme_constant_override("separation", 6); col3.add_child(c3i)
 	c3i.add_child(_lbl("ENEMIES", 11, C_DIM))
-	c3i.add_child(_hrule(Color(C_BLUE.r, C_BLUE.g, C_BLUE.b, 0.35)))
+	var ed := _hrule(Color(C_BLUE.r, C_BLUE.g, C_BLUE.b, 0.35))
+	_enemy_divider = ed
+	c3i.add_child(ed)
 	var es := ScrollContainer.new(); es.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	es.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED; c3i.add_child(es)
 	_target_col = VBoxContainer.new(); _target_col.add_theme_constant_override("separation", 4)
@@ -569,6 +583,7 @@ func _build_panel() -> void:
 	col4.add_child(_lbl("BATTLE LOG", 11, C_DIM)); col4.add_child(_hrule(C_BORDER))
 	var lsc := ScrollContainer.new(); lsc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	lsc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED; col4.add_child(lsc)
+	_log_scroll = lsc
 	_log_col = VBoxContainer.new(); _log_col.add_theme_constant_override("separation", 5)
 	_log_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL; lsc.add_child(_log_col)
 
@@ -886,14 +901,25 @@ func _on_filter_pressed(channel: int) -> void:
 func _apply_enemy_col_tint() -> void:
 	if not is_instance_valid(_enemy_col_style): return
 	var enemies := _all_actors.filter(func(a): return (a as BattleActor).team == BattleActor.Team.ENEMY)
+	var tc : Color
 	if enemies.is_empty():
-		_enemy_col_style.bg_color = C_COOL_BG
-		_enemy_col_style.border_color = C_BORDER
-		return
-	var tc : Color = (enemies[0] as BattleActor).theme_col
-	if tc == Color(): tc = C_COOL_BG  # fallback if unset
-	_enemy_col_style.bg_color = Color(tc.r * 0.10, tc.g * 0.10, tc.b * 0.10, 1.0)
-	_enemy_col_style.border_color = Color(tc.r * 0.35, tc.g * 0.35, tc.b * 0.35, 1.0)
+		tc = Color(0.28, 0.22, 0.35, 1.0)  # default cool purple-grey
+	else:
+		tc = (enemies[0] as BattleActor).theme_col
+		if tc == Color(): tc = Color(0.28, 0.22, 0.35, 1.0)
+	var bg      := Color(tc.r * 0.10, tc.g * 0.10, tc.b * 0.10, 1.0)
+	var border  := Color(tc.r * 0.35, tc.g * 0.35, tc.b * 0.35, 1.0)
+	var divider := Color(tc.r * 0.55, tc.g * 0.55, tc.b * 0.55, 0.45)
+	# Col 3 — enemy panel
+	_enemy_col_style.bg_color     = bg
+	_enemy_col_style.border_color = border
+	# Col 2 bottom — parts panel
+	if is_instance_valid(_action_bot_style):
+		_action_bot_style.bg_color     = bg
+		_action_bot_style.border_color = border
+	# Dividers inside col2-bottom and col3
+	if is_instance_valid(_cool_divider):   _cool_divider.color   = divider
+	if is_instance_valid(_enemy_divider):  _enemy_divider.color  = divider
 
 func _refresh_enemies() -> void:
 	for c in _target_col.get_children(): c.queue_free()

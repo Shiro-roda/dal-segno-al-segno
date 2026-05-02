@@ -9,14 +9,9 @@ func enter(m) -> void:
 	call_deferred("_start_turn_loop")
 
 func _start_turn_loop() -> void:
-	if BattleSettings.battle_mode == BattleSettings.BattleMode.ATB:
-		# ATB: _tick_atb() in _process drives all turns.
-		# Just park cameras on overview and let the real-time system take over.
-		manager._return_camera_to_overview()
-	else:
-		# CTB: release cameras and run the sequential turn loop.
-		manager.focus_idle_orbit()
-		manager.next_turn()
+	# Both CTB and ATB are now driven by _tick_tempo() in _process.
+	# Park cameras on overview and let the real-time system take over.
+	manager._return_camera_to_overview()
 
 func exit() -> void:
 	pass

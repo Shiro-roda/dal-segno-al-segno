@@ -49,7 +49,7 @@ func _register_all() -> void:
 		true,  false, false, false, "PartAnchors/Rebuke", "Cling", 2)
 	_add("Cling",   "attack",  "Attack at random for 50% SHARP. Has a 35% chance to miss, and a 25% chance to harm Hue. Also has a 75% chance to slow the enemy to 40% TEMPO for one turn.", " ",
 		false, true,  false, false, "PartAnchors/Rebuke")
-	_add("Calcify", "special", "Paralyze the enemy for 3-6 turns, but reduce all damage to them by 50% until their next action.",                                                                    "Hue buries the foe in a glacial tomb, leaving them unable to act but guarded from harm.",
+	_add("Calcify", "special", "Paralyze the enemy for 1-3 turns, but reduce all damage to them by 50% until their next action.",                                                                    "Hue buries the foe in a glacial tomb, leaving them unable to act but guarded from harm.",
 		false, false, false, false, "PartAnchors/Umbrella", "", 3)
 	_add("Shelter", "support", "Grants 10 temporary CORP and increases the target's FLAT by 4 while the temporary CORP remains.",                                     "Hue shields a companion with a wall of ice.",
 		false, false, true,  false, "PartAnchors/Canopy", "Embrace", 1)

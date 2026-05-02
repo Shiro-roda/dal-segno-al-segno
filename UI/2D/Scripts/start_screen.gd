@@ -217,44 +217,24 @@ func _build_settings_menu() -> void:
 	# ── Battle Mode ──────────────────────────────────────────────────────────
 	_col.add_child(_make_section_label("BATTLE MODE"))
 
-	var is_atb := BattleSettings.battle_mode == BattleSettings.BattleMode.ATB
+	var is_ctb := BattleSettings.battle_mode == BattleSettings.BattleMode.CTB
 	_col.add_child(_make_btn(
-		"ATB — ACTIVE TIME" + ("  ◄" if is_atb else ""),
-		"Tempo bars fill in real time. Time pressure.",
-		_font, func():
-			BattleSettings.battle_mode = BattleSettings.BattleMode.ATB
-			_build_settings_menu()))
-
-	_col.add_child(_make_btn(
-		"CTB — TURN BASED" + ("  ◄" if not is_atb else ""),
-		"Fully paused between turns. No time pressure.",
+		"CTB — CHARGE TURN" + ("  ◄" if is_ctb else ""),
+		"Combatants charge BPM in real time until one of them reaches 100 BPM, and the rest will not resume charging until that combatant has taken their turn.",
 		_font, func():
 			BattleSettings.battle_mode = BattleSettings.BattleMode.CTB
 			_build_settings_menu()))
 
-	# ── ATB Submode ───────────────────────────────────────────────────────────
-	_col.add_child(_make_section_label("ATB SUBMODE  (ATB only)"))
-
-	var is_wait := BattleSettings.atb_submode == BattleSettings.ATBSubmode.WAIT
 	_col.add_child(_make_btn(
-		"WAIT" + ("  ◄" if is_wait else ""),
-		"Bars pause while you choose an action.",
+		"ATB — ACTIVE TIME" + ("  ◄" if not is_ctb else ""),
+		"Combatants charge BPM at all times and will not wait their turn, taking action immediately.",
 		_font, func():
-			BattleSettings.atb_submode = BattleSettings.ATBSubmode.WAIT
-			_build_settings_menu(),
-		not is_atb))
-
-	_col.add_child(_make_btn(
-		"ACTIVE" + ("  ◄" if not is_wait else ""),
-		"Bars keep filling while you choose. Maximum pressure.",
-		_font, func():
-			BattleSettings.atb_submode = BattleSettings.ATBSubmode.ACTIVE
-			_build_settings_menu(),
-		not is_atb))
+			BattleSettings.battle_mode = BattleSettings.BattleMode.ATB
+			_build_settings_menu()))
 
 	# ── ATB Speed ─────────────────────────────────────────────────────────────
 	_col.add_child(_make_section_label(
-		"ATB SPEED  (ATB only)  —  %.0f%%" % (BattleSettings.atb_speed_multiplier * 100)))
+		"BPM ACCELERATION  —  %.0f%%" % (BattleSettings.atb_speed_multiplier * 100)))
 
 	var speeds := [["SLOW (50%)", 0.5], ["NORMAL (100%)", 1.0],
 				   ["FAST (150%)", 1.5], ["VERY FAST (200%)", 2.0]]
@@ -267,8 +247,7 @@ func _build_settings_menu() -> void:
 			"", _font,
 			func():
 				BattleSettings.atb_speed_multiplier = val
-				_build_settings_menu(),
-			not is_atb))
+				_build_settings_menu()))
 
 	_col.add_child(_make_btn("BACK", "", _font, func(): _build_main_menu()))
 	_kb_apply_focus()

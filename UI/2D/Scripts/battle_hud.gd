@@ -9,7 +9,7 @@ class_name BattleHUD
 
 const ACTOR_PANEL = preload("res://UI/2D/Scenes/actor_panel.tscn")
 
-const LOG_MAX_LINES      = 6
+const LOG_MAX_LINES      = 200  # history cap; effectively unlimited in practice
 const LOG_FADE_DURATION  = 0.4   # seconds each log entry fades in
 const LOG_LINE_SPACING   = 6     # extra pixels between log entries
 const QUEUE_STEPS = 6                  # how many acts ahead to project
@@ -21,6 +21,7 @@ var enemy_panels := {}
 var _log_panel      : PanelContainer
 var _log_label      : RichTextLabel
 var _log_vbox       : VBoxContainer
+var _log_scroll     : ScrollContainer  # wraps _log_vbox for scrollable history
 var _log_lines      : Array = []
 
 # ATB bar widgets keyed by BattleActor
@@ -42,11 +43,18 @@ func _ready_log() -> void:
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.size_flags_vertical   = Control.SIZE_EXPAND_FILL
 
+	_log_scroll = ScrollContainer.new()
+	_log_scroll.name = "LogScroll"
+	_log_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_log_scroll.size_flags_vertical   = Control.SIZE_EXPAND_FILL
+	_log_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	vbox.add_child(_log_scroll)
+
 	_log_vbox = VBoxContainer.new()
 	_log_vbox.name = "LogVBox"
-	_log_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_log_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_log_vbox.add_theme_constant_override("separation", LOG_LINE_SPACING)
-	vbox.add_child(_log_vbox)
+	_log_scroll.add_child(_log_vbox)
 	
 
 
@@ -100,12 +108,10 @@ func push_log(msg: String) -> void:
 		_log_lines.resize(LOG_MAX_LINES)
 	if _log_vbox == null:
 		return
-	# Remove oldest entries immediately (free(), not queue_free()) so
-	# get_child_count() reflects the removal right away — queue_free() is
-	# deferred and would cause an infinite loop here.
+	# Trim oldest visible entries if we're over the cap.
 	while _log_vbox.get_child_count() >= LOG_MAX_LINES:
 		_log_vbox.get_child(_log_vbox.get_child_count() - 1).free()
-	# Create new label, insert at top
+	# Create new label, insert at top (newest first).
 	var lbl := Label.new()
 	lbl.text = msg
 	lbl.add_theme_font_size_override("font_size", 14)
@@ -115,9 +121,12 @@ func push_log(msg: String) -> void:
 	lbl.modulate = Color(1, 1, 1, 0)
 	_log_vbox.add_child(lbl)
 	_log_vbox.move_child(lbl, 0)
-	# Fade in
+	# Fade in, then scroll to top so newest is always visible.
 	var tw := lbl.create_tween()
 	tw.tween_property(lbl, "modulate", Color(1, 1, 1, 1), LOG_FADE_DURATION)
+	if is_instance_valid(_log_scroll):
+		await get_tree().process_frame
+		_log_scroll.scroll_vertical = 0
 
 
 const HUD_BG     := Color(0.08, 0.07, 0.06, 0.96)
@@ -313,6 +322,8 @@ func setup(actor_list : Array):
 	if _log_vbox:
 		for c in _log_vbox.get_children():
 			c.free()  # free() not queue_free() — must be synchronous
+	if is_instance_valid(_log_scroll):
+		_log_scroll.scroll_vertical = 0
 
 	# Build ATB bars if we're starting in ATB mode.
 	if BattleSettings.battle_mode == BattleSettings.BattleMode.ATB:

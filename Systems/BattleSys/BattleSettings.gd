@@ -5,20 +5,16 @@
 ## Designed as an autoload singleton (add as "BattleSettings" in Project > AutoLoad).
 ##
 ## ── Battle Mode ──────────────────────────────────────────────────────────────
-##   ATB  — Active Turn Battle.  Tempo bars fill in real-time; enemies and
-##           ready players act as their bars complete.  Time pressure exists.
-##   CTB  — Charge Turn Battle (current default).  The game is fully
-##           paused between turns; no real-time pressure.
-##
-## ── ATB Submode ──────────────────────────────────────────────────────────────
-##   ACTIVE — Player bars continue filling even while they are choosing an
-##            action.  Maximum pressure; mirrors FF4/FF5 "Active".
-##   WAIT   — Player bars pause whenever the player has a command menu open.
-##            Mirrors FF6 "Wait"; a good accessibility default.
+##   CTB  — Charge Turn Battle (default).  Tempo bars fill in real-time, but
+##           player bars pause whenever a command menu is open.  No time
+##           pressure while choosing — mirrors FF6 "Wait".
+##   ATB  — Active Turn Battle.  Tempo bars fill at all times, including while
+##           the player is choosing an action.  Maximum time pressure —
+##           mirrors FF4/FF5 "Active".
 ##
 ## ── Time-Scale Modifiers (hooks for future features) ─────────────────────────
-##   Time-scale is applied to the ATB tick rate only — it never affects
-##   _process physics or animations, so the game stays deterministic.
+##   Time-scale is applied to the tempo tick rate only — it never affects
+##   _process, physics, or animations, so the game stays deterministic.
 ##   Systems that need to modify time write to the BattleTimeController (see
 ##   res://Systems/BattleSys/BattleTimeController.gd) rather than here.
 ##
@@ -42,21 +38,12 @@ signal settings_changed
 # ── Battle mode ───────────────────────────────────────────────────────────────
 
 enum BattleMode { CTB, ATB }
-enum ATBSubmode  { ACTIVE, WAIT }
 
 ## The current mode.  Writing triggers settings_changed and an autosave.
-var battle_mode : BattleMode = BattleMode.ATB :
+var battle_mode : BattleMode = BattleMode.CTB :
 	set(v):
 		if battle_mode == v: return
 		battle_mode = v
-		settings_changed.emit()
-		save()
-
-## ATB submode (only relevant when battle_mode == ATB).
-var atb_submode : ATBSubmode = ATBSubmode.WAIT :
-	set(v):
-		if atb_submode == v: return
-		atb_submode = v
 		settings_changed.emit()
 		save()
 
@@ -116,7 +103,6 @@ func _ready() -> void:
 func save() -> void:
 	var data := {
 		"battle_mode":           battle_mode,
-		"atb_submode":           atb_submode,
 		"atb_speed_multiplier":  atb_speed_multiplier,
 		"autobattle_mode":       autobattle_mode,
 	}
@@ -138,7 +124,19 @@ func load_settings() -> void:
 	if result == null or not result is Dictionary:
 		return
 	# Read with safe defaults so old saves forward-compat gracefully.
-	battle_mode          = int(result.get("battle_mode",          BattleMode.ATB))
-	atb_submode          = int(result.get("atb_submode",          ATBSubmode.WAIT))
+	# Migration: old format had BattleMode { CTB=0, ATB=1 } + ATBSubmode { ACTIVE=0, WAIT=1 }.
+	# Old CTB(0) was a sequential mode we no longer support — map it to new CTB.
+	# Old ATB(1)+WAIT(1) → new CTB(0); old ATB(1)+ACTIVE(0) → new ATB(1).
+	var raw_mode    : int = int(result.get("battle_mode",          BattleMode.CTB))
+	var raw_submode : int = int(result.get("atb_submode",          1))  # 1=WAIT was the old default
+	if raw_mode == 0:
+		# Old CTB (sequential) — map to new CTB (wait-style real-time)
+		battle_mode = BattleMode.CTB
+	elif raw_mode == 1 and raw_submode == 0:
+		# Old ATB + ACTIVE → new ATB
+		battle_mode = BattleMode.ATB
+	else:
+		# Old ATB + WAIT → new CTB
+		battle_mode = BattleMode.CTB
 	atb_speed_multiplier = float(result.get("atb_speed_multiplier", 1.0))
 	autobattle_mode      = int(result.get("autobattle_mode",      AutobattleMode.OFF))
