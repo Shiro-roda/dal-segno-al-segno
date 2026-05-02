@@ -109,6 +109,10 @@ func _draw() -> void:
 		var bottom_y : float = (float(entries.back()["row"]) + 0.5) * row_h
 		draw_line(Vector2(LEFT_MARGIN, top_y), Vector2(LEFT_MARGIN, bottom_y),
 			Color(0.45, 0.38, 0.30, 0.55), 1.0)
+		# ── Beat threshold line (x = 100/max_pool) ───────────────────────────
+		var beat_x : float = LEFT_MARGIN + (100.0 / max_pool) * usable_w
+		draw_line(Vector2(beat_x, top_y - 4), Vector2(beat_x, bottom_y + 4),
+			Color(0.88, 0.83, 0.74, 0.45), 1.2)
 
 	# ── Name labels ──────────────────────────────────────────────────────────
 	if _font != null:

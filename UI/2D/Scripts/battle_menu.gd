@@ -645,7 +645,8 @@ func _make_party_card(a: BattleActor) -> Control:
 		vbox.add_child(_lbl("AP  %d / %d" % [a.party_member.will, a.party_member.max_will], 11, ap_col))
 	elif a.run_state != null:
 		vbox.add_child(_lbl("BB  %d / %d" % [a.run_state.ammo, a.run_state.gun_clip], 11, C_GOLD))
-	vbox.add_child(_lbl("TEMPO  %d" % a.tempo_stat, 11, C_DIM))
+	vbox.add_child(_lbl("BPM  %d" % a.bpm, 11, C_DIM))
+	vbox.add_child(_lbl("TEMPO  %d" % a.tempo, 11, C_DIM))
 	if not a.active_effects.is_empty():
 		var parts : Array = []
 		for fx in a.active_effects:
@@ -959,7 +960,10 @@ func _make_target_card(a: BattleActor, is_ally: bool) -> Control:
 		var sr := HBoxContainer.new(); sr.add_theme_constant_override("separation", 10)
 		sr.add_child(_lbl("SHARP %d" % a.attack_power, 10, C_DIM))
 		if a.flat_defense > 0: sr.add_child(_lbl("FLAT %d" % a.flat_defense, 10, C_DIM))
-		sr.add_child(_lbl("TEMPO %d" % a.tempo_stat, 10, C_DIM)); inner.add_child(sr)
+		sr.add_child(_lbl("BPM %d" % a.bpm, 10, C_DIM))
+		if a.tempo > 0: sr.add_child(_lbl("TEMPO %d" % a.tempo, 10, C_DIM))
+		if a.flat_defense > 0: sr.add_child(_lbl("FLAT %d" % a.flat_defense, 10, C_DIM))
+		inner.add_child(sr)
 	if revealed and not a.active_effects.is_empty():
 		var fp : Array = []
 		for fx in a.active_effects:

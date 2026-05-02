@@ -529,7 +529,7 @@ func _make_augur_entry(enemy: BattleActor) -> VBoxContainer:
 	entry.add_child(name_lbl)
 
 	var atk_lbl := Label.new()
-	atk_lbl.text = "SHARP %d   FLAT %d   TEMPO %d" % [enemy.attack_power, enemy.flat_defense, enemy.tempo_stat]
+	atk_lbl.text = "SHARP %d   FLAT %d   BPM %d" % [enemy.attack_power, enemy.flat_defense, enemy.bpm]
 	atk_lbl.add_theme_font_size_override("font_size", 10)
 	atk_lbl.add_theme_color_override("font_color", C_DIM_L)
 	entry.add_child(atk_lbl)
@@ -576,60 +576,85 @@ func _build_atb_strip(actor_list: Array) -> void:
 		var row := VBoxContainer.new()
 		row.add_theme_constant_override("separation", 2)
 
+		var col := Color(0.75, 0.95, 1.0, 1.0) if actor.team == BattleActor.Team.PLAYER \
+					else Color(1.0, 0.55, 0.55, 1.0)
+
 		var lbl := Label.new()
 		lbl.text = actor.get_log_name().to_upper()
 		lbl.add_theme_font_size_override("font_size", 10)
-		var col := Color(0.75, 0.95, 1.0, 1.0) if actor.team == BattleActor.Team.PLAYER \
-					else Color(1.0, 0.55, 0.55, 1.0)
 		lbl.add_theme_color_override("font_color", col)
 		if font:
 			lbl.add_theme_font_override("font", font)
 		row.add_child(lbl)
 
-		var bar := ProgressBar.new()
-		bar.min_value = 0.0
-		bar.max_value = 100.0
-		bar.value = actor.tempo_pool
-		bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		bar.custom_minimum_size = Vector2(0, 8)
-		bar.show_percentage = false
-		# Style the bar
-		var fill := StyleBoxFlat.new()
-		fill.bg_color = col
-		bar.add_theme_stylebox_override("fill", fill)
-		var bg := StyleBoxFlat.new()
-		bg.bg_color = Color(0.1, 0.1, 0.12, 0.85)
-		bar.add_theme_stylebox_override("background", bg)
+		# Custom bar drawn via _draw so we can show Beat and Tempo markers.
+		var bar := _make_beat_bar(actor, col)
 		row.add_child(bar)
 
 		_atb_strip.add_child(row)
 		_atb_bars[actor] = bar
 
-		# Player actors get a transparent button overlay so the player can
-		# click them to issue orders when their bar is full.
 		if actor.team == BattleActor.Team.PLAYER:
 			var btn := Button.new()
 			btn.flat = true
 			btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			btn.size_flags_vertical   = Control.SIZE_EXPAND_FILL
-			# Invisible until ready
 			btn.modulate = Color(1, 1, 1, 0)
 			btn.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			# The button is purely visual (pulsing indicator).
-			# The battle menu is opened via TAB or the ARG button only.
 			row.add_child(btn)
 			_atb_buttons[actor] = btn
 
-## Update ATB bar values.  Called every _process frame from battle_manager in ATB mode.
+## Build a custom-drawn beat bar Control for one actor.
+func _make_beat_bar(actor: BattleActor, col: Color) -> Control:
+	var bar := Control.new()
+	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar.custom_minimum_size   = Vector2(0, 10)
+	# Store actor and colour as metadata so _draw can read them.
+	bar.set_meta("actor", actor)
+	bar.set_meta("col",   col)
+	# Attach a script inline via a GDScript source string.
+	var scr := GDScript.new()
+	scr.source_code = """
+extends Control
+func _draw() -> void:
+	var actor = get_meta("actor")
+	var col   : Color = get_meta("col")
+	var w := size.x
+	var h := size.y
+	const BEAT_THRESHOLD := 100.0
+	const BAR_MAX        := 200.0
+	var pool_cap := BEAT_THRESHOLD + float(actor.tempo)
+	var pool     := clampf(actor.tempo_pool, 0.0, pool_cap)
+	# Background (full bar to pool_cap)
+	var cap_x := (pool_cap / BAR_MAX) * w
+	draw_rect(Rect2(0, 0, cap_x, h), Color(0.1, 0.1, 0.12, 0.85))
+	# Fill (tempo_pool)
+	var fill_x := (pool / BAR_MAX) * w
+	if fill_x > 0.0:
+		var ready := pool >= BEAT_THRESHOLD
+		var fill_col := col if not ready else Color(col.r * 1.3, col.g * 1.3, col.b * 1.3, 1.0)
+		draw_rect(Rect2(0, 0, fill_x, h), fill_col)
+	# Beat marker at centre (100/200)
+	var beat_x := (BEAT_THRESHOLD / BAR_MAX) * w
+	draw_line(Vector2(beat_x, 0), Vector2(beat_x, h), Color(1, 1, 1, 0.75), 1.5)
+	# Tempo marker at 100+tempo (only if tempo > 0)
+	if actor.tempo > 0:
+		var tempo_x := (pool_cap / BAR_MAX) * w
+		draw_line(Vector2(tempo_x, 0), Vector2(tempo_x, h), Color(col.r, col.g, col.b, 0.60), 1.2)
+"""
+	scr.reload()
+	bar.set_script(scr)
+	return bar
+
+## Update ATB bar values. Called every _process frame from battle_manager.
 func refresh_atb_bars(actor_list: Array) -> void:
 	for actor in actor_list:
 		if _atb_bars.has(actor):
-			(_atb_bars[actor] as ProgressBar).value = actor.tempo_pool
+			(_atb_bars[actor] as Control).queue_redraw()
 		if _atb_buttons.has(actor):
 			var btn : Button = _atb_buttons[actor]
 			var ready : bool = actor.tempo_pool >= 100.0
 			btn.mouse_filter = Control.MOUSE_FILTER_STOP if ready else Control.MOUSE_FILTER_IGNORE
-			# Pulse the label alpha so it's obvious this character is ready.
 			var pulse := (sin(Time.get_ticks_msec() * 0.005) * 0.5 + 0.5) if ready else 0.0
 			btn.modulate = Color(1, 1, 1, pulse)
 

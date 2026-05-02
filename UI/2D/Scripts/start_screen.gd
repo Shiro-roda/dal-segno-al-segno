@@ -220,7 +220,7 @@ func _build_settings_menu() -> void:
 	var is_ctb := BattleSettings.battle_mode == BattleSettings.BattleMode.CTB
 	_col.add_child(_make_btn(
 		"CTB — CHARGE TURN" + ("  ◄" if is_ctb else ""),
-		"Combatants charge BPM in real time until one of them reaches 100 BPM, and the rest will not resume charging until that combatant has taken their turn.",
+		"Combatants charge BPM in real time until one of them reaches 100 BPM, and the rest will not resume charging until that combatant has taken their turn. Very Fast is reccommended.",
 		_font, func():
 			BattleSettings.battle_mode = BattleSettings.BattleMode.CTB
 			_build_settings_menu()))
@@ -234,10 +234,10 @@ func _build_settings_menu() -> void:
 
 	# ── ATB Speed ─────────────────────────────────────────────────────────────
 	_col.add_child(_make_section_label(
-		"BPM ACCELERATION  —  %.0f%%" % (BattleSettings.atb_speed_multiplier * 100)))
+		"BPM SCALE  —  %.0f%%" % (BattleSettings.atb_speed_multiplier * 100)))
 
-	var speeds := [["SLOW (50%)", 0.5], ["NORMAL (100%)", 1.0],
-				   ["FAST (150%)", 1.5], ["VERY FAST (200%)", 2.0]]
+	var speeds := [["LENTO (50%)", 0.5], ["MODERATO (100%)", 1.0],
+				   ["ALLEGRO (150%)", 1.5], ["PRESTO (200%)", 2.0]]
 	for pair in speeds:
 		var label_str : String = pair[0]
 		var val       : float  = pair[1]

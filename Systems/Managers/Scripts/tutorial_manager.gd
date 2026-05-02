@@ -193,7 +193,7 @@ func _spawn_dummy_ally() -> void:
 	dummy.hp = 10
 	dummy.attack_power = 0
 	dummy.flat_defense = 0
-	dummy.tempo_stat = 0
+	dummy.bpm = 0
 	dummy.tempo_pool = -9999.0  # never acts
 	dummy.global_position = empty_slot.global_position
 

@@ -14,7 +14,8 @@ func get_log_name() -> String:
 @export var base_attack : int
 @export var base_flat_defense : int = 0
 @export var base_max_will : int = 0  # 0 means this character uses ammo, not will
-@export var tempo: int = 10
+@export var bpm: int = 10       ## Rate at which this actor accumulates energy toward a Beat.
+@export var tempo: int = 0      ## Extra pool past the Beat threshold (100). Bar fills to 100+tempo.
 @export var exp_yield : int = 3  # exp granted to each surviving party member on kill
 @export var body_parts : Array[BodyPartData]
 @export var battle_scene : PackedScene

@@ -326,8 +326,8 @@ func _process(delta):
 
 # ── ATB helpers ──────────────────────────────────────────────────────────────
 
-## Tempo fill rate per second per tempo_stat point.
-## At 0.45, a character with tempo_stat 10 takes ~22 seconds to fill a bar.
+## Tempo fill rate per second per BPM point.
+## At 0.45, a character with bpm 10 takes ~22 seconds to fill to a Beat.
 const ATB_BASE_RATE : float = 1.0
 
 ## Real-time tempo tick — runs every _process frame for both CTB and ATB.
@@ -374,10 +374,11 @@ func _tick_tempo(delta: float) -> void:
 				continue
 		if actor.tempo_pool >= 100.0:
 			continue
-		var gain := float(actor.tempo_stat)
+		var gain := float(actor.bpm)
 		if actor.has_status(BattleActor.STATUS_SLOW):
 			gain *= BattleActor.SLOW_TEMPO_MULT
-		actor.tempo_pool = minf(actor.tempo_pool + gain * ATB_BASE_RATE * dt, 100.0)
+		var pool_cap := 100.0 + float(actor.tempo)
+		actor.tempo_pool = minf(actor.tempo_pool + gain * ATB_BASE_RATE * dt, pool_cap)
 
 	_check_atb_triggers()
 	if is_instance_valid(battle_hud):
@@ -573,7 +574,8 @@ func spawn_players():
 		actor.hp = member_data.current_hp
 		actor.attack_power = member_data.character.base_attack + member_data.bonus_attack
 		actor.flat_defense = member_data.character.base_flat_defense + member_data.bonus_flat_defense
-		actor.tempo_stat = char_data.tempo
+		actor.bpm   = char_data.bpm
+		actor.tempo = char_data.tempo
 		actor.body_parts = char_data.body_parts
 		actor.party_member = member_data
 		actor.run_state = context.run_state
@@ -603,7 +605,8 @@ func spawn_enemies():
 		actor.attack_power = char_data.base_attack
 		actor.flat_defense = char_data.base_flat_defense
 		actor.hp = actor.max_hp
-		actor.tempo_stat = char_data.tempo
+		actor.bpm   = char_data.bpm
+		actor.tempo = char_data.tempo
 		actor.body_parts = char_data.body_parts
 		actor.theme_col = char_data.theme_color
 
@@ -668,7 +671,7 @@ func build_turn_queue():
 	# Seed with a random offset in [0, tempo_stat) so starting order is shuffled
 	# while still respecting speed — faster actors are still more likely to go first.
 	for actor in actors:
-		actor.tempo_pool = randf_range(0.0, float(actor.tempo_stat))
+		actor.tempo_pool = randf_range(0.0, float(actor.bpm))
 
 func _pick_next_actor() -> BattleActor:
 	var living = actors.filter(func(a): return a.is_alive())
@@ -1010,7 +1013,7 @@ func get_projected_queue(steps: int = 8) -> Array:
 			for a in living:
 				if a.has_status(BattleActor.STATUS_FROZEN):
 					continue
-				var gain = float(a.tempo_stat) * proj_scale
+				var gain = float(a.bpm) * proj_scale
 				if a.has_status(BattleActor.STATUS_SLOW):
 					gain *= BattleActor.SLOW_TEMPO_MULT
 				pools[a] += gain

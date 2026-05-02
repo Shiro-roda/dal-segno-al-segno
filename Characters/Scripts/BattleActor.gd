@@ -85,7 +85,8 @@ var attack_modifier : int = 0
 var base_flat_defense : int = 0
 var flat_modifier : int = 0
 
-@export var tempo_stat : int = 10    # base tempo gained per turn
+@export var bpm : int = 10       ## Rate at which this actor accumulates energy toward a Beat.
+@export var tempo : int = 0      ## Extra pool capacity past the Beat threshold. Bar fills to 100+tempo.
 @export var body_parts : Array[BodyPartData]
 ## NodePaths (relative to actor root) used to compute the screen-space AABB
 ## for the AR-style detection box. Populated automatically in _ready() from
@@ -462,17 +463,15 @@ func tick_status_effects() -> void:
 func tick_tempo(scale: float = 1.0) -> void:
 	if has_status(STATUS_FROZEN):
 		return  # no tempo gain while frozen
-	var gain : float = float(tempo_stat) * scale
+	var gain : float = float(bpm) * scale
 	if has_status(STATUS_SLOW):
 		gain *= SLOW_TEMPO_MULT
-	# Small jitter breaks ties between equal-stat actors without distorting the scale.
-	# Full gain is deterministic; randf_range adds at most +/-5% of one stat point.
 	var martyr_bonus := 0.0
-
 	if has_status(STATUS_MARTYR):
 		martyr_bonus = martyr_tempo_bonus
-
-	tempo_pool += gain + randf_range(-0.5, 0.5) + tempo_bonus + martyr_bonus
+	# Cap at the Beat threshold (100) plus this actor's Tempo stat.
+	var pool_cap : float = 100.0 + float(tempo)
+	tempo_pool = minf(tempo_pool + gain + randf_range(-0.5, 0.5) + tempo_bonus + martyr_bonus, pool_cap)
 
 
 func reset_tempo_bonus() -> void:
