@@ -51,37 +51,106 @@ func _ready() -> void:
 ## target has died.
 
 static func _strategy_repeat_last(actor: BattleActor, manager: Node) -> Dictionary:
-	# BattleManager exposes can_repeat_action() and _last_actions.
-	# We call the public helper; if valid, we return the stored action dict.
 	if not is_instance_valid(manager):
 		return {}
-	var la : Dictionary = manager._last_actions.get(actor.name, {})
-	if la.is_empty():
-		return {}
-	# Validate that the command is still available on this actor.
 	var available_keys : Array = actor.get_skills().map(func(s): return s["key"])
-	var cmd : String = la.get("command", "")
-	if cmd not in available_keys:
+	var la : Dictionary = manager._last_actions.get(actor.name, {})
+
+	# ── Validate last action ─────────────────────────────────────────────────
+	if not la.is_empty():
+		var cmd : String = la.get("command", "")
+		if cmd in available_keys:
+			# Attack/special: target must still be alive.
+			if cmd in ["attack", "special"] and not la.get("is_struggle", false):
+				var wr = la.get("target")
+				if wr != null:
+					var tgt = wr.get_ref()
+					if is_instance_valid(tgt) and (tgt as BattleActor).is_alive():
+						return la
+				# Target gone — fall through to auto-pick below.
+			else:
+				return la
+
+	# ── No valid last action: auto-pick on first turn ────────────────────────
+	# Find the first "attack" skill and pick the lowest-HP living enemy.
+	var attack_skill : Dictionary = {}
+	for s in actor.get_skills():
+		if s.get("key", "") == "attack":
+			attack_skill = s
+			break
+	if attack_skill.is_empty():
+		return {}  # No attack available — wait for player.
+
+	var enemies : Array = manager.actors.filter(
+		func(a: BattleActor): return a.team != actor.team and a.is_alive())
+	if enemies.is_empty():
 		return {}
-	# Validate that a required target is still alive.
-	if cmd in ["attack", "special"] and not la.get("is_struggle", false):
-		var wr = la.get("target")
-		if wr == null:
-			return {}
-		var tgt = wr.get_ref()
-		if not is_instance_valid(tgt) or not (tgt as BattleActor).is_alive():
-			return {}
-	return la
+
+	var is_aoe     : bool = attack_skill.get("aoe",     false)
+	var is_struggle: bool = attack_skill.get("struggle", false)
+	var target : BattleActor = null
+	if not is_aoe and not is_struggle:
+		# Pick lowest-HP% enemy.
+		enemies.sort_custom(func(a, b):
+			return float(a.hp) / max(a.max_hp, 1) < float(b.hp) / max(b.max_hp, 1))
+		target = enemies[0]
+
+	# Pick highest-mult body part.
+	var removed_mask : int = manager.get("removed_channels") if manager.get("removed_channels") != null else 0
+	var part : BodyPartData = null
+	if target != null:
+		part = AutobattleEvaluator.resolve_part_by_mode(
+			AutobattleRule.PartMode.HIGHEST_MULT, target, removed_mask)
+
+	return {
+		"command":     attack_skill.get("key", "attack"),
+		"target":      weakref(target) if target != null else null,
+		"body_part":   part,
+		"is_struggle": is_struggle,
+		"filter":      -1,
+	}
 
 
 # ── AI_SCRIPT (reserved) ─────────────────────────────────────────────────────
 ## Designer-authored priority list.  Currently falls through to player input.
 ## Replace this body with a priority-table lookup when implementing.
 
-static func _strategy_ai_script(_actor: BattleActor, _manager: Node) -> Dictionary:
-	# TODO: implement priority-action-script strategy.
-	# Read a resource (e.g. an Array of {condition, action} dicts) attached
-	# to the actor or the encounter and evaluate conditions top-down.
+static func _strategy_ai_script(actor: BattleActor, manager: Node) -> Dictionary:
+	var cfg : ActorAutobattleConfig = BattleSettings.get_actor_config(actor)
+	if cfg == null:
+		return {}
+
+	var removed_mask : int = manager.get("removed_channels") if manager.get("removed_channels") != null else 0
+
+	for rule in cfg.rules:
+		if not AutobattleEvaluator.rule_passes(rule, actor, manager):
+			continue
+		var available_keys : Array = actor.get_skills().map(func(s): return s["key"])
+		if rule.command not in available_keys:
+			continue
+		var sk_data : Array = actor.get_skills().filter(func(s): return s["key"] == rule.command)
+		var is_aoe      : bool = not sk_data.is_empty() and sk_data[0].get("aoe", false)
+		var is_struggle : bool = not sk_data.is_empty() and sk_data[0].get("struggle", false)
+		var needs_target : bool = not is_aoe and not is_struggle
+		var target : BattleActor = null
+		if needs_target:
+			target = AutobattleEvaluator.resolve_target(rule, actor, manager)
+			if target == null:
+				continue
+		var part : BodyPartData = null
+		if target != null and not is_aoe:
+			part = AutobattleEvaluator.resolve_part(rule, target, removed_mask)
+			if part == null and rule.part_mode != AutobattleRule.PartMode.NONE:
+				continue
+		return {
+			"command":     rule.command,
+			"target":      weakref(target) if target != null else null,
+			"body_part":   part,
+			"is_struggle": is_struggle,
+			"filter":      -1,
+		}
+	if cfg.fallback_repeat_last:
+		return _strategy_repeat_last(actor, manager)
 	return {}
 
 

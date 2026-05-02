@@ -106,6 +106,53 @@ func is_autobattling() -> bool:
 	return autobattle_mode != AutobattleMode.OFF and \
 		   _autobattle_strategies.has(autobattle_mode)
 
+# ── Per-actor autobattle enrollment ──────────────────────────────────────────
+## Maps actor display_name -> ActorAutobattleConfig.
+## Configs are session-only (not persisted to disk); they live on CharacterData
+## for permanent assignments and here for runtime overrides.
+var _actor_configs : Dictionary = {}
+
+## Enroll or un-enroll an actor by display_name at runtime.
+## Passing null for config un-enrolls the actor.
+func set_actor_autobattle(actor_name: String, config: ActorAutobattleConfig) -> void:
+	if config == null:
+		_actor_configs.erase(actor_name)
+	else:
+		_actor_configs[actor_name] = config
+	settings_changed.emit()
+
+## Returns the ActorAutobattleConfig for an actor, or null if not enrolled.
+## Checks the runtime override dict first, then falls back to CharacterData
+## if the actor's party_member carries a config on its character resource.
+func get_actor_config(actor: BattleActor) -> ActorAutobattleConfig:
+	# Runtime override wins.
+	if _actor_configs.has(actor.display_name):
+		var cfg : ActorAutobattleConfig = _actor_configs[actor.display_name]
+		if cfg.enabled:
+			return cfg
+		return null
+	# Fall back to config baked onto CharacterData.
+	if is_instance_valid(actor.party_member) and \
+			is_instance_valid(actor.party_member.character) and \
+			actor.party_member.character.get("autobattle_config") != null:
+		var cfg : ActorAutobattleConfig = actor.party_member.character.autobattle_config
+		if cfg != null and cfg.enabled:
+			return cfg
+	return null
+
+## True when this specific actor has autobattle enabled (regardless of global mode).
+func is_actor_autobattling(actor: BattleActor) -> bool:
+	return get_actor_config(actor) != null
+
+## Returns the strategy callable for an actor.
+## Uses AI_SCRIPT if the actor has a config, otherwise defers to global mode.
+func get_strategy_for_actor(actor: BattleActor) -> Callable:
+	if get_actor_config(actor) != null:
+		return _autobattle_strategies.get(AutobattleMode.AI_SCRIPT, Callable())
+	if is_autobattling():
+		return get_autobattle_strategy()
+	return Callable()
+
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
 func _ready() -> void:

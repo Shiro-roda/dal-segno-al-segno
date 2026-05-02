@@ -752,9 +752,10 @@ func handle_player_turn(actor: BattleActor) -> void:
 		focus_actor(actor)
 
 	# ── Autobattle ───────────────────────────────────────────────────
-	if BattleSettings.is_autobattling():
-		var strategy := BattleSettings.get_autobattle_strategy()
-		var action : Dictionary = strategy.call(actor, self)
+	# Per-actor config takes priority over the global autobattle mode.
+	var _ab_strategy := BattleSettings.get_strategy_for_actor(actor)
+	if _ab_strategy.is_valid():
+		var action : Dictionary = _ab_strategy.call(actor, self)
 		if not action.is_empty():
 			# Apply the action dict — mirrors repeat_last_action() logic.
 			selected_command          = action.get("command", "attack")
