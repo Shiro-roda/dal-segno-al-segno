@@ -3,12 +3,12 @@
 importer="mp3"
 type="AudioStreamMP3"
 uid="uid://ctcdx5sx1sd06"
-path="res://.godot/imported/freesound_community-tv-glitch-6245.mp3-d21eca5f9e6a641f9156b54cdaef9fa1.mp3str"
+path="res://.godot/imported/freesound_community-tv-glitch-6245.mp3-5a83167d7277468b267269a6a6e96211.mp3str"
 
 [deps]
 
-source_file="res://Audio/Assets/mp3/sfx/freesound_community-tv-glitch-6245.mp3"
-dest_files=["res://.godot/imported/freesound_community-tv-glitch-6245.mp3-d21eca5f9e6a641f9156b54cdaef9fa1.mp3str"]
+source_file="res://audio/Assets/mp3/sfx/freesound_community-tv-glitch-6245.mp3"
+dest_files=["res://.godot/imported/freesound_community-tv-glitch-6245.mp3-5a83167d7277468b267269a6a6e96211.mp3str"]
 
 [params]
 

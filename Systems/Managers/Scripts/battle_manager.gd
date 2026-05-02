@@ -328,7 +328,7 @@ func _process(delta):
 
 ## Tempo fill rate per second per tempo_stat point.
 ## At 0.45, a character with tempo_stat 10 takes ~22 seconds to fill a bar.
-const ATB_BASE_RATE : float = 0.45
+const ATB_BASE_RATE : float = 1.0
 
 ## Real-time tempo tick — runs every _process frame for both CTB and ATB.
 ##
@@ -341,7 +341,7 @@ func _tick_tempo(delta: float) -> void:
 	if current_state == null or current_state.name != "BattleTurn":
 		return
 
-	var scale := 1.5
+	var scale := 1.0
 	if time_controller != null:
 		scale = time_controller.effective_scale()
 	scale *= BattleSettings.atb_speed_multiplier
@@ -364,9 +364,13 @@ func _tick_tempo(delta: float) -> void:
 		# In CTB freeze, skip everyone (the actor at 100 stays at 100; others wait).
 		if ctb_freeze:
 			continue
-		# In ATB, freeze player bars while a menu is open OR an action is executing.
+		# Freeze ALL bars while any action is executing (both modes).
+		# This prevents enemies from stunlocking players by chaining turns.
+		# In ATB, also freeze player bars while the menu is open.
+		if _action_executing:
+			continue
 		if BattleSettings.battle_mode == BattleSettings.BattleMode.ATB:
-			if (_player_menu_open or _action_executing) and actor.team == BattleActor.Team.PLAYER:
+			if _player_menu_open and actor.team == BattleActor.Team.PLAYER:
 				continue
 		if actor.tempo_pool >= 100.0:
 			continue
