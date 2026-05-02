@@ -325,15 +325,8 @@ func setup(actor_list : Array):
 	if is_instance_valid(_log_scroll):
 		_log_scroll.scroll_vertical = 0
 
-	# Build ATB bars if we're starting in ATB mode.
-	if BattleSettings.battle_mode == BattleSettings.BattleMode.ATB:
-		_build_atb_strip(actor_list)
-	else:
-		# Remove any leftover ATB strip from a previous ATB battle.
-		if _atb_strip != null:
-			_atb_strip.queue_free()
-			_atb_strip = null
-		_atb_bars.clear()
+	# Build ATB bars for all modes — the strip shows tempo state regardless of CTB/ATB.
+	_build_atb_strip(actor_list)
 
 	for c in player_container.get_children():
 		c.queue_free()

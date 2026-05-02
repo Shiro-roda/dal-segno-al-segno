@@ -85,6 +85,17 @@ const RING_POP_TIME      = 0.18   # circle→oval pop duration
 const REROLL_BTN_SIZE    = 50.0   # center reroll button diameter
 const ROAD_BTN_ANGLE     = 90.0   # straight down (degrees)
 
+# ── Keyboard ring navigation ───────────────────────────────────────────────────
+# Index of the currently keyboard-focused ring button (-1 = none).
+var _kb_ring_idx : int = -1
+
+## Project a 3D world position to 2D viewport coordinates.
+## Returns Vector2(-9999, -9999) if the camera or viewport is unavailable.
+func _world_to_screen(world_pos: Vector3) -> Vector2:
+	var cam : Camera3D = get_viewport().get_camera_3d()
+	if cam == null:
+		return Vector2(-9999, -9999)
+	return cam.unproject_position(world_pos)
 # Direction vectors for compass (grid space: Y+ = south/down)
 const DIR_N = Vector2i( 0, -1)
 const DIR_S = Vector2i( 0,  1)
@@ -225,15 +236,32 @@ func _rotate_cam_step(dir: int) -> void:
 	_cam_tween.tween_property($CameraPivot, "rotation:y", snap_y, CAM_SNAP_TIME)
 
 
-## Move the player one step in the given grid direction if the target room is
-## connected and the controller is available. Arrow keys map to absolute grid
-## directions (Up = North / -Y, Down = South / +Y, Left = West / -X, Right = East / +X).
-func _try_move_player(dir: Vector2i) -> void:
+## Handle a directional input from the keyboard.
+## Priority: (1) navigable connected room → move there;
+##            (2) buildable ghost slot       → highlight ghost and open build choices;
+##            (3) nothing                    → no-op.
+func _try_navigate(dir: Vector2i) -> void:
 	if controller == null or dungeon == null:
 		return
 	var target : Vector2i = dungeon.current_pos + dir
-	_pending_marker_target = target
-	controller.move_to_room(target)
+
+	# 1. Connected room — normal move.
+	if controller.get_navigable_positions().has(target):
+		_pending_marker_target = target
+		controller.move_to_room(target)
+		return
+
+	# 2. Buildable ghost slot — open build choices.
+	if controller.get_buildable_positions().has(target):
+		var ghost_world : Vector3 = grid_to_world(target)
+		var screen_pos  : Vector2 = _world_to_screen(ghost_world)
+		# Clamp to viewport so the panel is never off-screen.
+		var vp := get_viewport().get_visible_rect().size
+		screen_pos = screen_pos.clamp(Vector2(60, 60), vp - Vector2(60, 60))
+		var choices := controller.get_room_choices(target)
+		show_choices_at(target, choices, screen_pos)
+		return
+	# 3. Nothing in that direction — silently ignored.
 
 
 ## Walk the player along a pre-computed path one room at a time, waiting for
@@ -342,6 +370,56 @@ func _unhandled_input(event):
 			_pan_armed = false
 			_panning   = false
 
+	# ── Ring panel keyboard navigation (only while a choice panel is open) ───────
+	# This block runs FIRST so ring-panel keys are consumed before the
+	# directional movement block below can act on them.
+	if _choice_layer != null and event is InputEventKey and event.pressed and not event.echo:
+		match event.keycode:
+			KEY_ESCAPE:
+				if is_instance_valid(_detail_node):
+					# Detail card is open — close it, keep ring visible.
+					_detail_node.queue_free()
+					_detail_node = null
+					_selected_data = null
+					_kb_ring_idx = -1
+				else:
+					dismiss_choice_panel()
+				get_viewport().set_input_as_handled()
+				return
+
+			KEY_TAB, KEY_RIGHT:
+				# Cycle forward through ring options.
+				if not _radial_nodes.is_empty():
+					_kb_ring_idx = (_kb_ring_idx + 1) % _radial_nodes.size()
+					_kb_focus_ring(_kb_ring_idx)
+				get_viewport().set_input_as_handled()
+				return
+
+			KEY_LEFT:
+				# Cycle backward through ring options.
+				if not _radial_nodes.is_empty():
+					_kb_ring_idx = (_kb_ring_idx - 1 + _radial_nodes.size()) % _radial_nodes.size()
+					_kb_focus_ring(_kb_ring_idx)
+				get_viewport().set_input_as_handled()
+				return
+
+			KEY_ENTER, KEY_KP_ENTER, KEY_SPACE:
+				if _kb_ring_idx >= 0 and _kb_ring_idx < _radial_nodes.size():
+					var btn : Button = _radial_nodes[_kb_ring_idx]
+					if is_instance_valid(btn) and not btn.disabled:
+						# If a detail card is already open for this selection, BUILD.
+						if is_instance_valid(_detail_node) and _selected_data == _pending_choices.get(_kb_ring_idx):
+							var build_pos := _pending_pos
+							var build_data := _selected_data
+							_popped_positions.erase(build_pos)
+							dismiss_choice_panel()
+							controller.build_room(build_pos, build_data)
+						else:
+							# First press — same as clicking the ring button.
+							btn.emit_signal("pressed")
+				get_viewport().set_input_as_handled()
+				return
+
 	# Q/W/E toggle R/G/B channels — only while the dungeon layer is active.
 	# During battle the dungeon layer is hidden; Change Lens owns the shader there.
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -359,16 +437,16 @@ func _unhandled_input(event):
 					toggle_channel(CHAN_B)
 					get_viewport().set_input_as_handled()
 				KEY_UP:
-					_try_move_player(DIR_N)
+					_try_navigate(DIR_N)
 					get_viewport().set_input_as_handled()
 				KEY_DOWN:
-					_try_move_player(DIR_S)
+					_try_navigate(DIR_S)
 					get_viewport().set_input_as_handled()
 				KEY_LEFT:
-					_try_move_player(DIR_W)
+					_try_navigate(DIR_W)
 					get_viewport().set_input_as_handled()
 				KEY_RIGHT:
-					_try_move_player(DIR_E)
+					_try_navigate(DIR_E)
 					get_viewport().set_input_as_handled()
 	# Any mouse press not consumed by a UI Control (button or card) dismisses the panel.
 	if _choice_layer == null:
@@ -978,6 +1056,27 @@ func _spawn_blue_channel_text() -> void:
 			base_pos + Vector3(1.0, -0.15, 0.0), _chan_text_b)
 
 
+## Apply the yellow hover outline to the ghost cube at `pos` when selected
+## via keyboard, mirroring what mouse hover does in dungeon_room_3d.
+func _highlight_ghost_kb(pos: Vector2i) -> void:
+	for child in map_root.get_children():
+		if child.get("grid_pos") != pos:
+			continue
+		if child.has_method("_show_hover_outline"):
+			child._show_hover_outline(true)
+		break
+
+
+## Remove the keyboard-driven hover outline from a ghost cube.
+func _unhighlight_ghost_kb(pos: Vector2i) -> void:
+	for child in map_root.get_children():
+		if child.get("grid_pos") != pos:
+			continue
+		if child.has_method("_show_hover_outline"):
+			child._show_hover_outline(false)
+		break
+
+
 func _spawn_ghost(pos: Vector2i, color: Color = C_GHOST, interactive: bool = true) -> Node3D:
 	var node = ROOM_SCENE.instantiate()
 	node.position = grid_to_world(pos)
@@ -1083,6 +1182,10 @@ func show_choices_at(grid_pos: Vector2i, choices: Array, screen_pos: Vector2 = V
 	_pending_pos     = grid_pos
 	_pending_choices = choices
 	_selected_data   = null
+	_kb_ring_idx     = -1
+
+	# Highlight the targeted ghost cube in 3D so it's clear which slot is selected.
+	_highlight_ghost_kb(grid_pos)
 
 	_choice_layer       = CanvasLayer.new()
 	_choice_layer.layer = 10
@@ -1223,6 +1326,27 @@ func _ring_pop_cb(t: float, wrapper: Control, btn: Button, center: Vector2) -> v
 		var s : StyleBoxFlat = btn.get_theme_stylebox(key)
 		if s is StyleBoxFlat:
 			s.set_corner_radius_all(int(radius))
+
+
+## Keyboard-focus a ring button by index: apply the hover stylebox so it reads
+## as selected, and call _on_ring_pressed to open the detail card.
+func _kb_focus_ring(idx: int) -> void:
+	if idx < 0 or idx >= _radial_nodes.size() or idx >= _pending_choices.size():
+		return
+	var btn : Button = _radial_nodes[idx]
+	if not is_instance_valid(btn):
+		return
+	# Close any existing detail card first so _on_ring_pressed replaces it cleanly.
+	if is_instance_valid(_detail_node):
+		_detail_node.queue_free()
+		_detail_node = null
+		_selected_data = null
+	# Derive the ring origin from the current panel anchor.
+	# _radial_nodes[0]'s grandparent (wrapper) was positioned relative to the origin,
+	# so we recover origin from the wrapper's center.
+	var wrapper : Control = btn.get_parent()
+	var ring_origin : Vector2 = wrapper.position + wrapper.size * 0.5
+	_on_ring_pressed(_pending_choices[idx], ring_origin)
 
 
 func _make_ring_button(label_text: String) -> Button:
@@ -1623,6 +1747,10 @@ func dismiss_choice_panel():
 	_detail_node   = null
 	_radial_nodes.clear()
 
+	# Remove keyboard-driven ghost highlight if one was applied.
+	if _pending_pos != Vector2i(-999, -999):
+		_unhighlight_ghost_kb(_pending_pos)
+
 	for g in _preview_ghosts:
 		if is_instance_valid(g):
 			g.queue_free()
@@ -1631,6 +1759,7 @@ func dismiss_choice_panel():
 	_pending_pos     = Vector2i(-999, -999)
 	_pending_choices = []
 	_selected_data   = null
+	_kb_ring_idx     = -1
 
 	if controller != null:
 		controller.cancel_build()

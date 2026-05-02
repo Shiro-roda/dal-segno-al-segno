@@ -364,9 +364,9 @@ func _tick_tempo(delta: float) -> void:
 		# In CTB freeze, skip everyone (the actor at 100 stays at 100; others wait).
 		if ctb_freeze:
 			continue
-		# In ATB, freeze player bars while they have a menu open.
+		# In ATB, freeze player bars while a menu is open OR an action is executing.
 		if BattleSettings.battle_mode == BattleSettings.BattleMode.ATB:
-			if _player_menu_open and actor.team == BattleActor.Team.PLAYER:
+			if (_player_menu_open or _action_executing) and actor.team == BattleActor.Team.PLAYER:
 				continue
 		if actor.tempo_pool >= 100.0:
 			continue
@@ -440,9 +440,9 @@ func _run_atb_actor_turn(actor: BattleActor) -> void:
 ## Called by BattleTimeController (via _process) when the arrangement gauge
 ## runs dry and the view auto-closes.
 func _on_arrangement_view_force_closed() -> void:
-	# Future: play a brief UI flash, push a log message, etc.
-	if is_instance_valid(battle_hud):
-		battle_hud.push_log("[ARRANGEMENT CLOSED — gauge empty]")
+	pass
+	#if is_instance_valid(battle_hud):
+		#battle_hud.push_log("[ARRANGEMENT CLOSED — gauge empty]")
 
 func change_state(state_name: String):
 	var next = states.get_node_or_null(state_name)
@@ -722,7 +722,9 @@ func next_turn():
 func _atb_player_issue_order(actor: BattleActor) -> void:
 	if actor not in _atb_ready_players:
 		return
-	if _player_menu_open or _action_executing:
+	# Allow queuing a new actor while an action executes, but not if the menu
+	# is already open (which means we're mid-input for another actor).
+	if _player_menu_open:
 		return
 	_player_menu_open = true
 	input_locked = false
@@ -783,9 +785,6 @@ func handle_player_turn(actor: BattleActor) -> void:
 
 
 func handle_enemy_turn(actor: BattleActor) -> void:
-	# Reticle is persistent in both modes — hide player skill boxes during enemy turn.
-	if is_instance_valid(reticle_ui):
-		reticle_ui.set_skills_visible(false)
 	await get_tree().process_frame
 	var target = choose_target(actor)
 	if target == null:
@@ -820,9 +819,6 @@ func handle_enemy_turn(actor: BattleActor) -> void:
 	else:
 		pass  # actor freed mid-animation (killed during their own turn)
 	battle_hud.refresh_queue(self)
-	# Restore skill visibility after enemy turn ends.
-	if is_instance_valid(reticle_ui):
-		reticle_ui.set_skills_visible(true)
 	# Tempo was deducted above; _fire_next_enemy_turn() will re-check the queue.
 	# next_turn() is a no-op now — _tick_tempo drives sequencing for both modes.
 
@@ -890,7 +886,10 @@ func _on_turn_finished():
 		reticle_ui.clear_skills()
 		reticle_ui.set_actor_ready(active_player_actor, false)
 	_action_executing = false
-	_player_menu_open = false
+	# Don't clear _player_menu_open here — if the player opened a menu for
+	# the next ready actor while this action was executing, that menu is
+	# still live. await_actor_turn() already cleared it when the player
+	# confirmed, so it's false unless a new menu is now open.
 	_return_camera_to_overview()
 	if is_instance_valid(battle_hud):
 		battle_hud.set_active_actor(active_player_actor, false)
@@ -972,10 +971,9 @@ func _on_battle_menu_actor_commanding(actor: BattleActor) -> void:
 	# Both ATB and CTB use the real-time ready-set path.
 	if actor not in _atb_ready_players:
 		return
-	if _action_executing:
-		return
-	# Guard against re-issuing to the already-active actor to prevent double-open.
-	if _player_menu_open and actor == active_player_actor:
+	# Don't open the menu if it's already open (avoids double-open for the same actor).
+	# It's fine to open for a *different* actor while an action is executing.
+	if _player_menu_open:
 		return
 	_player_menu_open = true
 	input_locked = false
