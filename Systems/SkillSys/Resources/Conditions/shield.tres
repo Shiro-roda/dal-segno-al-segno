@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ConditionData" format=3 uid="uid://cuxfnkicj3b2p"]
+
+[ext_resource type="Script" uid="uid://b1jgofpoucvuw" path="res://Systems/SkillSys/Scripts/ConditionData.gd" id="1_dlvlw"]
+[ext_resource type="Script" uid="uid://blakd2yd58r2i" path="res://Systems/SkillSys/Scripts/ConditionSignalHook.gd" id="2_bluwn"]
+
+[sub_resource type="Resource" id="Resource_6p1a5"]
+script = ExtResource("2_bluwn")
+listen_for = "damage"
+guard = "ctx.target == a and a.shield_hp > 0"
+formula = "if ctx.value <= a.shield_hp:
+	a.shield_hp -= int(ctx.value)
+	ctx.cancelled = true
+	a.emit_signal(\"hp_changed\")
+else:
+	ctx.value -= a.shield_hp
+	a.shield_hp = 0
+	CR.remove(a, \"shield\")"
+then_emit = "shield_break"
+
+[resource]
+script = ExtResource("1_dlvlw")
+condition_id = "shield"
+display_name = "Shielded"
+signal_hooks = Array[ExtResource("2_bluwn")]([SubResource("Resource_6p1a5")])
+default_duration = 999

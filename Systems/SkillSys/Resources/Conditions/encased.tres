@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ConditionData" format=3 uid="uid://b6e5u66arr1ty"]
+
+[ext_resource type="Script" uid="uid://b1jgofpoucvuw" path="res://Systems/SkillSys/Scripts/ConditionData.gd" id="1_dcbqg"]
+[ext_resource type="Script" uid="uid://blakd2yd58r2i" path="res://Systems/SkillSys/Scripts/ConditionSignalHook.gd" id="2_26885"]
+
+[sub_resource type="Resource" id="Resource_kgxu3"]
+script = ExtResource("2_26885")
+listen_for = "damage"
+guard = "ctx.target == a"
+formula = "ctx.value = int(ctx.value * 0.5)"
+
+[resource]
+script = ExtResource("1_dcbqg")
+condition_id = "encased"
+display_name = "Encased"
+signal_hooks = Array[ExtResource("2_26885")]([SubResource("Resource_kgxu3")])
+default_duration = 0

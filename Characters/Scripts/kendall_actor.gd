@@ -118,7 +118,7 @@ func augur(all_actors: Array) -> void:
 		support.party_member.spend_will(AUGUR_WILL_COST)
 	var allies = all_actors.filter(func(a): return a.team == Team.PLAYER and a.is_alive())
 	for ally in allies:
-		ally.apply_status(STATUS_DODGING, AUGUR_DODGE_TURNS)
+		ally.apply_condition("dodging", self, AUGUR_DODGE_TURNS)
 		ally.tempo_bonus += AUGUR_TEMPO_BONUS
 	say_random(CHATTER_AUGUR)
 	# Reveal enemy stats panel
@@ -133,7 +133,7 @@ func augur(all_actors: Array) -> void:
 
 # Evade: free, Kendall only, dodge + personal tempo burst
 func evade() -> void:
-	apply_status(STATUS_DODGING, EVADE_DODGE_TURNS)
+	apply_condition("dodging", self, EVADE_DODGE_TURNS)
 	tempo_bonus += EVADE_TEMPO_BONUS
 	tempo_pool += EVADE_TEMPO_BONUS
 	say_random(CHATTER_EVADE)

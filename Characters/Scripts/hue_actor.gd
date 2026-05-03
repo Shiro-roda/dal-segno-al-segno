@@ -178,9 +178,9 @@ func _rebuke(target: BattleActor, part: BodyPartData) -> void:
 		if not is_instance_valid(enemy) or not enemy.is_alive():
 			continue
 		var dmg := int(attack_power * REBUKE_DMG_MULT)
-		enemy.take_damage(dmg, self)
+		await play_attack_animation(enemy, 1.0, 1.0, dmg)
 		if is_instance_valid(enemy) and enemy.is_alive() and randf() < REBUKE_SLOW_CHANCE:
-			enemy.apply_status(STATUS_SLOW, 2)
+			enemy.apply_condition("slow", self, 2)
 			log_msg("%s is slowed." % enemy.get_log_name())
 		# Tick part HP: only applies when targeting a specific part on a single enemy
 		if part != null and enemy == target and part.has_part_hp():
@@ -202,7 +202,7 @@ func _cling() -> void:
 	var target = enemies[randi() % enemies.size()]
 	log_msg("Hue throws himself at %s." % [target.get_log_name()])
 	if randf() < 0.75:
-		target.apply_status(STATUS_SLOW, 1)
+		target.apply_condition("slow", self, 1)
 		log_msg("%s can't shake Hue off. (slowed)" % [target.get_log_name()])
 	say_random(CHATTER_CLING)
 	
@@ -220,7 +220,7 @@ func _calcify(target: BattleActor, part: BodyPartData = null) -> void:
 	var manager = get_tree().get_first_node_in_group("battle_manager")
 	var tempo_penalty : float = turns * manager.TEMPO_COST_ATTACK
 	target.tempo_pool -= tempo_penalty
-	target.apply_status("encased", 0)
+	target.apply_condition("encased", self, 0)
 	if part != null:
 		part.apply_status("encased", 0)
 		log_msg("Hue entombs %s's %s in ice, guarding them from harm until it melts. (-%s TEMPO)" % [target.get_log_name(), part.part_name, tempo_penalty])
@@ -236,7 +236,7 @@ func _shelter(ally: BattleActor) -> void:
 	ally.shield_hp += SHELTER_HP_AMOUNT
 	ally.modify_flat(SHELTER_FLAT_BONUS)
 	ally.emit_signal("hp_changed")
-	ally.apply_status(STATUS_SHIELD, 999)
+	ally.apply_condition("shield", self, 999)
 	say_random(CHATTER_SHELTER)
 	log_msg("%s fortifies %s (+%d temp CORP, +%d FLAT while it holds)." \
 		% [name, ally.name, SHELTER_HP_AMOUNT, SHELTER_FLAT_BONUS])
@@ -254,7 +254,7 @@ func _shelter(ally: BattleActor) -> void:
 
 func _embrace(ally: BattleActor) -> void:
 	ally.cover_source = self
-	ally.apply_status(STATUS_COVERED, EMBRACE_DURATION)
+	ally.apply_condition("covered", self, EMBRACE_DURATION)
 	_embrace_active = true
 	# Clear flag when the covered status expires on the ally
 	var _watch : Callable

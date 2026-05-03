@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ConditionData" format=3 uid="uid://dcxdi78hlrqbb"]
+
+[ext_resource type="Script" uid="uid://b1jgofpoucvuw" path="res://Systems/SkillSys/Scripts/ConditionData.gd" id="1_ds0ut"]
+[ext_resource type="Script" uid="uid://blakd2yd58r2i" path="res://Systems/SkillSys/Scripts/ConditionSignalHook.gd" id="2_1fd0y"]
+
+[resource]
+script = ExtResource("1_ds0ut")
+condition_id = "slow"
+display_name = "Slowed"
+on_apply_formula = "a.extra_data[\"pre_slow_bpm\"] = a.bpm; a.bpm = max(1, int(a.bpm * 0.4))"
+on_remove_formula = "if a.extra_data.has(\"pre_slow_bpm\"): a.bpm = a.extra_data[\"pre_slow_bpm\"]; a.extra_data.erase(\"pre_slow_bpm\")"

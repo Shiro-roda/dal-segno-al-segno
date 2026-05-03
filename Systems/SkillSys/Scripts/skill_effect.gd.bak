@@ -1,0 +1,63 @@
+extends Resource
+class_name SkillEffect
+## One atomic effect that fires when a skill is used.
+## Describes WHO is targeted and WHAT conditions land on them.
+## All game logic lives in ConditionData formulas and signal hooks —
+## SkillEffect is pure targeting + delivery data.
+
+enum TargetType {
+	TARGET,          ## Single chosen target (default).
+	SELF,            ## The caster.
+	ALL_OPPONENTS,   ## Every living enemy.
+	ALL_ALLIES,      ## Every living ally (excluding self).
+	ALL,             ## Every living actor.
+	RANDOM_OPPONENT, ## One random living enemy.
+	RANDOM_ALLY,     ## One random living ally (excluding self).
+}
+
+## Who this effect is directed at.
+@export var target_type : TargetType = TargetType.TARGET
+
+## Conditions applied to each resolved target when this effect lands.
+@export var conditions  : Array[ConditionData] = []
+
+## 0.0–1.0 roll before any conditions land. 1.0 = always hits.
+@export var chance      : float = 1.0
+
+## ── Dice damage ──────────────────────────────────────────────────────────────
+## Damage = roll(num_dice d die_size) + int(attacker.attack_power * sharp_ratio)
+## Leave num_dice = 0 to produce no inherent damage (condition-only effects).
+@export var num_dice    : int   = 0   ## Number of dice rolled.
+@export var die_size    : int   = 6   ## Faces per die (d4/d6/d8/d10/d12/d20).
+## Fraction of attacker SHARP added as guaranteed bonus. 0.5 = half SHARP.
+@export var sharp_ratio : float = 0.5
+
+## ── Timing ───────────────────────────────────────────────────────────────────
+@export var animation_key : String = ""
+@export var pre_delay     : float  = 0.0
+@export var post_delay    : float  = 0.0
+
+## ── AI hint ──────────────────────────────────────────────────────────────────
+@export var ai_weight : int = 0  ## Per-effect override; 0 = use SkillData.ai_weight.
+
+
+## Roll damage for this effect given the caster's attack_power.
+## Returns 0 if num_dice == 0 (condition-only effect).
+func roll_damage(attacker_sharp: int) -> int:
+	if num_dice <= 0:
+		return 0
+	var roll := 0
+	for i in num_dice:
+		roll += randi_range(1, die_size)
+	return roll + int(float(attacker_sharp) * sharp_ratio)
+
+
+## Human-readable damage range shown in the UI:
+## "(num_dice + sharp_bonus)–((die_size * num_dice) + sharp_bonus)"
+func damage_range_label(attacker_sharp: int) -> String:
+	if num_dice <= 0:
+		return ""
+	var bonus  : int = int(float(attacker_sharp) * sharp_ratio)
+	var low    : int = num_dice + bonus
+	var high   : int = (die_size * num_dice) + bonus
+	return "%d\u2013%d" % [low, high]  # en-dash

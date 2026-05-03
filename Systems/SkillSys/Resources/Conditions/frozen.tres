@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="ConditionData" format=3 uid="uid://c8tju76mh6atc"]
+
+[ext_resource type="Script" uid="uid://b1jgofpoucvuw" path="res://Systems/SkillSys/Scripts/ConditionData.gd" id="1_fjmw6"]
+[ext_resource type="Script" uid="uid://blakd2yd58r2i" path="res://Systems/SkillSys/Scripts/ConditionSignalHook.gd" id="2_47la3"]
+
+[resource]
+script = ExtResource("1_fjmw6")
+condition_id = "frozen"
+display_name = "Frozen"

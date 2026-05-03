@@ -74,108 +74,54 @@ func use_skill(skill_name: String, targets: Array, _part: BodyPartData = null) -
 
 
 ## Execute the SkillEffect chain of a SkillData against a list of targets.
-## Can be called from custom subclasses for reuse.
-func execute_effects(sd: SkillData, targets: Array) -> void:
+## Each effect resolves its own targets from TargetType, then calls
+## ConditionRunner.execute_effect() which handles dice damage and condition application.
+func execute_effects(sd: SkillData, hint_targets: Array) -> void:
 	for effect in sd.effects:
 		if not is_inside_tree():
 			return
 
-		# Pre-delay
 		if effect.pre_delay > 0.0:
 			await get_tree().create_timer(effect.pre_delay).timeout
 
-		# Universal chance roll — status_chance gates all effect types.
-		if effect.status_chance < 1.0 and randf() > effect.status_chance:
-			continue
+		# Resolve target list from TargetType
+		var resolved : Array = _resolve_targets(effect.target, hint_targets)
 
-		match effect.effect_type:
+		# Animation — play before damage if there are targets
+		if effect.num_dice > 0 and not resolved.is_empty():
+			# Use the first hint target for the animation anchor
+			var anim_target : BattleActor = resolved[0]
+			await play_attack_animation(anim_target, 1.0, 1.0, 0)
+			# Damage + conditions applied synchronously by execute_effect
+			ConditionRunner.execute_effect(effect, self, resolved)
+		else:
+			# Pure condition delivery (no dice roll), no animation
+			ConditionRunner.execute_effect(effect, self, resolved)
 
-			SkillEffect.EffectType.DAMAGE:
-				var dmg : int = int(attack_power * effect.damage_mult) + effect.damage_bonus
-				for t in targets:
-					if is_instance_valid(t) and t.is_alive():
-						await play_attack_animation(t, 1.0, 1.0, dmg)
-
-			SkillEffect.EffectType.AOE_DAMAGE:
-				var dmg : int = int(attack_power * effect.damage_mult) + effect.damage_bonus
-				for t in get_opponents():
-					if is_instance_valid(t) and t.is_alive():
-						t.take_damage(dmg, self)
-
-			SkillEffect.EffectType.STATUS:
-				for t in targets:
-					if is_instance_valid(t) and t.is_alive():
-						t.apply_status(effect.status_id, effect.status_duration)
-						log_msg("%s afflicts %s with %s." % [get_log_name(), t.get_log_name(), effect.status_id])
-
-			SkillEffect.EffectType.SELF_STATUS:
-				apply_status(effect.status_id, effect.status_duration)
-				log_msg("%s enters %s stance." % [get_log_name(), effect.status_id])
-
-			SkillEffect.EffectType.HEAL:
-				for t in targets:
-					if is_instance_valid(t) and t.is_alive():
-						var amt : int = effect.heal_amount if effect.heal_flat \
-							else int(t.max_hp * effect.heal_amount / 100.0)
-						t.hp = min(t.hp + amt, t.max_hp)
-						t.emit_signal("hp_changed")
-						log_msg("%s restores %d CORP to %s." % [get_log_name(), amt, t.get_log_name()])
-
-			SkillEffect.EffectType.SELF_HEAL:
-				var amt : int = effect.heal_amount if effect.heal_flat \
-					else int(max_hp * effect.heal_amount / 100.0)
-				hp = min(hp + amt, max_hp)
-				emit_signal("hp_changed")
-				log_msg("%s recovers %d CORP." % [get_log_name(), amt])
-
-			SkillEffect.EffectType.DRAIN:
-				var dmg : int = int(attack_power * effect.damage_mult) + effect.damage_bonus
-				for t in targets:
-					if is_instance_valid(t) and t.is_alive():
-						var hp_before : int = t.hp
-						var t_name : String = t.get_log_name()
-						await play_attack_animation(t, 1.0, 1.0, dmg)
-						# Drain based on damage actually dealt (hp delta), not raw dmg.
-						
-						if is_alive() and t != null:
-							var dealt : int = hp_before - t.hp
-							if dealt > 0:
-								var heal : int = max(1, int(dealt * effect.drain_ratio))
-								hp = min(hp + heal, max_hp)
-								emit_signal("hp_changed")
-								log_msg("%s drains %d CORP from %s." % [get_log_name(), heal, t_name])
-						else:
-							var heal : int = max(1, int(hp_before * effect.drain_ratio))
-							hp = min(hp + heal, max_hp)
-							emit_signal("hp_changed")
-							log_msg("%s drains %d CORP from %s." % [get_log_name(), heal, t_name])
-
-			SkillEffect.EffectType.SELF_DAMAGE:
-				take_damage(effect.self_damage_amount)
-
-			SkillEffect.EffectType.FLAT_DEBUFF:
-				for t in targets:
-					if is_instance_valid(t) and t.is_alive():
-						t.apply_stat_change("flat", -effect.stat_delta, effect.stat_duration)
-
-			SkillEffect.EffectType.SHARP_DEBUFF:
-				for t in targets:
-					if is_instance_valid(t) and t.is_alive():
-						t.apply_stat_change("sharp", -effect.stat_delta, effect.stat_duration)
-
-			SkillEffect.EffectType.FLAT_BUFF:
-				for t in targets:
-					if is_instance_valid(t) and t.is_alive():
-						t.apply_stat_change("flat", effect.stat_delta, effect.stat_duration)
-
-			SkillEffect.EffectType.SHARP_BUFF:
-				for t in targets:
-					if is_instance_valid(t) and t.is_alive():
-						t.apply_stat_change("sharp", effect.stat_delta, effect.stat_duration)
-
-		# Post-delay
 		if effect.post_delay > 0.0:
 			await get_tree().create_timer(effect.post_delay).timeout
+
+
+## Translate TargetType to a concrete list of BattleActors.
+func _resolve_targets(target_type: SkillEffect.TargetType,
+		hint_targets: Array) -> Array:
+	match target_type:
+		SkillEffect.TargetType.SELF:
+			return [self]
+		SkillEffect.TargetType.ALL_OPPONENTS:
+			return get_opponents()
+		SkillEffect.TargetType.ALL_ALLIES:
+			return get_allies()
+		SkillEffect.TargetType.ALL:
+			return get_opponents() + get_allies() + [self]
+		SkillEffect.TargetType.RANDOM_OPPONENT:
+			var ops := get_opponents()
+			return [ops[randi() % ops.size()]] if not ops.is_empty() else []
+		SkillEffect.TargetType.RANDOM_ALLY:
+			var als := get_allies()
+			return [als[randi() % als.size()]] if not als.is_empty() else []
+		_: # TargetType.TARGET — use whatever the caller passed in
+			return hint_targets.filter(func(t): return is_instance_valid(t) and t.is_alive())
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

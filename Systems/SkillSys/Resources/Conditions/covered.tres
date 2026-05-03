@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ConditionData" format=3 uid="uid://cr7hd70kw4ude"]
+
+[ext_resource type="Script" uid="uid://b1jgofpoucvuw" path="res://Systems/SkillSys/Scripts/ConditionData.gd" id="1_i2fua"]
+[ext_resource type="Script" uid="uid://blakd2yd58r2i" path="res://Systems/SkillSys/Scripts/ConditionSignalHook.gd" id="2_6ekpq"]
+
+[sub_resource type="Resource" id="Resource_oibp6"]
+script = ExtResource("2_6ekpq")
+listen_for = "damage"
+guard = "ctx.target == a and is_instance_valid(a.cover_source) and a.cover_source.is_alive() and a.cover_source != ctx.source"
+formula = "var hue = a.cover_source
+ctx.target = hue
+ctx.value = int(ctx.value * 0.65)
+if hue.struggle_restores_will() and hue.party_member != null:
+	hue.party_member.restore_will(max(1, int(ctx.value * 0.5)))"
+
+[resource]
+script = ExtResource("1_i2fua")
+condition_id = "covered"
+display_name = "Covered"
+on_remove_formula = "a.cover_source = null"
+signal_hooks = Array[ExtResource("2_6ekpq")]([SubResource("Resource_oibp6")])

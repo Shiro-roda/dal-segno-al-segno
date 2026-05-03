@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ConditionData" format=3 uid="uid://dx00stds741je"]
+
+[ext_resource type="Script" uid="uid://b1jgofpoucvuw" path="res://Systems/SkillSys/Scripts/ConditionData.gd" id="1_ler3t"]
+[ext_resource type="Script" uid="uid://blakd2yd58r2i" path="res://Systems/SkillSys/Scripts/ConditionSignalHook.gd" id="2_15vnk"]
+
+[sub_resource type="Resource" id="Resource_0bxuc"]
+script = ExtResource("2_15vnk")
+listen_for = "damage"
+guard = "ctx.target == a and randf() < 0.5"
+formula = "ctx.cancelled = true; a.log_msg(a.get_log_name() + \" dodges!\")"
+then_emit = "miss"
+
+[resource]
+script = ExtResource("1_ler3t")
+condition_id = "dodging"
+display_name = "Dodging"
+signal_hooks = Array[ExtResource("2_15vnk")]([SubResource("Resource_0bxuc")])
+default_duration = 4

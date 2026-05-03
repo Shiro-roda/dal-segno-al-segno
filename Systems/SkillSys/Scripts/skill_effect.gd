@@ -1,56 +1,83 @@
 extends Resource
 class_name SkillEffect
-## One atomic effect that fires when a skill is used.
-## Chain multiple SkillEffects on a single SkillData to compose complex skills.
-## All fields have safe defaults — fill only what the chosen effect_type needs.
+## One atomic beat of a skill — who gets hit, with what chance,
+## and which conditions land on them.
+##
+## Damage is no longer expressed here. Conditions carry formulas.
+## The dice fields (num_dice, die_size, sharp_ratio) describe the
+## damage roll only when this effect is used as a direct attack beat.
+## They are read by ConditionRunner.execute_effect() and by the UI
+## to render the range string: "(N+bonus)–(N×d+bonus)".
 
-enum EffectType {
-	DAMAGE,       ## Deal damage_mult * attacker.attack_power to each target.
-	STATUS,       ## Apply status_id for status_duration turns to each target.
-	HEAL,         ## Restore heal_amount HP to each target (flat) or heal_mult * max_hp (if heal_flat=false).
-	DRAIN,        ## Deal damage, then restore a fraction (drain_ratio) of damage dealt to self.
-	SELF_DAMAGE,  ## Deal self_damage_amount to self (flat).
-	SELF_STATUS,  ## Apply status_id to self for status_duration turns.
-	SELF_HEAL,    ## Restore heal_amount HP to self.
-	AOE_DAMAGE,   ## Same as DAMAGE but ignores the is_aoe flag — always hits all opponents.
-	FLAT_DEBUFF,  ## Reduce each target's FLAT defense by stat_delta for stat_duration turns.
-	SHARP_DEBUFF, ## Reduce each target's SHARP (attack) by stat_delta for stat_duration turns.
-	FLAT_BUFF,    ## Raise each target's FLAT defense by stat_delta for stat_duration turns.
-	SHARP_BUFF,   ## Raise each target's SHARP (attack) by stat_delta for stat_duration turns.
+## ── Targeting ────────────────────────────────────────────────────────────────
+
+enum TargetType {
+	TARGET,          ## single chosen target (default)
+	SELF,            ## the caster
+	ALL_OPPONENTS,   ## every living enemy
+	ALL_ALLIES,      ## every living ally (excl. self)
+	ALL,             ## every living actor
+	RANDOM_OPPONENT, ## one random living enemy
+	RANDOM_ALLY,     ## one random living ally (excl. self)
 }
 
-@export var effect_type   : EffectType = EffectType.DAMAGE
+@export var target : TargetType = TargetType.TARGET
 
-## ── DAMAGE / AOE_DAMAGE / DRAIN ──────────────────────────────────────────────
-## Multiplier applied to attacker.attack_power. 1.0 = full damage.
-@export var damage_mult   : float = 1.0
-## Flat bonus damage added after the multiplier. 0 = none.
-@export var damage_bonus  : int   = 0
+## ── Dice damage ──────────────────────────────────────────────────────────────
+## Roll num_dice d die_size, add flat bonus from sharp_ratio × attacker.attack_power.
+## Min roll  = num_dice      + int(attack_power × sharp_ratio)
+## Max roll  = num_dice×die_size + int(attack_power × sharp_ratio)
+##
+## Set num_dice = 0 to skip the dice roll entirely (pure condition delivery).
 
-## ── DRAIN ────────────────────────────────────────────────────────────────────
-## Fraction of damage dealt that is restored to self as HP. 0.5 = 50%.
-@export var drain_ratio   : float = 0.5
+@export var num_dice    : int   = 0    ## number of dice to roll (0 = no roll)
+@export var die_size    : int   = 6    ## faces per die (d6 default)
+@export var sharp_ratio : float = 0.5  ## fraction of attack_power added as flat bonus
 
-## ── STATUS / SELF_STATUS ─────────────────────────────────────────────────────
-## Status effect ID matching BattleActor constants (e.g. "slow", "bleeding").
-@export var status_id     : String = ""
-## Number of turns the status lasts.
-@export var status_duration : int = 2
-## Probability (0.0–1.0) that the status is applied. 1.0 = always.
-@export var status_chance : float = 1.0
+## ── Chance & conditions ───────────────────────────────────────────────────────
+## Probability (0.0–1.0) that this entire effect fires. Checked once per beat.
+@export var chance : float = 1.0
 
-## ── HEAL / SELF_HEAL ─────────────────────────────────────────────────────────
-## Flat HP to restore. If heal_flat is false, treated as a percentage of max_hp.
-@export var heal_amount   : int   = 0
-@export var heal_flat     : bool  = true
+## Conditions applied to each resolved target when this effect fires.
+## Applied via ConditionRunner.apply() after dice damage (if any) is resolved.
+@export var conditions : Array[ConditionData] = []
 
-## ── SELF_DAMAGE ──────────────────────────────────────────────────────────────
-@export var self_damage_amount : int = 0
+## ── Timing & visuals ─────────────────────────────────────────────────────────
+@export var animation_key : String = ""
+@export var pre_delay     : float  = 0.0
+@export var post_delay    : float  = 0.0
 
-## ── Timing ───────────────────────────────────────────────────────────────────
-## Small delay in seconds inserted BEFORE this effect fires. Useful for stagger.
-@export var stat_delta    : int   = 1
-@export var stat_duration : int   = 2
 
-@export var pre_delay     : float = 0.0
-@export var post_delay    : float = 0.0
+## ── Helpers ───────────────────────────────────────────────────────────────────
+
+## Roll the dice for this effect given the caster's attack_power.
+## Returns 0 if num_dice == 0 (no roll).
+func roll_damage(attack_power: int) -> int:
+	if num_dice <= 0:
+		return 0
+	var bonus : int = int(float(attack_power) * sharp_ratio)
+	var total : int = bonus
+	for i in num_dice:
+		total += randi_range(1, die_size)
+	return total
+
+
+## Minimum possible damage (all dice show 1).
+func min_damage(attack_power: int) -> int:
+	if num_dice <= 0:
+		return 0
+	return num_dice + int(float(attack_power) * sharp_ratio)
+
+
+## Maximum possible damage (all dice show die_size).
+func max_damage(attack_power: int) -> int:
+	if num_dice <= 0:
+		return 0
+	return num_dice * die_size + int(float(attack_power) * sharp_ratio)
+
+
+## UI display string: "(min)–(max)"  e.g. "4–22"
+func damage_range_string(attack_power: int) -> String:
+	if num_dice <= 0:
+		return ""
+	return "%d–%d" % [min_damage(attack_power), max_damage(attack_power)]

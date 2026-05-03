@@ -280,6 +280,32 @@ func _ensure_registry() -> void:
 	dir.list_dir_end()
 
 
+## Execute one SkillEffect beat from `caster` against a pre-resolved list of targets.
+## Handles the dice roll, resolve("damage") for each target, then condition application.
+## Called by EnemyActor.execute_effects() and by player actor scripts.
+func execute_effect(effect: SkillEffect, caster: BattleActor, targets: Array) -> void:
+	if effect.chance < 1.0 and randf() > effect.chance:
+		# Whole beat missed
+		_bus.event.emit("miss", ctx_new(caster, null, 0.0, []))
+		return
+
+	for t in targets:
+		if not is_instance_valid(t) or not t.is_alive():
+			continue
+		# Dice damage roll (0 if num_dice == 0)
+		if effect.num_dice > 0:
+			var raw : float = float(effect.roll_damage(caster.attack_power))
+			var ctx := ctx_new(caster, t, raw, ["physical"])
+			resolve("damage", ctx)
+			if not t.is_alive():
+				resolve("kill", ctx_new(caster, t, 0.0, []))
+				continue
+		# Apply conditions
+		for cond in effect.conditions:
+			if cond != null and cond.condition_id != "":
+				apply(t, cond.condition_id, caster)
+
+
 ## Called by BattleActor._ready() (or BattleManager) when an actor leaves the
 ## battle so its hook callables are cleaned up.
 func unregister_actor(holder: BattleActor) -> void:

@@ -1,21 +1,25 @@
 extends Node
-# SkillDirectory - single source of truth for all skill definitions.
-# Autoload singleton: SkillDirectory.get_skill("Shoot") -> SkillData
-# Actors call get_dict(name) to get the Dictionary battle_manager expects.
+## SkillDirectory — single source of truth for all SkillData definitions.
+## Autoload singleton. Actors call get_skill() / get_dict() by name.
+##
+## Skills with full SkillEffect chains can be data-driven (enemy skills, items).
+## Player skills that need complex async logic stay in actor scripts and only
+## store metadata here (summary, description, will_cost, etc.).
 
-var _skills : Dictionary = {}
+var _skills : Dictionary = {}   # skill_name → SkillData
 
 func _ready() -> void:
 	_register_all()
 
 
-# ------------------------------------------------------------------------------
-# Public API
-# ------------------------------------------------------------------------------
+# ── Public API ─────────────────────────────────────────────────────────────────
 
 func get_skill(sname: String) -> SkillData:
 	return _skills.get(sname, null)
 
+
+## Returns a Dictionary for battle_manager / UI consumption.
+## `overrides` is merged on top (callers can patch ai_weight, anchor_path, etc.).
 func get_dict(sname: String, overrides: Dictionary = {}) -> Dictionary:
 	var sd : SkillData = get_skill(sname)
 	var d  : Dictionary
@@ -27,80 +31,102 @@ func get_dict(sname: String, overrides: Dictionary = {}) -> Dictionary:
 	return d
 
 
-# ------------------------------------------------------------------------------
-# Registration  (_add signature: sname, key, desc, aoe, struggle, ally, enemy)
-# ------------------------------------------------------------------------------
+# ── Registration ────────────────────────────────────────────────────────────────
 
 func _register_all() -> void:
-	# Kendall
-	_add("Shoot",       "attack",  "Fire your equipped weapon at a single target for 100% SHARP.",                       "Blasphemous lethality lies in your hands. Take aim and dispel the fantasias that take refuge here.",
-		false, false, false, false, "PartAnchors/Gun", "Pistol Whip")
-	_add("Pistol Whip", "attack",  "Attack at random for 50% SHARP. Has a 35% chance to miss.",              "Short of arms, yet not devoid of alternatives.",
-		false, true,  false, false, "PartAnchors/Gun")
-	_add("Unveil", "special", "Reveal weak points at the risk of uncovering memetic hazards.",        "Strip away the pretenses of perception itself to expose your foe's most intimate and fragile disfigurements.\n\nUnderstand that the price of understanding may be more than you can afford.",
-		false, false, false, false, "PartAnchors/Eyes")
-	_add("Augur",       "support", "Grants 50% dodge chance for 4 turns and + 5 TEMPO to all allies. Also reveals enemy specifications.", "Portentious signs only you can see are all around you, and your companions may benefit from your discernment.",
-		true,  false, false, false, "PartAnchors/Oracle")
-	_add("Evade",       "support", "Gain a 50% dodge chance and + 10 TEMPO for 2 turns.",               "",
-		true,  false, false, false, "PartAnchors/Oracle")
 
-	# Hue
-	_add("Rebuke",  "attack",  "Attack all enemies for 100% SHARP, with a chance to reduce their TEMPO stats to 40%.",                  "Hue stymies the enemy with a chilling mist and admonishment.",
-		true,  false, false, false, "PartAnchors/Rebuke", "Cling", 2)
-	_add("Cling",   "attack",  "Attack at random for 50% SHARP. Has a 35% chance to miss, and a 25% chance to harm Hue. Also has a 75% chance to slow the enemy to 40% TEMPO for one turn.", " ",
-		false, true,  false, false, "PartAnchors/Rebuke")
-	_add("Calcify", "special", "Paralyze the enemy for 1-3 turns, but reduce all damage to them by 50% until their next action.",                                                                    "Hue buries the foe in a glacial tomb, leaving them unable to act but guarded from harm.",
-		false, false, false, false, "PartAnchors/Umbrella", "", 3)
-	_add("Shelter", "support", "Grants 10 temporary CORP and increases the target's FLAT by 4 while the temporary CORP remains.",                                     "Hue shields a companion with a wall of ice.",
-		false, false, true,  false, "PartAnchors/Canopy", "Embrace", 1)
-	_add("Embrace", "support", "Redirect attacks against the target to Hue with 50% reduced damage, for 2 turns.",                                                                    "",
-		false, false, true,  false, "PartAnchors/Canopy")
+	# ── Kendall ────────────────────────────────────────────────────────────────
+	_sd("Shoot", "attack", "Fire your equipped weapon at a single target.",
+		"Blasphemous lethality lies in your hands. Take aim and dispel the fantasias that take refuge here.")
 
-	# Indra
-	_add("Crucify",   "attack",  "Attack the enemy for 100% SHARP. Has a 50% chance to bleed the enemy for 10% of their MAX CORP for 2 turns.", "The zealot lunges forth to assail the enemy with hammer and nail, perforating their flesh and spilling their ichor.",
-		false, false, false, false, "PartAnchors/Hammer", "Clobber", 2)
-	_add("Clobber",   "attack",  "Attack at random for 50% SHARP. Has a 35% chance to miss, and a 25% chance to harm Indra.",              " ",
-		false, true,  false, false, "PartAnchors/Hammer")
-	_add("Fulminate", "special", "Attack all enemies for 170% SHARP.",                      "The mountains quake before him, and the hills melt away.",
-		true,  false, false, false, "PartAnchors/Storm", "", 3)
-	_add("Galvanize", "support", "Grants + 2 SHARP to all allies and 2 AP to both companions. Also grants you an additional BB.", "Indra fills his comrades with the electric pride of leading the charge, restoring their will to fight and invigorating their attacks.",
-		true,  false, false, false, "PartAnchors/Nails", "", 1)
-	_add("Martyr",    "support", "Bleeds Indra for 10% MAX CORP and stores all damage done to him to add to his next attack for 3 turns.",                                                                   "",
-		true,  false, false, false, "PartAnchors/Nails")
+	_sd("Pistol Whip", "struggle", "Attack at random for a weak blow. 35% miss chance.",
+		"Short of arms, yet not devoid of alternatives.")
 
-	# Vritra
-	_add("Vice",      "support", "Grants an ally 50% lifesteal.",                                                                   "Vritra envenoms their ally with worldly delights.",
-		false, false, true,  false, "PartAnchors/Snakes", "Malice", 1)
-	_add("Malice",    "support", "Chosen ally enters a counter stance, restoring 50% of their attack's damage as AP to Vritra when they retaliate.", "The serpent invites its fellows to writhe together in vitriol.",
-		false, true,  true, false, "PartAnchors/Snakes",)
-	_add("Devour",    "special", "Attack for 180% SHARP. Siphons CORP from the target and increases Vritra's MAX CORP by 1 if the attack kills their target.", "The serpent unfetters its yawning maw, and swallows their banquet whole. Their proliferant corpse grows stronger if their prey is left without a trace.",
-		false, false, false, false, "PartAnchors/Stomach", "", 3)
-	_add("Wither",    "attack",  "Attack for 100% SHARP. Has a 60% chance to lower the target's SHARP by 2.",                  "Vritra sharpens its tongue upon the enemy, addling the mind and bringing strength to rot.",
-		false, false, false, false, "PartAnchors/Mouth", "Waste", 2)
-	_add("Autophagy",     "attack",  " ",                                                                   "",
-		false,  true, false, false, "PartAnchors/Mouth")
-	_add("Anthropophagy", "special", " ",                                                                   "",
-		false, true, true,  false, "PartAnchors/Stomach")
+	_sd("Unveil", "special", "Reveal weak points at the risk of uncovering memetic hazards.",
+		"Strip away the pretenses of perception itself.\n\nUnderstand that the price of understanding may be more than you can afford.")
+
+	_sd("Augur", "support", "Grants 50% dodge and +5 TEMPO to all allies. Reveals enemy stats.",
+		"Portentious signs only you can see are all around you.", 0, 0, 1)
+
+	_sd("Evade", "support", "Gain 50% dodge and +10 TEMPO for 2 turns.", "")
+
+	# ── Hue ────────────────────────────────────────────────────────────────────
+	_sd("Rebuke", "attack",
+		"Hit all enemies for 100% SHARP. 45% chance to slow each target.",
+		"Hue stymies the enemy with a chilling mist and admonishment.", 2, 0, 2)
+
+	_sd("Cling", "struggle",
+		"Latch onto a random enemy. 35% miss chance, 25% self-harm, 75% slow.",
+		" ")
+
+	_sd("Calcify", "special",
+		"Encase one enemy in ice for 1–3 turns. They take 50% reduced damage while frozen.",
+		"Hue buries the foe in a glacial tomb.", 3, 0, 3)
+
+	_sd("Shelter", "support",
+		"Grant an ally +8 temporary CORP and +4 FLAT while it holds.",
+		"Hue shields a companion with a wall of ice.", 1, 0, 1)
+
+	_sd("Embrace", "support",
+		"Redirect attacks against target to Hue with 50% reduced damage, for 2 turns.",
+		"")
+
+	# ── Indra ──────────────────────────────────────────────────────────────────
+	_sd("Crucify", "attack",
+		"Attack for 100% SHARP. 50% chance to inflict Bleeding (10% max CORP/turn, 2 turns).",
+		"The zealot lunges forth to assail the enemy.", 2, 0, 2)
+
+	_sd("Clobber", "struggle",
+		"Attack at random for 50% SHARP. 35% miss, 25% self-harm.",
+		" ")
+
+	_sd("Fulminate", "special",
+		"Strike all enemies for 170% SHARP.",
+		"The mountains quake before him, and the hills melt away.", 3, 0, 3)
+
+	_sd("Galvanize", "support",
+		"Grant +2 SHARP to allies, restore will, and give Kendall a free shot.",
+		"Indra fills his comrades with electric pride.", 1, 0, 1)
+
+	_sd("Martyr", "support",
+		"Bleed self. Store incoming damage as bonus on next attack for 3 turns.",
+		"")
+
+	# ── Vritra ─────────────────────────────────────────────────────────────────
+	_sd("Vice", "support",
+		"Grant an ally 50% Lifesteal for 4 turns.",
+		"Vritra envenoms their ally with worldly delights.", 1, 0, 1)
+
+	_sd("Malice", "support",
+		"Chosen ally counters every hit and restores Vritra 50% AP per counter.",
+		"The serpent invites its fellows to writhe together in vitriol.", 2, 0, 2)
+
+	_sd("Devour", "special",
+		"Attack for 180% SHARP. Permanently gain +1 MAX CORP if the target dies.",
+		"The serpent unfetters its yawning maw.", 3, 0, 3)
+
+	_sd("Wither", "attack",
+		"Attack for 100% SHARP. 60% chance to reduce target SHARP by 2.",
+		"Vritra sharpens its tongue upon the enemy.", 2, 0, 2)
+
+	_sd("Waste", "struggle",
+		"Shed stored CORP from Devour kills to restore will and HP.",
+		"")
+
+	_sd("Autophagy", "struggle", " ", "")
+	_sd("Anthropophagy", "special", " ", "")
 
 
-func _add(sname: String, key: String = "attack", summary: String = "", desc: String = "",
-	aoe: bool = false, struggle: bool = false, ally: bool = false, enemy: bool = false,
-	anchor: String = "", struggle_alt: String = "",
-	will_cost: int = 0, ammo_cost: int = 0) -> void:
-
+# ── Helper ──────────────────────────────────────────────────────────────────────
+## _sd: register a SkillData by name. Effects can be added after via get_skill().
+func _sd(sname: String, key: String, summary: String, desc: String,
+		will: int = 0, ammo: int = 0, ai: int = 1) -> void:
 	var sd := SkillData.new()
 	sd.skill_name   = sname
 	sd.command_key  = key
 	sd.summary      = summary
 	sd.description  = desc
-	sd.is_aoe       = aoe
-	sd.is_struggle  = struggle
-	sd.ally_target  = ally
-	sd.enemy_target = enemy
-	sd.will_cost    = will_cost
-	sd.ammo_cost    = ammo_cost
-	if anchor != "":
-		sd.anchor_path = NodePath(anchor)
-	if struggle_alt != "":
-		sd.struggle_name = struggle_alt
+	sd.will_cost    = will
+	sd.ammo_cost    = ammo
+	sd.ai_weight    = ai
 	_skills[sname]  = sd

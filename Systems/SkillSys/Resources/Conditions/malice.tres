@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="ConditionData" format=3 uid="uid://bktmhgo18fqkk"]
+
+[ext_resource type="Script" uid="uid://b1jgofpoucvuw" path="res://Systems/SkillSys/Scripts/ConditionData.gd" id="1_yivex"]
+[ext_resource type="Script" uid="uid://blakd2yd58r2i" path="res://Systems/SkillSys/Scripts/ConditionSignalHook.gd" id="2_esedn"]
+
+[sub_resource type="Resource" id="Resource_wgu4n"]
+script = ExtResource("2_esedn")
+listen_for = "damage"
+guard = "ctx.target == a and ctx.source != null and a.is_alive() and not ctx.cancelled"
+formula = "var counter_dmg = max(1, a.attack_power)
+a.log_msg(a.get_log_name() + \" returns the blow.\")
+CR.resolve(\"damage\", CR.ctx_new(a, ctx.source, float(counter_dmg), [\"counter\"]))
+if is_instance_valid(a.malice_source) and a.malice_source.party_member != null:
+	var will_gain = max(1, int(counter_dmg * 0.5))
+	a.malice_source.party_member.restore_will(will_gain)
+	a.malice_source.log_msg(a.malice_source.get_log_name() + \" feeds on the spite — +\" + str(will_gain) + \" AP.\")"
+then_emit = "malice_counter"
+
+[resource]
+script = ExtResource("1_yivex")
+condition_id = "malice"
+display_name = "Malice"
+on_remove_formula = "a.malice_source = null"
+signal_hooks = Array[ExtResource("2_esedn")]([SubResource("Resource_wgu4n")])

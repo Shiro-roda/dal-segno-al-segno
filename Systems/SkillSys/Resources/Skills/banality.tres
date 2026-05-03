@@ -2,33 +2,50 @@
 
 [ext_resource type="Script" uid="uid://4yawyrbpe6tk" path="res://Systems/SkillSys/Scripts/skill_effect.gd" id="1_0cylb"]
 [ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="2_bdwgr"]
+[ext_resource type="Script" uid="uid://b1jgofpoucvuw" path="res://Systems/SkillSys/Scripts/ConditionData.gd" id="2_dhlmq"]
+[ext_resource type="Script" uid="uid://blakd2yd58r2i" path="res://Systems/SkillSys/Scripts/ConditionSignalHook.gd" id="3_gqwjh"]
+
+[sub_resource type="Resource" id="Resource_d31rb"]
+script = ExtResource("3_gqwjh")
+metadata/_custom_type_script = "uid://blakd2yd58r2i"
+
+[sub_resource type="Resource" id="Resource_cj6rr"]
+script = ExtResource("2_dhlmq")
+signal_hooks = Array[ExtResource("3_gqwjh")]([SubResource("Resource_d31rb")])
+metadata/_custom_type_script = "uid://b1jgofpoucvuw"
 
 [sub_resource type="Resource" id="Resource_p0oe2"]
 script = ExtResource("1_0cylb")
-effect_type = 7
-damage_mult = 0.8
+target = 2
+num_dice = 1
+die_size = 4
+sharp_ratio = 0.8
+conditions = Array[ExtResource("2_dhlmq")]([SubResource("Resource_cj6rr")])
 pre_delay = 1.0
 post_delay = 1.0
 metadata/_custom_type_script = "uid://4yawyrbpe6tk"
 
+[sub_resource type="Resource" id="Resource_h2rks"]
+script = ExtResource("2_dhlmq")
+condition_id = "aloof"
+display_name = "Aloof"
+metadata/_custom_type_script = "uid://b1jgofpoucvuw"
+
 [sub_resource type="Resource" id="Resource_dhlmq"]
 script = ExtResource("1_0cylb")
-effect_type = 8
-status_chance = 0.6
-stat_delta = 2
-stat_duration = 4
+target = 2
+chance = 0.6
+conditions = Array[ExtResource("2_dhlmq")]([SubResource("Resource_h2rks")])
 metadata/_custom_type_script = "uid://4yawyrbpe6tk"
 
 [resource]
 script = ExtResource("2_bdwgr")
 skill_name = "Banality"
 command_key = "special"
-summary = "Deals 80% SHARP to all enemies, with a 60% chance to lower their FLAT for 2 turns."
+summary = "Deals 1d4 + 80% SHARP to all enemies, with a 60% chance to lower their FLAT for 2 turns."
 description = "The very banality and innocence of the first act only allowed the blow to fall afterward with more awful effect."
 will_cost = 3
-is_aoe = true
 effects = Array[ExtResource("1_0cylb")]([SubResource("Resource_p0oe2"), SubResource("Resource_dhlmq")])
 ai_weight = 2
 tempo_cost_override = 150
-no_animation = true
 metadata/_custom_type_script = "uid://badrkgc20tgv2"

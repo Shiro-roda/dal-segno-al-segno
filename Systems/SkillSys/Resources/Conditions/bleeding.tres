@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ConditionData" format=3 uid="uid://hf464b3e284g"]
+
+[ext_resource type="Script" uid="uid://b1jgofpoucvuw" path="res://Systems/SkillSys/Scripts/ConditionData.gd" id="1_biuo3"]
+[ext_resource type="Script" uid="uid://blakd2yd58r2i" path="res://Systems/SkillSys/Scripts/ConditionSignalHook.gd" id="2_slcl6"]
+
+[resource]
+script = ExtResource("1_biuo3")
+condition_id = "bleeding"
+display_name = "Bleeding"
+on_tick_formula = "CR.resolve(\"damage\", CR.ctx_new(src, a, max(1, int(a.max_hp * 0.1)), [\"bleed_tick\"]))"
+default_duration = 3

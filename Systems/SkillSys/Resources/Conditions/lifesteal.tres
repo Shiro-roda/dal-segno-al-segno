@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ConditionData" format=3 uid="uid://u00m2bsb3mp6"]
+
+[ext_resource type="Script" uid="uid://b1jgofpoucvuw" path="res://Systems/SkillSys/Scripts/ConditionData.gd" id="1_u4v0c"]
+[ext_resource type="Script" uid="uid://blakd2yd58r2i" path="res://Systems/SkillSys/Scripts/ConditionSignalHook.gd" id="2_tnfuj"]
+
+[sub_resource type="Resource" id="Resource_fc33i"]
+script = ExtResource("2_tnfuj")
+listen_for = "damage"
+guard = "ctx.source == a and not ctx.cancelled"
+formula = "var heal = max(1, int(ctx.value * 0.5))
+a.hp = min(a.hp + heal, a.max_hp)
+a.emit_signal(\"hp_changed\")
+a.log_msg(a.get_log_name() + \" drinks \" + str(heal) + \" CORP from the wound.\")"
+then_emit = "heal"
+
+[resource]
+script = ExtResource("1_u4v0c")
+condition_id = "lifesteal"
+display_name = "Lifesteal"
+signal_hooks = Array[ExtResource("2_tnfuj")]([SubResource("Resource_fc33i")])
+default_duration = 4

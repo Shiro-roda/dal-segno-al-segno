@@ -276,82 +276,8 @@ func attack_part(target: BattleActor, part: BodyPartData) -> void:
 
 
 func take_damage(amount: int, attacker: BattleActor = null) -> void:
-	if has_status("encased"):
-		amount = int(amount * 0.6)
-	if has_status(STATUS_DODGING) and randf() < DODGE_CHANCE:
-		log_msg("%s dodges!" % get_log_name())
-		return
-	# Cover redirect: another actor is absorbing damage for us
-	if cover_source != null and cover_source.is_alive() and cover_source != attacker:
-		amount *= 0.65
-		if cover_source != self:
-			cover_source.take_damage(int(amount), attacker)  # 15% reduction
-			cover_source.party_member.will += int(amount)
-			log_msg("Hue takes the blow for %s." % [get_log_name()])
-			return
-	# Shield: absorb with temporary HP first
-	if shield_hp > 0:
-		if amount <= shield_hp:
-			shield_hp -= amount
-			if shield_hp == 0:
-				active_effects = active_effects.filter(func(e): return e["id"] != STATUS_SHIELD)
-			emit_signal("hp_changed")
-			return
-		else:
-			amount -= shield_hp
-			shield_hp = 0
-			active_effects = active_effects.filter(func(e): return e["id"] != STATUS_SHIELD)
-	# Flat defense: damage = Sharp² / (Sharp + Flat). Always at least 1.
-	var flat : int = effective_flat()
-	if flat > 0:
-		amount = max(1, int(float(amount * amount) / float(amount + flat)))
-	hp -= amount
-	emit_signal("hp_changed")
-	log_msg("%s takes %d damage." % [get_log_name(), amount])
-	_spawn_damage_number(amount, attacker)
-		# Martyr pain conversion
-	if has_status(STATUS_MARTYR):
-		var stored = int(amount * 0.5)
-		martyr_bonus_damage += stored
-		log_msg("%s drinks deeply from the cup of wrath. (+%d stored damage)" % [get_log_name(), stored])
-		# Malice counter
-	if has_status(STATUS_MALICE) and attacker != null and is_alive():
-		var counter_damage = max(1, attack_power)
-		log_msg("%s returns the blow." % get_log_name())
-		
-		await get_tree().create_timer(0.15).timeout
-		await play_attack_animation(attacker, 1.0, 1.0, counter_damage)
-
-		# Reward Vritra
-		if malice_source != null and malice_source.party_member:
-			var will_gain = max(1, int(counter_damage * 0.5))
-			malice_source.party_member.restore_will(will_gain)
-
-			malice_source.log_msg(
-				"%s feeds on the spite — restores %d AP."
-				% [malice_source.get_log_name(), will_gain]
-			)
-
-
-	# Lifesteal: if the attacker has STATUS_LIFESTEAL, they heal on every hit
-	# regardless of which function triggered take_damage.
-	if attacker != null and is_instance_valid(attacker) and attacker.has_status(STATUS_LIFESTEAL):
-		var heal: int = max(1, int(amount * LIFESTEAL_RATIO))
-		attacker.hp = min(attacker.hp + heal, attacker.max_hp)
-		attacker.emit_signal("hp_changed")
-		log_msg("%s drinks %d CORP from the wound." % [attacker.get_log_name(), heal])
-		if attacker.has_status(STATUS_MARTYR):
-			attacker.martyr_bonus_damage = max(0, attacker.martyr_bonus_damage - heal)
-			attacker.log_msg("The cup passes from %s. (-%d damage)" % [attacker.get_log_name(), heal])
-
-	if hp <= 0:
-		hp = 0
-		set_actor_state(STATE_DEAD)
-		log_msg("%s has fallen." % get_log_name())
-		say_die()
-		emit_signal("died", self)
-		# Do NOT queue_free here — manager handles cleanup in _on_actor_died
-		# so that any in-progress coroutines don't access freed nodes
+	var ctx := ConditionRunner.ctx_new(attacker, self, float(amount), ["physical"])
+	ConditionRunner.resolve("damage", ctx)
 
 func is_alive() -> bool:
 	return hp > 0
@@ -684,7 +610,64 @@ func use_lens(channel: int):
 	manager.apply_lens(channel)
 	spend_turn()
 
-func play_attack_animation(target: BattleActor, player_mult, enemy_mult, damage : int = 0) -> void:
+func play_attack_animation(target: BattleActor, player_mult: float,
+		enemy_mult: float, damage: int = 0) -> void:
+	var manager = get_tree().get_first_node_in_group("battle_manager")
+	if manager == null:
+		return
+	manager.active_cam.follow_damping = false
+	manager.target_cam.follow_damping = false
+
+	var original_pos := global_position
+	var direction    := (target.global_position - global_position).normalized()
+	var windup_pos   := original_pos - direction * 0.1
+	var lunge_pos    := (original_pos + direction * 0.5) - windup_pos
+
+	var windup_tween := create_tween()
+	windup_tween.set_trans(Tween.TRANS_QUAD)
+	windup_tween.set_ease(Tween.EASE_IN_OUT)
+	windup_tween.tween_property(self, "global_position", windup_pos, 0.3)
+	await windup_tween.finished
+
+	var lunge_tween := create_tween()
+	lunge_tween.set_trans(Tween.TRANS_QUAD)
+	lunge_tween.set_ease(Tween.EASE_OUT_IN)
+	lunge_tween.tween_property(self, "global_position", lunge_pos, 0.22)
+	await lunge_tween.finished
+
+	# IMPACT
+	var impact_dir := (global_position - target.global_position).normalized()
+	manager.screen_shake(self, target, impact_dir, player_mult, enemy_mult)
+
+	if is_instance_valid(target) and target.is_alive() and is_inside_tree():
+		if damage > 0:
+			var ctx := ConditionRunner.ctx_new(self, target, float(damage), ["physical"])
+			ConditionRunner.resolve("damage", ctx)
+			if not target.is_alive():
+				say_kill()
+
+	var back_tween := create_tween()
+	back_tween.set_trans(Tween.TRANS_QUAD)
+	back_tween.set_ease(Tween.EASE_IN_OUT)
+	back_tween.tween_property(self, "global_position", original_pos, 0.3)
+	await back_tween.finished
+
+	if not is_instance_valid(target) or not is_inside_tree():
+		return
+
+	if perishing and is_inside_tree():
+		print("You saw something you shouldn't have.")
+		emit_signal("turn_finished")
+		if damage >= hp:
+			log_msg("%s understood the price all too well." % [get_log_name()])
+		else:
+			log_msg("%s underestimated the price of understanding." % [get_log_name()])
+		var self_ctx := ConditionRunner.ctx_new(self, self, float(damage), ["true_damage"])
+		ConditionRunner.resolve("damage", self_ctx)
+		perishing = false
+
+	if is_inside_tree():
+		await get_tree().create_timer(1.0).timeout
 	
 	var manager = get_tree().get_first_node_in_group("battle_manager")
 	if manager == null:
@@ -694,96 +677,7 @@ func play_attack_animation(target: BattleActor, player_mult, enemy_mult, damage 
 	
 
 	var original_pos = global_position
-	var direction = (target.global_position - global_position).normalized()
-	
-	var windup_pos = original_pos - direction * 0.1
-	var lunge_pos = (original_pos + direction * 0.5) - windup_pos
-	
-	var windup_tween := create_tween()
-	windup_tween.set_trans(Tween.TRANS_QUAD)
-	windup_tween.set_ease(Tween.EASE_IN_OUT)
 
-	windup_tween.tween_property(self, "global_position", windup_pos, 0.3)
-	await windup_tween.finished
-
-	var tween := create_tween()
-	tween.set_trans(Tween.TRANS_QUAD)
-	tween.set_ease(Tween.EASE_OUT_IN)
-	
-
-	tween.tween_property(self, "global_position", lunge_pos, 0.22)
-	await tween.finished
-	
-	# IMPACT MOMENT
-	var impact_dir = (global_position - target.global_position).normalized()
-	
-	
-	
-	
-	manager.screen_shake(self, target, impact_dir, player_mult, enemy_mult)
-
-
-	if is_instance_valid(target) and is_inside_tree():
-		if target.is_alive():
-			
-			var final_damage = damage
-
-			if has_status(STATUS_MARTYR) and martyr_bonus_damage > 0:
-
-				
-
-				final_damage += martyr_bonus_damage
-
-				martyr_bonus_damage = 0
-
-			# Lifesteal buff (Vice)
-			if has_status(STATUS_LIFESTEAL):
-				target.take_damage(damage * (1 - LIFESTEAL_RATIO), self)
-				if not target.is_alive():
-					say_kill()
-				var heal = max(1, int(damage * LIFESTEAL_RATIO))
-				hp = min(hp + heal, max_hp)
-				log_msg("%s drinks %d CORP from the wound." % [get_log_name(), heal])
-				if has_status(STATUS_MARTYR):
-					martyr_bonus_damage = max(0, martyr_bonus_damage - heal)
-					log_msg("The cup passes from Indra. (-%d damage)" % [heal])
-				emit_signal("hp_changed")
-
-				
-			else:
-				if has_status(STATUS_MARTYR) and martyr_bonus_damage > 0:
-					log_msg("%s pours out the cup of wrath. (+%d damage)" % [get_log_name(), martyr_bonus_damage])
-				target.take_damage(final_damage, self)
-				if not target.is_alive():
-					say_kill()
-	
-
-	
-	var back_tween = create_tween()
-	back_tween.set_trans(Tween.TRANS_QUAD)
-	back_tween.set_ease(Tween.EASE_IN_OUT)
-
-	back_tween.tween_property(self, "global_position", original_pos, 0.3)
-	await back_tween.finished
-
-	# Guard: target or self may have been freed if battle ended mid-animation
-	if not is_instance_valid(target) or not is_inside_tree():
-		return
-	if perishing and is_inside_tree():
-		print("You saw something you shouldn't have.")
-		emit_signal("turn_finished")
-		if damage >= hp:
-			log_msg("%s understood the price all too well." % [get_log_name()])
-		else:
-			log_msg("%s underestimated the price of understanding." % [get_log_name()])
-		take_damage(damage)
-		perishing = false
-
-	if is_inside_tree():
-		await get_tree().create_timer(1.0).timeout
-
-
-## Returns the follow anchor for this actor for the given camera role.
 ## role: "active" (left cam, tracking the acting character)
 ##        "target" (right cam, tracking the targeted character)
 ## Looks for CameraAnchors/Follow{Role} first; falls back to CameraAnchor then self.

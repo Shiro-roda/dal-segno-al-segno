@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="ConditionData" format=3 uid="uid://dc1dd51uaye4v"]
+
+[ext_resource type="Script" uid="uid://b1jgofpoucvuw" path="res://Systems/SkillSys/Scripts/ConditionData.gd" id="1_ml7cr"]
+[ext_resource type="Script" uid="uid://blakd2yd58r2i" path="res://Systems/SkillSys/Scripts/ConditionSignalHook.gd" id="2_q4ohw"]
+
+[sub_resource type="Resource" id="Resource_w8evb"]
+script = ExtResource("2_q4ohw")
+listen_for = "damage"
+guard = "ctx.target == a and not ctx.cancelled"
+formula = "var stored = int(ctx.value * 0.5)
+a.martyr_bonus_damage += stored
+a.log_msg(a.get_log_name() + \" drinks deeply. (+\" + str(stored) + \" stored)\")"
+then_emit = "martyr_absorb"
+
+[sub_resource type="Resource" id="Resource_0lvdb"]
+script = ExtResource("2_q4ohw")
+listen_for = "damage"
+guard = "ctx.source == a and a.martyr_bonus_damage > 0"
+formula = "ctx.value += float(a.martyr_bonus_damage)
+a.log_msg(a.get_log_name() + \" pours out the cup. (+\" + str(a.martyr_bonus_damage) + \" damage)\")
+a.martyr_bonus_damage = 0"
+then_emit = "martyr_release"
+
+[resource]
+script = ExtResource("1_ml7cr")
+condition_id = "martyr"
+display_name = "Martyr"
+on_apply_formula = "a.martyr_bonus_damage = 0"
+on_remove_formula = "a.martyr_bonus_damage = 0; a.martyr_tempo_bonus = 0.0"
+signal_hooks = Array[ExtResource("2_q4ohw")]([SubResource("Resource_w8evb"), SubResource("Resource_0lvdb")])
+default_duration = 3

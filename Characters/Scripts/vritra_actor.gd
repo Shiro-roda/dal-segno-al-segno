@@ -220,7 +220,7 @@ func _vice(target: BattleActor, part: BodyPartData = null) -> void:
 
 	say_random(CHATTER_VICE)
 
-	target.apply_status(STATUS_LIFESTEAL, LEECH_DURATION)
+	target.apply_condition("lifesteal", self, LEECH_DURATION)
 
 	log_msg("%s instills a terrible hunger within %s." % [name, target.name])
 
@@ -233,7 +233,7 @@ func _malice(target: BattleActor) -> void:
 
 	say_random(CHATTER_MALICE)
 
-	target.apply_status(STATUS_MALICE, MALICE_DURATION)
+	target.apply_condition("malice", self, MALICE_DURATION)
 	target.malice_source = self
 
 	log_msg("%s fills %s with venomous spite." % [name, target.name])
@@ -295,11 +295,8 @@ func _devour(target: BattleActor, part: BodyPartData = null) -> void:
 			party_member.bonus_max_hp += DEVOUR_MAX_HP_BONUS
 		log_msg("%s was devoured — the beast yet grows voracious." % [victim])
 	else:
-		var heal      : int = max(1, int(damage * (1.0 - LIFESTEAL_RATIO)))
 		say_random(CHATTER_DRAIN)
-		hp = min(hp + heal, max_hp)
-		emit_signal("hp_changed")
-		log_msg("%s drinks %d CORP from the wound." % [get_log_name(), heal])
+		log_msg("%s tears into %s." % [get_log_name(), victim])
 	emit_signal("turn_finished")
 
 
@@ -362,33 +359,13 @@ func _wither(target: BattleActor, part: BodyPartData = null) -> void:
 	party_member.spend_will(WITHER_WILL_COST)
 	
 	log_msg("%s sharpens their tongue on %s." % [name, target.name])
-	var dmg_dealt : int = attack_power
 	if randf() < WITHER_CHANCE_NORMAL:
-		if has_status(STATUS_LIFESTEAL):
-			var leech_dmg : int = int(dmg_dealt * (1.0 - LIFESTEAL_RATIO))
-			var heal      : int = max(1, int(dmg_dealt))
-			target.take_damage(leech_dmg, self)
-			say_random(CHATTER_DRAIN)
-			hp = min(hp + heal, max_hp)
-			emit_signal("hp_changed")
-			log_msg("%s drinks %d CORP from the wound." % [get_log_name(), heal])
-		else:
-			target.take_damage(dmg_dealt, self)
-			say_random(CHATTER_WITHER)
+		await play_attack_animation(target, 1.0, 1.0, attack_power)
 		target.modify_attack(-WITHER_ATK_REDUCTION)
 		log_msg("%s cowers under %s's fangs." % [target.name, name])
 	else:
-		if has_status(STATUS_LIFESTEAL):
-			var leech_dmg : int = int(dmg_dealt * (1.0 - LIFESTEAL_RATIO))
-			var heal      : int = max(1, int(dmg_dealt))
-			target.take_damage(leech_dmg, self)
-			say_random(CHATTER_DRAIN)
-			hp = min(hp + heal, max_hp)
-			emit_signal("hp_changed")
-			log_msg("%s drinks %d CORP from the wound." % [get_log_name(), heal])
-		else:
-			target.take_damage(dmg_dealt, self)
-			say_random(CHATTER_WITHER)
+		await play_attack_animation(target, 1.0, 1.0, attack_power)
+		say_random(CHATTER_WITHER)
 	if part != null and part.has_part_hp():
 		var broke := part.take_part_damage(attack_power)
 		if broke:
