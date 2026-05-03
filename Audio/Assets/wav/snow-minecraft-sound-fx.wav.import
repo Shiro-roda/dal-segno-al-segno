@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://coqt55eek5gao"
-path="res://.godot/imported/snow-minecraft-sound-fx.wav-b7e49eadd5641ab508fe83f01157cbb3.sample"
+path="res://.godot/imported/snow-minecraft-sound-fx.wav-091d42e37e086a455e42936f362ac7f9.sample"
 
 [deps]
 
-source_file="res://audio/Assets/wav/snow-minecraft-sound-fx.wav"
-dest_files=["res://.godot/imported/snow-minecraft-sound-fx.wav-b7e49eadd5641ab508fe83f01157cbb3.sample"]
+source_file="res://Audio/Assets/wav/snow-minecraft-sound-fx.wav"
+dest_files=["res://.godot/imported/snow-minecraft-sound-fx.wav-091d42e37e086a455e42936f362ac7f9.sample"]
 
 [params]
 

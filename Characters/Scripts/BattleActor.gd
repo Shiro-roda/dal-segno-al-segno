@@ -161,6 +161,9 @@ var shield_hp : int = 0               # temporary HP from Shelter
 var malice_source : BattleActor = null
 var martyr_bonus_damage : int = 0
 var martyr_tempo_bonus : float = 0.0
+## General-purpose stash for condition formulas that need to persist data
+## across ticks (e.g. slow stores pre-slow bpm here).
+var extra_data : Dictionary = {}
 
 
 
@@ -396,7 +399,23 @@ func say_turn_start() -> void:
 	pass
 
 
-# --- Status effect helpers ---
+# --- Condition system (new API — wraps ConditionRunner) ---
+
+## Apply a condition via ConditionRunner. Falls back to apply_status if the
+## condition id is not in the registry yet (safe during migration).
+func apply_condition(condition_id: String, source: BattleActor = null,
+		duration: int = -1) -> void:
+	ConditionRunner.apply(self, condition_id, source, duration)
+
+## Remove a condition via ConditionRunner.
+func remove_condition(condition_id: String) -> void:
+	ConditionRunner.remove(self, condition_id)
+
+## Returns true if this actor currently has the given condition.
+func has_condition(condition_id: String) -> bool:
+	return ConditionRunner.has_condition(self, condition_id)
+
+# --- Status effect helpers (legacy — kept for migration compatibility) ---
 
 func apply_status(effect_id: String, duration: int) -> void:
 	# Refresh duration if already present, otherwise add

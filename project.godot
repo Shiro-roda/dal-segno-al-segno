@@ -39,6 +39,8 @@ MetaProgress="*uid://lgos2n2isx0l"
 MCPRuntime="*uid://bmxsx0apnxbgi"
 BattleSettings="*res://Systems/BattleSys/BattleSettings.gd"
 AutobattleStrategies="*res://Systems/BattleSys/AutobattleStrategies.gd"
+BattleEventBus="*res://Systems/SkillSys/Scripts/BattleEventBus.gd"
+ConditionRunner="*res://Systems/SkillSys/Scripts/ConditionRunner.gd"
 
 [dialogic]
 

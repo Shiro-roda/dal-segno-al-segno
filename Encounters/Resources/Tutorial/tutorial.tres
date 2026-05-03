@@ -4,7 +4,7 @@
 [ext_resource type="Script" uid="uid://b2t1syvrybco8" path="res://Systems/PartySys/Scripts/characterdata.gd" id="2_tut"]
 [ext_resource type="Resource" uid="uid://5rp1me3j67gv" path="res://Characters/Resources/Enemies/tut_shadow.tres" id="3_d15t5"]
 [ext_resource type="Script" uid="uid://b57cevaydtkqm" path="res://UI/Dialogue/Scripts/splash_line.gd" id="4_tut"]
-[ext_resource type="Resource" uid="uid://dh41c43q5ekyx" path="res://audio/tracks/yellow.tres" id="5_tut"]
+[ext_resource type="Resource" uid="uid://dh41c43q5ekyx" path="res://Audio/tracks/yellow.tres" id="5_tut"]
 [ext_resource type="Script" uid="uid://coeqyvqijtkns" path="res://Encounters/Scripts/encounterdata.gd" id="6_tut"]
 [ext_resource type="Script" uid="uid://divs34wkweat7" path="res://UI/Dialogue/Scripts/dialogue_line.gd" id="7_tut"]
 [ext_resource type="Script" uid="uid://cxogdp046hrx2" path="res://UI/Dialogue/Scripts/encounter_dialogue.gd" id="8_tut"]
