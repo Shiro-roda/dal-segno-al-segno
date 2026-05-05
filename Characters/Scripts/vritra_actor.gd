@@ -46,6 +46,8 @@ const CHATTER_MALICE = [
 	"You owe me at least this much.",
 	"Don't just stand there!",
 	"They don't regret it at all . . .",
+	"They don't know, they don't know what they're doing . . .",
+	"Make yourself useful for once.",
 	" ",
 	" ",
 ]
@@ -55,17 +57,25 @@ const CHATTER_CONSTRICT = [
 	" ",
 	" ",
 ]
-const CHATTER_DEVOUR = [
+const CHATTER_DEVOUR_KILL = [
 	"I'M SORRY",
 	"I DIDN'T MEAN TO",
 	"[audio expunged from footage]",
-	"YOU LOOK SO GOOD",
-	" ",
+	"YOU MADE ME DO THIS",
 	" ",
 	" ",
 	" ",
 	" ",
 ]
+const CHATTER_DEVOUR = [
+	"YOU LOOK SO GOOD",
+	"COME HERE~",
+	"YOU'RE FUCKING MINE",
+	"YOU'RE NOT GETTING AWAY~",
+	" ",
+	" ",
+]
+
 const CHATTER_UNWILLING = [
 	" ",
 ]
@@ -78,7 +88,7 @@ const CHATTER_WITHER = [
 	" ",
 ]
 const CHATTER_WASTE = [
-	"Fuuuuck, I'm hungry...",
+	#"Fuuuuck, I'm hungry...",
 	" ",
 	" ",
 	" ",
@@ -86,17 +96,14 @@ const CHATTER_WASTE = [
 	" ",
 ]
 const CHATTER_DRAIN = [
-	"*SLUUURRPP*",
-	"Ugh, it's all stringy and shit.",
-	"Just a bite ~<3",
 	" ",
 ]
 const CHATTER_HURT = [
 	"Aww, play nice!",
-	"Tch... that fucking stung.",
-	"*Cough* Shit, that felt good...",
-	"I'm fucking you up for that!",
-	"Fuck! I just grew that back!",
+	#"Tch... that fucking stung.",
+	#"*Cough* Shit, that felt good...",
+	#"I'm fucking you up for that!",
+	#"Fuck! I just grew that back!",
 	" ",
 	" ",
 	" ",
@@ -105,21 +112,24 @@ const CHATTER_HURT = [
 const CHATTER_KILL = [
 	"Mmm, tasty . . .",
 	"Oops!",
+	"*SLUUURRPP*",
+	#"Ugh, it's all stringy and shit.",
+	"Just a bite ~<3",
 	" ",
 ]
 
 const CHATTER_DIE = [
-	"Sh-Shiiittt... can't... breathe... I guess I got too excited ~",
+	#"Sh-Shiiittt... can't... breathe... I guess I got too excited ~",
 	" ",
 ]
 
 const CHATTER_TURN_START = [
 	"Ugghh, I'm booored, KK . . .", 
-	"Hey tasty~",
-	"Who's the lucky snack this time ~ ?",
+	#"Hey tasty~",
+	#"Who's the lucky snack this time ~ ?",
 	"Still listening?",
 	"That hunky junk still working for ya?",
-	"Ughh just hurry up, it's fucking itching! \nI'm about to start peeling this shit off.",
+	#"Ughh just hurry up, it's fucking itching! \nI'm about to start peeling this shit off.",
 	" ",
 	" ",
 	" ",
@@ -289,14 +299,14 @@ func _devour(target: BattleActor, part: BodyPartData = null) -> void:
 		if broke:
 			target._on_part_broken(part)
 	if not is_instance_valid(target) or not target.is_alive():
-		say_random(CHATTER_DEVOUR)
+		say_random(CHATTER_DEVOUR_KILL)
 		max_hp += DEVOUR_MAX_HP_BONUS
 		if party_member:
 			party_member.bonus_max_hp += DEVOUR_MAX_HP_BONUS
 		log_msg("%s was devoured — the beast yet grows voracious." % [victim])
 	else:
 		var heal      : int = max(1, int(damage * (1.0 - LIFESTEAL_RATIO)))
-		say_random(CHATTER_DRAIN)
+		say_random(CHATTER_DEVOUR)
 		hp = min(hp + heal, max_hp)
 		emit_signal("hp_changed")
 		log_msg("%s drinks %d CORP from the wound." % [get_log_name(), heal])

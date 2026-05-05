@@ -529,7 +529,7 @@ func _make_augur_entry(enemy: BattleActor) -> VBoxContainer:
 	entry.add_child(name_lbl)
 
 	var atk_lbl := Label.new()
-	atk_lbl.text = "SHARP %d   FLAT %d   BPM %d" % [enemy.attack_power, enemy.flat_defense, enemy.bpm]
+	atk_lbl.text = "SHARP %d   FLAT %d   BPM %d   TEMPO %d" % [enemy.attack_power, enemy.flat_defense, enemy.bpm, enemy.tempo]
 	atk_lbl.add_theme_font_size_override("font_size", 10)
 	atk_lbl.add_theme_color_override("font_color", C_DIM_L)
 	entry.add_child(atk_lbl)
@@ -580,7 +580,9 @@ func _build_atb_strip(actor_list: Array) -> void:
 					else Color(1.0, 0.55, 0.55, 1.0)
 
 		var lbl := Label.new()
-		lbl.text = actor.get_log_name().to_upper()
+		# Label shows name + BPM rate so the player can read charge speed at a glance.
+		# TEMPO (extra cap) is visible as the bar's extended fill region.
+		lbl.text = actor.get_log_name().to_upper() + "  BPM:" + str(actor.bpm)
 		lbl.add_theme_font_size_override("font_size", 10)
 		lbl.add_theme_color_override("font_color", col)
 		if font:
@@ -625,22 +627,31 @@ func _draw() -> void:
 	const BAR_MAX        := 200.0
 	var pool_cap := BEAT_THRESHOLD + float(actor.tempo)
 	var pool     := clampf(actor.tempo_pool, 0.0, pool_cap)
-	# Background (full bar to pool_cap)
+	# Background up to pool_cap
 	var cap_x := (pool_cap / BAR_MAX) * w
 	draw_rect(Rect2(0, 0, cap_x, h), Color(0.1, 0.1, 0.12, 0.85))
 	# Fill (tempo_pool)
 	var fill_x := (pool / BAR_MAX) * w
 	if fill_x > 0.0:
-		var ready := pool >= BEAT_THRESHOLD
-		var fill_col := col if not ready else Color(col.r * 1.3, col.g * 1.3, col.b * 1.3, 1.0)
-		draw_rect(Rect2(0, 0, fill_x, h), fill_col)
-	# Beat marker at centre (100/200)
+		var at_beat := pool >= BEAT_THRESHOLD
+		var fill_col : Color
+		if at_beat and actor.tempo > 0:
+			# Tempo zone (Beat..max): brighter accent to signal bonus accumulation
+			var beat_x2 := (BEAT_THRESHOLD / BAR_MAX) * w
+			draw_rect(Rect2(0, 0, beat_x2, h), col)
+			var tempo_fill_col := Color(col.r * 1.4, col.g * 1.2, col.b * 0.8, 1.0)
+			draw_rect(Rect2(beat_x2, 0, fill_x - beat_x2, h), tempo_fill_col)
+		elif at_beat:
+			draw_rect(Rect2(0, 0, fill_x, h), Color(col.r * 1.3, col.g * 1.3, col.b * 1.3, 1.0))
+		else:
+			draw_rect(Rect2(0, 0, fill_x, h), col)
+	# Beat marker at 100/BAR_MAX
 	var beat_x := (BEAT_THRESHOLD / BAR_MAX) * w
-	draw_line(Vector2(beat_x, 0), Vector2(beat_x, h), Color(1, 1, 1, 0.75), 1.5)
-	# Tempo marker at 100+tempo (only if tempo > 0)
+	draw_line(Vector2(beat_x, 0), Vector2(beat_x, h), Color(1, 1, 1, 0.80), 1.5)
+	# Tempo cap marker (only if actor has tempo stat > 0)
 	if actor.tempo > 0:
 		var tempo_x := (pool_cap / BAR_MAX) * w
-		draw_line(Vector2(tempo_x, 0), Vector2(tempo_x, h), Color(col.r, col.g, col.b, 0.60), 1.2)
+		draw_line(Vector2(tempo_x, 0), Vector2(tempo_x, h), Color(col.r, col.g, col.b, 0.70), 1.2)
 """
 	scr.reload()
 	bar.set_script(scr)

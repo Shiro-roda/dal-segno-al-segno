@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://dlyjaleif5gli"
-path="res://.godot/imported/spooky_rooster.wav-2348e526df8acc83c24bf21e51089cb7.sample"
+path="res://.godot/imported/spooky_rooster.wav-db2f01c287241370dbda54cc40a94ba6.sample"
 
 [deps]
 
-source_file="res://audio/Assets/wav/spooky_rooster.wav"
-dest_files=["res://.godot/imported/spooky_rooster.wav-2348e526df8acc83c24bf21e51089cb7.sample"]
+source_file="res://Audio/Assets/wav/spooky_rooster.wav"
+dest_files=["res://.godot/imported/spooky_rooster.wav-db2f01c287241370dbda54cc40a94ba6.sample"]
 
 [params]
 

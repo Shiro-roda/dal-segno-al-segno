@@ -41,6 +41,11 @@ var time_controller : BattleTimeController = null
 ## In ATB mode this is used only for enemies — players go into _atb_ready_players.
 var _atb_ready_queue : Array[BattleActor] = []
 
+## Tracks pending enemy actors that have hit Beat (100) but are in their
+## action window. Dict: actor -> time_remaining (float seconds).
+## When time_remaining hits 0 OR the actor reaches max pool, they fire.
+var _enemy_action_timers : Dictionary = {}
+
 ## Player-team actors whose tempo bar is full and are waiting for orders.
 ## The player can freely select any of these to command. Not a queue.
 var _atb_ready_players : Array[BattleActor] = []
@@ -330,6 +335,11 @@ func _process(delta):
 ## At 0.45, a character with bpm 10 takes ~22 seconds to fill to a Beat.
 const ATB_BASE_RATE : float = 1.0
 
+## Time scale applied to player ATB bars while the battle menu is open.
+## Keeps bars moving at a trickle instead of freezing — mirrors the
+## time-slow aesthetic without hard-stopping the gauge.
+const MENU_SLOW_MULT : float = 0.15
+
 ## Real-time tempo tick — runs every _process frame for both CTB and ATB.
 ##
 ## CTB: as soon as any actor hits 100 BPM, all other actors freeze until that
@@ -369,47 +379,76 @@ func _tick_tempo(delta: float) -> void:
 		# In ATB, also freeze player bars while the menu is open.
 		if _action_executing:
 			continue
-		if BattleSettings.battle_mode == BattleSettings.BattleMode.ATB:
-			if _player_menu_open and actor.team == BattleActor.Team.PLAYER:
-				continue
-		if actor.tempo_pool >= 100.0:
+		# In ATB, player bars slow to MENU_SLOW_MULT while the menu is open
+		# (mimicking the time-slow effect) rather than freezing entirely.
+		# Already at Beat threshold — don't advance past cap but allow pending check.
+		if actor.tempo_pool >= 100.0 + float(actor.tempo):
 			continue
+		# Compute per-actor effective dt: players run at MENU_SLOW_MULT while menu open.
+		var actor_dt := dt
+		if BattleSettings.battle_mode == BattleSettings.BattleMode.ATB \
+				and _player_menu_open and actor.team == BattleActor.Team.PLAYER:
+			actor_dt *= MENU_SLOW_MULT
+		var pool_cap := 100.0 + float(actor.tempo)
 		var gain := float(actor.bpm)
 		if actor.has_status(BattleActor.STATUS_SLOW):
 			gain *= BattleActor.SLOW_TEMPO_MULT
-		var pool_cap := 100.0 + float(actor.tempo)
-		actor.tempo_pool = minf(actor.tempo_pool + gain * ATB_BASE_RATE * dt, pool_cap)
+		actor.tempo_pool = minf(actor.tempo_pool + gain * ATB_BASE_RATE * actor_dt, pool_cap)
 
 	_check_atb_triggers()
+	# Tick enemy action-window timers.
+	for enemy in _enemy_action_timers.keys():
+		_enemy_action_timers[enemy] = _enemy_action_timers[enemy] - dt
 	if is_instance_valid(battle_hud):
 		battle_hud.refresh_atb_bars(actors)
 
 ## Check actors whose bars just filled and route them appropriately.
 func _check_atb_triggers() -> void:
 	for actor in actors:
-		if not actor.is_alive() or actor.tempo_pool < 100.0:
+		if not actor.is_alive():
 			continue
 		if actor.team == BattleActor.Team.PLAYER:
 			# Player actors go into the ready-set, not the queue.
 			# The player selects who to command from the HUD.
-			if actor not in _atb_ready_players:
+			if actor.tempo_pool >= 100.0 and actor not in _atb_ready_players:
 				_atb_ready_players.append(actor)
 				_on_player_actor_ready(actor)
 		else:
-			if actor not in _atb_ready_queue:
+			# Enemy: once they hit 100 they enter a random action window.
+			# They fire when the timer expires OR immediately if at max pool.
+			if actor.tempo_pool >= 100.0 and actor not in _atb_ready_queue \
+					and not _enemy_action_timers.has(actor):
+				var window := randf_range(0.4, 1.6)  # 0.4-1.6s action window
+				_enemy_action_timers[actor] = window
 				_atb_ready_queue.append(actor)
+			# If at max pool, fire immediately regardless of timer
+			if _enemy_action_timers.has(actor):
+				var pool_cap := 100.0 + float(actor.tempo)
+				if actor.tempo_pool >= pool_cap:
+					_enemy_action_timers[actor] = 0.0  # force fire
 	# Fire waiting enemies if no animation is running.
 	if not _action_executing:
 		_fire_next_enemy_turn()
 
-## Fire the next enemy in the queue, if any and no animation is running.
+## Fire the next enemy in the queue whose action timer has expired.
 func _fire_next_enemy_turn() -> void:
 	if _action_executing or _atb_ready_queue.is_empty():
 		return
-	var actor : BattleActor = _atb_ready_queue.pop_front()
-	if not is_instance_valid(actor) or not actor.is_alive():
-		_fire_next_enemy_turn()  # skip dead/freed
-		return
+	# Find the first queued enemy whose timer has elapsed (timer <= 0).
+	var actor : BattleActor = null
+	for candidate in _atb_ready_queue:
+		if not is_instance_valid(candidate) or not candidate.is_alive():
+			_atb_ready_queue.erase(candidate)
+			_enemy_action_timers.erase(candidate)
+			continue
+		var t : float = _enemy_action_timers.get(candidate, 0.0)
+		if t <= 0.0:
+			actor = candidate
+			break
+	if actor == null:
+		return  # all queued enemies still in their window
+	_atb_ready_queue.erase(actor)
+	_enemy_action_timers.erase(actor)
 	_action_executing = true
 	_run_atb_actor_turn(actor)
 
@@ -474,6 +513,7 @@ func start_battle_with_context(battle_context : BattleContext):
 	time_controller = BattleTimeController.new()
 	_atb_ready_queue.clear()
 	_atb_ready_players.clear()
+	_enemy_action_timers.clear()
 	_action_executing = false
 	_player_menu_open = false
 	
@@ -823,6 +863,7 @@ func handle_enemy_turn(actor: BattleActor) -> void:
 		actor.reset_tempo_bonus()
 		# Erase from the ready queue — same race as the player side.
 		_atb_ready_queue.erase(actor)
+		_enemy_action_timers.erase(actor)
 	else:
 		pass  # actor freed mid-animation (killed during their own turn)
 	battle_hud.refresh_queue(self)
@@ -1049,6 +1090,7 @@ func _on_actor_died(actor: BattleActor):
 	# Remove from the ATB queue immediately so _fire_next_atb_turn never
 	# tries to pop a soon-to-be-freed instance.
 	_atb_ready_queue.erase(actor)
+	_enemy_action_timers.erase(actor)
 	# Notify the reticle immediately so the dead actor's box disappears
 	if is_instance_valid(reticle_ui):
 		reticle_ui.notify_actor_died(actor)
