@@ -16,13 +16,20 @@
 extends VBoxContainer
 class_name ATBBarDisplay
 
-const HUD_BG     := Color(0.08, 0.07, 0.06, 0.96)
-const HUD_ACCENT := Color(0.52, 0.42, 0.28, 1.0)
-const HUD_TEXT   := Color(0.88, 0.83, 0.74, 1.0)
-const HUD_DIM    := Color(0.45, 0.40, 0.35, 1.0)
+var HUD_BG     := Color(0.08, 0.07, 0.06, 0.96)
+var HUD_ACCENT := Color(0.52, 0.42, 0.28, 1.0)
+var HUD_TEXT   := Color(0.88, 0.83, 0.74, 1.0)
+var HUD_DIM    := Color(0.45, 0.40, 0.35, 1.0)
 const HUD_ENEMY  := Color(1.0,  0.40, 0.40, 1.0)
 const HUD_READY  := Color(0.30, 1.0,  0.55, 1.0)  # bar turns green when full
 const HUD_FONT   := "res://UI/Themes/Fonts/TerminalVector.ttf"
+
+func _refresh_palette() -> void:
+	var p := ThemeManager.palette
+	HUD_BG     = Color(p.bg.r, p.bg.g, p.bg.b, 0.96)
+	HUD_ACCENT = p.secondary
+	HUD_TEXT   = p.text
+	HUD_DIM    = p.dim
 
 ## actor -> { bar: ProgressBar, label: Label, row: HBoxContainer }
 var _bars : Dictionary = {}
@@ -36,6 +43,7 @@ var _show_enemy_bars := false
 # ── Setup ──────────────────────────────────────────────────────────────────────
 
 func build(actor_list: Array) -> void:
+	_refresh_palette()
 	# Clear any leftovers from a previous battle
 	for c in get_children():
 		c.queue_free()

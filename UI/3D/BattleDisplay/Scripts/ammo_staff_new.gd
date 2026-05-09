@@ -135,6 +135,7 @@ func _add_arc(parent: Node3D, r: float) -> void:
 		mat.no_depth_test = false
 		mesh.material = mat
 		mi.mesh = mesh
+		mi.extra_cull_margin = 8.0
 		mi.position = Vector3(sin(mid_a) * r, 0.0, cos(mid_a) * r)
 		mi.rotation.y = mid_a
 		parent.add_child(mi)
@@ -155,6 +156,7 @@ func _build_time_sig() -> void:
 	_sig_label_top.outline_modulate = Color(0.0, 0.0, 0.0, 1.0)
 	_sig_label_top.no_depth_test    = false
 	_sig_label_top.billboard        = BaseMaterial3D.BILLBOARD_DISABLED
+	_sig_label_top.extra_cull_margin = 8.0
 	_sig_label_top.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	if font: _sig_label_top.font = font
 	_sig_label_top.position = Vector3(0.0, 0.0, 0.0)
@@ -170,6 +172,7 @@ func _build_time_sig() -> void:
 	_sig_label_bot.outline_modulate = Color(0.0, 0.0, 0.0, 1.0)
 	_sig_label_bot.no_depth_test    = false
 	_sig_label_bot.billboard        = BaseMaterial3D.BILLBOARD_DISABLED
+	_sig_label_bot.extra_cull_margin = 8.0
 	_sig_label_bot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	if font: _sig_label_bot.font = font
 	_sig_label_bot.position = Vector3(0.0, -0.14, 0.0)
@@ -295,6 +298,7 @@ func _apply_mat(mi: MeshInstance3D, color: Color) -> void:
 	mat.no_depth_test = false
 	mat.transparency  = BaseMaterial3D.TRANSPARENCY_DISABLED
 	mi.set_surface_override_material(0, mat)
+	mi.extra_cull_margin = 8.0
 
 
 # ── Ammo change ───────────────────────────────────────────────────────────────

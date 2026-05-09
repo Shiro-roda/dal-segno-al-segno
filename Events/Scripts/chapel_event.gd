@@ -11,14 +11,32 @@ class_name ChapelEvent
 
 signal event_finished
 
-const C_BG       := Color(0.05, 0.04, 0.04, 1.0)
-const C_BORDER   := Color(0.35, 0.28, 0.22, 1.0)
-const C_ACCENT   := Color(0.52, 0.42, 0.28, 1.0)
-const C_TEXT     := Color(0.88, 0.83, 0.74, 1.0)
-const C_DIM      := Color(0.55, 0.50, 0.43, 1.0)
-const C_SELECTED := Color(0.52, 0.42, 0.28, 0.22)
-const C_SEGNO    := Color(0.32, 0.44, 0.58, 1.0)
-const C_TRANSPOSE := Color(0.38, 0.58, 0.38, 1.0)  # muted green for Transpose
+var C_BG       := Color.BLACK
+var C_BORDER   := Color.WHITE
+var C_ACCENT   := Color.WHITE
+var C_TEXT     := Color.WHITE
+var C_DIM      := Color.WHITE
+var C_SELECTED := Color.WHITE
+const C_SEGNO     := Color(0.32, 0.44, 0.58, 1.0)
+const C_TRANSPOSE := Color(0.38, 0.58, 0.38, 1.0)
+
+func _refresh_palette() -> void:
+	var p := ThemeManager.palette
+	C_BG       = p.bg
+	C_BORDER   = p.dim
+	C_ACCENT   = p.secondary
+	C_TEXT     = p.text
+	C_DIM      = p.dim
+	C_SELECTED = Color(p.secondary.r, p.secondary.g, p.secondary.b, 0.22)
+
+func _on_theme_changed(_id: int) -> void:
+	_refresh_palette()
+	for c in get_children(): c.queue_free()
+	_cards.clear()
+	_confirm_btn = null
+	_outer = null
+	_selected_indices.clear()
+	_build_ui()
 
 const CARD_W := 220
 const CARD_H := 220
@@ -47,7 +65,8 @@ var _outer : VBoxContainer
 
 
 func _ready() -> void:
-	GlobalTheme.apply(self)
+	_refresh_palette()
+	ThemeManager.theme_changed.connect(_on_theme_changed)
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	_build_ui()
 

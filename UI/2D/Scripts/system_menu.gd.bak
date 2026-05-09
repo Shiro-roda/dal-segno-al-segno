@@ -1,0 +1,819 @@
+extends CanvasLayer
+## SystemMenu — ESC-key system overlay, separate from the party menu.
+##
+## Tabs: AUDIO | DISPLAY | RENDERING | BATTLE | THEME
+## ESC opens/closes it from dungeon or battle contexts.
+## Mirrors all settings from the old Options page in the party menu,
+## plus Battle Settings and Theme selection.
+
+signal menu_opened
+signal menu_closed
+
+# ── Tab indices ───────────────────────────────────────────────────────────────
+const TAB_AUDIO     := 0
+const TAB_DISPLAY   := 1
+const TAB_RENDERING := 2
+const TAB_BATTLE    := 3
+const TAB_THEME     := 4
+
+var _open       := false
+var _active_tab := TAB_AUDIO
+
+# ── Palette ───────────────────────────────────────────────────────────────────
+var C_BG        := Color.BLACK
+var C_BORDER    := Color.WHITE
+var C_ACCENT    := Color.WHITE
+var C_TEXT      := Color.WHITE
+var C_DIM       := Color.WHITE
+var C_GOLD      := Color.WHITE
+var C_TAB_ACT   := Color.WHITE
+var C_TAB_INACT := Color.BLACK
+
+const MENU_W := 720
+const MENU_H := 520
+
+# ── Node refs ─────────────────────────────────────────────────────────────────
+var _root_panel  : PanelContainer
+var _tab_bar     : HBoxContainer
+var _tab_btns    : Array = []
+var _pages       : Array = []
+var _dim_layer   : CanvasLayer
+var _dim_rect    : ColorRect
+
+# Audio tab refs
+var _master_slider    : HSlider
+var _bgm_slider       : HSlider
+var _sfx_slider       : HSlider
+
+# Display tab refs
+var _ca_slider         : HSlider
+var _brightness_slider : HSlider
+var _contrast_slider   : HSlider
+var _saturation_slider : HSlider
+
+# Rendering tab refs
+var _ssao_check : CheckButton
+var _ssil_check : CheckButton
+var _glow_check : CheckButton
+
+# Apply-button state
+var _committed : Dictionary = {}
+var _pending   : Dictionary = {}
+var _apply_btn : Button = null
+
+# ── Defaults ──────────────────────────────────────────────────────────────────
+const OPT_DEFAULTS := {
+	"master": 1.0, "bgm": 1.0, "sfx": 1.0,
+	"ca": 2.0, "brightness": 1.0, "contrast": 1.0, "saturation": 1.0,
+	"ssao": false, "ssil": false, "glow": false,
+}
+
+# ── Lifecycle ─────────────────────────────────────────────────────────────────
+func _ready() -> void:
+	layer = 130   # above party menu (127) and boot sequence (128)
+	add_to_group("system_menu")
+	_refresh_palette()
+	ThemeManager.theme_changed.connect(_on_theme_changed)
+	_build_ui()
+	_build_dim_overlay()
+	hide_menu()
+
+func _refresh_palette() -> void:
+	var p := ThemeManager.palette
+	C_BG        = p.bg
+	C_BORDER    = p.dim
+	C_ACCENT    = p.primary
+	C_TEXT      = p.text
+	C_DIM       = p.dim
+	C_GOLD      = p.secondary
+	C_TAB_ACT   = p.primary
+	C_TAB_INACT = p.hover
+
+func _on_theme_changed(_id: int) -> void:
+	_refresh_palette()
+
+# ── Input ─────────────────────────────────────────────────────────────────────
+func _input(event: InputEvent) -> void:
+	if not (event is InputEventKey and (event as InputEventKey).pressed):
+		return
+	var kc := (event as InputEventKey).keycode
+
+	# ESC toggles the system menu (always available, any context)
+	if kc == KEY_ESCAPE:
+		if _open:
+			hide_menu()
+			get_viewport().set_input_as_handled()
+		else:
+			# Don't open during boot sequence
+			if get_tree().get_first_node_in_group("boot_sequence") != null:
+				var boot = get_tree().get_first_node_in_group("boot_sequence")
+				if boot.visible:
+					return
+			show_menu()
+			get_viewport().set_input_as_handled()
+		return
+
+	if not _open:
+		return
+
+	if kc == KEY_LEFT:
+		var next := (_active_tab - 1 + _tab_btns.size()) % _tab_btns.size()
+		_switch_tab(next)
+		get_viewport().set_input_as_handled()
+	elif kc == KEY_RIGHT:
+		var next := (_active_tab + 1) % _tab_btns.size()
+		_switch_tab(next)
+		get_viewport().set_input_as_handled()
+
+# ── Dim overlay ───────────────────────────────────────────────────────────────
+func _build_dim_overlay() -> void:
+	_dim_layer = CanvasLayer.new()
+	_dim_layer.layer = 129
+	get_tree().root.add_child(_dim_layer)
+	_dim_rect = ColorRect.new()
+	_dim_rect.color = Color(0.0, 0.0, 0.0, 0.65)
+	_dim_rect.mouse_filter = Control.MOUSE_FILTER_STOP
+	_dim_layer.add_child(_dim_rect)
+	_dim_layer.visible = false
+	call_deferred("_resize_dim_rect")
+
+func _resize_dim_rect() -> void:
+	if _dim_rect == null:
+		return
+	var vp := get_viewport()
+	if vp:
+		_dim_rect.position = Vector2.ZERO
+		_dim_rect.size = vp.get_visible_rect().size
+		if not vp.size_changed.is_connected(_resize_dim_rect):
+			vp.size_changed.connect(_resize_dim_rect)
+
+# ── Show / Hide ───────────────────────────────────────────────────────────────
+func show_menu(tab: int = TAB_AUDIO) -> void:
+	_open = true
+	_root_panel.visible = true
+	if _dim_layer: _dim_layer.visible = true
+
+	# Seed _committed from live systems on first open
+	if _committed.is_empty():
+		var master_bus := AudioServer.get_bus_index("Master")
+		var bgm_bus    := AudioServer.get_bus_index("BGM")
+		var sfx_bus    := AudioServer.get_bus_index("SFX")
+		var mat0 := _get_crt_mat()
+		var env0  := _get_env()
+		_committed = {
+			"master":     db_to_linear(AudioServer.get_bus_volume_db(master_bus)) if master_bus >= 0 else 1.0,
+			"bgm":        db_to_linear(AudioServer.get_bus_volume_db(bgm_bus))    if bgm_bus    >= 0 else 1.0,
+			"sfx":        db_to_linear(AudioServer.get_bus_volume_db(sfx_bus))    if sfx_bus    >= 0 else 1.0,
+			"ca":         _shader_param(mat0, "ca_strength", OPT_DEFAULTS.ca),
+			"brightness": _shader_param(mat0, "brightness",  OPT_DEFAULTS.brightness),
+			"contrast":   _shader_param(mat0, "contrast",    OPT_DEFAULTS.contrast),
+			"saturation": _shader_param(mat0, "saturation",  OPT_DEFAULTS.saturation),
+			"ssao": env0.ssao_enabled if env0 else false,
+			"ssil": env0.ssil_enabled if env0 else false,
+			"glow": env0.glow_enabled if env0 else false,
+		}
+
+	_pending = _committed.duplicate()
+	_sync_controls_to(_pending)
+	_refresh_apply_btn()
+	_switch_tab(tab)
+
+	# Play UI open sound
+	UISounds.play("menu_open")
+	emit_signal("menu_opened")
+
+func hide_menu() -> void:
+	_open = false
+	_root_panel.visible = false
+	if _dim_layer: _dim_layer.visible = false
+
+	# Revert uncommitted previews
+	if not _committed.is_empty():
+		_apply_options(_committed)
+		_pending = _committed.duplicate()
+		_sync_controls_to(_committed)
+		_refresh_apply_btn()
+
+	UISounds.play("menu_close")
+	emit_signal("menu_closed")
+
+func _sync_controls_to(s: Dictionary) -> void:
+	if _master_slider:     _master_slider.set_value_no_signal(s.master)
+	if _bgm_slider:        _bgm_slider.set_value_no_signal(s.bgm)
+	if _sfx_slider:        _sfx_slider.set_value_no_signal(s.sfx)
+	if _ca_slider:         _ca_slider.set_value_no_signal(s.ca)
+	if _brightness_slider: _brightness_slider.set_value_no_signal(s.brightness)
+	if _contrast_slider:   _contrast_slider.set_value_no_signal(s.contrast)
+	if _saturation_slider: _saturation_slider.set_value_no_signal(s.saturation)
+	if _ssao_check: _ssao_check.set_pressed_no_signal(s.ssao)
+	if _ssil_check: _ssil_check.set_pressed_no_signal(s.ssil)
+	if _glow_check: _glow_check.set_pressed_no_signal(s.glow)
+
+# ── UI Construction ───────────────────────────────────────────────────────────
+func _build_ui() -> void:
+	_root_panel = PanelContainer.new()
+	_root_panel.name = "SystemMenuRoot"
+	_root_panel.anchor_left   = 0.5
+	_root_panel.anchor_top    = 0.5
+	_root_panel.anchor_right  = 0.5
+	_root_panel.anchor_bottom = 0.5
+	_root_panel.offset_left   = -MENU_W * 0.5
+	_root_panel.offset_top    = -MENU_H * 0.5
+	_root_panel.offset_right  =  MENU_W * 0.5
+	_root_panel.offset_bottom =  MENU_H * 0.5
+	_root_panel.custom_minimum_size = Vector2(MENU_W, MENU_H)
+
+	var style := StyleBoxFlat.new()
+	style.bg_color = C_BG
+	style.border_color = C_BORDER
+	style.set_border_width_all(2)
+	style.set_content_margin_all(0)
+	_root_panel.add_theme_stylebox_override("panel", style)
+	add_child(_root_panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 0)
+	_root_panel.add_child(vbox)
+
+	# Header bar with title + ESC hint
+	var header := HBoxContainer.new()
+	header.custom_minimum_size = Vector2(MENU_W, 28)
+	header.add_theme_constant_override("separation", 0)
+	vbox.add_child(header)
+
+	var title_pad := MarginContainer.new()
+	title_pad.add_theme_constant_override("margin_left", 14)
+	title_pad.add_theme_constant_override("margin_top", 4)
+	title_pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(title_pad)
+
+	var title_lbl := Label.new()
+	title_lbl.text = "SYSTEM"
+	title_lbl.add_theme_font_size_override("font_size", 12)
+	title_lbl.add_theme_color_override("font_color", C_ACCENT)
+	title_pad.add_child(title_lbl)
+
+	var esc_pad := MarginContainer.new()
+	esc_pad.add_theme_constant_override("margin_right", 14)
+	esc_pad.add_theme_constant_override("margin_top", 4)
+	header.add_child(esc_pad)
+
+	var esc_lbl := Label.new()
+	esc_lbl.text = "[ESC] CLOSE"
+	esc_lbl.add_theme_font_size_override("font_size", 10)
+	esc_lbl.add_theme_color_override("font_color", C_DIM)
+	esc_pad.add_child(esc_lbl)
+
+	# Header divider
+	var hdr_div := ColorRect.new()
+	hdr_div.color = Color(C_BORDER.r, C_BORDER.g, C_BORDER.b, 0.5)
+	hdr_div.custom_minimum_size = Vector2(MENU_W, 1)
+	vbox.add_child(hdr_div)
+
+	# Tab bar
+	_tab_bar = HBoxContainer.new()
+	_tab_bar.custom_minimum_size = Vector2(MENU_W, 30)
+	_tab_bar.add_theme_constant_override("separation", 0)
+	vbox.add_child(_tab_bar)
+
+	var tab_names := ["AUDIO", "DISPLAY", "RENDERING", "BATTLE", "THEME"]
+	for i in tab_names.size():
+		var btn := Button.new()
+		btn.text = tab_names[i]
+		btn.custom_minimum_size = Vector2(MENU_W / tab_names.size(), 30)
+		btn.add_theme_font_size_override("font_size", 11)
+		btn.add_theme_color_override("font_color", C_TEXT)
+		btn.add_theme_color_override("font_focus_color", C_TEXT)
+		btn.add_theme_color_override("font_hover_color", C_TEXT)
+		btn.add_theme_color_override("font_pressed_color", C_TEXT)
+		var idx := i
+		btn.pressed.connect(func(): _switch_tab(idx))
+		_tab_bar.add_child(btn)
+		_tab_btns.append(btn)
+
+	var tab_div := ColorRect.new()
+	tab_div.color = C_BORDER
+	tab_div.custom_minimum_size = Vector2(MENU_W, 1)
+	vbox.add_child(tab_div)
+
+	# Content area
+	var content := Control.new()
+	content.custom_minimum_size = Vector2(MENU_W, MENU_H - 60)
+	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content.clip_contents = true
+	vbox.add_child(content)
+
+	var audio_page := _build_audio_page()
+	audio_page.set_anchors_preset(Control.PRESET_FULL_RECT)
+	content.add_child(audio_page)
+	_pages.append(audio_page)
+
+	var display_page := _build_display_page()
+	display_page.set_anchors_preset(Control.PRESET_FULL_RECT)
+	content.add_child(display_page)
+	_pages.append(display_page)
+
+	var rendering_page := _build_rendering_page()
+	rendering_page.set_anchors_preset(Control.PRESET_FULL_RECT)
+	content.add_child(rendering_page)
+	_pages.append(rendering_page)
+
+	var battle_page := _build_battle_page()
+	battle_page.set_anchors_preset(Control.PRESET_FULL_RECT)
+	content.add_child(battle_page)
+	_pages.append(battle_page)
+
+	var theme_page := _build_theme_page()
+	theme_page.set_anchors_preset(Control.PRESET_FULL_RECT)
+	content.add_child(theme_page)
+	_pages.append(theme_page)
+
+# ── Tab switching ─────────────────────────────────────────────────────────────
+func _switch_tab(idx: int) -> void:
+	_active_tab = idx
+	for i in _pages.size():
+		_pages[i].visible = (i == idx)
+	_style_tab_buttons(idx)
+	UISounds.play("tab_switch")
+
+func _style_tab_buttons(idx: int) -> void:
+	for i in _tab_btns.size():
+		var btn : Button = _tab_btns[i]
+		var active := (i == idx)
+		var sbox := StyleBoxFlat.new()
+		sbox.bg_color     = C_TAB_ACT if active else C_TAB_INACT
+		sbox.border_color = C_ACCENT if active else C_BORDER
+		sbox.set_border_width_all(0)
+		sbox.border_width_bottom = 2 if active else 0
+		sbox.set_content_margin_all(4)
+		for st in ["normal", "hover", "pressed", "focus"]:
+			btn.add_theme_stylebox_override(st, sbox)
+
+# ── AUDIO PAGE ────────────────────────────────────────────────────────────────
+func _build_audio_page() -> Control:
+	var scroll := ScrollContainer.new()
+	scroll.name = "AudioPage"
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var page := _make_padded_vbox(scroll)
+
+	if _pending.is_empty():
+		_pending = OPT_DEFAULTS.duplicate()
+
+	_add_section_header(page, "AUDIO")
+
+	var slider_data := [
+		["MASTER VOLUME", "master", _pending.master],
+		["MUSIC VOLUME",  "bgm",    _pending.bgm],
+		["SFX VOLUME",    "sfx",    _pending.sfx],
+	]
+	var slider_refs := []
+	for entry in slider_data:
+		var s := _add_slider_row(page, entry[0], 0.0, 2.0, 0.01, float(entry[2]),
+			func(v, k, lbl):
+				_pending[k] = v
+				lbl.text = "%d%%" % int(v * 100)
+				_apply_options(_pending)
+				_refresh_apply_btn(),
+			entry[1], "%d%%")
+		slider_refs.append(s)
+	_master_slider = slider_refs[0]
+	_bgm_slider    = slider_refs[1]
+	_sfx_slider    = slider_refs[2]
+
+	_add_apply_restore_row(page)
+	return scroll
+
+# ── DISPLAY PAGE ──────────────────────────────────────────────────────────────
+func _build_display_page() -> Control:
+	var scroll := ScrollContainer.new()
+	scroll.name = "DisplayPage"
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var page := _make_padded_vbox(scroll)
+
+	_add_section_header(page, "DISPLAY")
+
+	_ca_slider = _add_slider_row(page, "CHROMATIC ABERRATION", 0.0, 10.0, 0.1, _pending.ca,
+		func(v, k, lbl):
+			_pending.ca = v
+			lbl.text = "%.1f" % v
+			_apply_options(_pending)
+			_refresh_apply_btn(), "", "%.1f")
+	_brightness_slider = _add_slider_row(page, "BRIGHTNESS", 0.5, 2.0, 0.01, _pending.brightness,
+		func(v, k, lbl):
+			_pending.brightness = v
+			lbl.text = "%.2f" % v
+			_apply_options(_pending)
+			_refresh_apply_btn(), "", "%.2f")
+	_contrast_slider = _add_slider_row(page, "CONTRAST", 0.5, 2.0, 0.01, _pending.contrast,
+		func(v, k, lbl):
+			_pending.contrast = v
+			lbl.text = "%.2f" % v
+			_apply_options(_pending)
+			_refresh_apply_btn(), "", "%.2f")
+	_saturation_slider = _add_slider_row(page, "SATURATION", 0.0, 2.0, 0.01, _pending.saturation,
+		func(v, k, lbl):
+			_pending.saturation = v
+			lbl.text = "%.2f" % v
+			_apply_options(_pending)
+			_refresh_apply_btn(), "", "%.2f")
+
+	_add_apply_restore_row(page)
+	return scroll
+
+# ── RENDERING PAGE ────────────────────────────────────────────────────────────
+func _build_rendering_page() -> Control:
+	var scroll := ScrollContainer.new()
+	scroll.name = "RenderingPage"
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var page := _make_padded_vbox(scroll)
+
+	_add_section_header(page, "RENDERING")
+
+	_ssao_check = _add_toggle_row(page, "SSAO", _pending.ssao,
+		func(on): _pending.ssao = on; _apply_options(_pending); _refresh_apply_btn())
+	_ssil_check = _add_toggle_row(page, "SSIL", _pending.ssil,
+		func(on): _pending.ssil = on; _apply_options(_pending); _refresh_apply_btn())
+	_glow_check = _add_toggle_row(page, "GLOW", _pending.glow,
+		func(on): _pending.glow = on; _apply_options(_pending); _refresh_apply_btn())
+
+	_add_apply_restore_row(page)
+	return scroll
+
+# ── BATTLE PAGE ───────────────────────────────────────────────────────────────
+func _build_battle_page() -> Control:
+	var scroll := ScrollContainer.new()
+	scroll.name = "BattlePage"
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var page := _make_padded_vbox(scroll)
+	page.add_theme_constant_override("separation", 16)
+
+	_add_section_header(page, "BATTLE MODE")
+	_refresh_battle_mode_buttons(page)
+
+	return scroll
+
+var _battle_page_vbox : VBoxContainer = null
+
+func _refresh_battle_mode_buttons(container: VBoxContainer) -> void:
+	_battle_page_vbox = container
+	# Clear old mode buttons if re-building
+	for child in container.get_children():
+		if child.has_meta("battle_btn"):
+			child.queue_free()
+
+	var is_ctb := BattleSettings.battle_mode == BattleSettings.BattleMode.CTB
+
+	var ctb_btn := _make_option_btn(
+		"CTB — CHARGE TURN" + ("  ◄" if is_ctb else ""),
+		func():
+			BattleSettings.battle_mode = BattleSettings.BattleMode.CTB
+			_rebuild_battle_page())
+	ctb_btn.set_meta("battle_btn", true)
+	container.add_child(ctb_btn)
+
+	var atb_btn := _make_option_btn(
+		"ATB — ACTIVE TIME" + ("  ◄" if not is_ctb else ""),
+		func():
+			BattleSettings.battle_mode = BattleSettings.BattleMode.ATB
+			_rebuild_battle_page())
+	atb_btn.set_meta("battle_btn", true)
+	container.add_child(atb_btn)
+
+	_add_section_header(container, "BPM SCALE  —  %.0f%%" % (BattleSettings.atb_speed_multiplier * 100))
+
+	var speeds := [["LENTO (50%)", 0.5], ["MODERATO (100%)", 1.0],
+				   ["ALLEGRO (150%)", 1.5], ["PRESTO (200%)", 2.0]]
+	for pair in speeds:
+		var label_str : String = pair[0]
+		var val       : float  = pair[1]
+		var active := absf(BattleSettings.atb_speed_multiplier - val) < 0.01
+		var speed_btn := _make_option_btn(
+			label_str + ("  ◄" if active else ""),
+			func():
+				BattleSettings.atb_speed_multiplier = val
+				_rebuild_battle_page())
+		speed_btn.set_meta("battle_btn", true)
+		container.add_child(speed_btn)
+
+func _rebuild_battle_page() -> void:
+	# Rebuild the battle page content by replacing it
+	var idx := TAB_BATTLE
+	if idx < _pages.size():
+		var old_page = _pages[idx]
+		var parent = old_page.get_parent()
+		old_page.queue_free()
+		var new_page := _build_battle_page()
+		new_page.set_anchors_preset(Control.PRESET_FULL_RECT)
+		parent.add_child(new_page)
+		_pages[idx] = new_page
+		_switch_tab(idx)
+
+# ── THEME PAGE ────────────────────────────────────────────────────────────────
+func _build_theme_page() -> Control:
+	var scroll := ScrollContainer.new()
+	scroll.name = "ThemePage"
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var page := _make_padded_vbox(scroll)
+	page.add_theme_constant_override("separation", 12)
+
+	_add_section_header(page, "UI THEME")
+
+	var desc_lbl := Label.new()
+	desc_lbl.text = "Select a colour palette and sound style for the interface."
+	desc_lbl.add_theme_font_size_override("font_size", 11)
+	desc_lbl.add_theme_color_override("font_color", C_DIM)
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	page.add_child(desc_lbl)
+
+	_rebuild_theme_buttons(page)
+
+	return scroll
+
+func _rebuild_theme_buttons(container: VBoxContainer) -> void:
+	# Remove old theme buttons
+	for child in container.get_children():
+		if child.has_meta("theme_btn"):
+			child.queue_free()
+
+	for i in ThemeManager.UITheme.size():
+		var theme_id := i
+		var name_str := ThemeManager.theme_name(i)
+		var is_active := (ThemeManager.current_theme == i)
+
+		var row := HBoxContainer.new()
+		row.set_meta("theme_btn", true)
+		row.add_theme_constant_override("separation", 12)
+		container.add_child(row)
+
+		# Colour swatch
+		var swatch := ColorRect.new()
+		swatch.custom_minimum_size = Vector2(24, 24)
+		var swatch_pal := ThemeManager._build_palette(i)
+		swatch.color = swatch_pal.primary
+		row.add_child(swatch)
+
+		var theme_btn := _make_option_btn(
+			name_str + ("  ◄  ACTIVE" if is_active else ""),
+			func():
+				ThemeManager.set_theme(theme_id)
+				UISounds.play("confirm")
+				# Rebuild theme page buttons to update active marker
+				# (theme_changed signal will trigger _on_theme_changed which
+				#  only updates the palette — we still need UI rebuild)
+				call_deferred("_rebuild_all_theme_buttons"))
+		row.add_child(theme_btn)
+
+	# Sound style info
+	var sound_div := ColorRect.new()
+	sound_div.color = Color(C_BORDER.r, C_BORDER.g, C_BORDER.b, 0.4)
+	sound_div.custom_minimum_size = Vector2(0, 1)
+	sound_div.set_meta("theme_btn", true)
+	container.add_child(sound_div)
+
+	var sound_lbl := Label.new()
+	sound_lbl.set_meta("theme_btn", true)
+	sound_lbl.text = "UI SOUNDS: " + ThemeManager.current_sound_pack_name()
+	sound_lbl.add_theme_font_size_override("font_size", 11)
+	sound_lbl.add_theme_color_override("font_color", C_DIM)
+	container.add_child(sound_lbl)
+
+func _rebuild_all_theme_buttons() -> void:
+	var theme_page_idx := TAB_THEME
+	if theme_page_idx >= _pages.size():
+		return
+	var old = _pages[theme_page_idx]
+	var parent = old.get_parent()
+	old.queue_free()
+	var new_page := _build_theme_page()
+	new_page.set_anchors_preset(Control.PRESET_FULL_RECT)
+	parent.add_child(new_page)
+	_pages[theme_page_idx] = new_page
+	_switch_tab(TAB_THEME)
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+func _make_padded_vbox(scroll: ScrollContainer) -> VBoxContainer:
+	var page := VBoxContainer.new()
+	page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	page.add_theme_constant_override("separation", 18)
+	scroll.add_child(page)
+	var pad := MarginContainer.new()
+	pad.add_theme_constant_override("margin_left",   28)
+	pad.add_theme_constant_override("margin_top",    24)
+	pad.add_theme_constant_override("margin_right",  28)
+	pad.add_theme_constant_override("margin_bottom", 24)
+	pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	page.add_child(pad)
+	var inner := VBoxContainer.new()
+	inner.add_theme_constant_override("separation", 14)
+	inner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pad.add_child(inner)
+	return inner
+
+func _add_section_header(parent: VBoxContainer, text: String) -> void:
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.add_theme_font_size_override("font_size", 10)
+	lbl.add_theme_color_override("font_color", C_DIM)
+	parent.add_child(lbl)
+	var div := ColorRect.new()
+	div.color = C_BORDER
+	div.custom_minimum_size = Vector2(0, 1)
+	parent.add_child(div)
+
+func _add_slider_row(parent: VBoxContainer, label_text: String,
+		min_v: float, max_v: float, step: float, cur: float,
+		on_change: Callable, _key: String, fmt: String) -> HSlider:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	parent.add_child(row)
+
+	var lbl := Label.new()
+	lbl.text = label_text
+	lbl.custom_minimum_size = Vector2(200, 0)
+	lbl.add_theme_font_size_override("font_size", 12)
+	lbl.add_theme_color_override("font_color", C_TEXT)
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(lbl)
+
+	var slider := HSlider.new()
+	slider.min_value = min_v
+	slider.max_value = max_v
+	slider.step = step
+	slider.value = clampf(cur, min_v, max_v)
+	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(slider)
+
+	var val_lbl := Label.new()
+	val_lbl.custom_minimum_size = Vector2(52, 0)
+	val_lbl.add_theme_font_size_override("font_size", 11)
+	val_lbl.add_theme_color_override("font_color", C_DIM)
+	val_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	val_lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
+	if "%d%%" in fmt:
+		val_lbl.text = "%d%%" % int(cur * 100)
+	else:
+		val_lbl.text = fmt % cur
+	row.add_child(val_lbl)
+
+	slider.value_changed.connect(func(v: float): on_change.call(v, _key, val_lbl))
+	return slider
+
+func _add_toggle_row(parent: VBoxContainer, label_text: String,
+		cur: bool, on_toggle: Callable) -> CheckButton:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	parent.add_child(row)
+
+	var lbl := Label.new()
+	lbl.text = label_text
+	lbl.custom_minimum_size = Vector2(200, 0)
+	lbl.add_theme_font_size_override("font_size", 12)
+	lbl.add_theme_color_override("font_color", C_TEXT)
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(lbl)
+
+	var check := CheckButton.new()
+	check.button_pressed = cur
+	check.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	check.toggled.connect(on_toggle)
+	row.add_child(check)
+	return check
+
+func _make_option_btn(label: String, callback: Callable) -> Button:
+	var btn := Button.new()
+	btn.text = label
+	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn.add_theme_font_size_override("font_size", 12)
+	btn.add_theme_color_override("font_color", C_TEXT)
+	btn.add_theme_color_override("font_hover_color", C_TEXT)
+	btn.add_theme_color_override("font_pressed_color", C_TEXT)
+	btn.add_theme_color_override("font_focus_color", C_TEXT)
+	var flat := StyleBoxFlat.new()
+	flat.bg_color = Color(0, 0, 0, 0)
+	flat.set_content_margin_all(6)
+	var flat_h := StyleBoxFlat.new()
+	flat_h.bg_color = Color(C_ACCENT.r, C_ACCENT.g, C_ACCENT.b, 0.15)
+	flat_h.set_content_margin_all(6)
+	btn.add_theme_stylebox_override("normal", flat)
+	btn.add_theme_stylebox_override("focus",  flat)
+	btn.add_theme_stylebox_override("hover",  flat_h)
+	btn.add_theme_stylebox_override("pressed", flat_h)
+	btn.pressed.connect(callback)
+	return btn
+
+func _add_apply_restore_row(parent: VBoxContainer) -> void:
+	var spacer := Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	spacer.custom_minimum_size = Vector2(0, 10)
+	parent.add_child(spacer)
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	parent.add_child(row)
+
+	var btn_spacer := Control.new()
+	btn_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(btn_spacer)
+
+	var defaults_btn := _make_small_btn("RESTORE DEFAULTS")
+	defaults_btn.pressed.connect(func():
+		for k in OPT_DEFAULTS:
+			_pending[k] = OPT_DEFAULTS[k]
+		_sync_controls_to(_pending)
+		_apply_options(_pending)
+		_refresh_apply_btn()
+		UISounds.play("navigate"))
+	row.add_child(defaults_btn)
+
+	# Only create a new apply button if one doesn't exist yet
+	if _apply_btn == null:
+		_apply_btn = _make_small_btn("APPLY")
+		var sbox_apply := StyleBoxFlat.new()
+		sbox_apply.bg_color = C_ACCENT
+		sbox_apply.border_color = C_ACCENT
+		sbox_apply.set_border_width_all(1)
+		sbox_apply.set_content_margin_all(8)
+		_apply_btn.add_theme_stylebox_override("normal",  sbox_apply)
+		_apply_btn.add_theme_stylebox_override("hover",   sbox_apply)
+		_apply_btn.add_theme_stylebox_override("pressed", sbox_apply)
+		_apply_btn.add_theme_stylebox_override("focus",   sbox_apply)
+		_apply_btn.pressed.connect(func():
+			_committed = _pending.duplicate()
+			_refresh_apply_btn()
+			UISounds.play("confirm"))
+		_refresh_apply_btn()
+	row.add_child(_apply_btn)
+
+func _make_small_btn(label: String) -> Button:
+	var btn := Button.new()
+	btn.text = label
+	btn.add_theme_font_size_override("font_size", 11)
+	var sbox := StyleBoxFlat.new()
+	sbox.bg_color = C_TAB_INACT
+	sbox.border_color = C_BORDER
+	sbox.set_border_width_all(1)
+	sbox.set_content_margin_all(8)
+	btn.add_theme_stylebox_override("normal", sbox)
+	var sbox_h := sbox.duplicate() as StyleBoxFlat
+	sbox_h.bg_color = C_TAB_ACT
+	sbox_h.border_color = C_ACCENT
+	btn.add_theme_stylebox_override("hover",   sbox_h)
+	btn.add_theme_stylebox_override("pressed", sbox_h)
+	btn.add_theme_stylebox_override("focus",   sbox)
+	return btn
+
+func _refresh_apply_btn(_p: Dictionary = {}) -> void:
+	if _apply_btn == null:
+		return
+	var dirty := (_pending != _committed)
+	_apply_btn.disabled = not dirty
+	_apply_btn.modulate = Color(1, 1, 1, 1.0) if dirty else Color(1, 1, 1, 0.4)
+
+# ── Option application (mirrors party_menu logic) ─────────────────────────────
+func _apply_options(s: Dictionary) -> void:
+	var master_bus := AudioServer.get_bus_index("Master")
+	var bgm_bus    := AudioServer.get_bus_index("BGM")
+	var sfx_bus    := AudioServer.get_bus_index("SFX")
+	for pair in [[master_bus, s.master], [bgm_bus, s.bgm], [sfx_bus, s.sfx]]:
+		var bus : int  = pair[0]
+		var v   : float = pair[1]
+		if bus >= 0:
+			AudioServer.set_bus_volume_db(bus, linear_to_db(v) if v > 0.0 else -80.0)
+	var mat := _get_crt_mat()
+	if mat:
+		mat.set_shader_parameter("ca_strength", s.ca)
+		mat.set_shader_parameter("brightness",  s.brightness)
+		mat.set_shader_parameter("contrast",    s.contrast)
+		mat.set_shader_parameter("saturation",  s.saturation)
+	var env_paths := [
+		"GameRoot/BattleLayer/BattleScene/WorldEnvironment",
+		"GameRoot/DungeonMap3D/WorldEnvironment",
+	]
+	for ep in env_paths:
+		var enode := get_tree().root.get_node_or_null(ep)
+		if enode and enode.environment:
+			enode.environment.ssao_enabled = s.ssao
+			enode.environment.ssil_enabled = s.ssil
+			enode.environment.glow_enabled = s.glow
+
+func _get_crt_mat() -> ShaderMaterial:
+	var mesh := get_tree().root.get_node_or_null("GameRoot/TVOverlay/MeshInstance2D") as MeshInstance2D
+	return mesh.material as ShaderMaterial if (mesh and mesh.material) else null
+
+func _get_env() -> Environment:
+	var candidates := [
+		"GameRoot/BattleLayer/BattleScene/WorldEnvironment",
+		"GameRoot/DungeonMap3D/WorldEnvironment",
+	]
+	for path in candidates:
+		var node := get_tree().root.get_node_or_null(path)
+		if node and node.environment:
+			return node.environment
+	return null
+
+func _shader_param(mat: ShaderMaterial, key: String, default_val: Variant) -> Variant:
+	if mat == null: return default_val
+	var v = mat.get_shader_parameter(key)
+	return v if v != null else default_val

@@ -27,9 +27,10 @@ func _kb_apply_focus() -> void:
 		return
 	_kb_index = clampi(_kb_index, 0, list.size() - 1)
 	_kb_focused_btn = list[_kb_index]
+	var p := ThemeManager.palette
 	var sbox := StyleBoxFlat.new()
-	sbox.bg_color = Color(0.15, 0.45, 0.15, 0.30)
-	sbox.border_color = Color(0.30, 0.90, 0.45, 1.0)
+	sbox.bg_color = Color(p.primary.r * 0.3, p.primary.g * 0.3, p.primary.b * 0.3, 0.30)
+	sbox.border_color = p.focus_border
 	sbox.set_border_width_all(2)
 	sbox.set_content_margin_all(4)
 	_kb_focused_btn.add_theme_stylebox_override("normal", sbox)

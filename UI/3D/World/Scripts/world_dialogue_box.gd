@@ -14,8 +14,24 @@ const SPEAKER_COLORS : Dictionary = {
 }
 const DEFAULT_COLOR := Color(1.0, 0.966, 0.862, 1.0)
 const NARRATE_COLOR := Color(0.769, 0.724, 0.661, 1.0)
-const C_BG     := Color(0.06, 0.05, 0.04, 0.92)
-const C_BORDER := Color(0.35, 0.28, 0.22, 1.0)
+var C_BG     := Color(0.06, 0.05, 0.04, 0.92)
+var C_BORDER := Color(0.35, 0.28, 0.22, 1.0)
+
+func _refresh_palette() -> void:
+	var p := ThemeManager.palette
+	C_BG     = Color(p.bg.r, p.bg.g, p.bg.b, 0.92)
+	C_BORDER = p.dim
+
+func _on_theme_changed(_id: int) -> void:
+	_refresh_palette()
+	# Update panel stylebox in place
+	if is_instance_valid(_panel):
+		var sbox := StyleBoxFlat.new()
+		sbox.bg_color = C_BG
+		sbox.border_color = C_BORDER
+		sbox.set_border_width_all(2)
+		sbox.set_content_margin_all(16)
+		_panel.add_theme_stylebox_override("panel", sbox)
 
 var _panel       : PanelContainer
 var _speaker_lbl : Label
@@ -28,6 +44,8 @@ var is_playing := false
 
 
 func _ready() -> void:
+	_refresh_palette()
+	ThemeManager.theme_changed.connect(_on_theme_changed)
 	layer = 10
 	hide()
 	_build_ui()

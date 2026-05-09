@@ -3,18 +3,42 @@ extends Control
 # Displays key items from the run inventory (currently just the Segno).
 # Mount it as a child of DungeonUI. Call refresh() whenever inventory changes.
 
-const C_BG     := Color(0.06, 0.05, 0.04, 0.88)
-const C_BORDER := Color(0.35, 0.28, 0.22, 1.0)
-const C_ACCENT := Color(0.52, 0.42, 0.28, 1.0)
+var C_BG     := Color.BLACK
+var C_BORDER := Color.WHITE
+var C_ACCENT := Color.WHITE
 const C_SEGNO  := Color(0.32, 0.44, 0.58, 1.0)
-const C_TEXT   := Color(0.88, 0.83, 0.74, 1.0)
-const C_DIM    := Color(0.55, 0.50, 0.43, 1.0)
+var C_TEXT   := Color.WHITE
+var C_DIM    := Color.WHITE
+
+func _refresh_palette() -> void:
+	var p := ThemeManager.palette
+	C_BG     = Color(p.bg.r, p.bg.g, p.bg.b, 0.88)
+	C_BORDER = p.dim
+	C_ACCENT = p.secondary
+	C_TEXT   = p.text
+	C_DIM    = p.dim
+
+func _on_theme_changed(_id: int) -> void:
+	_refresh_palette()
+	# Restyle the background panel
+	var bg := get_child(0) if get_child_count() > 0 else null
+	if bg is PanelContainer:
+		var sbox := StyleBoxFlat.new()
+		sbox.bg_color = C_BG
+		sbox.border_color = C_BORDER
+		sbox.set_border_width_all(1)
+		sbox.set_content_margin_all(8)
+		(bg as PanelContainer).add_theme_stylebox_override("panel", sbox)
+	# Refresh item chips so they pick up new colors
+	refresh()
 
 var _hbox : HBoxContainer
 var _item_nodes : Array = []   # one PanelContainer per displayed item
 
 
 func _ready() -> void:
+	_refresh_palette()
+	ThemeManager.theme_changed.connect(_on_theme_changed)
 	# Pin to bottom-right of the screen viewport
 	set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	offset_left   = -320

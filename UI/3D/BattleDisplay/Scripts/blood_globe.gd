@@ -185,6 +185,7 @@ func _build():
 	_num_label.font_size     = 82
 	_num_label.outline_size  = 10
 	_num_label.outline_modulate = Color(0.0, 0.0, 0.0, 1.0)
+	_num_label.extra_cull_margin = 8.0
 	_num_label.position = Vector3(0, ring_y, 0)
 	add_child(_num_label)
 
@@ -277,7 +278,7 @@ func _make_token(value:int) -> Node3D:
 		mat.albedo_color = Color(0.95,0.22,0.18)
 
 	mi.set_surface_override_material(0,mat)
-
+	mi.extra_cull_margin = 8.0
 	return mi
 
 
@@ -310,6 +311,7 @@ func _rebuild_shield_tokens(shield: int) -> void:
 			mat.emission_energy_multiplier = 0.8
 			mat.shading_mode           = BaseMaterial3D.SHADING_MODE_UNSHADED
 			mi.material_override       = mat
+			mi.extra_cull_margin       = 8.0
 			node = mi
 		var angle := (TAU / count) * i
 		node.position = Vector3(sin(angle) * ring_radius * 0.85,

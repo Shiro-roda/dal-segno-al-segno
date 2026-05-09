@@ -335,9 +335,8 @@ func _process(delta):
 ## At 0.45, a character with bpm 10 takes ~22 seconds to fill to a Beat.
 const ATB_BASE_RATE : float = 1.0
 
-## Time scale applied to player ATB bars while the battle menu is open.
-## Keeps bars moving at a trickle instead of freezing — mirrors the
-## time-slow aesthetic without hard-stopping the gauge.
+## Time scale applied to ALL ATB bars while the battle menu is open.
+## Slows the whole battlefield equally — bullet-time aesthetic.
 const MENU_SLOW_MULT : float = 0.15
 
 ## Real-time tempo tick — runs every _process frame for both CTB and ATB.
@@ -384,10 +383,10 @@ func _tick_tempo(delta: float) -> void:
 		# Already at Beat threshold — don't advance past cap but allow pending check.
 		if actor.tempo_pool >= 100.0 + float(actor.tempo):
 			continue
-		# Compute per-actor effective dt: players run at MENU_SLOW_MULT while menu open.
+		# Compute per-actor effective dt: whole battlefield slows while menu open.
 		var actor_dt := dt
 		if BattleSettings.battle_mode == BattleSettings.BattleMode.ATB \
-				and _player_menu_open and actor.team == BattleActor.Team.PLAYER:
+				and _player_menu_open:
 			actor_dt *= MENU_SLOW_MULT
 		var pool_cap := 100.0 + float(actor.tempo)
 		var gain := float(actor.bpm)

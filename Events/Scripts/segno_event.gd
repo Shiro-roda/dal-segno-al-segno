@@ -7,13 +7,26 @@ extends Control
 signal event_finished   # dismissed without picking up, or placement acknowledged
 signal pickup_confirmed # player chose to pick up the Segno
 
-const C_BG       := Color(0.05, 0.04, 0.04, 1.0)
-const C_BORDER   := Color(0.35, 0.28, 0.22, 1.0)
-const C_ACCENT   := Color(0.52, 0.42, 0.28, 1.0)
-const C_SEGNO_DC := Color(0.45, 0.65, 0.35, 1.0)  # green  — D.C. al Segno
-const C_SEGNO_DS := Color(0.85, 0.60, 0.20, 1.0)  # amber  — D.S. al Segno
-const C_TEXT     := Color(0.88, 0.83, 0.74, 1.0)
-const C_DIM      := Color(0.55, 0.50, 0.43, 1.0)
+var C_BG       := Color.BLACK
+var C_BORDER   := Color.WHITE
+var C_ACCENT   := Color.WHITE
+const C_SEGNO_DC := Color(0.45, 0.65, 0.35, 1.0)
+const C_SEGNO_DS := Color(0.85, 0.60, 0.20, 1.0)
+var C_TEXT     := Color.WHITE
+var C_DIM      := Color.WHITE
+
+func _refresh_palette() -> void:
+	var p := ThemeManager.palette
+	C_BG     = p.bg
+	C_BORDER = p.dim
+	C_ACCENT = p.secondary
+	C_TEXT   = p.text
+	C_DIM    = p.dim
+
+func _on_theme_changed(_id: int) -> void:
+	_refresh_palette()
+	for c in get_children(): c.queue_free()
+	_build_ui()
 
 ## Placement mode: true if replacing an existing segno.
 var is_replacing : bool = false
@@ -26,7 +39,8 @@ var is_blocked_notice : bool = false
 
 
 func _ready() -> void:
-	GlobalTheme.apply(self)
+	_refresh_palette()
+	ThemeManager.theme_changed.connect(_on_theme_changed)
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	_build_ui()
 

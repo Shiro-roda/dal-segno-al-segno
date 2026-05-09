@@ -8,6 +8,7 @@
 [ext_resource type="Shader" uid="uid://cow4hovotygtk" path="res://Shaders/main.gdshader" id="7_mt7hb"]
 [ext_resource type="Shader" uid="uid://c7dhsbe1s7mgu" path="res://Shaders/post_processing.gdshader" id="8_2t1uq"]
 [ext_resource type="Shader" uid="uid://btm2rulspg8el" path="res://Shaders/battleglitch.gdshader" id="9_gtsmc"]
+[ext_resource type="Script" uid="uid://cubfx12f3uxdi" path="res://UI/2D/Scripts/system_menu.gd" id="10_dk0df"]
 [ext_resource type="Script" uid="uid://dcej0pqmf3vn3" path="res://UI/2D/BootSequence/boot_sequence.gd" id="11_nuie3"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_iusj4"]
@@ -143,3 +144,6 @@ mesh = SubResource("QuadMesh_melsq")
 [node name="MeshInstance2D" type="MeshInstance2D" parent="TVOverlay" unique_id=761569184]
 material = SubResource("ShaderMaterial_ylec3")
 mesh = SubResource("QuadMesh_6v30a")
+
+[node name="SystemMenu" type="CanvasLayer" parent="." unique_id=671668323 groups=["system_menu"]]
+script = ExtResource("10_dk0df")

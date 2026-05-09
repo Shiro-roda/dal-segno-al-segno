@@ -16,3 +16,4 @@ height = 0.12
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1837306829]
 mesh = SubResource("SphereMesh_o867c")
+extra_cull_margin = 8.0

@@ -33,6 +33,7 @@ height = 0.05
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1279183913]
 mesh = SubResource("SphereMesh_eep8e")
+extra_cull_margin = 8.0
 
 [node name="MeshInstance3D2" type="MeshInstance3D" parent="MeshInstance3D" unique_id=566343545]
 transform = Transform3D(0.9998976, -0.014311211, 0, 0.014311211, 0.9998976, 0, 0, 0, 1, 0, 0.0501709, 0)

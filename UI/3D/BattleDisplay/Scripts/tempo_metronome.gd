@@ -76,10 +76,11 @@ var _ring_angle : float  = 0.0
 # Active (incoming) layer.
 var _orbs          : Array = []
 var _orb_mats      : Array = []
+var _orb_emits     : Array = []   ## target emit multiplier per active orb
 var _target_orb_scale : float = 0.80
 
 # Outgoing layer.  Each entry carries its own blend metadata.
-# Each element: { node, mat, start_pos, target_pos, start_scale, start_alpha }
+# Each element: { node, mat, emit_mult, start_pos, target_pos, start_scale }
 var _retiring : Array = []
 
 ## 0 → 1 blend progress (shared by both layers).
@@ -156,22 +157,24 @@ func _rebuild_tier(tier: int) -> void:
 	# ── Spawn new orbs, giving each a launch origin from the old ring ──────
 	_orbs.clear()
 	_orb_mats.clear()
+	_orb_emits.clear()
 	_blend_t = 0.0
 
 	match tier:
 		2, 4, 6, 8, 10:
 			_target_orb_scale = ORB_SCALE_BY_COUNT.get(tier, 1.0)
-			var col : Color = C_IDLE if tier == 10 else C_ORB
+			var col       : Color = C_IDLE if tier == 10 else C_ORB
+			var emit_mult : float = 0.0   if tier == 10 else EMIT_ORB
 			for i in new_count:
 				# New orbs start at the old orb position nearest to their target,
 				# so they appear to blossom outward from the merge point.
 				var origin := _old_origin_for(i, new_count, old_count)
-				_spawn_orb(origin, 0.0, col, 0.0)
+				_spawn_orb(origin, 0.0, col, emit_mult)
 		100:
 			_ready_alpha      = 1.0
 			_was_ready        = true
 			_target_orb_scale = CENTER_SCALE
-			_spawn_orb(Vector3.ZERO, 0.0, C_READY, 0.0)
+			_spawn_orb(Vector3.ZERO, 0.0, C_READY, EMIT_READY)
 		_:
 			pass
 
@@ -212,6 +215,7 @@ func _retire_current_orbs(new_positions: Array, old_count: int, new_count: int) 
 		_retiring.append({
 			"node":        _orbs[i],
 			"mat":         _orb_mats[i] if i < _orb_mats.size() else null,
+			"emit_mult":   _orb_emits[i] if i < _orb_emits.size() else EMIT_ORB,
 			"start_pos":   _orbs[i].position,
 			"target_pos":  target_pos,
 			"start_scale": _orbs[i].scale.x,
@@ -238,10 +242,13 @@ func _spawn_orb(local_pos: Vector3, scale_f: float, col: Color, emit_mult: float
 			mat = StandardMaterial3D.new()
 			mat.shading_mode     = BaseMaterial3D.SHADING_MODE_UNSHADED
 			mat.transparency     = BaseMaterial3D.TRANSPARENCY_ALPHA
+			mat.depth_draw_mode  = BaseMaterial3D.DEPTH_DRAW_DISABLED
 			mat.emission_enabled = true
 			mat.albedo_color     = Color(col.r, col.g, col.b, 0.0)
 			mat.emission         = col * emit_mult
 			mi.set_surface_override_material(0, mat)
+			# Prevent distance-based frustum culling on dynamically spawned meshes.
+			mi.extra_cull_margin = 8.0
 	else:
 		var mi2  := MeshInstance3D.new()
 		var mesh := SphereMesh.new()
@@ -251,10 +258,13 @@ func _spawn_orb(local_pos: Vector3, scale_f: float, col: Color, emit_mult: float
 		mat = StandardMaterial3D.new()
 		mat.shading_mode     = BaseMaterial3D.SHADING_MODE_UNSHADED
 		mat.transparency     = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.depth_draw_mode  = BaseMaterial3D.DEPTH_DRAW_DISABLED
 		mat.emission_enabled = true
 		mat.albedo_color     = Color(col.r, col.g, col.b, 0.0)
 		mat.emission         = col * emit_mult
 		mi2.set_surface_override_material(0, mat)
+		# Prevent distance-based frustum culling on dynamically spawned meshes.
+		mi2.extra_cull_margin = 8.0
 		node = mi2
 
 	node.scale    = Vector3.ONE * scale_f
@@ -262,6 +272,7 @@ func _spawn_orb(local_pos: Vector3, scale_f: float, col: Color, emit_mult: float
 	_ring_root.add_child(node)
 	_orbs.append(node)
 	_orb_mats.append(mat)
+	_orb_emits.append(emit_mult)
 
 
 # ── Blend tick ────────────────────────────────────────────────────────────────
@@ -286,16 +297,13 @@ func _tick_blend(delta: float) -> void:
 		# Position: lerp from start toward the assigned new-orb target.
 		orb.position = entry["start_pos"].lerp(entry["target_pos"], 1.0 - t_out)
 
-		# Scale: shrink to zero.
-		var s : float = entry["start_scale"] * t_out
-		orb.scale = Vector3.ONE * s
-
-		# Alpha: fade out.
+		# Alpha: fade out (no scale change — new orb covers them as they converge).
 		var mat = entry["mat"]
+		var em  : float = entry["emit_mult"]
 		if mat is StandardMaterial3D:
 			var c : Color = mat.albedo_color
 			mat.albedo_color = Color(c.r, c.g, c.b, t_out)
-			mat.emission     = Color(c.r, c.g, c.b, 1.0) * (EMIT_ORB * t_out)
+			mat.emission     = Color(c.r, c.g, c.b, 1.0) * (em * t_out)
 
 	# ── New orbs: grow in, fade in ─────────────────────────────────────────
 	for i in _orbs.size():
@@ -303,9 +311,10 @@ func _tick_blend(delta: float) -> void:
 			continue
 		_orbs[i].scale = Vector3.ONE * (_target_orb_scale * t_in)
 		if i < _orb_mats.size() and _orb_mats[i] is StandardMaterial3D:
-			var c : Color = _orb_mats[i].albedo_color
+			var c  : Color = _orb_mats[i].albedo_color
+			var em : float = _orb_emits[i] if i < _orb_emits.size() else EMIT_ORB
 			_orb_mats[i].albedo_color = Color(c.r, c.g, c.b, t_in)
-			_orb_mats[i].emission     = Color(c.r, c.g, c.b, 1.0) * (EMIT_ORB * t_in)
+			_orb_mats[i].emission     = Color(c.r, c.g, c.b, 1.0) * (em * t_in)
 
 
 # ── Radius interpolation ──────────────────────────────────────────────────────
@@ -349,6 +358,11 @@ func _tick_spin(delta: float, tier: int, pool: float) -> void:
 
 func _tick_ready_dim(delta: float, pool: float) -> void:
 	if not _was_ready:
+		return
+	# If the tier has already changed away from 100 (new orbs are a different
+	# tier), stop immediately — don't repaint the incoming orbs.
+	if _current_tier != 100:
+		_was_ready = false
 		return
 	if pool < 99.0:
 		_ready_alpha = maxf(0.0, _ready_alpha - READY_DIM_SPEED * delta)

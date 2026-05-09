@@ -10,16 +10,17 @@ signal finished
 # ── Constants ─────────────────────────────────────────────────────────────────
 const FONT_MONO   := "res://UI/Themes/Fonts/SpaceMono-Bold.ttf"
 const FONT_TERM   := "res://UI/Themes/Fonts/TerminalVector.ttf"
-const C_GREEN     := Color(0.18, 1.00, 0.35, 1.0)
-const C_AMBER     := Color(1.00, 0.72, 0.08, 1.0)
-const C_RED       := Color(1.00, 0.22, 0.18, 1.0)
-const C_DIM       := Color(0.698, 0.788, 0.697, 0.7)
-const C_WHITE     := Color(0.92, 0.95, 0.92, 1.0)
-const C_BG        := Color(0.012, 0.018, 0.012, 1.0)
-const C_KEY_FACE  := Color(0.10, 0.13, 0.10, 1.0)
-const C_KEY_LIT_DUN   := Color(0.08, 0.55, 0.22, 1.0)
-const C_KEY_LIT_BAT     := Color(0.69, 0.365, 0.0, 1.0)
-const C_KEY_EDGE  := Color(0.30, 0.40, 0.30, 0.85)
+# Colours — refreshed from ThemeManager on ready and on theme change.
+var C_GREEN        := Color.WHITE
+var C_AMBER        := Color.WHITE
+var C_RED          := Color.WHITE
+var C_DIM          := Color.WHITE
+var C_WHITE        := Color.WHITE
+var C_BG           := Color.BLACK
+var C_KEY_FACE     := Color.BLACK
+var C_KEY_LIT_DUN  := Color.BLACK
+var C_KEY_LIT_BAT  := Color.BLACK
+var C_KEY_EDGE     := Color.BLACK
 const LINE_H      := 22.0
 const CHAR_DELAY  := 0.0   # seconds per character in typewriter
 const LINE_DELAY  := 0.24    # pause between POST lines
@@ -52,10 +53,34 @@ func _ready() -> void:
 	add_to_group("boot_sequence")
 	_font_mono = load(FONT_MONO) as Font
 	_font_term = load(FONT_TERM) as Font
+	_refresh_palette()
+	ThemeManager.theme_changed.connect(_on_theme_changed)
 	_build_draw_node()
 	_build_post_lines()
 	_build_skip_hint()
 	hide()
+
+
+func _refresh_palette() -> void:
+	var p := ThemeManager.palette
+	C_GREEN       = p.primary
+	C_AMBER       = p.secondary
+	C_RED         = p.alert
+	C_DIM         = p.dim
+	C_WHITE       = p.text
+	C_BG          = p.bg
+	C_KEY_FACE    = p.key_face
+	C_KEY_LIT_DUN = p.key_lit_primary
+	C_KEY_LIT_BAT = p.key_lit_secondary
+	C_KEY_EDGE    = p.key_edge
+
+
+func _on_theme_changed(_id: int) -> void:
+	_refresh_palette()
+	# Rebuild post lines so colour references in them are fresh
+	_build_post_lines()
+	if _draw_node:
+		_draw_node.queue_redraw()
 
 
 func show_boot() -> void:

@@ -39,6 +39,8 @@ MetaProgress="*uid://lgos2n2isx0l"
 MCPRuntime="*uid://bmxsx0apnxbgi"
 BattleSettings="*res://Systems/BattleSys/BattleSettings.gd"
 AutobattleStrategies="*res://Systems/BattleSys/AutobattleStrategies.gd"
+ThemeManager="*res://UI/Themes/Scripts/theme_manager.gd"
+UISounds="*res://UI/2D/Scripts/ui_sounds.gd"
 
 [dialogic]
 

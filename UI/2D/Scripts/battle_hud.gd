@@ -129,12 +129,23 @@ func push_log(msg: String) -> void:
 		_log_scroll.scroll_vertical = 0
 
 
-const HUD_BG     := Color(0.08, 0.07, 0.06, 0.96)
-const HUD_BORDER := Color(0.35, 0.28, 0.22, 1.0)
-const HUD_ACCENT := Color(0.52, 0.42, 0.28, 1.0)
-const HUD_TEXT   := Color(0.88, 0.83, 0.74, 1.0)
-const HUD_DIM    := Color(0.45, 0.40, 0.35, 1.0)
+var HUD_BG     := Color(0.08, 0.07, 0.06, 0.96)
+var HUD_BORDER := Color(0.35, 0.28, 0.22, 1.0)
+var HUD_ACCENT := Color(0.52, 0.42, 0.28, 1.0)
+var HUD_TEXT   := Color(0.88, 0.83, 0.74, 1.0)
+var HUD_DIM    := Color(0.45, 0.40, 0.35, 1.0)
 const HUD_FONT   := "res://UI/Themes/Fonts/TerminalVector.ttf"
+
+func _refresh_palette() -> void:
+	var p := ThemeManager.palette
+	HUD_BG     = Color(p.bg.r, p.bg.g, p.bg.b, 0.96)
+	HUD_BORDER = p.dim
+	HUD_ACCENT = p.secondary
+	HUD_TEXT   = p.text
+	HUD_DIM    = p.dim
+
+func _on_theme_changed(_id: int) -> void:
+	_refresh_palette()
 
 func _make_hud_panel_style(accent_bottom: bool = false, accent_top: bool = false) -> StyleBoxFlat:
 	var s := StyleBoxFlat.new()
@@ -309,6 +320,9 @@ func sync_overview_button(is_overview: bool) -> void:
 
 
 func setup(actor_list : Array):
+	_refresh_palette()
+	if not ThemeManager.theme_changed.is_connected(_on_theme_changed):
+		ThemeManager.theme_changed.connect(_on_theme_changed)
 	_ready_log()
 	_ready_queue()
 	_apply_hud_style()

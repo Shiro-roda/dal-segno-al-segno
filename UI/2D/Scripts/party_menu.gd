@@ -13,7 +13,7 @@ const TAB_SKILLS    := 1
 const TAB_INVENTORY := 2
 const TAB_BESTIARY  := 3
 const TAB_MANUAL    := 4
-const TAB_OPTIONS   := 5
+# TAB_OPTIONS removed — now lives in the ESC system menu
 
 var _open       := false
 var _active_tab := TAB_PARTY
@@ -54,8 +54,8 @@ func _kb_apply_focus() -> void:
 	_kb_item_index = clampi(_kb_item_index, 0, list.size() - 1)
 	_kb_focused_btn = list[_kb_item_index]
 	var focused_sbox := StyleBoxFlat.new()
-	focused_sbox.bg_color = Color(0.72, 0.18, 0.18, 0.22)
-	focused_sbox.border_color = Color(0.92, 0.76, 0.28, 1.0)  # gold
+	focused_sbox.bg_color = Color(C_ACCENT.r, C_ACCENT.g, C_ACCENT.b, 0.22)
+	focused_sbox.border_color = C_GOLD  # gold / amber
 	focused_sbox.set_border_width_all(2)
 	focused_sbox.set_content_margin_all(6)
 	_kb_focused_btn.add_theme_stylebox_override("normal", focused_sbox)
@@ -115,13 +115,15 @@ var _dim_rect   : ColorRect
 # -----------------------------------------------------------------------
 # Colours / style constants
 # -----------------------------------------------------------------------
-const C_BG        := Color(0.08, 0.07, 0.06, 0.97)   # near-black parchment
-const C_BORDER    := Color(0.35, 0.28, 0.22, 1.0)    # worn sepia border
-const C_ACCENT    := Color(0.72, 0.18, 0.18, 1.0)    # dull crimson
-const C_TEXT      := Color(0.88, 0.83, 0.74, 1.0)    # aged paper
-const C_DIM       := Color(0.55, 0.50, 0.43, 1.0)    # muted label
-const C_TAB_ACT   := Color(0.72, 0.18, 0.18, 1.0)    # active tab = accent
-const C_TAB_INACT := Color(0.18, 0.15, 0.12, 1.0)    # inactive tab
+# Colours — refreshed from ThemeManager on ready and on theme change.
+var C_BG        := Color.BLACK
+var C_BORDER    := Color.WHITE
+var C_ACCENT    := Color.WHITE
+var C_TEXT      := Color.WHITE
+var C_DIM       := Color.WHITE
+var C_GOLD      := Color.WHITE
+var C_TAB_ACT   := Color.WHITE
+var C_TAB_INACT := Color.BLACK
 
 const W := 1280
 const H := 960
@@ -149,9 +151,74 @@ func _ready() -> void:
 
 	layer = 127   # above everything
 	add_to_group("party_menu")
+	_refresh_palette()
+	ThemeManager.theme_changed.connect(_on_theme_changed)
 	_build_ui()
 	_build_dim_overlay()
 	hide_menu()
+
+
+func _refresh_palette() -> void:
+	var p := ThemeManager.palette
+	C_BG        = p.bg
+	C_BORDER    = p.dim
+	C_ACCENT    = p.primary
+	C_TEXT      = p.text
+	C_DIM       = p.dim
+	C_GOLD      = p.secondary
+	C_TAB_ACT   = p.primary
+	C_TAB_INACT = p.hover
+
+
+func _on_theme_changed(_id: int) -> void:
+	_refresh_palette()
+	_rebuild_ui()
+
+## Tear down and rebuild the entire panel so new palette colors are applied.
+func _rebuild_ui() -> void:
+	var was_open := _open
+	var saved_tab := _active_tab
+	# Destroy existing panel
+	if is_instance_valid(_root_panel):
+		_root_panel.queue_free()
+		_root_panel = null
+	# Reset all node refs so _build_ui() recreates them cleanly
+	_tab_bar = null
+	_tab_btns.clear()
+	_pages.clear()
+	_party_rows.clear()
+	_party_cap_lbl = null
+	_inventory_vbox = null
+	_inventory_money = null
+	_skill_detail_name = null
+	_skill_detail_type = null
+	_skill_detail_cost = null
+	_skill_detail_summary = null
+	_skill_detail_desc = null
+	_skill_list_vbox = null
+	_skill_btns.clear()
+	_master_slider = null
+	_bgm_slider = null
+	_sfx_slider = null
+	_ca_slider = null
+	_brightness_slider = null
+	_contrast_slider = null
+	_saturation_slider = null
+	_ssao_check = null
+	_ssil_check = null
+	_glow_check = null
+	_apply_btn = null
+	_bestiary_list_vbox = null
+	_bestiary_detail_vbox = null
+	_bestiary_selected = null
+	_build_ui()
+	if was_open:
+		_root_panel.visible = true
+		_switch_tab(saved_tab)
+		_kb_item_index = 0
+		call_deferred("_kb_apply_focus")
+	else:
+		_root_panel.visible = false
 
 # -----------------------------------------------------------------------
 func _input(event: InputEvent) -> void:
@@ -231,7 +298,7 @@ func _input(event: InputEvent) -> void:
 func _build_dim_overlay() -> void:
 	_dim_layer = CanvasLayer.new()
 	_dim_layer.layer = 126  # just below the menu panel at 127
-	get_tree().root.add_child(_dim_layer)
+	get_tree().root.call_deferred("add_child", _dim_layer)
 	_dim_rect = ColorRect.new()
 	_dim_rect.color = Color(0.0, 0.0, 0.0, 0.55)
 	_dim_rect.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -361,7 +428,6 @@ func _build_ui() -> void:
 	style.set_content_margin_all(0)
 	_root_panel.add_theme_stylebox_override("panel", style)
 	add_child(_root_panel)
-	GlobalTheme.apply(_root_panel)
 
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 0)
@@ -374,7 +440,7 @@ func _build_ui() -> void:
 	vbox.add_child(_tab_bar)
 
 #	var tab_names := ["PARTY", "SKILLS", "ITEMS", "OPTIONS"]
-	var tab_names := ["PARTY", "SKILLS", "ITEMS", "BESTIARY", "MANUAL", "OPTIONS"]
+	var tab_names := ["PARTY", "SKILLS", "ITEMS", "BESTIARY", "MANUAL"]
 	for i in tab_names.size():
 		var btn := Button.new()
 		btn.text = tab_names[i]
@@ -437,12 +503,7 @@ func _build_ui() -> void:
 	manual_page.set_anchors_preset(Control.PRESET_FULL_RECT)
 	content.add_child(manual_page)
 	_pages.append(manual_page)
-	
-	# Options page
-	var options_page := _build_options_page()
-	options_page.set_anchors_preset(Control.PRESET_FULL_RECT)
-	content.add_child(options_page)
-	_pages.append(options_page)
+	# Options page removed — moved to ESC system menu
 
 # -----------------------------------------------------------------------
 # PARTY PAGE
@@ -840,7 +901,7 @@ func _populate_skill_list() -> void:
 			flat.bg_color = Color(0, 0, 0, 0)
 			flat.set_content_margin_all(0)
 			var flat_hover := StyleBoxFlat.new()
-			flat_hover.bg_color = Color(0.72, 0.18, 0.18, 0.18)
+			flat_hover.bg_color = Color(C_ACCENT.r, C_ACCENT.g, C_ACCENT.b, 0.18)
 			flat_hover.set_content_margin_all(0)
 			btn.add_theme_stylebox_override("normal",  flat)
 			btn.add_theme_stylebox_override("focus",   flat)
@@ -1360,7 +1421,7 @@ func _refresh_bestiary() -> void:
 		flat.bg_color = Color(0, 0, 0, 0)
 		flat.set_content_margin_all(0)
 		var flat_hover := StyleBoxFlat.new()
-		flat_hover.bg_color = Color(0.72, 0.18, 0.18, 0.18)
+		flat_hover.bg_color = Color(C_ACCENT.r, C_ACCENT.g, C_ACCENT.b, 0.18)
 		flat_hover.set_content_margin_all(0)
 		btn.add_theme_stylebox_override("normal",  flat)
 		btn.add_theme_stylebox_override("focus",   flat)
@@ -2139,13 +2200,17 @@ func _build_options_page() -> Control:
 	# Set initial Apply button state
 	_refresh_apply_btn(_pending)
 
-	# Close hint
+	# Close hint + system menu hint
+	var hint_row := HBoxContainer.new()
+	hint_row.add_theme_constant_override("separation", 0)
+	_root_panel.add_child(hint_row)
 	var hint := Label.new()
-	hint.text = "[TAB] close"
+	hint.text = "  [TAB] close    [ESC] system"
 	hint.add_theme_font_size_override("font_size", 10)
 	hint.add_theme_color_override("font_color", C_DIM)
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	inner.add_child(hint)
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hint_row.add_child(hint)
 
 	# --- Session actions ---
 	var session_lbl := Label.new()

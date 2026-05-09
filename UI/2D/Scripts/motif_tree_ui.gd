@@ -5,15 +5,38 @@ extends Control
 
 signal closed
 
-const C_BG       := Color(0.04, 0.03, 0.03, 1.0)
-const C_TEXT     := Color(0.88, 0.83, 0.74, 1.0)
-const C_DIM      := Color(0.45, 0.40, 0.35, 1.0)
-const C_ACCENT   := Color(0.72, 0.18, 0.18, 1.0)
-const C_HOVER    := Color(0.20, 0.08, 0.08, 1.0)
+var C_BG       := Color.BLACK
+var C_TEXT     := Color.WHITE
+var C_DIM      := Color.WHITE
+var C_ACCENT   := Color.WHITE
+var C_HOVER    := Color.BLACK
 const C_UNLOCKED := Color(0.18, 0.50, 0.22, 1.0)
 const C_LOCKED   := Color(0.25, 0.22, 0.20, 1.0)
 const C_AVAIL    := Color(0.55, 0.45, 0.12, 1.0)
 const FONT_PATH  := "res://UI/Themes/Fonts/TerminalVector.ttf"
+
+func _refresh_palette() -> void:
+	var p := ThemeManager.palette
+	C_BG     = p.bg
+	C_TEXT   = p.text
+	C_DIM    = p.dim
+	C_ACCENT = p.primary
+	C_HOVER  = p.hover
+
+func _on_theme_changed(_id: int) -> void:
+	_refresh_palette()
+	for c in get_children(): c.queue_free()
+	_points_label = null
+	_detail_panel = null
+	_detail_name = null
+	_detail_char = null
+	_detail_skill = null
+	_detail_desc = null
+	_detail_cost = null
+	_unlock_btn = null
+	_node_buttons.clear()
+	_selected_id = ""
+	_build_ui()
 
 var _font : Font
 var _selected_id : String = ""
@@ -32,6 +55,8 @@ var _node_buttons  : Dictionary = {}   # motif_id -> Button
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
+	_refresh_palette()
+	ThemeManager.theme_changed.connect(_on_theme_changed)
 	_font = load(FONT_PATH) if ResourceLoader.exists(FONT_PATH) else ThemeDB.fallback_font
 	_build_ui()
 	MetaProgress.motif_points_changed.connect(_on_points_changed)

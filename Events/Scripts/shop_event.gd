@@ -6,13 +6,28 @@ extends Control
 
 signal event_finished
 
-const C_BG     := Color(0.05, 0.04, 0.04, 1.0)
-const C_BORDER := Color(0.35, 0.28, 0.22, 1.0)
-const C_ACCENT := Color(0.72, 0.55, 0.18, 1.0)  # warm gold
-const C_TEXT   := Color(0.88, 0.83, 0.74, 1.0)
-const C_DIM    := Color(0.55, 0.50, 0.43, 1.0)
-const C_RED    := Color(0.85, 0.22, 0.22, 1.0)
-const C_GREEN  := Color(0.25, 0.75, 0.35, 1.0)
+var C_BG     := Color.BLACK
+var C_BORDER := Color.WHITE
+var C_ACCENT := Color.WHITE
+var C_TEXT   := Color.WHITE
+var C_DIM    := Color.WHITE
+const C_RED   := Color(0.85, 0.22, 0.22, 1.0)
+const C_GREEN := Color(0.25, 0.75, 0.35, 1.0)
+
+func _refresh_palette() -> void:
+	var p := ThemeManager.palette
+	C_BG     = p.bg
+	C_BORDER = p.dim
+	C_ACCENT = p.secondary
+	C_TEXT   = p.text
+	C_DIM    = p.dim
+
+func _on_theme_changed(_id: int) -> void:
+	_refresh_palette()
+	for c in get_children(): c.queue_free()
+	_item_rows.clear()
+	_money_lbl = null
+	_build_ui()
 
 ## Injected by dungeon_controller before _ready.
 var run_state    : RunState        = null
@@ -63,7 +78,8 @@ var _item_rows  : Array = []
 
 
 func _ready() -> void:
-	GlobalTheme.apply(self)
+	_refresh_palette()
+	ThemeManager.theme_changed.connect(_on_theme_changed)
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	_generate_stock()
 	_build_ui()

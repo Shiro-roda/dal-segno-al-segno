@@ -4,10 +4,40 @@ class_name InventoryBar
 # Lives as its own CanvasLayer in game_root so anchoring is always viewport-relative.
 # layer = 50 keeps it above dungeon/battle but below the TV overlay (layer 100+).
 
-const C_BG       := Color(0.06, 0.05, 0.05, 0.92)
-const C_BORDER   := Color(0.35, 0.28, 0.22, 1.0)
-const C_DIM      := Color(0.45, 0.40, 0.35, 1.0)
-const C_TEXT     := Color(0.88, 0.83, 0.74, 1.0)
+var C_BG     := Color(0.06, 0.05, 0.05, 0.92)
+var C_BORDER := Color(0.35, 0.28, 0.22, 1.0)
+var C_DIM    := Color(0.45, 0.40, 0.35, 1.0)
+var C_TEXT   := Color(0.88, 0.83, 0.74, 1.0)
+
+func _refresh_palette() -> void:
+	var p := ThemeManager.palette
+	C_BG     = Color(p.bg.r, p.bg.g, p.bg.b, 0.92)
+	C_BORDER = p.dim
+	C_DIM    = p.dim
+	C_TEXT   = p.text
+
+func _on_theme_changed(_id: int) -> void:
+	_refresh_palette()
+	# Rebuild entire UI so color changes take effect
+	for c in get_children(): c.queue_free()
+	_phase_lbl = null
+	_phase_sbox = null
+	_annotation_lbl = null
+	_pip_row = null
+	_pip_nodes.clear()
+	_excess_lbl = null
+	_reroll_lbl = null
+	_road_lbl = null
+	_money_lbl = null
+	_cap_lbl = null
+	_chan_btns.clear()
+	_last_charges = -1
+	_last_phase = -1
+	_last_excess = -1
+	_last_rerolls = -1
+	_last_road = -1
+	_last_money = -1
+	_build_ui()
 # Per-pip colours: R, G, B at three fill states
 const C_PIP_EMPTY := Color(0.082, 0.082, 0.097, 1.0)  # all pips unlit
 const C_PIP_RGB_PART := [
@@ -63,6 +93,8 @@ var _last_money   : int  = -1
 func _ready() -> void:
 	layer = 50  # above dungeon/battle, below TV overlay
 	add_to_group("phase_hud")
+	_refresh_palette()
+	ThemeManager.theme_changed.connect(_on_theme_changed)
 	_build_ui()
 	call_deferred("_connect_party_menu")
 

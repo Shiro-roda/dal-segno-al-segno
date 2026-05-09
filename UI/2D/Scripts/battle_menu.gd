@@ -38,20 +38,34 @@ signal closed()
 signal actor_commanding(actor: BattleActor)
 
 # ── Style ────────────────────────────────────────────────────────────────────
-const C_BG      := Color(0.051, 0.039, 0.039, 1.0)
-const C_PANEL   := Color(0.09, 0.08, 0.07, 1.0)
-const C_BORDER  := Color(0.28, 0.22, 0.18, 1.0)
-const C_ACCENT  := Color(0.65, 0.16, 0.16, 1.0)
-const C_TEXT    := Color(0.88, 0.83, 0.74, 1.0)
-const C_DIM     := Color(0.50, 0.45, 0.38, 1.0)
-const C_GREEN   := Color(0.28, 0.82, 0.42, 1.0)
-const C_BLUE    := Color(0.278, 0.765, 0.988, 1.0)
-const C_RED     := Color(0.95, 0.28, 0.28, 1.0)
-const C_GOLD    := Color(0.92, 0.76, 0.28, 1.0)
-const C_SEL     := Color(0.18, 0.14, 0.10, 1.0)
-# Tint colours bridging connected half-columns
-const C_WARM_BG := Color(0.10, 0.07, 0.05, 1.0)  # party ↔ action-top
-const C_COOL_BG := Color(0.05, 0.07, 0.10, 1.0)  # parts ↔ enemy
+# Colours — refreshed from ThemeManager on ready and on theme change.
+var C_BG      := Color.BLACK
+var C_PANEL   := Color.BLACK
+var C_BORDER  := Color.WHITE
+var C_ACCENT  := Color.WHITE
+var C_TEXT    := Color.WHITE
+var C_DIM     := Color.WHITE
+const C_GREEN  := Color(0.28, 0.82, 0.42, 1.0)
+const C_BLUE   := Color(0.278, 0.765, 0.988, 1.0)
+var C_RED     := Color.WHITE
+var C_GOLD    := Color.WHITE
+var C_SEL     := Color.BLACK
+var C_WARM_BG := Color.BLACK
+var C_COOL_BG := Color.BLACK
+
+func _refresh_palette() -> void:
+	var p := ThemeManager.palette
+	C_BG      = p.bg
+	C_PANEL   = Color(p.bg.r + 0.04, p.bg.g + 0.04, p.bg.b + 0.04, 1.0)
+	C_BORDER  = p.dim
+	C_ACCENT  = p.secondary
+	C_TEXT    = p.text
+	C_DIM     = p.dim
+	C_RED     = p.alert
+	C_GOLD    = p.secondary
+	C_SEL     = p.hover
+	C_WARM_BG = Color(p.bg.r + 0.03, p.bg.g + 0.02, p.bg.b + 0.01, 1.0)
+	C_COOL_BG = Color(p.bg.r + 0.01, p.bg.g + 0.02, p.bg.b + 0.03, 1.0)
 const FONT_PATH := "res://UI/Themes/Fonts/TerminalVector.ttf"
 
 # ── Selection stage ───────────────────────────────────────────────────────────
@@ -118,7 +132,8 @@ func _kb_apply_focus() -> void:
 	# Stage.DONE: focus the confirm button directly
 	if _stage == Stage.DONE:
 		if is_instance_valid(_confirm_btn) and not _confirm_btn.disabled:
-			var cf := StyleBoxFlat.new(); cf.bg_color = Color(0.22, 0.16, 0.04, 1.0)
+			var cf := StyleBoxFlat.new()
+			cf.bg_color = Color(C_GOLD.r*0.22, C_GOLD.g*0.16, C_GOLD.b*0.04, 1.0)
 			cf.border_color = C_GOLD; cf.set_border_width_all(2); cf.set_content_margin_all(7)
 			_confirm_btn.add_theme_stylebox_override("normal", cf)
 			_kb_focused_btn = _confirm_btn
@@ -204,10 +219,15 @@ var _log_scroll       : ScrollContainer  # col4 scroll container — auto-scroll
 func _ready() -> void:
 	layer = 110
 	add_to_group("battle_menu")
+	_refresh_palette()
+	ThemeManager.theme_changed.connect(_on_theme_changed)
 	_font = load(FONT_PATH) if ResourceLoader.exists(FONT_PATH) else ThemeDB.fallback_font
 	_build_open_button()
 	_build_panel()
 	_panel.hide()
+
+func _on_theme_changed(_id: int) -> void:
+	_refresh_palette()
 
 func _process(_delta: float) -> void:
 	if _open and is_instance_valid(_tempo_score):
@@ -430,9 +450,11 @@ func _build_open_button() -> void:
 	if _font: _open_btn.add_theme_font_override("font", _font)
 	_open_btn.add_theme_font_size_override("font_size", 13)
 	for cn in ["font_color","font_hover_color","font_pressed_color"]: _open_btn.add_theme_color_override(cn, C_TEXT)
-	var sn := StyleBoxFlat.new(); sn.bg_color = Color(0.10,0.08,0.07,0.92); sn.border_color = C_ACCENT
+	var sn := StyleBoxFlat.new(); sn.bg_color = Color(C_BG.r+0.08, C_BG.g+0.06, C_BG.b+0.05, 0.92)
+	sn.border_color = C_GOLD
 	sn.set_border_width_all(1); sn.set_content_margin_all(6)
-	var sh := sn.duplicate() as StyleBoxFlat; sh.bg_color = Color(0.22,0.10,0.08,0.97)
+	var sh := sn.duplicate() as StyleBoxFlat
+	sh.bg_color = Color(C_GOLD.r*0.22, C_GOLD.g*0.14, C_GOLD.b*0.06, 0.97)
 	for st in ["normal","focus"]:   _open_btn.add_theme_stylebox_override(st, sn)
 	for st in ["hover","pressed"]:  _open_btn.add_theme_stylebox_override(st, sh)
 	_open_btn.pressed.connect(_on_open_btn_pressed)
@@ -624,9 +646,12 @@ func _make_party_card(a: BattleActor) -> Control:
 	var card := PanelContainer.new()
 	var cs := StyleBoxFlat.new(); cs.set_content_margin_all(8)
 	if is_active:
-		cs.bg_color = Color(0.18,0.12,0.04); cs.border_color = C_GOLD; cs.set_border_width_all(2)
+		cs.bg_color = Color(C_GOLD.r*0.18, C_GOLD.g*0.12, C_GOLD.b*0.04, 1.0)
+		cs.border_color = C_GOLD; cs.set_border_width_all(2)
 	elif is_ready:
-		cs.bg_color = Color(0.07,0.12,0.06); cs.border_color = C_GREEN; cs.set_border_width_all(1)
+		cs.bg_color = Color(C_GREEN.r*0.10, C_GREEN.g*0.10, C_GREEN.b*0.06, 1.0)
+		cs.border_color = Color(C_GREEN.r*0.55, C_GREEN.g*0.55, C_GREEN.b*0.45, 1.0)
+		cs.set_border_width_all(1)
 	else:
 		cs.bg_color = C_PANEL; cs.border_color = C_BORDER; cs.set_border_width_all(1)
 	card.add_theme_stylebox_override("panel", cs); card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -663,7 +688,9 @@ func _make_party_card(a: BattleActor) -> Control:
 		area.set_anchors_preset(Control.PRESET_FULL_RECT); area.text = ""
 		var t := StyleBoxEmpty.new()
 		for st in ["normal","focus"]: area.add_theme_stylebox_override(st, t)
-		var hs := StyleBoxFlat.new(); hs.bg_color = Color(0.12,0.20,0.10,0.6); hs.set_border_width_all(0)
+		var hs := StyleBoxFlat.new()
+		hs.bg_color = Color(C_GREEN.r*0.12, C_GREEN.g*0.12, C_GREEN.b*0.08, 0.5)
+		hs.set_border_width_all(0)
 		for st in ["hover","pressed"]: area.add_theme_stylebox_override(st, hs)
 		area.pressed.connect(func(): _on_ready_actor_selected(cap_a))
 		area.set_meta("card_style", cs)
@@ -675,7 +702,9 @@ func _make_party_card(a: BattleActor) -> Control:
 		area.set_anchors_preset(Control.PRESET_FULL_RECT); area.text = ""
 		var t := StyleBoxEmpty.new()
 		for st in ["normal","focus"]: area.add_theme_stylebox_override(st, t)
-		var hs := StyleBoxFlat.new(); hs.bg_color = Color(0.10,0.10,0.18,0.5); hs.set_border_width_all(0)
+		var hs := StyleBoxFlat.new()
+		hs.bg_color = Color(C_GOLD.r*0.12, C_GOLD.g*0.10, C_GOLD.b*0.04, 0.5)
+		hs.set_border_width_all(0)
 		for st in ["hover","pressed"]: area.add_theme_stylebox_override(st, hs)
 		area.pressed.connect(func(): _on_any_actor_selected(cap_a))
 		area.set_meta("card_style", cs)
@@ -734,10 +763,13 @@ func _section_btn(txt: String, cb: Callable) -> Button:
 	if _font: b.add_theme_font_override("font", _font)
 	b.add_theme_font_size_override("font_size", 13)
 	for cn in ["font_color","font_hover_color","font_pressed_color"]: b.add_theme_color_override(cn, C_TEXT)
-	var sn := StyleBoxFlat.new(); sn.bg_color = Color(0.12,0.09,0.06)
+	var sn := StyleBoxFlat.new()
+	sn.bg_color = Color(C_BG.r+0.06, C_BG.g+0.05, C_BG.b+0.04, 1.0)
 	sn.border_color = Color(C_GOLD.r, C_GOLD.g, C_GOLD.b, 0.4)
 	sn.set_border_width_all(1); sn.set_content_margin_all(8)
-	var sh := sn.duplicate() as StyleBoxFlat; sh.bg_color = Color(0.20,0.14,0.06); sh.border_color = C_GOLD
+	var sh := sn.duplicate() as StyleBoxFlat
+	sh.bg_color = Color(C_GOLD.r*0.20, C_GOLD.g*0.14, C_GOLD.b*0.06, 1.0)
+	sh.border_color = C_GOLD
 	for st in ["normal","focus"]:   b.add_theme_stylebox_override(st, sn)
 	for st in ["hover","pressed"]:  b.add_theme_stylebox_override(st, sh)
 	b.pressed.connect(cb); return b
@@ -800,10 +832,12 @@ func _refresh_tab_highlight() -> void:
 	var row := _section_col.get_child(0) if _section_col.get_child_count() > 0 else null
 	if not is_instance_valid(row): return
 	var active_sn := StyleBoxFlat.new()
-	active_sn.bg_color = Color(0.18, 0.13, 0.04); active_sn.border_color = C_GOLD
+	active_sn.bg_color = Color(C_GOLD.r*0.18, C_GOLD.g*0.13, C_GOLD.b*0.04)
+	active_sn.border_color = C_GOLD
 	active_sn.set_border_width_all(2); active_sn.set_content_margin_all(8)
 	var inactive_sn := StyleBoxFlat.new()
-	inactive_sn.bg_color = Color(0.07, 0.06, 0.05); inactive_sn.border_color = C_BORDER
+	inactive_sn.bg_color = Color(C_BG.r+0.05, C_BG.g+0.04, C_BG.b+0.03)
+	inactive_sn.border_color = C_BORDER
 	inactive_sn.set_border_width_all(1); inactive_sn.set_content_margin_all(8)
 	for i in row.get_child_count():
 		var b := row.get_child(i) as Button
@@ -944,7 +978,7 @@ func _make_target_card(a: BattleActor, is_ally: bool) -> Control:
 	var card := VBoxContainer.new(); card.add_theme_constant_override("separation", 3)
 	var highlight := (a == _sel_target)
 	var sbox := StyleBoxFlat.new()
-	sbox.bg_color = Color(0.07,0.10,0.15) if highlight else C_PANEL
+	sbox.bg_color = Color(C_GOLD.r*0.08, C_GOLD.g*0.10, C_GOLD.b*0.15, 1.0) if highlight else C_PANEL
 	sbox.border_color = C_GOLD if highlight else C_BORDER
 	sbox.set_border_width_all(1); sbox.set_content_margin_all(7)
 	var panel := PanelContainer.new(); panel.add_theme_stylebox_override("panel", sbox)
@@ -1213,10 +1247,12 @@ func _tab_btn(txt: String, cb: Callable) -> Button:
 	for cn in ["font_color","font_hover_color","font_pressed_color"]:
 		b.add_theme_color_override(cn, C_TEXT)
 	var sn := StyleBoxFlat.new()
-	sn.bg_color = Color(0.07, 0.06, 0.05); sn.border_color = C_BORDER
+	sn.bg_color = Color(C_BG.r+0.05, C_BG.g+0.04, C_BG.b+0.03)
+	sn.border_color = C_BORDER
 	sn.set_border_width_all(1); sn.border_width_bottom = 0; sn.set_content_margin_all(7)
 	var sh := sn.duplicate() as StyleBoxFlat
-	sh.bg_color = Color(0.20, 0.14, 0.06); sh.border_color = C_GOLD
+	sh.bg_color = Color(C_GOLD.r*0.20, C_GOLD.g*0.14, C_GOLD.b*0.06)
+	sh.border_color = C_GOLD
 	for st in ["normal", "focus"]:  b.add_theme_stylebox_override(st, sn)
 	for st in ["hover", "pressed"]: b.add_theme_stylebox_override(st, sh)
 	b.pressed.connect(cb); return b

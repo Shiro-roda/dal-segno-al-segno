@@ -16,8 +16,20 @@ const SPEAKER_COLORS : Dictionary = {
 const DEFAULT_COLOR  := Color(1.02, 0.966, 0.862, 1.0)
 const NARRATE_COLOR  := Color(0.769, 0.724, 0.661, 1.0)
 
-const C_BG         := Color(0.04, 0.04, 0.06, 0.96)
-const C_BORDER     := Color(0.20, 0.20, 0.28, 1.0)
+var C_BG         := Color(0.04, 0.04, 0.06, 0.96)
+var C_BORDER     := Color(0.20, 0.20, 0.28, 1.0)
+
+func _refresh_palette() -> void:
+	var p := ThemeManager.palette
+	C_BG     = Color(p.bg.r, p.bg.g, p.bg.b, 0.96)
+	C_BORDER = Color(p.dim.r * 0.6, p.dim.g * 0.6, p.dim.b * 0.8, 1.0)
+
+func _on_theme_changed(_id: int) -> void:
+	_refresh_palette()
+	# Update the panel stylebox in place if already built
+	if is_instance_valid(_border_sbox):
+		_border_sbox.bg_color = C_BG
+		_border_sbox.border_color = C_BORDER
 const FONT_PATH    := "res://UI/Themes/Fonts/SpaceMono-Bold.ttf"
 const FONT_ITALIC  := "res://UI/Themes/Fonts/SpaceMono-BoldItalic.ttf"
 
@@ -35,6 +47,8 @@ var is_playing := false
 
 
 func _ready() -> void:
+	_refresh_palette()
+	ThemeManager.theme_changed.connect(_on_theme_changed)
 	layer = 10  # render above BattleHUD and BattleUI
 	hide()
 	_build_ui()

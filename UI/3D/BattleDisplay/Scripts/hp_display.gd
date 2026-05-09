@@ -89,6 +89,8 @@ func _build() -> void:
 		mat.no_depth_test = false
 		mat.transparency  = BaseMaterial3D.TRANSPARENCY_DISABLED
 		mi.material_override = mat
+		# Prevent frustum culling at distance — no baked AABB on runtime-spawned meshes.
+		mi.extra_cull_margin = 8.0
 		mi.position = Vector3(i * row_spacing - total_w * 0.5, 0, 0)
 		add_child(mi)
 		_hp_spheres.append(mi)
@@ -116,6 +118,8 @@ func _build_shield_spheres(count: int, right_edge_x: float) -> void:
 		mat.no_depth_test              = false
 		mat.transparency               = BaseMaterial3D.TRANSPARENCY_DISABLED
 		mi.material_override           = mat
+		# Prevent frustum culling at distance — no baked AABB on runtime-spawned meshes.
+		mi.extra_cull_margin           = 8.0
 		mi.position = Vector3(right_edge_x + (i + 0.7) * row_spacing, 0.010, 0)
 		add_child(mi)
 		_shield_spheres.append(mi)

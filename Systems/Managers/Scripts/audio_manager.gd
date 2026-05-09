@@ -256,14 +256,14 @@ func update_color_layers(removed_mask: int):
 			target_pre_gain = 0.05
 			bgm_reverb.room_size = 0.01
 		1:
-			target_drive = 2.00
-			target_pre_gain = 2.0
-			bgm_reverb.room_size = 0.1
+			target_drive = 1.00
+			target_pre_gain = 1.0
+			bgm_reverb.room_size = 0.05
 		2:
-			target_drive = 6.00
-			target_pre_gain = 4.2
+			target_drive = 3.00
+			target_pre_gain = 2.2
 			bgm_compressor.ratio = 2
-			bgm_reverb.room_size = 0.5
+			bgm_reverb.room_size = 0.1
 
 
 	var target_cutoff = lerp(2000.0, 800.0, damage)

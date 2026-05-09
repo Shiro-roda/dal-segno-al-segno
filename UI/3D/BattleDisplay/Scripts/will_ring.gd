@@ -104,6 +104,7 @@ func _build() -> void:
 	_num_label.outline_modulate = Color(0.0, 0.0, 0.0, 1.0)
 	_num_label.no_depth_test    = false
 	_num_label.billboard        = BaseMaterial3D.BILLBOARD_DISABLED
+	_num_label.extra_cull_margin = 8.0
 	_num_label.position    = Vector3(0, ring_y, 0)
 	var font_path := "res://UI/Themes/Fonts/TerminalVector.ttf"
 	if ResourceLoader.exists(font_path):
@@ -168,6 +169,7 @@ func _make_token(value: int) -> Node3D:
 	mat.no_depth_test = false
 	mat.transparency  = BaseMaterial3D.TRANSPARENCY_DISABLED
 	mi.set_surface_override_material(0, mat)
+	mi.extra_cull_margin = 8.0
 	return mi
 
 

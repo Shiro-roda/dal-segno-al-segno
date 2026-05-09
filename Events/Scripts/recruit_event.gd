@@ -4,12 +4,34 @@ extends Control
 
 signal event_finished
 
-const C_BG        := Color(0.08, 0.07, 0.06, 1.0)
-const C_BORDER    := Color(0.35, 0.28, 0.22, 1.0)
-const C_ACCENT    := Color(0.72, 0.18, 0.18, 1.0)
-const C_TEXT      := Color(0.88, 0.83, 0.74, 1.0)
-const C_DIM       := Color(0.55, 0.50, 0.43, 1.0)
-const C_SELECTED  := Color(0.72, 0.18, 0.18, 0.22)
+var C_BG        := Color.BLACK
+var C_BORDER    := Color.WHITE
+var C_ACCENT    := Color.WHITE
+var C_TEXT      := Color.WHITE
+var C_DIM       := Color.WHITE
+var C_SELECTED  := Color.WHITE
+
+func _refresh_palette() -> void:
+	var p := ThemeManager.palette
+	C_BG       = p.bg
+	C_BORDER   = p.dim
+	C_ACCENT   = p.primary
+	C_TEXT     = p.text
+	C_DIM      = p.dim
+	C_SELECTED = Color(p.primary.r, p.primary.g, p.primary.b, 0.22)
+
+func _on_theme_changed(_id: int) -> void:
+	_refresh_palette()
+	if is_instance_valid(_bg):
+		_bg.color = C_BG
+	# Rebuild card area with new colors
+	if is_instance_valid(_outer):
+		for c in _outer.get_children(): c.queue_free()
+	_cards.clear()
+	_confirm_btn = null
+	_selected_index = -1
+	if not _available.is_empty():
+		_populate_outer()
 
 const CARD_W := 260
 const CARD_H := 340
@@ -24,7 +46,8 @@ var _available      : Array = []
 
 
 func _ready() -> void:
-	GlobalTheme.apply(self)
+	_refresh_palette()
+	ThemeManager.theme_changed.connect(_on_theme_changed)
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	_bg.color = C_BG
 	var run := GameController.current_run

@@ -102,22 +102,36 @@ const DIR_S = Vector2i( 0,  1)
 const DIR_W = Vector2i(-1,  0)
 const DIR_E = Vector2i( 1,  0)
 
-# Style constants
-const C_BG      = Color(0.08, 0.07, 0.06, 0.96)
-const C_BORDER  = Color(0.35, 0.28, 0.22, 1.0)
-const C_ACCENT  = Color(0.52, 0.42, 0.28, 1.0)
-const C_TEXT    = Color(0.88, 0.83, 0.74, 1.0)
-const C_DIM     = Color(0.45, 0.40, 0.35, 1.0)
-const C_SEL     = Color(0.52, 0.42, 0.28, 0.28)
-const C_GHOST   = Color(0.20, 0.60, 1.00, 1.0)
-const C_PREVIEW = Color(1.00, 0.85, 0.20, 1.0)
-const C_DIR_ON  = Color(0.88, 0.83, 0.74, 1.0)
-const C_DIR_OFF = Color(0.30, 0.27, 0.24, 1.0)
+# Style — refreshed from ThemeManager
+var C_BG      := Color(0.08, 0.07, 0.06, 0.96)
+var C_BORDER  := Color(0.35, 0.28, 0.22, 1.0)
+var C_ACCENT  := Color(0.52, 0.42, 0.28, 1.0)
+var C_TEXT    := Color(0.88, 0.83, 0.74, 1.0)
+var C_DIM     := Color(0.45, 0.40, 0.35, 1.0)
+var C_SEL     := Color(0.52, 0.42, 0.28, 0.28)
+const C_GHOST   := Color(0.20, 0.60, 1.00, 1.0)
+const C_PREVIEW := Color(1.00, 0.85, 0.20, 1.0)
+const C_DIR_ON  := Color(0.88, 0.83, 0.74, 1.0)
+const C_DIR_OFF := Color(0.30, 0.27, 0.24, 1.0)
+
+func _refresh_palette() -> void:
+	var p := ThemeManager.palette
+	C_BG     = Color(p.bg.r, p.bg.g, p.bg.b, 0.96)
+	C_BORDER = p.dim
+	C_ACCENT = p.secondary
+	C_TEXT   = p.text
+	C_DIM    = p.dim
+	C_SEL    = Color(p.secondary.r, p.secondary.g, p.secondary.b, 0.28)
+
+func _on_theme_changed(_id: int) -> void:
+	_refresh_palette()
 
 
 func _ready():
 	add_to_group("dungeon_map_3d")
 	set_process_input(true)
+	_refresh_palette()
+	ThemeManager.theme_changed.connect(_on_theme_changed)
 	_setup_environment()
 	get_viewport().physics_object_picking = true
 

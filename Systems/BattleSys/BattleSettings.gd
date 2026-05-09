@@ -40,7 +40,7 @@ signal settings_changed
 enum BattleMode { CTB, ATB }
 
 ## The current mode.  Writing triggers settings_changed and an autosave.
-var battle_mode : BattleMode = BattleMode.CTB :
+var battle_mode : BattleMode = BattleMode.ATB :
 	set(v):
 		if battle_mode == v: return
 		battle_mode = v
@@ -127,16 +127,16 @@ func load_settings() -> void:
 	# Migration: old format had BattleMode { CTB=0, ATB=1 } + ATBSubmode { ACTIVE=0, WAIT=1 }.
 	# Old CTB(0) was a sequential mode we no longer support — map it to new CTB.
 	# Old ATB(1)+WAIT(1) → new CTB(0); old ATB(1)+ACTIVE(0) → new ATB(1).
-	var raw_mode    : int = int(result.get("battle_mode",          BattleMode.CTB))
-	var raw_submode : int = int(result.get("atb_submode",          1))  # 1=WAIT was the old default
-	if raw_mode == 0:
-		# Old CTB (sequential) — map to new CTB (wait-style real-time)
+	var raw_mode    : int = int(result.get("battle_mode",          BattleMode.ATB))
+	var raw_submode : int = int(result.get("atb_submode",          0))  # 0=ACTIVE was old ATB default
+	if result.has("battle_mode") and not result.has("atb_submode"):
+		# New format — read directly
+		battle_mode = clampi(raw_mode, 0, BattleMode.size() - 1) as BattleMode
+	elif raw_mode == 0:
 		battle_mode = BattleMode.CTB
 	elif raw_mode == 1 and raw_submode == 0:
-		# Old ATB + ACTIVE → new ATB
 		battle_mode = BattleMode.ATB
 	else:
-		# Old ATB + WAIT → new CTB
 		battle_mode = BattleMode.CTB
 	atb_speed_multiplier = float(result.get("atb_speed_multiplier", 1.0))
 	autobattle_mode      = int(result.get("autobattle_mode",      AutobattleMode.OFF))
