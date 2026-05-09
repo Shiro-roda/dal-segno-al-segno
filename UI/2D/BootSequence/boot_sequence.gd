@@ -21,7 +21,7 @@ const C_KEY_LIT_DUN   := Color(0.08, 0.55, 0.22, 1.0)
 const C_KEY_LIT_BAT     := Color(0.69, 0.365, 0.0, 1.0)
 const C_KEY_EDGE  := Color(0.30, 0.40, 0.30, 0.85)
 const LINE_H      := 22.0
-const CHAR_DELAY  := 0.0000   # seconds per character in typewriter
+const CHAR_DELAY  := 0.0   # seconds per character in typewriter
 const LINE_DELAY  := 0.24    # pause between POST lines
 
 # ── State ─────────────────────────────────────────────────────────────────────
@@ -138,7 +138,7 @@ func _build_post_lines() -> void:
 		_line("  AUDIO ............ OBS-DSP  3CH MONO  OK", C_GREEN, 0.0),
 		_line("  COMM ANTENNA ..... PASSIVE  NO CARRIER", C_GREEN, 0.0),
 		
-		_line("SENSOR ARRAY INIT:", C_WHITE, 0.0),
+		_line("SYNESTHESIA ENGINE INIT:", C_WHITE, 0.0),
 		_line("  BIOMETRIC OCULAR    CORPA-SCAN SUBSYSTEM  OK", C_GREEN, 0.0),
 		_line("  NEURAL MESH PORT .. DENDRITE I/F REV 2  STANDBY", C_GREEN, 0.0),
 		_line("  ENV HAZARD MON .... PARTICULATE / RAD / GAS  OK", C_GREEN, 0.0),
@@ -158,7 +158,7 @@ func _build_post_lines() -> void:
 		_line(" ", C_DIM, 0.04),
 		_line("  WARNING: MUNICIPAL AUTHORITY SIGNATURE  --  NO RESPONSE (LOCAL OYARSE NOT FOUND, ANCILLARY ELDIRA ABSENT)", C_AMBER, 1.56),
 		_line("  WARNING: BIOMASS ENCROACHMENT DETECTED IN CACHE", C_AMBER, 0.0),
-		_line("  SYSTEM MESSAGE: have fun loser 𓆙", C_RED, 0.56),
+		_line("  SYSTEM MESSAGE: have fun loser", C_RED, 0.56),
 		_line(" ", C_DIM, 0.04),
 		_line("ALL CRITICAL SYSTEMS OPERATIONAL(QUERY RETURNED VARIABLE RESULTS)", C_AMBER, 0.22),
 		_line(" ", C_DIM, 0.04),
@@ -212,7 +212,7 @@ func _tick_post(delta: float) -> void:
 	# Typewriter per character
 	_char_timer -= delta
 	if _char_timer <= 0.0:
-		_char_timer = CHAR_DELAY
+		_char_timer = 0.0#CHAR_DELAY
 		if _cur_char_idx <= full_text.length():
 			_cur_char_idx += 1
 			_draw_node.queue_redraw()
@@ -670,7 +670,7 @@ func _page_battle() -> void:
 func _draw_tempo_diagram(parent: Control, origin: Vector2) -> void:
 	_add_label(parent, "TURN ORDER  (TEMPO)", origin, 15, C_WHITE)
 	var lines := [
-		"Each combatant accumulates TEMPO equal to their TEMPO stat each tick, until one or more combatants have over 100.",
+		"Each combatant accumulates TEMPO equal to their BPM stat each tick, until one or more combatants have over 100.",
 		"Combatants take their turns in descending order until none possess 100+ TEMPO, and ticks resume.",
 	]
 	var y := origin.y + 22.0

@@ -21,6 +21,6 @@ base_attack = 6
 base_flat_defense = 1
 base_max_will = 9
 bpm = 12
-tempo = 10
+tempo = 15
 body_parts = Array[ExtResource("2_l3fpx")]([SubResource("Resource_l3fpx")])
 battle_scene = ExtResource("2_scene")

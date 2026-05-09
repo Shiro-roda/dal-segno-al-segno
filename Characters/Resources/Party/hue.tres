@@ -20,5 +20,6 @@ base_max_hp = 18
 base_attack = 4
 base_flat_defense = 2
 base_max_will = 10
+tempo = 15
 body_parts = Array[ExtResource("1_smrkh")]([SubResource("Resource_g6h2d")])
 battle_scene = ExtResource("2_scene")

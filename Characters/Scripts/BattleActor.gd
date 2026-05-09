@@ -156,6 +156,7 @@ func get_log_name() -> String:
 var broken_parts_mask : int = 0   # bits set as parts are broken
 var tempo_pool : float = 0.0          # accumulated tempo
 var tempo_bonus : float = 0.0         # temporary flat bonus (e.g. from Evade/Augur)
+var bpm_bonus : float = 0.0 
 var cover_source : BattleActor = null # actor absorbing damage on our behalf
 var shield_hp : int = 0               # temporary HP from Shelter
 var malice_source : BattleActor = null
@@ -463,7 +464,7 @@ func tick_status_effects() -> void:
 func tick_tempo(scale: float = 1.0) -> void:
 	if has_status(STATUS_FROZEN):
 		return  # no tempo gain while frozen
-	var gain : float = float(bpm) * scale
+	var gain : float = float(bpm + bpm_bonus) * scale
 	if has_status(STATUS_SLOW):
 		gain *= SLOW_TEMPO_MULT
 	var martyr_bonus := 0.0

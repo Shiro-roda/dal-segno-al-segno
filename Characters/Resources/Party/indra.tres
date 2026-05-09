@@ -21,6 +21,6 @@ base_attack = 5
 base_flat_defense = 3
 base_max_will = 12
 bpm = 11
-tempo = 10
+tempo = 15
 body_parts = Array[ExtResource("2_ocirn")]([SubResource("Resource_ocirn")])
 battle_scene = ExtResource("2_scene")

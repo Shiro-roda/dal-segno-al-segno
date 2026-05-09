@@ -36,8 +36,6 @@ const UNWILLING_MAX_WILL_BONUS   = 1
 
 const CHATTER_VICE = [
 	"Just one bite . . .",
-	"C'mere... just want a hug, is all...",
-	"Don't they look soooo good?",
 	" ",
 	" ",
 
@@ -69,9 +67,9 @@ const CHATTER_DEVOUR_KILL = [
 ]
 const CHATTER_DEVOUR = [
 	"YOU LOOK SO GOOD",
-	"COME HERE~",
+	"COME HERE",
 	"YOU'RE FUCKING MINE",
-	"YOU'RE NOT GETTING AWAY~",
+	"YOU'RE NOT GETTING AWAY",
 	" ",
 	" ",
 ]
@@ -81,14 +79,12 @@ const CHATTER_UNWILLING = [
 ]
 const CHATTER_WITHER = [
 	"Pipe down!",
-	"Oh nah you chopped as hell.",
-	"Get OUT of my sight.",
-	"You're not him lil guy </3",
+	"Get out of my sight.",
 	" ",
 	" ",
 ]
 const CHATTER_WASTE = [
-	#"Fuuuuck, I'm hungry...",
+	"Fuuuuck, I'm hungry...",
 	" ",
 	" ",
 	" ",
@@ -99,37 +95,39 @@ const CHATTER_DRAIN = [
 	" ",
 ]
 const CHATTER_HURT = [
-	"Aww, play nice!",
-	#"Tch... that fucking stung.",
+	"Tch... that fucking stung.",
 	#"*Cough* Shit, that felt good...",
 	#"I'm fucking you up for that!",
-	#"Fuck! I just grew that back!",
-	" ",
+	"Fuck! I just grew that back!",
+	"Alright, you're gonna be a cube by the time I'm done.",
 	" ",
 	" ",
 ]
 
 const CHATTER_KILL = [
-	"Mmm, tasty . . .",
-	"Oops!",
-	"*SLUUURRPP*",
-	#"Ugh, it's all stringy and shit.",
-	"Just a bite ~<3",
+	#"Mmm, tasty . . .",
+	#"Oops!",
+	#"*SLUUURRPP*",
+	"Ugh, it's all stringy and shit.",
+	#"Just a bite ~<3",
+	". . . already?",
+	" ",
 	" ",
 ]
 
 const CHATTER_DIE = [
 	#"Sh-Shiiittt... can't... breathe... I guess I got too excited ~",
+	"God, finally . . .",
 	" ",
 ]
 
 const CHATTER_TURN_START = [
-	"Ugghh, I'm booored, KK . . .", 
+	"Ugh, why aren't these guys dead yet?", 
 	#"Hey tasty~",
 	#"Who's the lucky snack this time ~ ?",
-	"Still listening?",
-	"That hunky junk still working for ya?",
-	#"Ughh just hurry up, it's fucking itching! \nI'm about to start peeling this shit off.",
+	"Still listening, KK?",
+	"That junk still working for you?",
+	"Just hurry up, it's fucking itching! \nI'm about to start peeling this shit off.",
 	" ",
 	" ",
 	" ",

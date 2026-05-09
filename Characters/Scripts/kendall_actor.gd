@@ -7,9 +7,11 @@ extends BattleActor
 
 const AUGUR_WILL_COST    = 0
 const AUGUR_DODGE_TURNS  = 4
-const AUGUR_TEMPO_BONUS  = 5.0  # flat tempo bonus to allies
+const AUGUR_TEMPO_BONUS  = 10.0  # flat tempo bonus to allies
+const AUGUR_BPM_BONUS    = 5.0
 const EVADE_DODGE_TURNS  = 2
-const EVADE_TEMPO_BONUS  = 10.0  # larger personal tempo bonus
+const EVADE_TEMPO_BONUS  = 5.0  # larger personal tempo bonus
+const EVADE_BPM_BONUS    = 10.0
 const PISTOL_WHIP_MULT   = 0.5
 
 
@@ -120,6 +122,7 @@ func augur(all_actors: Array) -> void:
 	for ally in allies:
 		ally.apply_status(STATUS_DODGING, AUGUR_DODGE_TURNS)
 		ally.tempo_bonus += AUGUR_TEMPO_BONUS
+		ally.bpm_bonus += AUGUR_BPM_BONUS
 	say_random(CHATTER_AUGUR)
 	# Reveal enemy stats panel
 	var manager = get_tree().get_first_node_in_group("battle_manager")
@@ -135,7 +138,8 @@ func augur(all_actors: Array) -> void:
 func evade() -> void:
 	apply_status(STATUS_DODGING, EVADE_DODGE_TURNS)
 	tempo_bonus += EVADE_TEMPO_BONUS
-	tempo_pool += EVADE_TEMPO_BONUS
+	tempo_pool += EVADE_BPM_BONUS
+	bpm_bonus += EVADE_BPM_BONUS
 	say_random(CHATTER_EVADE)
 	spend_turn()
 
