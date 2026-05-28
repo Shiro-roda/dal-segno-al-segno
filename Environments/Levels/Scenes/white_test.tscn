@@ -73,6 +73,13 @@ volumetric_fog_emission_energy = 0.5
 volumetric_fog_gi_inject = 4.65
 volumetric_fog_length = 23.25
 
+[sub_resource type="Curve3D" id="Curve3D_dj4uj"]
+_data = {
+"points": PackedVector3Array(0, 0, 0, 0, 0, 0, -200, 3, 10, 0, 0, 0, 0, 0, 0, 1970.8698, 3, 10, 0, 0, 0, 0, 0, 0, 2081.4805, 29.69376, 10),
+"tilts": PackedFloat32Array(0, 0, 0)
+}
+point_count = 3
+
 [sub_resource type="WorldBoundaryShape3D" id="WorldBoundaryShape3D_jbnoc"]
 
 [sub_resource type="GDScript" id="GDScript_k0dwg"]
@@ -241,25 +248,28 @@ process_physics_priority = 300
 script = ExtResource("3_pnydd")
 metadata/_custom_type_script = "uid://bd046eokvcnu2"
 
-[node name="PhantomCamera3D" type="Node3D" parent="Main" unique_id=2102426851 node_paths=PackedStringArray("follow_target")]
+[node name="PhantomCamera3D" type="Node3D" parent="Main" unique_id=2102426851 node_paths=PackedStringArray("follow_target", "follow_path", "look_at_target")]
 transform = Transform3D(0.99999976, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, 0, 3, 10)
 top_level = true
 script = ExtResource("4_g3qqk")
 priority = 3
 follow_mode = 2
 follow_target = NodePath("../Player")
+follow_path = NodePath("../Level/Path3D")
+look_at_target = NodePath("../Player")
 tween_resource = SubResource("Resource_pnydd")
 tween_on_load = false
 camera_3d_resource = SubResource("Resource_jbj1t")
 follow_offset = Vector3(0, 3, 10)
 follow_damping = true
-follow_damping_value = Vector3(1.755, 1.755, 1.755)
+follow_damping_value = Vector3(0.94, 0.94, 0.94)
 follow_axis_lock = 3
 follow_distance = 10.0
 dead_zone_width = 0.113
 dead_zone_height = 0.166
 show_viewfinder_in_play = true
 spring_length = 10.0
+look_at_offset = Vector3(0, 3, 0)
 metadata/_custom_type_script = "uid://csjccrhj5wnx7"
 
 [node name="Player" parent="Main" unique_id=1201495616 instance=ExtResource("7_1qljy")]
@@ -281,6 +291,9 @@ environment = SubResource("Environment_0wfyh")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="Main/Level" unique_id=320766789]
 transform = Transform3D(-0.9024183, 0.37968063, 0.20367607, -0.22365466, -0.81683296, 0.53175426, 0.3682661, 0.43431163, 0.8220423, -27.672874, 12.37525, 14.644928)
+
+[node name="Path3D" type="Path3D" parent="Main/Level" unique_id=1587085227]
+curve = SubResource("Curve3D_dj4uj")
 
 [node name="Floor" type="StaticBody3D" parent="Main/Level" unique_id=1349320731]
 

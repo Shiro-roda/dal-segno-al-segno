@@ -248,14 +248,14 @@ func _build_battle_settings_menu(destination: String) -> void:
 	var is_ctb := BattleSettings.battle_mode == BattleSettings.BattleMode.CTB
 	_col.add_child(_make_btn(
 		"CTB — CHARGE TURN" + ("  ◄" if is_ctb else ""),
-		"Combatants charge BPM in real time. One acts at a time. Very Fast speed recommended.",
+		"Combatants charge BPM in real time. One acts at a time. PRESTO is recommended.",
 		_font, func():
 			BattleSettings.battle_mode = BattleSettings.BattleMode.CTB
 			_build_battle_settings_menu(destination)))
 
 	_col.add_child(_make_btn(
 		"ATB — ACTIVE TIME" + ("  ◄" if not is_ctb else ""),
-		"All combatants charge simultaneously and act immediately when ready.",
+		"All combatants charge simultaneously and act immediately when ready. The TEMPO stat stores extra BPM charge.",
 		_font, func():
 			BattleSettings.battle_mode = BattleSettings.BattleMode.ATB
 			_build_battle_settings_menu(destination)))
@@ -361,8 +361,8 @@ func _build_settings_menu() -> void:
 		var bri = mat.get_shader_parameter("brightness")
 		var con = mat.get_shader_parameter("contrast")
 		var sat = mat.get_shader_parameter("saturation")
-		left.add_child(_make_shader_slider_row("CHROM. ABR.", mat, "ca_strength", 0.0, 10.0, 0.1,  ca  if ca  != null else 2.0))
-		left.add_child(_make_shader_slider_row("BRIGHTNESS",  mat, "brightness",  0.5, 2.0,  0.01, bri if bri != null else 1.0))
+		left.add_child(_make_shader_slider_row("CHROM. ABR.", mat, "ca_strength", 0.0, 10.0, 0.1,  ca  if ca  != null else 0.5))
+		left.add_child(_make_shader_slider_row("BRIGHTNESS",  mat, "brightness",  0.5, 2.0,  0.01, bri if bri != null else 1.1))
 		left.add_child(_make_shader_slider_row("CONTRAST",    mat, "contrast",    0.5, 2.0,  0.01, con if con != null else 1.0))
 		left.add_child(_make_shader_slider_row("SATURATION",  mat, "saturation",  0.0, 2.0,  0.01, sat if sat != null else 1.0))
 	else:
@@ -424,8 +424,7 @@ func _build_settings_menu() -> void:
 		right.add_child(_make_settings_btn(
 			ThemeManager.theme_name(i) + ("   ◄  ACTIVE" if is_active else ""), "",
 			func():
-				ThemeManager.set_theme(theme_id)
-				_build_settings_menu()))
+				ThemeManager.set_theme(theme_id)))
 
 	# ── Back button ─────────────────────────────────────────────────────────
 	var back_rule := ColorRect.new()

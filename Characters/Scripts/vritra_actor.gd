@@ -10,9 +10,8 @@ extends BattleActor
 #                            If constricting an ally, Vritra regains will proportional to damage.
 # SPECIAL — Devour:         spends 3 will, high damage. If it kills the target,
 #                            permanently increases Vritra's max HP for this run.
-# SPECIAL — Waste:          no will for Devour. Reduces Vritra's max HP bonus (from Devour)
-#                            in exchange for restoring will and some HP.
 # SUPPORT — Wither:         spends 2 will, reduces target's attack and siphons HP to Vritra.
+#                            Falls back to Coil when willless.
 
 const LEECH_DURATION            = 4
 const LEECH_WILL_RESTORE_RATIO  = 0.5
@@ -24,9 +23,8 @@ const VICE_WILL_COST          = 1
 const WITHER_WILL_COST        = 2  
 const WITHER_ATK_REDUCTION      = 2
 const WITHER_SIPHON_HP          = 0.3
-const WASTE_HP_RESTORE          = 3
-const WASTE_WILL_RESTORE        = 2
-const WASTE_MAX_HP_REDUCTION    = 2    # reduces devour bonus pool
+const COIL_DMG_MULT   = 0.8
+const COIL_HEAL_FLAT  = 3
 const MALICE_DURATION = 2
 const MALICE_WILL_COST = 2
 
@@ -83,11 +81,7 @@ const CHATTER_WITHER = [
 	" ",
 	" ",
 ]
-const CHATTER_WASTE = [
-	"Fuuuuck, I'm hungry...",
-	" ",
-	" ",
-	" ",
+const CHATTER_COIL = [
 	" ",
 	" ",
 ]
@@ -96,8 +90,6 @@ const CHATTER_DRAIN = [
 ]
 const CHATTER_HURT = [
 	"Tch... that fucking stung.",
-	#"*Cough* Shit, that felt good...",
-	#"I'm fucking you up for that!",
 	"Fuck! I just grew that back!",
 	"Alright, you're gonna be a cube by the time I'm done.",
 	" ",
@@ -105,29 +97,23 @@ const CHATTER_HURT = [
 ]
 
 const CHATTER_KILL = [
-	#"Mmm, tasty . . .",
-	#"Oops!",
-	#"*SLUUURRPP*",
 	"Ugh, it's all stringy and shit.",
-	#"Just a bite ~<3",
 	". . . already?",
 	" ",
 	" ",
 ]
 
 const CHATTER_DIE = [
-	#"Sh-Shiiittt... can't... breathe... I guess I got too excited ~",
+	"Sh-Shit... can't... breathe...",
 	"God, finally . . .",
 	" ",
 ]
 
 const CHATTER_TURN_START = [
 	"Ugh, why aren't these guys dead yet?", 
-	#"Hey tasty~",
-	#"Who's the lucky snack this time ~ ?",
 	"Still listening, KK?",
 	"That junk still working for you?",
-	"Just hurry up, it's fucking itching! \nI'm about to start peeling this shit off.",
+	"Just hurry up, it's fucking itching! I'm about to start peeling this shit off.",
 	" ",
 	" ",
 	" ",
@@ -152,7 +138,7 @@ func get_skills() -> Array:
 	var devour_unlocked = party_member != null and party_member.is_skill_unlocked("Devour")
 	
 	var skills = [
-		SkillDirectory.get_dict("Wither" if has_will else "Waste"),
+		SkillDirectory.get_dict("Wither" if has_will else "Coil"),
 	]
 	if vice_unlocked:
 		skills.append(SkillDirectory.get_dict("Vice" if can_vice else "Malice"))
@@ -187,7 +173,7 @@ func take_turn(target: BattleActor, part: BodyPartData = null) -> void:
 	if party_member != null and party_member.will >= WITHER_WILL_COST:
 		await _wither(target, part)
 	else:
-		await _waste()
+		await _coil(target)
 
 
 
@@ -338,31 +324,19 @@ func _unwilling_devour(ally: BattleActor) -> void:
 	emit_signal("turn_finished")
 
 
-func _waste() -> void:
-	# Reduce any stored Devour bonus in exchange for will and HP.
-	# If no bonus HP remains, spend real HP instead.
-	var current_bonus = party_member.bonus_max_hp if party_member else 0
-	if current_bonus >= WASTE_MAX_HP_REDUCTION:
-		party_member.bonus_max_hp -= WASTE_MAX_HP_REDUCTION
-		max_hp = max(1, max_hp - WASTE_MAX_HP_REDUCTION)
-		log_msg("The serpent sheds another skin — Vritra is looking thin.")
-	else:
-		# No bonus to shed — pay with actual HP
-		var hp_cost = WASTE_MAX_HP_REDUCTION
-		if hp <= hp_cost:
-			hp_cost = hp - 1  # leave 1 HP
-		if hp_cost > 0:
-			hp -= hp_cost
-			emit_signal("hp_changed")
-			log_msg("Vritra tears something out of itself — %d HP lost." % hp_cost)
-		else:
-			log_msg("Vritra is too starved to shed anything.")
-	if party_member and struggle_restores_will():
-		party_member.restore_will(WASTE_WILL_RESTORE)
-		log_msg("%s wrings out what little it has. (+%d AP)" % [name, WASTE_WILL_RESTORE])
-	hp = min(hp + WASTE_HP_RESTORE, max_hp)
+func _coil(target: BattleActor) -> void:
+	if target == null or not target.is_alive():
+		spend_turn()
+		return
+	var damage := int(attack_power * COIL_DMG_MULT)
+	await play_attack_animation(target, 1.0, 1.0, damage)
+	if is_instance_valid(target) and not target.is_alive():
+		say_kill()
+	var heal := COIL_HEAL_FLAT
+	hp = min(hp + heal, max_hp)
 	emit_signal("hp_changed")
-	say_random(CHATTER_WASTE)
+	log_msg("%s wrings out what it can. (+%d CORP)" % [name, heal])
+	say_random(CHATTER_COIL)
 	spend_turn()
 
 

@@ -442,13 +442,20 @@ func _kb_filter_apply_highlight() -> void:
 
 
 ## Switch between enemy targeting and ally targeting.
-## Enemy boxes are blocked during support; ally boxes are always clickable.
+## Enemy boxes are blocked during support targeting.
+## Ally boxes are ALWAYS clickable — _on_box_pressed checks _support_targeting
+## at the logic level, so physically blocking them caused a bug where ally
+## reticles became unresponsive after being clicked once (non-support mode).
 func set_support_targeting(support: bool) -> void:
 	_support_targeting = support
 	for e in _enemy_boxes:
 		var b : Button = e["box"]
 		if is_instance_valid(b):
 			b.mouse_filter = Control.MOUSE_FILTER_IGNORE if support else Control.MOUSE_FILTER_STOP
+	for e in _ally_boxes:
+		var b : Button = e["box"]
+		if is_instance_valid(b):
+			b.mouse_filter = Control.MOUSE_FILTER_STOP
 
 
 # ── Frame update ──────────────────────────────────────────────────────────────
@@ -664,9 +671,14 @@ func _update_drift(delta: float) -> void:
 			var e_lbl_vp_w : float = RIGHT_VP_W if e["is_enemy"] else LEFT_VP_W
 			var e_vp_rect  := Rect2(e_lbl_vp_x, 0, e_lbl_vp_w, 960.0)
 			var e_clipped  : Rect2 = e_sr.intersection(e_vp_rect) if e_has_rect else e_sr
-			# Button hit area always tracks display_pos at BOX size — screen_rect
-			# is used only for drawing corner brackets, never for the click region.
-			box.position = dp - box.size * 0.5
+			# When entity has a screen rect, expand the button to cover it.
+			# Otherwise fall back to the default BOX_W x BOX_H hit area.
+			if e_has_rect:
+				box.position = e_clipped.position
+				box.size     = e_clipped.size
+			else:
+				box.size     = Vector2(BOX_W, BOX_H)
+				box.position = dp - box.size * 0.5
 			if is_instance_valid(lbl_panel):
 				# modulate drives all alpha — don’t encode it in the stylebox too
 				lbl_panel.modulate = Color.WHITE
@@ -1582,8 +1594,8 @@ func _clear_repeat_button() -> void:
 func _build_repeat_button() -> void:
 	_clear_repeat_button()
 	# Position at the bottom of the skill box column, in the left viewport.
-	var base_x : float = LEFT_VP_X + LEFT_VP_W * 0.1
-	var base_y : float = 960 - base_x  # near bottom of left viewport
+	var base_x : float = 270.0   # sits to the right of the ATB strip (strip ends at ~250)
+	var base_y : float = 960.0 - 80.0  # same vertical zone as the strip
 	var half   : Vector2 = Vector2(BOX_W, BOX_H) * 0.5
 
 	var btn := Button.new()
@@ -1844,8 +1856,12 @@ func _unhandled_input(event: InputEvent) -> void:
 					_kb_list  = "skill"
 					_kb_index = (_kb_index + dir + _skill_boxes.size()) % max(_skill_boxes.size(), 1)
 				"C":
-					_kb_list  = "enemy"
-					_kb_index = (_kb_index + dir + _enemy_boxes.size()) % max(_enemy_boxes.size(), 1)
+					if _support_targeting:
+						_kb_list  = "ally"
+						_kb_index = (_kb_index + dir + _ally_boxes.size()) % max(_ally_boxes.size(), 1)
+					else:
+						_kb_list  = "enemy"
+						_kb_index = (_kb_index + dir + _enemy_boxes.size()) % max(_enemy_boxes.size(), 1)
 				"D":
 					_kb_list  = "part"
 					_kb_index = (_kb_index + dir + _part_boxes.size()) % max(_part_boxes.size(), 1)
@@ -1888,10 +1904,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			_kb_index = clampi(_kb_index, 0, list.size() - 1)
 			var entry : Dictionary = list[_kb_index]
 			_on_box_pressed(entry)
-			# After skill confirm: if it needs a target, jump cursor to enemies.
+			# After skill confirm: if it needs a target, jump cursor to the right list.
 			if entry["data_type"] == "skill" and not _sel_skill.is_empty() \
 					and _skill_needs_target(_sel_skill):
-				_kb_switch_list("enemy")
+				_kb_switch_list("ally" if _support_targeting else "enemy")
 			# After enemy confirm: if parts appeared, jump cursor to parts.
 			elif entry["data_type"] == "enemy" and not _part_boxes.is_empty():
 				_kb_switch_list("part")

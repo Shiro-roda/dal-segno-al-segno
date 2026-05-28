@@ -569,16 +569,16 @@ func _build_atb_strip(actor_list: Array) -> void:
 
 	_atb_strip = VBoxContainer.new()
 	_atb_strip.name = "ATBStrip"
-	_atb_strip.anchor_left   = 1.0
-	_atb_strip.anchor_top    = 0.5
-	_atb_strip.anchor_right  = 1.0
-	_atb_strip.anchor_bottom = 0.5
-	_atb_strip.offset_left   = -160.0
-	_atb_strip.offset_right  = -10.0
-	_atb_strip.offset_top    = -60.0
-	_atb_strip.offset_bottom =  110.0
-	_atb_strip.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	_atb_strip.grow_vertical   = Control.GROW_DIRECTION_BOTH
+	_atb_strip.anchor_left   = 0.0
+	_atb_strip.anchor_top    = 1.0
+	_atb_strip.anchor_right  = 0.0
+	_atb_strip.anchor_bottom = 1.0
+	_atb_strip.offset_left   = 10.0
+	_atb_strip.offset_right  = 250.0
+	_atb_strip.offset_top    = -160.0
+	_atb_strip.offset_bottom = -10.0
+	_atb_strip.grow_horizontal = Control.GROW_DIRECTION_END
+	_atb_strip.grow_vertical   = Control.GROW_DIRECTION_BEGIN
 	_atb_strip.add_theme_constant_override("separation", 6)
 	add_child(_atb_strip)
 

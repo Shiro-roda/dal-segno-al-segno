@@ -475,20 +475,21 @@ const _KEY_ROWS : Array = [
 
 # Keys that are active in a given context — label -> annotation
 const _DUNGEON_KEYS : Dictionary = {
+	"ESC":   "System Menu",
 	"A": "Rotate view LEFT",
 	"D": "Rotate view RIGHT",
 	"\u2190": "Move LEFT",
 	"\u2192": "Move RIGHT",
 	"\u2191": "Move FORWARD",
 	"\u2193": "Move BACKWARD",
-	"TAB": "Systems Menu",
+	"TAB": "Party Menu",
 	"Q": "Toggle channel R",
 	"W": "Toggle channel G",
 	"E": "Toggle channel B",
 }
 
 const _BATTLE_KEYS : Dictionary = {
-	"ESC":   "Cancel / deselect",
+	"ESC":   "System Menu",
 	"TAB":   "Arrangement View Toggle",
 	"\u2190": "Cycle LEFT",
 	"\u2192": "Cycle RIGHT",
@@ -519,7 +520,7 @@ func _page_keyboard() -> void:
 	_draw_key_table(p, _DUNGEON_KEYS, Vector2(60, 550),  C_GREEN,  "DUNGEON")
 	_draw_key_table(p, _BATTLE_KEYS,  Vector2(680, 550), C_RED, "BATTLE")
 	# Mouse / pointer entries that can't light up on the keyboard diagram
-	_draw_mouse_table(p, Vector2(60, 760))
+	_draw_mouse_table(p, Vector2(60, 780))
 
 	_nav_divider(p)
 	_add_nav_bar(p)

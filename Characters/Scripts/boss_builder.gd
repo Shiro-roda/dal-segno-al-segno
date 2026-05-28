@@ -5,7 +5,7 @@ extends RefCounted
 const SUPPORT_SKILLS := {
 	"Hue":    ["Shelter", "Embrace", "Calcify"],
 	"Indra":  ["Galvanize", "Martyr", "Fulminate"],
-	"Vritra": ["Wither", "Waste", "Devour"],
+	"Vritra": ["Wither", "Coil", "Devour"],
 }
 
 const BOSS_WILL := 20

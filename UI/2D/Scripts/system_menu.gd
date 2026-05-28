@@ -65,7 +65,7 @@ var _pending     : Dictionary = {}
 # ── Defaults ──────────────────────────────────────────────────────────────────
 const OPT_DEFAULTS := {
 	"master": 1.0, "bgm": 1.0, "sfx": 1.0,
-	"ca": 2.0, "brightness": 1.0, "contrast": 1.0, "saturation": 1.0,
+	"ca": 0.5, "brightness": 1.1, "contrast": 1.0, "saturation": 1.0,
 	"ssao": false, "ssil": false, "glow": false,
 }
 

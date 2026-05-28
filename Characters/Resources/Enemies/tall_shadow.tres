@@ -7,7 +7,6 @@
 [ext_resource type="Resource" uid="uid://bv8nc0eu2eq6j" path="res://Systems/AnatomySys/Resources/penumbra.tres" id="4_p62b6"]
 [ext_resource type="Script" uid="uid://badrkgc20tgv2" path="res://Systems/SkillSys/Scripts/skill_data.gd" id="4_y585m"]
 [ext_resource type="Resource" uid="uid://s8d8wab3g0yr" path="res://Systems/AnatomySys/Resources/umbra.tres" id="5_fhsvt"]
-[ext_resource type="Resource" uid="uid://l1xoe7mswn4d" path="res://Systems/SkillSys/Resources/Skills/banality.tres" id="8_jsiyx"]
 [ext_resource type="Resource" uid="uid://bbflayxxaiyd1" path="res://Systems/SkillSys/Resources/Skills/deep_dim.tres" id="9_jsiyx"]
 [ext_resource type="Resource" uid="uid://dnh2oor3r3aq2" path="res://Systems/SkillSys/Resources/Skills/elongate.tres" id="10_238pp"]
 
@@ -22,5 +21,5 @@ base_max_will = 9
 exp_yield = 25
 body_parts = Array[ExtResource("2_y585m")]([ExtResource("3_sawnd"), ExtResource("4_p62b6"), ExtResource("5_fhsvt")])
 battle_scene = ExtResource("1_hkca0")
-skills = Array[ExtResource("4_y585m")]([ExtResource("8_jsiyx"), ExtResource("9_jsiyx"), ExtResource("10_238pp")])
+skills = Array[ExtResource("4_y585m")]([ExtResource("9_jsiyx"), ExtResource("10_238pp")])
 metadata/_custom_type_script = "uid://b2t1syvrybco8"

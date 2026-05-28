@@ -72,11 +72,12 @@ func _ready() -> void:
 
 	# Subtle drive
 	bgm_distortion.drive = 0.05
-	bgm_distortion.pre_gain = 1.0
+	bgm_distortion.pre_gain = 0.1
 	
 	base_noise = ambience_player.volume_db
 	_original_noise = base_noise
 	base_drive = bgm_distortion.drive
+	base_pre_gain = bgm_distortion.pre_gain
 	base_lowpass_cutoff = bgm_lowpass.cutoff_hz
 	
 	bgm_reverb.room_size = 0.01
@@ -256,17 +257,17 @@ func update_color_layers(removed_mask: int):
 			target_pre_gain = 0.05
 			bgm_reverb.room_size = 0.01
 		1:
-			target_drive = 1.00
-			target_pre_gain = 1.0
+			target_drive = 0.15
+			target_pre_gain = 0.2
 			bgm_reverb.room_size = 0.05
 		2:
-			target_drive = 3.00
-			target_pre_gain = 2.2
+			target_drive = 0.35
+			target_pre_gain = 0.4
 			bgm_compressor.ratio = 2
 			bgm_reverb.room_size = 0.1
 
 
-	var target_cutoff = lerp(2000.0, 800.0, damage)
+	var target_cutoff = lerp(5000.0, 2500.0, damage)
 
 	target_cutoff = clamp(target_cutoff, 500.0, 20000.0)
 	
@@ -307,6 +308,7 @@ func update_color_layers(removed_mask: int):
 	)
 	base_noise = ambience_player.volume_db
 	base_drive = bgm_distortion.drive
+	base_pre_gain = bgm_distortion.pre_gain
 	base_lowpass_cutoff = bgm_lowpass.cutoff_hz
 
 
@@ -328,9 +330,9 @@ func set_glitch_intensity(amount: float, duration: float = 0.2):
 	var start_noise = base_noise
 
 
-	var target_drive = start_drive + amount
-	var target_cutoff = lerp(start_cutoff, 300.0, amount)
-	var target_noise = lerp(start_noise, -8.0, amount)
+	var target_drive = start_drive + (amount * 0.3)
+	var target_cutoff = lerp(start_cutoff, 1200.0, amount * 0.5)
+	var target_noise = lerp(start_noise, -8.0, amount * 0.4)
 
 	var tween = create_tween()
 	tween.set_trans(Tween.TRANS_EXPO)
@@ -343,7 +345,7 @@ func set_glitch_intensity(amount: float, duration: float = 0.2):
 		duration
 	)
 	
-	var burst_drive = start_drive + (amount * 1.5)
+	var burst_drive = start_drive + (amount * 0.4)
 
 	tween.parallel().tween_method(
 		func(v): bgm_distortion.drive = v,

@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://b63gkenr8ypql"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_65rc5"]
-albedo_color = Color(0.83137256, 0.6862745, 0.21568628, 1)
+albedo_color = Color(0.99607843, 0.88235295, 0.21568628, 1)
 metallic = 1.0
 emission_enabled = true
 emission = Color(0.27058825, 0.16862746, 0, 1)

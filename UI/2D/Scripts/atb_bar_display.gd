@@ -110,7 +110,7 @@ func refresh(actors: Array) -> void:
 		var bar   : ProgressBar = entry["bar"]
 		bar.value = actor.tempo_pool
 		# Tint the fill green when the bar is ready to act
-		var ready := actor.tempo_pool >= 100.0
+		var ready: bool = actor.tempo_pool >= 100.0
 		var tint  := HUD_READY if ready else \
 			(HUD_ACCENT if actor.team == BattleActor.Team.PLAYER else HUD_ENEMY)
 		_style_bar(bar, tint)

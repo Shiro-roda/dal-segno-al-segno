@@ -861,7 +861,7 @@ func _populate_skill_list() -> void:
 		]},
 		{"character": "Vritra", "skills": [
 			{"name": "Wither",      "type": "ATTACK", "cost": "2 AP"},
-			{"name": "Waste",       "type": "ATTACK", "cost": "Unwilling"},
+			{"name": "Coil",        "type": "ATTACK", "cost": "Unwilling"},
 			{"name": "Vice",        "type": "SUPPORT",  "cost": "1 AP"},
 			{"name": "Malice", "type": "SUPPORT",  "cost": "Unwilling"},
 			{"name": "Devour",      "type": "SPECIAL", "cost": "3 AP"},
@@ -1583,7 +1583,7 @@ func _show_bestiary_detail(cd: CharacterData) -> void:
 # Defaults used by both _build_options_page and Apply
 const OPT_DEFAULTS := {
 	"master": 1.0, "bgm": 1.0, "sfx": 1.0,
-	"ca": 2.0, "brightness": 1.0, "contrast": 1.0, "saturation": 1.0,
+	"ca": 0.5, "brightness": 1.1, "contrast": 1.0, "saturation": 1.0,
 	"ssao": false, "ssil": false, "glow": false,
 }
 

@@ -1104,6 +1104,12 @@ func _run_death_animation(actor: BattleActor) -> void:
 	if is_instance_valid(actor):
 		actor.queue_free()
 	_deaths_pending -= 1
+	# If this was the last enemy, wait a moment for in-flight kill effects,
+	# chatter, and attack animations to finish before declaring victory.
+	var enemies_remain = actors.any(func(a): return a.team == BattleActor.Team.ENEMY and a.is_alive())
+	var players_remain = actors.any(func(a): return a.team == BattleActor.Team.PLAYER and a.is_alive())
+	if not enemies_remain or not players_remain:
+		await get_tree().create_timer(1.2).timeout
 	# Both ATB and CTB are real-time — check victory after every death.
 	check_victory()
 
@@ -1274,7 +1280,7 @@ func apply_lens(channel: int):
 	removed_channels |= channel
 	
 	AudioManagerAuto.update_color_layers(removed_channels)
-	AudioManagerAuto.set_glitch_intensity(1.5, 0.22)
+	AudioManagerAuto.set_glitch_intensity(0.7, 0.22)
 	animate_channel_removal()
 	update_enemy_visibility()
 
@@ -1692,8 +1698,10 @@ func _on_radial_target_chosen(target: BattleActor) -> void:
 		focus_target(target)
 	battle_hud.show_target(selected_target)
 	if support_targeting:
-		# Ally target selected for support skill — go straight to confirm
+		# Ally target selected for support skill — restore actor focus then confirm.
 		support_targeting = false
+		if is_instance_valid(active_player_actor):
+			focus_actor(active_player_actor)
 		input_stage = InputStage.CONFIRM
 		_on_confirm_pressed()
 	else:
@@ -1758,13 +1766,20 @@ func _on_reticle_skill_chosen(skill: Dictionary) -> void:
 				return
 		_:
 			support_targeting = false
-	print(support_targeting)
 	if is_aoe or is_struggle:
 		input_stage = InputStage.CONFIRM
 	else:
 		input_stage = InputStage.TARGET
 	if is_instance_valid(reticle_ui):
 		reticle_ui.set_support_targeting(support_targeting)
+	# Switch the active (player-side) camera to the overhead overview so the
+	# player can clearly see all allies when picking a support target.
+	# If a non-support skill is chosen (or the player switches away), restore
+	# the camera to the active actor.
+	if support_targeting:
+		focus_active_overview()
+	elif is_instance_valid(active_player_actor):
+		focus_actor(active_player_actor)
 	update_ui_state()
 
 

@@ -76,7 +76,9 @@ func _register_all() -> void:
 	_add("Devour",    "special", "Attack for 180% SHARP. Siphons CORP from the target and increases Vritra's MAX CORP by 1 if the attack kills their target.", "The serpent unfetters its yawning maw, and swallows their banquet whole. Their proliferant corpse grows stronger if their prey is left without a trace.",
 		false, false, false, false, "PartAnchors/Stomach", "", 3)
 	_add("Wither",    "attack",  "Attack for 100% SHARP. Has a 60% chance to lower the target's SHARP by 2.",                  "Vritra sharpens its tongue upon the enemy, addling the mind and bringing strength to rot.",
-		false, false, false, false, "PartAnchors/Mouth", "Waste", 2)
+		false, false, false, false, "PartAnchors/Mouth", "Coil", 2)
+	_add("Coil",      "attack",  "Attack for 80% SHARP. Restores a small amount of CORP on hit.",                              "Starved and hollow, the serpent wrings what it can from the moment.",
+		false, true,  false, true,  "PartAnchors/Mouth")
 	_add("Autophagy",     "attack",  " ",                                                                   "",
 		false,  true, false, false, "PartAnchors/Mouth")
 	_add("Anthropophagy", "special", " ",                                                                   "",
