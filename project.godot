@@ -16,7 +16,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 config/name="Dal Segno al Segno"
 run/main_scene="uid://pwxv1hrkra0k"
-config/features=PackedStringArray("4.6", "Forward Plus")
+config/features=PackedStringArray("4.7", "Forward Plus")
 config/icon="uid://c8se4h4c3ijek"
 
 [audio]
@@ -64,7 +64,7 @@ movie_writer/movie_file="/Recordings/Video Recordings/dsas.ogv"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/dialogic/plugin.cfg", "res://addons/func_godot/plugin.cfg", "res://addons/godot_mcp/plugin.cfg", "res://addons/phantom_camera/plugin.cfg")
+enabled=PackedStringArray("res://addons/func_godot/plugin.cfg", "res://addons/godot_mcp/plugin.cfg", "res://addons/phantom_camera/plugin.cfg")
 
 [global_group]
 
