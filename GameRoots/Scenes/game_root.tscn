@@ -1,19 +1,10 @@
 [gd_scene format=3 uid="uid://pwxv1hrkra0k"]
 
-[ext_resource type="Script" uid="uid://dx8r5yikyemjr" path="res://Systems/Managers/Scripts/dungeon_controller.gd" id="1_vmva4"]
-[ext_resource type="Script" uid="uid://bt4xwltdukunr" path="res://GameRoots/Scripts/dungeon_scene.gd" id="2_dk0df"]
-[ext_resource type="Script" uid="uid://snhktyfrtb0v" path="res://UI/2D/Scripts/dungeonUI.gd" id="3_nuie3"]
-[ext_resource type="Script" uid="uid://c5k3j7qe8qi0j" path="res://UI/2D/Scripts/inventory_bar.gd" id="5_wxrlo"]
-[ext_resource type="Script" uid="uid://cmi4bl88a2kuc" path="res://UI/2D/Scripts/party_menu.gd" id="6_vho5l"]
 [ext_resource type="Shader" uid="uid://cow4hovotygtk" path="res://Shaders/main.gdshader" id="7_mt7hb"]
 [ext_resource type="Shader" uid="uid://c7dhsbe1s7mgu" path="res://Shaders/post_processing.gdshader" id="8_2t1uq"]
 [ext_resource type="Shader" uid="uid://btm2rulspg8el" path="res://Shaders/battleglitch.gdshader" id="9_gtsmc"]
 [ext_resource type="Script" uid="uid://cubfx12f3uxdi" path="res://UI/2D/Scripts/system_menu.gd" id="10_dk0df"]
 [ext_resource type="Script" uid="uid://dcej0pqmf3vn3" path="res://UI/2D/BootSequence/boot_sequence.gd" id="11_nuie3"]
-
-[sub_resource type="LabelSettings" id="LabelSettings_iusj4"]
-font_size = 10
-font_color = Color(0.48178947, 0.48178947, 0.48178947, 1)
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_ssq04"]
 render_priority = 0
@@ -77,55 +68,8 @@ audio_listener_enable_3d = true
 size = Vector2i(1280, 960)
 render_target_update_mode = 0
 
-[node name="DungeonLayer" type="CanvasLayer" parent="." unique_id=982368690 groups=["dungeon_layer"]]
-
-[node name="DungeonController" type="Node" parent="DungeonLayer" unique_id=573565279]
-script = ExtResource("1_vmva4")
-
-[node name="DungeonScene" type="Node" parent="DungeonLayer" unique_id=657695467]
-script = ExtResource("2_dk0df")
-
-[node name="DungeonUI" type="Control" parent="DungeonLayer" unique_id=1900235927]
-layout_mode = 3
-anchors_preset = 4
-anchor_top = 0.5
-anchor_bottom = 0.5
-offset_left = 10.0
-offset_top = -20.0
-offset_right = 50.0
-offset_bottom = 20.0
-grow_vertical = 2
-script = ExtResource("3_nuie3")
-
-[node name="RoomList" type="VBoxContainer" parent="DungeonLayer/DungeonUI" unique_id=2043892156]
-layout_mode = 1
-anchors_preset = 9
-anchor_bottom = 1.0
-offset_right = 118.0
-grow_vertical = 2
-
-[node name="Label" type="Label" parent="DungeonLayer/DungeonUI" unique_id=399074236]
-layout_mode = 1
-offset_left = -7.0
-offset_top = -460.0
-offset_right = 79.0
-offset_bottom = -437.0
-text = "[TAB]menu"
-label_settings = SubResource("LabelSettings_iusj4")
-
-[node name="PhaseHUD" type="CanvasLayer" parent="." unique_id=1928952715]
-layer = 50
-visible = false
-script = ExtResource("5_wxrlo")
-
-[node name="BattleLayer" type="CanvasLayer" parent="." unique_id=529536140 groups=["battle_layer"]]
-visible = false
-
 [node name="EventLayer" type="CanvasLayer" parent="." unique_id=1236010400 groups=["event_layer"]]
 visible = false
-
-[node name="PartyMenu" type="CanvasLayer" parent="." unique_id=2037623213]
-script = ExtResource("6_vho5l")
 
 [node name="BootSequence" type="CanvasLayer" parent="." unique_id=1304569985]
 layer = 120

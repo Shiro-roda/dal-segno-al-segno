@@ -122,15 +122,17 @@ func _build_ui() -> void:
 	_label.material = _mat_crt
 
 
-func play(lines: Array, run_state: RunState = null) -> void:
+## lines: Array of String, or Dictionary {"text": String, "speaker": String}
+func play(lines: Array) -> void:
 	if lines.is_empty():
 		return
 	show()
 	for entry in lines:
-		if entry is SplashLine:
-			if entry.text.strip_edges() == "":
+		if entry is Dictionary:
+			var t : String = str(entry.get("text", ""))
+			if t.strip_edges() == "":
 				continue
-			await _show_line(entry.text, entry.speaker)
+			await _show_line(t, str(entry.get("speaker", "")))
 		elif entry is String:
 			if entry.strip_edges() == "":
 				continue

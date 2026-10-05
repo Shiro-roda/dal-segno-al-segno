@@ -1,10 +1,7 @@
 extends Control
 # Start screen — main menu with Continue and New Game submenu.
 
-signal play_intro
-signal skip_intro
-signal start_new_run
-signal continue_run
+signal new_game
 signal quit_game
 
 # Colours — refreshed from ThemeManager on ready and on theme change.
@@ -145,27 +142,20 @@ func _build_main_menu() -> void:
 	spacer.custom_minimum_size = Vector2(0, 6)
 	_col.add_child(spacer)
 
-	# Continue button — only shown when a save exists.
-	if SaveManager.has_run_save():
-		_col.add_child(_make_btn(
-			"CONTINUE",
-			"Resume your interrupted run.",
-			_font, func(): emit_signal("continue_run")))
-
-	# New Game → submenu
+	# TODO: add CONTINUE once the new save system exists.
 	_col.add_child(_make_btn(
 		"NEW GAME",
-		"Begin a fresh run.",
-		_font, func(): _build_new_game_menu()))
+		"Begin a new game.",
+		_font, func(): emit_signal("new_game")))
 
 	_col.add_child(_make_btn(
 		"SETTINGS",
-		"Battle mode, ATB speed, and accessibility.",
+		"Audio, display, and theme.",
 		_font, func(): _build_settings_menu()))
 
 	_col.add_child(_make_btn(
 		"MANUAL",
-		"View the keyboard & combat reference.",
+		"View the keyboard reference.",
 		_font, func(): _open_manual()))
 
 	_col.add_child(_make_btn(
@@ -176,129 +166,9 @@ func _build_main_menu() -> void:
 
 
 
-func _build_new_game_menu() -> void:
-	_current_page = _build_new_game_menu
-	await _clear_col()
-
-	var title := Label.new()
-	title.text = "NEW GAME"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 28)
-	title.add_theme_font_override("font", _font)
-	title.add_theme_color_override("font_color", C_TEXT)
-	_col.add_child(title)
-
-	var rule := ColorRect.new()
-	rule.color = C_ACCENT
-	rule.custom_minimum_size = Vector2(420, 1)
-	_col.add_child(rule)
-
-	var spacer := Control.new()
-	spacer.custom_minimum_size = Vector2(0, 6)
-	_col.add_child(spacer)
-
-	_col.add_child(_make_section_label("START WITH"))
-
-	_col.add_child(_make_btn(
-		"PLAY INTRO",
-		"Take a stroll through the cloud waves.",
-		_font, func(): _build_battle_settings_menu("play_intro")))
-
-	_col.add_child(_make_btn(
-		"PLAY TUTORIAL",
-		"Start with the tutorial battle.",
-		_font, func(): _build_battle_settings_menu("skip_intro")))
-
-	_col.add_child(_make_btn(
-		"SKIP TO RUN",
-		"Skip straight to companion select.",
-		_font, func(): _build_battle_settings_menu("start_new_run")))
-
-	_col.add_child(_make_btn(
-		"BACK",
-		"",
-		_font, func(): _build_main_menu()))
-	_kb_apply_focus()
-
-
-func _build_battle_settings_menu(destination: String) -> void:
-	_current_page = func(): _build_battle_settings_menu(destination)
-	await _clear_col()
-
-	var title := Label.new()
-	title.text = "BATTLE SETTINGS"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 28)
-	title.add_theme_font_override("font", _font)
-	title.add_theme_color_override("font_color", C_TEXT)
-	_col.add_child(title)
-
-	var rule := ColorRect.new()
-	rule.color = C_ACCENT
-	rule.custom_minimum_size = Vector2(420, 1)
-	_col.add_child(rule)
-
-	var spacer := Control.new()
-	spacer.custom_minimum_size = Vector2(0, 6)
-	_col.add_child(spacer)
-
-	# ── Battle Mode ──────────────────────────────────────────────────────────
-	_col.add_child(_make_section_label("BATTLE MODE"))
-
-	var is_ctb := BattleSettings.battle_mode == BattleSettings.BattleMode.CTB
-	_col.add_child(_make_btn(
-		"CTB — CHARGE TURN" + ("  ◄" if is_ctb else ""),
-		"Combatants charge BPM in real time. One acts at a time. PRESTO is recommended.",
-		_font, func():
-			BattleSettings.battle_mode = BattleSettings.BattleMode.CTB
-			_build_battle_settings_menu(destination)))
-
-	_col.add_child(_make_btn(
-		"ATB — ACTIVE TIME" + ("  ◄" if not is_ctb else ""),
-		"All combatants charge simultaneously and act immediately when ready. The TEMPO stat stores extra BPM charge.",
-		_font, func():
-			BattleSettings.battle_mode = BattleSettings.BattleMode.ATB
-			_build_battle_settings_menu(destination)))
-
-	# ── BPM Speed ─────────────────────────────────────────────────────────────
-	_col.add_child(_make_section_label(
-		"BPM SCALE  —  %.0f%%" % (BattleSettings.atb_speed_multiplier * 100)))
-
-	var speeds := [["LENTO (50%)", 0.5], ["MODERATO (100%)", 1.0],
-				   ["ALLEGRO (150%)", 1.5], ["PRESTO (200%)", 2.0]]
-	for pair in speeds:
-		var label_str : String = pair[0]
-		var val       : float  = pair[1]
-		var active    := absf(BattleSettings.atb_speed_multiplier - val) < 0.01
-		_col.add_child(_make_btn(
-			label_str + ("  ◄" if active else ""),
-			"", _font,
-			func():
-				BattleSettings.atb_speed_multiplier = val
-				_build_battle_settings_menu(destination)))
-
-	# ── Confirm ───────────────────────────────────────────────────────────────
-	var confirm_spacer := Control.new()
-	confirm_spacer.custom_minimum_size = Vector2(0, 4)
-	_col.add_child(confirm_spacer)
-
-	_col.add_child(_make_btn(
-		"BEGIN  ▶",
-		"",
-		_font, func(): _launch_game(destination)))
-
-	_col.add_child(_make_btn(
-		"BACK",
-		"",
-		_font, func(): _build_new_game_menu()))
-	_kb_apply_focus()
-
-
-func _launch_game(destination: String) -> void:
-	match destination:
-		"play_intro":    emit_signal("play_intro")
-		"skip_intro":    emit_signal("skip_intro")
-		"start_new_run": emit_signal("start_new_run")
+# (battle settings menu removed)  ──────────────────────────────────────────────────────────
+#  ─────────────────────────────────────────────────────────────
+#  ───────────────────────────────────────────────────────────────
 
 
 func _build_settings_menu() -> void:
@@ -375,47 +245,8 @@ func _build_settings_menu() -> void:
 		left.add_child(ndl)
 
 	# ── RIGHT: Battle Mode ───────────────────────────────────────────────
-	right.add_child(_make_settings_header("BATTLE MODE"))
-
-	var is_ctb := BattleSettings.battle_mode == BattleSettings.BattleMode.CTB
-	right.add_child(_make_settings_btn(
-		"CTB — CHARGE TURN" + ("  ◄" if is_ctb else ""),
-		"Combatants charge BPM in real time. One acts at a time.",
-		func():
-			BattleSettings.battle_mode = BattleSettings.BattleMode.CTB
-			BattleSettings.save()
-			_build_settings_menu()))
-	right.add_child(_make_settings_btn(
-		"ATB — ACTIVE TIME" + ("  ◄" if not is_ctb else ""),
-		"All combatants charge simultaneously and act when ready.",
-		func():
-			BattleSettings.battle_mode = BattleSettings.BattleMode.ATB
-			BattleSettings.save()
-			_build_settings_menu()))
-
-	var sp_r := Control.new()
-	sp_r.custom_minimum_size = Vector2(0, 8)
-	right.add_child(sp_r)
-
-	# ── RIGHT: BPM Speed ────────────────────────────────────────────────
-	right.add_child(_make_settings_header(
-		"BPM SCALE  —  %.0f%%" % (BattleSettings.atb_speed_multiplier * 100)))
-	for pair in [["LENTO (50%)", 0.5], ["MODERATO (100%)", 1.0],
-				 ["ALLEGRO (150%)", 1.5], ["PRESTO (200%)", 2.0]]:
-		var label_str : String = pair[0]
-		var val       : float  = pair[1]
-		var active    := absf(BattleSettings.atb_speed_multiplier - val) < 0.01
-		right.add_child(_make_settings_btn(
-			label_str + ("  ◄" if active else ""), "",
-			func():
-				BattleSettings.atb_speed_multiplier = val
-				BattleSettings.save()
-				_build_settings_menu()))
-
-	var sp_r2 := Control.new()
-	sp_r2.custom_minimum_size = Vector2(0, 8)
-	right.add_child(sp_r2)
-
+	# (battle mode / BPM settings removed)
+	#  ────────────────────────────────────────────────
 	# ── RIGHT: UI Theme ────────────────────────────────────────────────
 	right.add_child(_make_settings_header("UI THEME"))
 	for i in ThemeManager.UITheme.size():

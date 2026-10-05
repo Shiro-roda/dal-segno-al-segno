@@ -344,7 +344,7 @@ func _build_sidebar() -> Control:
 	vbox.add_child(sp1)
 
 	# Tab buttons — vertical list
-	var tab_names := ["AUDIO", "DISPLAY", "RENDERING", "BATTLE", "THEME"]
+	var tab_names := ["AUDIO", "DISPLAY", "RENDERING", "GAMEPLAY", "THEME"]
 	for i in tab_names.size():
 		var btn := Button.new()
 		btn.text = tab_names[i]
@@ -388,27 +388,21 @@ func _build_sidebar() -> Control:
 	sess_lbl.add_theme_color_override("font_color", Color(C_DIM.r, C_DIM.g, C_DIM.b, 0.6))
 	sess_vbox.add_child(sess_lbl)
 
-	# Save & Exit — saves then quits to desktop
-	var save_exit_btn := _make_session_btn("SAVE & EXIT")
+	# Exit to desktop. TODO: save game state here once the new save system exists.
+	var save_exit_btn := _make_session_btn("EXIT")
 	save_exit_btn.pressed.connect(func():
-		if GameController.current_run != null:
-			SaveManager.save_run(GameController.current_run, GameController.current_dungeon_run)
-		BattleSettings.save()
 		get_tree().quit())
 	sess_vbox.add_child(save_exit_btn)
 
-	# Return to Menu — saves and goes to main menu
+	# Return to Menu
 	var menu_btn := _make_session_btn("RETURN TO MENU")
 	menu_btn.pressed.connect(func():
-		if GameController.current_run != null:
-			SaveManager.save_run(GameController.current_run, GameController.current_dungeon_run)
-		BattleSettings.save()
 		hide_menu()
-		GameController._show_start_screen())
+		GameController.show_start_screen())
 	sess_vbox.add_child(menu_btn)
 
-	# Restart Run
-	var restart_btn := _make_session_btn("RESTART RUN")
+	# Restart
+	var restart_btn := _make_session_btn("RESTART")
 	_style_danger_btn(restart_btn)
 	restart_btn.pressed.connect(func():
 		hide_menu()
@@ -528,35 +522,14 @@ func _build_battle_page() -> Control:
 	var page := _make_content_vbox(scroll)
 	page.add_theme_constant_override("separation", 14)
 
-	_add_section_header(page, "BATTLE MODE")
+	# Placeholder for future gameplay options (difficulty, combat pacing, etc.).
+	_add_section_header(page, "GAMEPLAY")
 
-	for pair in [
-		["CTB — CHARGE TURN", BattleSettings.BattleMode.CTB],
-		["ATB — ACTIVE TIME", BattleSettings.BattleMode.ATB],
-	]:
-		var mode_name : String = pair[0]
-		var mode_val  : int    = pair[1]
-		var active := (BattleSettings.battle_mode == mode_val)
-		var btn := _make_option_btn(mode_name + ("  ◄" if active else ""), func():
-			BattleSettings.battle_mode = mode_val
-			BattleSettings.save()
-			_rebuild_battle_page())
-		page.add_child(btn)
-
-	_add_section_header(page, "BPM SCALE  —  %.0f%%" % (BattleSettings.atb_speed_multiplier * 100))
-
-	for pair in [
-		["LENTO (50%)", 0.5], ["MODERATO (100%)", 1.0],
-		["ALLEGRO (150%)", 1.5], ["PRESTO (200%)", 2.0],
-	]:
-		var speed_name : String = pair[0]
-		var speed_val  : float  = pair[1]
-		var active := absf(BattleSettings.atb_speed_multiplier - speed_val) < 0.01
-		var btn := _make_option_btn(speed_name + ("  ◄" if active else ""), func():
-			BattleSettings.atb_speed_multiplier = speed_val
-			BattleSettings.save()
-			_rebuild_battle_page())
-		page.add_child(btn)
+	var note := Label.new()
+	note.text = "No gameplay options yet."
+	note.add_theme_font_size_override("font_size", 11)
+	note.add_theme_color_override("font_color", Color(C_DIM.r, C_DIM.g, C_DIM.b, 0.6))
+	page.add_child(note)
 
 	return scroll
 

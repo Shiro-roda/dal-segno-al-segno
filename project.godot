@@ -25,15 +25,15 @@ buses/default_bus_layout="uid://civek8py85e0a"
 
 [autoload]
 
-Dialogic="*res://addons/dialogic/Core/DialogicGameHandler.gd"
+Dialogic="*uid://ds2q0uclmolvu"
 PhantomCameraManager="*uid://duq6jhf6unyis"
 AudioManagerAuto="*uid://cx2gw1tu0rxpi"
-GameController="*uid://e0k6d8aob0l7"
 GlobalTheme="*res://UI/Themes/Scripts/global_theme.gd"
 ArReticleOverlay="*uid://cs8rjvj1a71c7"
 MCPRuntime="*uid://bmxsx0apnxbgi"
 ThemeManager="*res://UI/Themes/Scripts/theme_manager.gd"
 UISounds="*res://UI/2D/Scripts/ui_sounds.gd"
+GameController="*res://Systems/Managers/Scripts/game_controller.gd"
 
 [dialogic]
 
@@ -57,7 +57,7 @@ movie_writer/movie_file="/Recordings/Video Recordings/dsas.ogv"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/func_godot/plugin.cfg", "res://addons/godot_mcp/plugin.cfg", "res://addons/phantom_camera/plugin.cfg")
+enabled=PackedStringArray("res://addons/dialogic/plugin.cfg", "res://addons/func_godot/plugin.cfg", "res://addons/godot_mcp/plugin.cfg", "res://addons/phantom_camera/plugin.cfg")
 
 [global_group]
 
