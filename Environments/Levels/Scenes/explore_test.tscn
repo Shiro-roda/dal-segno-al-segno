@@ -5,6 +5,9 @@
 [ext_resource type="Script" uid="uid://b8qcbriy06own" path="res://Exploration/Scripts/exploration_party.gd" id="3_2qh6v"]
 [ext_resource type="Script" uid="uid://b05va6nvmyaab" path="res://Exploration/Scripts/interactable.gd" id="4_m35bi"]
 [ext_resource type="Script" uid="uid://b6k7rqxw0n2r8" path="res://Exploration/Scripts/area_transition.gd" id="5_4nd3o"]
+[ext_resource type="Script" uid="uid://dm418auyw2wip" path="res://Systems/Combat/combat_encounter.gd" id="6_x1ckw"]
+[ext_resource type="Script" uid="uid://7e2wjvm1ll1u" path="res://Systems/Combat/enemy_template.gd" id="7_to6v2"]
+[ext_resource type="Resource" uid="uid://d0lq7n25eqtyg" path="res://Systems/Combat/Data/shadow.tres" id="8_nvrh5"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_tmy2y"]
 size = Vector3(40, 0.5, 40)
@@ -26,6 +29,9 @@ size = Vector3(2, 1, 2)
 
 [sub_resource type="BoxMesh" id="BoxMesh_p7l7j"]
 size = Vector3(2, 1, 2)
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_g4v7s"]
+radius = 4.0
 
 [node name="ExploreTest" type="Node3D" unique_id=1759660508]
 
@@ -69,6 +75,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
 
 [node name="Party" type="Node3D" parent="." unique_id=1334679581]
 script = ExtResource("3_2qh6v")
+seed_test_roster = true
 
 [node name="Pillar" type="Area3D" parent="." unique_id=612059707]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, -3)
@@ -80,3 +87,18 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 12)
 [node name="FarGate" type="Area3D" parent="." unique_id=1767624468]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -17)
 script = ExtResource("5_4nd3o")
+
+[node name="TestEncounter" type="Area3D" parent="." unique_id=1981262197]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -12.925439)
+collision_layer = 0
+collision_mask = 2
+script = ExtResource("6_x1ckw")
+enemies = Array[ExtResource("7_to6v2")]([ExtResource("8_nvrh5"), ExtResource("8_nvrh5")])
+auto_trigger = null
+one_shot = null
+enemy_spacing = null
+auto_shape_size = null
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="TestEncounter" unique_id=1879380962]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0631266, 0)
+shape = SubResource("CylinderShape3D_g4v7s")

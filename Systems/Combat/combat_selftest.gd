@@ -26,6 +26,10 @@ func _ready() -> void:
 	_test_options()
 	print("[combat] targeting")
 	_test_targeting()
+	print("[combat] movement")
+	_test_movement()
+	print("[combat] hold")
+	_test_hold()
 
 	print("[combat] %d checks, %d failures." % [_checks, _failures])
 	if _failures == 0:
@@ -244,6 +248,47 @@ func _test_spell(id: StringName, level: int, max_level: int) -> ActionDef:
 	fx.upcast_dice = "1d6"
 	spell.effects = [fx]
 	return spell
+
+func _test_movement() -> void:
+	var s := _session()
+	var hero_body := Node3D.new()
+	var husk_body := Node3D.new()
+	add_child(hero_body)
+	add_child(husk_body)
+	hero_body.global_position = Vector3.ZERO
+	husk_body.global_position = Vector3(10, 0, 0)
+	var husk := _block("Husk", 1)
+	husk.corpus = 500
+	s.begin([_block("Hero", 3)], [husk], _engine, [hero_body], [husk_body])
+	s.set_paused(false)
+	for _i in 100:
+		s._physics_process(0.05)
+	_expect(hero_body.global_position.distance_to(husk_body.global_position) < 2.5,
+			"combatants close the distance on their own")
+	s.queue_free()
+	hero_body.queue_free()
+	husk_body.queue_free()
+
+
+func _test_hold() -> void:
+	var s := _session()
+	var hero_body := Node3D.new()
+	var husk_body := Node3D.new()
+	add_child(hero_body)
+	add_child(husk_body)
+	hero_body.global_position = Vector3.ZERO
+	husk_body.global_position = Vector3(10, 0, 0)
+	var husk := _block("Husk", 1)
+	husk.corpus = 500
+	s.begin([_block("Hero", 3)], [husk], _engine, [hero_body], [husk_body])
+	s.set_hold(s.party[0], true)
+	s.set_paused(false)
+	for _i in 50:
+		s._physics_process(0.05)
+	_expect(hero_body.global_position.is_equal_approx(Vector3.ZERO), "a held party member stays put")
+	s.queue_free()
+	hero_body.queue_free()
+	husk_body.queue_free()
 
 
 func _expect(condition: bool, message: String) -> void:

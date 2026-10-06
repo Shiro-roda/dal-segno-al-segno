@@ -3,12 +3,12 @@
 importer="mp3"
 type="AudioStreamMP3"
 uid="uid://cbfje81nfnmk0"
-path="res://.godot/imported/Magenta Clean ver.mp3-47b8a6b520d78104b23ce1971557a23a.mp3str"
+path="res://.godot/imported/Magenta Clean ver.mp3-3d38cb5baf9e12ee9db51a8a40fe20ad.mp3str"
 
 [deps]
 
-source_file="res://Audio/Assets/mp3/Magenta Clean ver.mp3"
-dest_files=["res://.godot/imported/Magenta Clean ver.mp3-47b8a6b520d78104b23ce1971557a23a.mp3str"]
+source_file="res://audio/Assets/mp3/Magenta Clean ver.mp3"
+dest_files=["res://.godot/imported/Magenta Clean ver.mp3-3d38cb5baf9e12ee9db51a8a40fe20ad.mp3str"]
 
 [params]
 

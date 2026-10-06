@@ -1,14 +1,15 @@
 class_name CombatSession
 extends Node
-## Real-time-with-pause combat, fought in place (no movement).
+## Real-time-with-pause combat with free movement and positioning.
 ##
 ## Every combatant has a gauge that fills over `round_seconds`, faster with a better
-## initiative modifier. When it fills they take a turn: tick their conditions, then
-## carry out their queued order, or auto-attack (party) / pick an action (enemies).
+## initiative modifier. When it fills they take a turn: tick their conditions, pick
+## an action (a queued order, an auto-attack, or an enemy's choice), then wait
+## until the target is in reach, walking toward it if need be, and carry it out.
 ## Pause (the combat_pause action) stops time so orders can be queued.
 ##
-## All rules go through RulesEngine, so this node only decides who acts and when.
-## The HUD and the encounter trigger talk to it through its signals and methods.
+## All rules go through RulesEngine, so this node only decides who acts, when,
+## and from where. Combatants with no body count as always in reach.
 
 signal combat_started
 signal combat_ended(victory: bool)
@@ -27,6 +28,14 @@ signal target_changed(actor: Combatant)
 ## Chance an enemy tries a Canto or special action instead of its basic attack.
 @export_range(0.0, 1.0, 0.05) var enemy_special_chance: float = 0.35
 
+@export_group("Positioning")
+## Reach, in metres, for single-target Cantos whose ActionDef has no `range`.
+@export var spell_range: float = 12.0
+## Combatants closer than this get pushed apart.
+@export var separation_radius: float = 0.9
+## Fraction of the reach a combatant walks up to before stopping.
+@export_range(0.5, 1.0, 0.05) var arrive_fraction: float = 0.9
+
 var engine: RulesEngine
 var party: Array[Combatant] = []
 var enemies: Array[Combatant] = []
@@ -44,6 +53,12 @@ func _process(delta: float) -> void:
 	advance(delta)
 
 
+func _physics_process(delta: float) -> void:
+	if active and not paused:
+		_retarget()
+		_step_movement(delta)
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if active and event.is_action_pressed("combat_pause"):
 		toggle_pause()
@@ -53,24 +68,32 @@ func _unhandled_input(event: InputEvent) -> void:
 # ----------------------------------------------------------------- flow
 
 ## Starts a fight between two groups of StatBlocks. `p_engine` defaults to Rules.engine.
-func begin(party_blocks: Array, enemy_blocks: Array, p_engine: RulesEngine = null) -> void:
+## Optional body arrays line up with the block arrays by index.
+func begin(party_blocks: Array, enemy_blocks: Array, p_engine: RulesEngine = null,
+		party_bodies: Array = [], enemy_bodies: Array = []) -> void:
 	if active:
 		return
 	engine = p_engine if p_engine != null else Rules.engine
 	party.clear()
 	enemies.clear()
 	history.clear()
-	for b: StatBlock in party_blocks:
-		party.append(Combatant.new(b, Combatant.Side.PARTY))
-	for b: StatBlock in enemy_blocks:
-		enemies.append(Combatant.new(b, Combatant.Side.ENEMY))
+	for i in party_blocks.size():
+		var c := Combatant.new(party_blocks[i] as StatBlock, Combatant.Side.PARTY)
+		if i < party_bodies.size():
+			c.body = party_bodies[i] as Node3D
+		party.append(c)
+	for i in enemy_blocks.size():
+		var c := Combatant.new(enemy_blocks[i] as StatBlock, Combatant.Side.ENEMY)
+		if i < enemy_bodies.size():
+			c.body = enemy_bodies[i] as Node3D
+		enemies.append(c)
 	# A head start for quick combatants: initiative roll spread over the first half-round.
 	for c: Combatant in party + enemies:
 		c.gauge = clampf(engine.roll_initiative(c.block) / 40.0, 0.0, 0.6)
 	for c: Combatant in party:
-		c.target = _first_alive(enemies)
+		c.target = _nearest_alive(c, enemies)
 	for c: Combatant in enemies:
-		c.target = _first_alive(party)
+		c.target = _nearest_alive(c, party)
 	active = true
 	_set_player_lock(true)
 	combat_started.emit()
@@ -86,12 +109,16 @@ func advance(delta: float) -> void:
 		if not active:
 			return
 		if c.is_down():
+			c.turn_pending = false
+			continue
+		if c.turn_pending:
+			_try_act(c)
 			continue
 		var speed := clampf(1.0 + c.block.initiative_mod() * speed_per_initiative, 0.5, 2.0)
 		c.gauge += delta / round_seconds * speed
 		if c.gauge >= 1.0:
 			c.gauge -= 1.0
-			_take_turn(c)
+			_begin_turn(c)
 
 
 func set_paused(value: bool) -> void:
@@ -128,6 +155,30 @@ func clear_order(actor: Combatant) -> void:
 		order_changed.emit(actor)
 
 
+## Sends a party member to a point. Works while paused; they move once time runs.
+func order_move(actor: Combatant, point: Vector3) -> bool:
+	if not active or actor.side != Combatant.Side.PARTY or actor.is_down() or actor.body == null:
+		return false
+	actor.move_order = true
+	actor.move_goal = point
+	order_changed.emit(actor)
+	return true
+
+
+func cancel_move(actor: Combatant) -> void:
+	if actor.move_order:
+		actor.move_order = false
+		order_changed.emit(actor)
+
+
+## Hold: don't advance on targets automatically (party only).
+func set_hold(actor: Combatant, hold: bool) -> void:
+	if actor.side != Combatant.Side.PARTY:
+		return
+	actor.hold_position = hold
+	order_changed.emit(actor)
+
+
 ## Sets who a party member auto-attacks and aims single-target orders at.
 func set_target(actor: Combatant, target: Combatant) -> void:
 	if target == null or target.is_down() or target.side == actor.side:
@@ -157,7 +208,8 @@ func options_for(actor: Combatant) -> Array[Dictionary]:
 
 # ------------------------------------------------------------------ turns
 
-func _take_turn(c: Combatant) -> void:
+## The gauge just filled: tick conditions, decide what to do, then try to do it.
+func _begin_turn(c: Combatant) -> void:
 	# Judge whether they can act before conditions tick down, so a 1-round Stun
 	# really costs the stunned combatant one turn.
 	var can_act_now := c.block.can_act()
@@ -169,7 +221,32 @@ func _take_turn(c: Combatant) -> void:
 	if not can_act_now:
 		_say("%s is unable to act." % c.display_name())
 		return
-	_execute(c, _plan_for(c))
+	c.pending_plan = _plan_for(c)
+	c.turn_pending = true
+	_try_act(c)
+
+
+## Carries out the pending plan if the target is in reach; otherwise keeps it
+## pending (the combatant walks toward the target) or, on Hold, forfeits it.
+func _try_act(c: Combatant) -> void:
+	var plan = c.pending_plan
+	var action: ActionDef = plan["action"]
+	var targets := _resolve_targets(c, action, plan.get("target") as Combatant)
+	if targets.is_empty():
+		c.turn_pending = false
+		return
+	var reach := reach_for(c, action)
+	if not _in_reach(c, targets[0], reach):
+		if c.side == Combatant.Side.PARTY and c.hold_position and not c.move_order:
+			_say("%s holds position; the target is out of reach." % c.display_name())
+			c.turn_pending = false
+			return
+		c.approach_target = targets[0]
+		c.approach_reach = reach
+		return
+	c.turn_pending = false
+	_face(c, targets[0])
+	_execute(c, plan, targets)
 	_check_end()
 
 
@@ -197,23 +274,22 @@ func _enemy_plan(c: Combatant) -> Dictionary:
 	if not specials.is_empty() and engine.rng.randf() < enemy_special_chance:
 		var pick: Dictionary = specials[engine.rng.randi_range(0, specials.size() - 1)]
 		return {"action": pick["action"], "level": pick["level"], "target": null}
-	return _basic_plan(null)
+	return _basic_plan(c.target)
 
 
-func _execute(c: Combatant, plan: Dictionary) -> void:
+func _execute(c: Combatant, plan: Dictionary, targets: Array[Combatant]) -> void:
 	var action: ActionDef = plan["action"]
-	var targets := _resolve_targets(c, action, plan.get("target") as Combatant)
-	if targets.is_empty():
-		return
 	var blocks: Array = []
 	for t in targets:
 		blocks.append(t.block)
 	var result := engine.use_action(c.block, action, blocks, int(plan.get("level", 0)))
 	if not result["ok"]:
 		_say(str(result["reason"]))
-		# An order that can't be carried out falls back to a plain attack.
+		# An order that can't be carried out falls back to a plain attack,
+		# which still has to get into reach.
 		if action != engine.config.get_basic_attack():
-			_execute(c, _basic_plan(plan.get("target") as Combatant))
+			c.pending_plan = _basic_plan(plan.get("target") as Combatant)
+			c.turn_pending = true
 		return
 	for line in result["log"]:
 		_say(line)
@@ -240,7 +316,7 @@ func _resolve_targets(c: Combatant, action: ActionDef, preferred: Combatant) -> 
 		_:
 			var foe := preferred
 			if foe == null or foe.is_down() or not foes.has(foe):
-				foe = _random_alive(foes) if c.side == Combatant.Side.ENEMY else _first_alive(foes)
+				foe = _nearest_alive(c, foes)
 			if foe != null:
 				out.append(foe)
 	return out
@@ -258,10 +334,113 @@ func _check_end() -> void:
 func _end(victory: bool) -> void:
 	active = false
 	paused = false
+	for c: Combatant in party + enemies:
+		c.turn_pending = false
+		c.move_order = false
+		c.moving = false
 	paused_changed.emit(false)
 	_say("Victory!" if victory else "The party has fallen.")
 	_set_player_lock(false)
 	combat_ended.emit(victory)
+
+
+# ------------------------------------------------------------ positioning
+
+## How far `action` reaches when `c` uses it, in metres.
+func reach_for(c: Combatant, action: ActionDef) -> float:
+	if action == engine.config.get_basic_attack():
+		return c.attack_range
+	match action.target:
+		ActionDef.Target.SELF, ActionDef.Target.ALL_ALLIES, ActionDef.Target.ALL_ENEMIES:
+			return INF
+	# Use an ActionDef `range` property if the resource has one.
+	var r: Variant = action.get("range")
+	if r != null and float(r) > 0.0:
+		return float(r)
+	return spell_range
+
+
+func _in_reach(c: Combatant, t: Combatant, reach: float) -> bool:
+	if c.body == null or t.body == null or is_inf(reach):
+		return true
+	return _flat_distance(c, t) <= reach
+
+
+func _flat_distance(a: Combatant, b: Combatant) -> float:
+	var d = a.body.global_position - b.body.global_position
+	d.y = 0.0
+	return d.length()
+
+
+## Living foes keep their targets fresh: enemies always hunt the nearest
+## party member; party members only retarget when theirs has fallen.
+func _retarget() -> void:
+	for c: Combatant in party + enemies:
+		if c.is_down():
+			continue
+		var foes := enemies if c.side == Combatant.Side.PARTY else party
+		if c.side == Combatant.Side.ENEMY or c.target == null or c.target.is_down():
+			c.target = _nearest_alive(c, foes)
+
+
+func _step_movement(delta: float) -> void:
+	var everyone: Array[Combatant] = party + enemies
+	for c in everyone:
+		c.moving = false
+		if c.is_down() or c.body == null:
+			continue
+		var goal: Variant = _goal_for(c)
+		if goal == null:
+			continue
+		var pos = c.body.global_position
+		var to: Vector3 = (goal as Vector3) - pos
+		to.y = 0.0
+		var dist := to.length()
+		if dist < 0.05:
+			c.move_order = false
+			continue
+		var step := minf(c.move_speed * delta, dist)
+		var new_pos = pos + to / dist * step
+		# Don't stack on top of each other.
+		for o in everyone:
+			if o == c or o.is_down() or o.body == null:
+				continue
+			var away = new_pos - o.body.global_position
+			away.y = 0.0
+			var d = away.length()
+			if d > 0.001 and d < separation_radius:
+				new_pos += away / d * (separation_radius - d) * 0.5
+		c.body.global_position = Vector3(new_pos.x, pos.y, new_pos.z)
+		var yaw := atan2(-to.x, -to.z)  # forward is -Z
+		c.body.rotation.y = lerp_angle(c.body.rotation.y, yaw, minf(1.0, 12.0 * delta))
+		c.moving = true
+
+
+## Where `c` wants to be: an explicit move order, else just inside reach of its target.
+func _goal_for(c: Combatant) -> Variant:
+	if c.move_order:
+		return c.move_goal
+	if c.side == Combatant.Side.PARTY and c.hold_position:
+		return null
+	var foe: Combatant = c.approach_target if c.turn_pending else c.target
+	var reach: float = c.approach_reach if c.turn_pending else c.attack_range
+	if foe == null or foe.is_down() or foe.body == null or is_inf(reach):
+		return null
+	var to_foe = foe.body.global_position - c.body.global_position
+	to_foe.y = 0.0
+	var stop := reach * arrive_fraction
+	if to_foe.length() <= stop:
+		return null
+	return foe.body.global_position - to_foe.normalized() * stop
+
+
+func _face(c: Combatant, t: Combatant) -> void:
+	if c.body == null or t.body == null or c == t:
+		return
+	var d = t.body.global_position - c.body.global_position
+	d.y = 0.0
+	if d.length() > 0.01:
+		c.body.rotation.y = atan2(-d.x, -d.z)
 
 
 # ---------------------------------------------------------------- helpers
@@ -281,18 +460,20 @@ func _alive(group: Array[Combatant]) -> Array[Combatant]:
 	return out
 
 
-func _first_alive(group: Array[Combatant]) -> Combatant:
-	for c in group:
-		if not c.is_down():
-			return c
-	return null
-
-
-func _random_alive(group: Array[Combatant]) -> Combatant:
-	var living := _alive(group)
-	if living.is_empty():
-		return null
-	return living[engine.rng.randi_range(0, living.size() - 1)]
+## The closest living member of `group` to `c`; the first one if positions are unknown.
+func _nearest_alive(c: Combatant, group: Array[Combatant]) -> Combatant:
+	var best: Combatant = null
+	var best_d := INF
+	for o in group:
+		if o.is_down():
+			continue
+		var d := 0.0
+		if c.body != null and o.body != null:
+			d = _flat_distance(c, o)
+		if best == null or d < best_d:
+			best = o
+			best_d = d
+	return best
 
 
 ## The living member with the lowest Corpus (for heals aimed at "an ally").
