@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="StatDef" format=3 uid="uid://boxi1dnmcqvdq"]
+
+[ext_resource type="Script" uid="uid://cmm4ygsk3aya8" path="res://Systems/Rules/stat_def.gd" id="1_81jqd"]
+
+[resource]
+script = ExtResource("1_81jqd")
+id = &"grace"
+display_name = "Grace"
+category = 1
+governing_stats = Array[StringName]([&"delusion", &"tempo"])
+tags = PackedStringArray("social", "physical")
+color = Color(0.54509807, 1, 1, 1)
+description = "Savoir-Faire, a disposition that lends itself to social and physical agility."
+metadata/_custom_type_script = "uid://cmm4ygsk3aya8"

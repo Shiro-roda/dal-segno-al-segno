@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="StatDef" format=3 uid="uid://bf8ror60smvpy"]
+
+[ext_resource type="Script" uid="uid://cmm4ygsk3aya8" path="res://Systems/Rules/stat_def.gd" id="1_bj0ib"]
+
+[resource]
+script = ExtResource("1_bj0ib")
+id = &"tone"
+display_name = "Tone"
+tags = PackedStringArray("physical")
+description = "Corpus Portions and physical saves."

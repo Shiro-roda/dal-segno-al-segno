@@ -1,6 +1,5 @@
 [gd_scene format=3 uid="uid://drgt1emnpwnap"]
 
-[ext_resource type="Script" uid="uid://by03crfwhucet" path="res://Characters/Scripts/hue_actor.gd" id="1_uw788"]
 [ext_resource type="Script" uid="uid://jtnowsj7i172" path="res://UI/3D/BattleDisplay/Scripts/actor_panel_3d.gd" id="2_igocg"]
 [ext_resource type="PackedScene" uid="uid://bl3aftctvygxl" path="res://UI/3D/BattleDisplay/Scenes/hp_display.tscn" id="3_gu38m"]
 [ext_resource type="PackedScene" uid="uid://dm1a08supvq1i" path="res://UI/3D/BattleDisplay/Scenes/will_ring.tscn" id="4_ab05m"]
@@ -16,7 +15,6 @@ material = SubResource("StandardMaterial3D_uw788")
 radius = 0.35
 
 [node name="BattleActor" type="Node3D" unique_id=1609113490]
-script = ExtResource("1_uw788")
 
 [node name="CameraAnchor" type="Node3D" parent="." unique_id=371236404]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 0)

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3 uid="uid://bd7l2fiw77gpr"]
+
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="1_wedyg"]
+[ext_resource type="Script" uid="uid://m5jx56lhrgsj" path="res://Systems/Rules/item_def.gd" id="2_cwtwu"]
+[ext_resource type="Resource" uid="uid://bharujhq5s6vw" path="res://Systems/Rules/Data/Actions/crucify.tres" id="2_ryo3g"]
+
+[resource]
+script = ExtResource("2_cwtwu")
+id = &"baton"
+display_name = "Baton"
+modifiers = {
+"tempo": 1
+}
+granted_actions = Array[ExtResource("1_wedyg")]([ExtResource("2_ryo3g")])
+damage_dice = "2d4 + 1"
+attack_stat = &"volume"
+damage_stat = &"volume"
+weapon_tags = PackedStringArray("melee")
+metadata/_custom_type_script = "uid://m5jx56lhrgsj"

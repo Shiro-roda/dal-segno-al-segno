@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3 uid="uid://bdtag85jp8kfj"]
+
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="1_g4u2s"]
+[ext_resource type="Script" uid="uid://m5jx56lhrgsj" path="res://Systems/Rules/item_def.gd" id="2_a5ucl"]
+
+[resource]
+script = ExtResource("2_a5ucl")
+id = &"umbrella"
+display_name = "Umbrella"
+modifiers = {
+"aversion": 2
+}
+damage_dice = "1d4 + 1"
+attack_stat = &"aversion"
+damage_stat = &"aversion"
+weapon_tags = PackedStringArray("ranged")
+metadata/_custom_type_script = "uid://m5jx56lhrgsj"

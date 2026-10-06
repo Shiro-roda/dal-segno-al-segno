@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3 uid="uid://ctap7c8e55jk4"]
+
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="1_scho8"]
+[ext_resource type="Script" uid="uid://m5jx56lhrgsj" path="res://Systems/Rules/item_def.gd" id="2_wl4rq"]
+
+[resource]
+script = ExtResource("2_wl4rq")
+id = &"pipe"
+display_name = "Corroded Pipe"
+damage_dice = "1d8"
+attack_stat = &"volume"
+damage_stat = &"volume"
+weapon_tags = PackedStringArray("melee")
+metadata/_custom_type_script = "uid://m5jx56lhrgsj"

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="StatDef" format=3 uid="uid://g0dwn88v2gng"]
+
+[ext_resource type="Script" uid="uid://cmm4ygsk3aya8" path="res://Systems/Rules/stat_def.gd" id="1_6i141"]
+
+[resource]
+script = ExtResource("1_6i141")
+id = &"dynamics"
+display_name = "Dynamics"
+category = 1
+governing_stats = Array[StringName]([&"volume"])
+tags = PackedStringArray("physical")
+description = "The difference between being able to move something, and knowing how hard to push it."
+metadata/_custom_type_script = "uid://cmm4ygsk3aya8"

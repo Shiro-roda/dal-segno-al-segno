@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://sfuu5q2k8pct"]
+
+[ext_resource type="Script" uid="uid://dkgl2cvm36dv7" path="res://Systems/Rules/rules_selftest.gd" id="1_6crhl"]
+
+[node name="RulesSelfTest" type="Node" unique_id=542927835]
+script = ExtResource("1_6crhl")

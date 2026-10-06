@@ -1,6 +1,5 @@
 [gd_scene format=3 uid="uid://cps2iurwxj0aw"]
 
-[ext_resource type="Script" uid="uid://buiokwi30hawb" path="res://Characters/Scripts/enemy_actor.gd" id="1_n7wrl"]
 [ext_resource type="PackedScene" uid="uid://6kmv2ko6w15m" path="res://RecycleBin/scenes/Characters/ken_model.tscn" id="2_auhr8"]
 [ext_resource type="Script" uid="uid://jtnowsj7i172" path="res://UI/3D/BattleDisplay/Scripts/actor_panel_3d.gd" id="3_auhr8"]
 [ext_resource type="PackedScene" uid="uid://bl3aftctvygxl" path="res://UI/3D/BattleDisplay/Scenes/hp_display.tscn" id="4_w5jaj"]
@@ -10,7 +9,6 @@
 [ext_resource type="PackedScene" uid="uid://wog7o86lkrah" path="res://UI/3D/BattleDisplay/Scenes/ring nodes/small_ice_orb.tscn" id="8_o23ee"]
 
 [node name="BattleActor" type="Node3D" unique_id=620316433]
-script = ExtResource("1_n7wrl")
 
 [node name="ken_model_test9" parent="." unique_id=515500204 instance=ExtResource("2_auhr8")]
 transform = Transform3D(1.2, 0, 0, 0, 1.615, 0, 0, 0, 1.2, 0, 0, 0)

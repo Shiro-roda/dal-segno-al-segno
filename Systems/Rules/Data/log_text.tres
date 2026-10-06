@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="LogText" format=3 uid="uid://dbe3nvp8c2h4k"]
+
+[ext_resource type="Script" uid="uid://ddkmeblq4pxwg" path="res://Systems/Rules/log_text.gd" id="1_tuq1w"]
+
+[resource]
+script = ExtResource("1_tuq1w")
+defeat = Array[String](["You have been erased."])

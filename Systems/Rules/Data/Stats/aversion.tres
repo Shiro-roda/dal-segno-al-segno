@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="StatDef" format=3 uid="uid://cidr6ooschm86"]
+
+[ext_resource type="Script" uid="uid://cmm4ygsk3aya8" path="res://Systems/Rules/stat_def.gd" id="1_8e32v"]
+
+[resource]
+script = ExtResource("1_8e32v")
+id = &"aversion"
+display_name = "Aversion"
+tags = PackedStringArray("mental", "color")
+color = Color(0.2, 0.8, 0.3, 1)
+description = "Green."

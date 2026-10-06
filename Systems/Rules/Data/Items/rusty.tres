@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3 uid="uid://dyok0aaaggfjl"]
+
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="1_xvksb"]
+[ext_resource type="Script" uid="uid://m5jx56lhrgsj" path="res://Systems/Rules/item_def.gd" id="2_4mvws"]
+
+[resource]
+script = ExtResource("2_4mvws")
+id = &"rusty"
+display_name = "Rusty Six Shooter"
+damage_dice = "1d12"
+attack_stat = &"tempo"
+damage_stat = &"tempo"
+weapon_tags = PackedStringArray("ranged")
+metadata/_custom_type_script = "uid://m5jx56lhrgsj"

@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3 uid="uid://cv4xlujhtdmco"]
+
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="1_84ryb"]
+[ext_resource type="Script" uid="uid://hgdwyugnb20t" path="res://Systems/Rules/effect_def.gd" id="2_jio0h"]
+[ext_resource type="Script" uid="uid://m5jx56lhrgsj" path="res://Systems/Rules/item_def.gd" id="2_st77g"]
+
+[sub_resource type="Resource" id="Resource_rr2qu"]
+script = ExtResource("2_jio0h")
+dice = "1d4"
+bonus_stat = &"attachment"
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[sub_resource type="Resource" id="Resource_jio0h"]
+script = ExtResource("1_84ryb")
+id = &"banquet"
+display_name = "Banquet"
+description = "grants damage done as temporary CORP"
+roll = 1
+attack_stat = &"attachment"
+effects = Array[ExtResource("2_jio0h")]([SubResource("Resource_rr2qu")])
+tags = null
+metadata/_custom_type_script = "uid://njw6l7ex23w0"
+
+[resource]
+script = ExtResource("2_st77g")
+id = &"fang"
+display_name = "Fang"
+modifiers = {
+"damage": 2
+}
+granted_actions = Array[ExtResource("1_84ryb")]([SubResource("Resource_jio0h")])
+damage_dice = "1d6 + 1"
+attack_stat = &"tempo"
+damage_stat = &"tempo"
+weapon_tags = PackedStringArray("melee")
+metadata/_custom_type_script = "uid://m5jx56lhrgsj"

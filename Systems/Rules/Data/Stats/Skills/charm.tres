@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="StatDef" format=3 uid="uid://c68nxlbtukq3m"]
+
+[ext_resource type="Script" uid="uid://cmm4ygsk3aya8" path="res://Systems/Rules/stat_def.gd" id="1_vuds5"]
+
+[resource]
+script = ExtResource("1_vuds5")
+id = &"charm"
+display_name = "Charm"
+category = 1
+governing_stats = Array[StringName]([&"attachment"])
+tags = PackedStringArray("social")
+color = Color(1, 0.5176471, 0.5372549, 1)
+metadata/_custom_type_script = "uid://cmm4ygsk3aya8"

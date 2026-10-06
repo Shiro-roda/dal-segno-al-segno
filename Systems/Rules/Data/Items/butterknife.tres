@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3 uid="uid://b3a4csh51vycu"]
+
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="1_1m2od"]
+[ext_resource type="Script" uid="uid://m5jx56lhrgsj" path="res://Systems/Rules/item_def.gd" id="2_myq34"]
+
+[resource]
+script = ExtResource("2_myq34")
+id = &"butterknife"
+display_name = "Butter Knife"
+damage_dice = "1d6"
+attack_stat = &"tempo"
+damage_stat = &"tempo"
+weapon_tags = PackedStringArray("melee")
+metadata/_custom_type_script = "uid://m5jx56lhrgsj"

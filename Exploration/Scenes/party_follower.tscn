@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://cv2wdtwudxi42"]
+
+[ext_resource type="Script" uid="uid://cmntoqi1siq1n" path="res://Exploration/Scripts/party_follower.gd" id="1_r3eou"]
+
+[node name="PartyFollower" type="Node3D" unique_id=1940137269]
+script = ExtResource("1_r3eou")

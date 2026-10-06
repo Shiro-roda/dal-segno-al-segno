@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ConditionDef" format=3 uid="uid://fmc67ao44d2w"]
+
+[ext_resource type="Script" uid="uid://6nbup8pfuhsr" path="res://Systems/Rules/condition_def.gd" id="1_sc13k"]
+
+[resource]
+script = ExtResource("1_sc13k")
+id = &"bleed"
+display_name = "Bleeding"
+advantage_on = null
+disadvantage_on = null
+tick_damage = "1d4"
+metadata/_custom_type_script = "uid://6nbup8pfuhsr"

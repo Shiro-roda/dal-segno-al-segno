@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3 uid="uid://ba2130kfqdkv6"]
+
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="1_cb0fo"]
+[ext_resource type="Script" uid="uid://m5jx56lhrgsj" path="res://Systems/Rules/item_def.gd" id="2_6trjo"]
+
+[resource]
+script = ExtResource("2_6trjo")
+id = &"sixshooter"
+display_name = "Six Shooter"
+description = "(every 6th bullet is a guaranteed crit)"
+modifiers = {
+"initiative": 5
+}
+damage_dice = "2d6 + 1"
+attack_stat = &"tempo"
+damage_stat = &"tempo"
+weapon_tags = PackedStringArray("ranged")
+metadata/_custom_type_script = "uid://m5jx56lhrgsj"

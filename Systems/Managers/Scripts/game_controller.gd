@@ -5,10 +5,14 @@ extends Node
 ## Everything else (game state, exploration, combat, dialogue) is to be rebuilt.
 
 const START_SCREEN := preload("res://UI/2D/Scenes/start_screen.tscn")
-const PLACEHOLDER_LEVEL := "res://Environments/Levels/Scenes/white_test.tscn"
+const PLACEHOLDER_LEVEL := "res://Environments/Levels/Scenes/explore_test.tscn"
 
 var world_layer: CanvasLayer
 var event_layer: CanvasLayer
+
+## Name of the spawn_point marker the next loaded level should place the
+## player at. Read and cleared by PlayerLink on load.
+var pending_spawn: StringName = &""
 
 
 func _ready() -> void:
@@ -54,9 +58,17 @@ func show_start_screen() -> void:
 	screen.quit_game.connect(func(): get_tree().quit())
 
 
-## Placeholder: drops the player into a test level. Replace with real game flow.
+## Placeholder: drops the player into the exploration test level.
 func start_new_game() -> void:
+	pending_spawn = &"default"
 	load_world_scene(PLACEHOLDER_LEVEL)
+
+
+## Travel to another level, arriving at the named spawn point.
+## Deferred so it is safe to call from physics callbacks (body_entered).
+func travel_to(scene_path: String, spawn: StringName = &"default") -> void:
+	pending_spawn = spawn
+	load_world_scene.call_deferred(scene_path)
 
 
 ## Returns the SubViewport inside WorldLayer.

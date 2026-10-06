@@ -1,0 +1,28 @@
+[gd_scene format=3 uid="uid://brvtpt2phx4bd"]
+
+[ext_resource type="Script" uid="uid://bim02mk0jmmd8" path="res://Exploration/Scripts/player.gd" id="1_h8c53"]
+[ext_resource type="Script" uid="uid://dgh8sqw2a63tv" path="res://Exploration/Scripts/player_link.gd" id="3_h8c53"]
+[ext_resource type="PackedScene" uid="uid://b5one47frkahl" path="res://Exploration/Scenes/placeholder_model.tscn" id="4_4v8rn"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_h8c53"]
+radius = 0.35
+height = 1.8
+
+[node name="Player" type="CharacterBody3D" unique_id=2026021167]
+collision_layer = 2
+script = ExtResource("1_h8c53")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1984100485]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("CapsuleShape3D_h8c53")
+
+[node name="Model" parent="." unique_id=165941682 instance=ExtResource("4_4v8rn")]
+
+[node name="CameraAnchor" type="Marker3D" parent="." unique_id=394544981 groups=["camera_anchor"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.7, 5.7400885, 3.8)
+
+[node name="CameraLook" type="Marker3D" parent="." unique_id=594062687 groups=["camera_look"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4, -3)
+
+[node name="PlayerLink" type="Node" parent="." unique_id=1836439303]
+script = ExtResource("3_h8c53")

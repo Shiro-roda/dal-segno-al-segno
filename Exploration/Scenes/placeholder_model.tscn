@@ -1,0 +1,26 @@
+[gd_scene format=3 uid="uid://b5one47frkahl"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_qteg1"]
+albedo_color = Color(0.85, 0.25, 0.25, 1)
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_qteg1"]
+radius = 0.35
+height = 1.8
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dbaun"]
+albedo_color = Color(1, 0.85, 0.2, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_qteg1"]
+size = Vector3(0.15, 0.15, 0.3)
+
+[node name="PlaceholderModel" type="Node3D" unique_id=165941682]
+
+[node name="Body" type="MeshInstance3D" parent="." unique_id=1014967761]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+material_override = SubResource("StandardMaterial3D_qteg1")
+mesh = SubResource("CapsuleMesh_qteg1")
+
+[node name="Nose" type="MeshInstance3D" parent="." unique_id=324846241]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3, -0.4)
+material_override = SubResource("StandardMaterial3D_dbaun")
+mesh = SubResource("BoxMesh_qteg1")

@@ -527,7 +527,6 @@ var horizontal_rotation_offset: float = 0:
 @export_flags_3d_render var noise_emitter_layer: int = 0:
 	set = set_noise_emitter_layer,
 	get = get_noise_emitter_layer
-@onready var player: CharacterBody3D = $"../Player"
 
 #endregion
 

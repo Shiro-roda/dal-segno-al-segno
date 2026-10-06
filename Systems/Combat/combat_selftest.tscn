@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://did22xwkx60ec"]
+
+[ext_resource type="Script" uid="uid://814sgqr0awq3" path="res://Systems/Combat/combat_selftest.gd" id="1_luhmd"]
+
+[node name="CombatSelfTest" type="Node" unique_id=588162624]
+script = ExtResource("1_luhmd")

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="StatDef" format=3 uid="uid://boi2g5m8em7n6"]
+
+[ext_resource type="Script" uid="uid://cmm4ygsk3aya8" path="res://Systems/Rules/stat_def.gd" id="1_fnh48"]
+
+[resource]
+script = ExtResource("1_fnh48")
+id = &"delusion"
+display_name = "Delusion"
+tags = PackedStringArray("mental", "color")
+color = Color(0.25, 0.4, 0.95, 1)
+description = "Blue."

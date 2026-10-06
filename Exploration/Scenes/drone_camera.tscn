@@ -1,0 +1,16 @@
+[gd_scene format=3 uid="uid://n8xcjcsohka"]
+
+[ext_resource type="Script" uid="uid://c6jvfhe3b32w2" path="res://Exploration/Scripts/drone_camera.gd" id="1_8axl5"]
+[ext_resource type="Script" uid="uid://bd046eokvcnu2" path="res://addons/phantom_camera/scripts/phantom_camera_host/phantom_camera_host.gd" id="2_c20po"]
+
+[node name="DroneCamera" type="Node3D" unique_id=2130353505]
+script = ExtResource("1_8axl5")
+bank_amount = 0.063
+
+[node name="Camera" type="Camera3D" parent="." unique_id=1299416007]
+current = true
+
+[node name="PhantomCameraHost" type="Node" parent="Camera" unique_id=1698477435]
+process_priority = 300
+process_physics_priority = 300
+script = ExtResource("2_c20po")

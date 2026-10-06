@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="StatDef" format=3 uid="uid://brwebikykigvt"]
+
+[ext_resource type="Script" uid="uid://cmm4ygsk3aya8" path="res://Systems/Rules/stat_def.gd" id="1_t0l7q"]
+
+[resource]
+script = ExtResource("1_t0l7q")
+id = &"attachment"
+display_name = "Attachment"
+tags = PackedStringArray("mental", "color")
+color = Color(0.9, 0.2, 0.2, 1)
+description = "Red."

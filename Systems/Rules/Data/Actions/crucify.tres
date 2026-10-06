@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="ActionDef" format=3 uid="uid://bharujhq5s6vw"]
+
+[ext_resource type="Script" uid="uid://hgdwyugnb20t" path="res://Systems/Rules/effect_def.gd" id="1_0h0fl"]
+[ext_resource type="Resource" uid="uid://fmc67ao44d2w" path="res://Systems/Rules/Data/Conditions/bleed.tres" id="2_0h0fl"]
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="3_nt60w"]
+
+[sub_resource type="Resource" id="Resource_ilb28"]
+script = ExtResource("1_0h0fl")
+kind = 2
+condition = ExtResource("2_0h0fl")
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[sub_resource type="Resource" id="Resource_tsota"]
+script = ExtResource("1_0h0fl")
+kind = 4
+dice = "1d4 + 1"
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[resource]
+script = ExtResource("3_nt60w")
+id = &"crucify"
+display_name = "Crucify"
+description = "(the target only fails the roll if they roll over the save DC. If they roll under it, the user damages themself)"
+roll = 2
+save_stat = &"tone"
+dc_stat = &"delusion"
+effects = Array[ExtResource("1_0h0fl")]([SubResource("Resource_ilb28"), SubResource("Resource_tsota")])
+tags = PackedStringArray("weapon action")
+metadata/_custom_type_script = "uid://njw6l7ex23w0"

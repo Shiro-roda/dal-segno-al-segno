@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="StatDef" format=3 uid="uid://b56fnfhyrnjmf"]
+
+[ext_resource type="Script" uid="uid://cmm4ygsk3aya8" path="res://Systems/Rules/stat_def.gd" id="1_wsyqm"]
+
+[resource]
+script = ExtResource("1_wsyqm")
+id = &"menace"
+display_name = "Menace"
+category = 1
+governing_stats = Array[StringName]([&"aversion"])
+tags = PackedStringArray("social")
+color = Color(0, 0.5007194, 0.22445074, 1)
+metadata/_custom_type_script = "uid://cmm4ygsk3aya8"

@@ -1,6 +1,5 @@
 [gd_scene format=3 uid="uid://dqu6wxijpruaf"]
 
-[ext_resource type="Script" uid="uid://buiokwi30hawb" path="res://Characters/Scripts/enemy_actor.gd" id="1_ewwui"]
 [ext_resource type="Script" uid="uid://jtnowsj7i172" path="res://UI/3D/BattleDisplay/Scripts/actor_panel_3d.gd" id="4_27t0e"]
 [ext_resource type="PackedScene" uid="uid://du3suh71satyp" path="res://UI/3D/BattleDisplay/Scenes/ring nodes/large_flesh_orb.tscn" id="5_7k82u"]
 [ext_resource type="PackedScene" uid="uid://bl3aftctvygxl" path="res://UI/3D/BattleDisplay/Scenes/hp_display.tscn" id="5_ehabe"]
@@ -18,7 +17,6 @@ radius = 0.3
 height = 1.5
 
 [node name="EnemyActor" type="Node3D" unique_id=620316433]
-script = ExtResource("1_ewwui")
 
 [node name="CameraAnchor" type="Node3D" parent="." unique_id=631189047]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3322496, 0)

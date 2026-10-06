@@ -1,0 +1,82 @@
+[gd_scene format=3 uid="uid://blh35qkkgero5"]
+
+[ext_resource type="PackedScene" uid="uid://n8xcjcsohka" path="res://Exploration/Scenes/drone_camera.tscn" id="2_2qh6v"]
+[ext_resource type="PackedScene" uid="uid://brvtpt2phx4bd" path="res://Exploration/Scenes/player.tscn" id="2_p7l7j"]
+[ext_resource type="Script" uid="uid://b8qcbriy06own" path="res://Exploration/Scripts/exploration_party.gd" id="3_2qh6v"]
+[ext_resource type="Script" uid="uid://b05va6nvmyaab" path="res://Exploration/Scripts/interactable.gd" id="4_m35bi"]
+[ext_resource type="Script" uid="uid://b6k7rqxw0n2r8" path="res://Exploration/Scripts/area_transition.gd" id="5_4nd3o"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_tmy2y"]
+size = Vector3(40, 0.5, 40)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_tmy2y"]
+albedo_color = Color(0.3, 0.32, 0.36, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_tmy2y"]
+size = Vector3(40, 0.5, 40)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_cms5g"]
+size = Vector3(1.5, 1, 1.5)
+
+[sub_resource type="BoxMesh" id="BoxMesh_cms5g"]
+size = Vector3(1.5, 1, 1.5)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_p7l7j"]
+size = Vector3(2, 1, 2)
+
+[sub_resource type="BoxMesh" id="BoxMesh_p7l7j"]
+size = Vector3(2, 1, 2)
+
+[node name="ExploreTest" type="Node3D" unique_id=1759660508]
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=1788973141]
+transform = Transform3D(0.87758255, -0.37554693, 0.2980157, 0, 0.62161, 0.7833269, -0.47942555, -0.687434, 0.54551405, 0, 0, 0)
+
+[node name="Floor" type="StaticBody3D" parent="." unique_id=185965606]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.25, 0)
+
+[node name="Shape" type="CollisionShape3D" parent="Floor" unique_id=219444843]
+shape = SubResource("BoxShape3D_tmy2y")
+
+[node name="Mesh" type="MeshInstance3D" parent="Floor" unique_id=214658489]
+material_override = SubResource("StandardMaterial3D_tmy2y")
+mesh = SubResource("BoxMesh_tmy2y")
+
+[node name="CrateA" type="StaticBody3D" parent="." unique_id=924053307]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0.5, -4)
+
+[node name="Shape" type="CollisionShape3D" parent="CrateA" unique_id=1180283337]
+shape = SubResource("BoxShape3D_cms5g")
+
+[node name="Mesh" type="MeshInstance3D" parent="CrateA" unique_id=1178466440]
+mesh = SubResource("BoxMesh_cms5g")
+
+[node name="CrateB" type="StaticBody3D" parent="." unique_id=541441730]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0.5, -8)
+
+[node name="Shape" type="CollisionShape3D" parent="CrateB" unique_id=1027107773]
+shape = SubResource("BoxShape3D_p7l7j")
+
+[node name="Mesh" type="MeshInstance3D" parent="CrateB" unique_id=1019424634]
+mesh = SubResource("BoxMesh_p7l7j")
+
+[node name="SpawnPoint" type="Marker3D" parent="." unique_id=1913731760 groups=["spawn_point"]]
+
+[node name="Player" parent="." unique_id=2026021167 instance=ExtResource("2_p7l7j")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+
+[node name="DroneCamera" parent="." unique_id=2130353505 instance=ExtResource("2_2qh6v")]
+
+[node name="Party" type="Node3D" parent="." unique_id=1334679581]
+script = ExtResource("3_2qh6v")
+
+[node name="Pillar" type="Area3D" parent="." unique_id=612059707]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, -3)
+script = ExtResource("4_m35bi")
+
+[node name="back" type="Marker3D" parent="." unique_id=1881266918 groups=["spawn_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 12)
+
+[node name="FarGate" type="Area3D" parent="." unique_id=1767624468]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -17)
+script = ExtResource("5_4nd3o")

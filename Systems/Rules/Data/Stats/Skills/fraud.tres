@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="StatDef" format=3 uid="uid://taftx115wxy6"]
+
+[ext_resource type="Script" uid="uid://cmm4ygsk3aya8" path="res://Systems/Rules/stat_def.gd" id="1_vyrqs"]
+
+[resource]
+script = ExtResource("1_vyrqs")
+id = &"fraud"
+display_name = "Fraud"
+category = 1
+governing_stats = Array[StringName]([&"delusion"])
+tags = PackedStringArray("social")
+color = Color(0.50114363, 0.6225122, 1, 1)
+metadata/_custom_type_script = "uid://cmm4ygsk3aya8"
