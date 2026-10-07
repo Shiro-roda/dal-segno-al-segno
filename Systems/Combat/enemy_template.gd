@@ -20,6 +20,12 @@ extends Resource
 ## Kendall earns none. 0 = awards nothing.
 @export var xp_value: int = 0
 
+enum NoteColor { NONE, RED, GREEN, BLUE }
+## The colour this enemy belongs to. A room is most likely to gather enemies of its
+## lowest colour(s), and a kill drops notes of this colour. NONE counts as neutral when
+## a room picks enemies, and drops the room's lowest colour.
+@export var note_color: NoteColor = NoteColor.NONE
+
 
 func build_block(engine: RulesEngine) -> StatBlock:
 	var b := StatBlock.new(engine, display_name, level)

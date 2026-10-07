@@ -8,6 +8,7 @@
 [ext_resource type="Script" uid="uid://dm418auyw2wip" path="res://Systems/Combat/combat_encounter.gd" id="6_x1ckw"]
 [ext_resource type="Script" uid="uid://7e2wjvm1ll1u" path="res://Systems/Combat/enemy_template.gd" id="7_to6v2"]
 [ext_resource type="Resource" uid="uid://d0lq7n25eqtyg" path="res://Systems/Combat/Data/shadow.tres" id="8_nvrh5"]
+[ext_resource type="Script" uid="uid://s5i0but4j3s1" path="res://Systems/World/world_controller.gd" id="9_nvrh5"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_tmy2y"]
 size = Vector3(40, 0.5, 40)
@@ -102,3 +103,6 @@ auto_shape_size = null
 [node name="CollisionShape3D" type="CollisionShape3D" parent="TestEncounter" unique_id=1879380962]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0631266, 0)
 shape = SubResource("CylinderShape3D_g4v7s")
+
+[node name="World" type="Node3D" parent="." unique_id=2136077427]
+script = ExtResource("9_nvrh5")

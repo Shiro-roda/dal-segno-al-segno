@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://bb22dqge8h430"]
+
+[ext_resource type="Script" uid="uid://b1n6q76xpdg87" path="res://Systems/World/day_cycle_selftest.gd" id="1_kro7q"]
+
+[node name="DayCycleSelfTest" type="Node" unique_id=101070650]
+script = ExtResource("1_kro7q")

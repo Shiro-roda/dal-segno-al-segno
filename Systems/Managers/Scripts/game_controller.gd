@@ -14,6 +14,12 @@ var event_layer: CanvasLayer
 ## player at. Read and cleared by PlayerLink on load.
 var pending_spawn: StringName = &""
 
+## The current run's day loop. Lives here, not in a level, so it survives scene
+## changes. WorldController creates it; New Game clears it.
+var day_cycle: DayCycle
+## What survives a defeat (ruins, built tile ids, best day). Never cleared in play.
+var world_persistent: WorldPersistent = WorldPersistent.new()
+
 
 func _ready() -> void:
 	await _wait_for_layers()
@@ -63,6 +69,7 @@ func start_new_game() -> void:
 	# Testing: every sheet in Characters/Resources is recruited. Replace with real
 	# recruitment once the dungeon run decides who is available.
 	PartySetup.recruit_all()
+	day_cycle = null  # WorldController starts a fresh run
 	pending_spawn = &"default"
 	load_world_scene(PLACEHOLDER_LEVEL)
 

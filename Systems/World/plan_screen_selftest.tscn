@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://gojhsmdyaryj"]
+
+[ext_resource type="Script" uid="uid://b67se3hb7x647" path="res://Systems/World/plan_screen_selftest.gd" id="1_jdblu"]
+
+[node name="PlanScreenSelfTest" type="Node" unique_id=170469398]
+script = ExtResource("1_jdblu")
