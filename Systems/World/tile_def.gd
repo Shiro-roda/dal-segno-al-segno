@@ -12,10 +12,6 @@ enum Category { VILLAGE, DUNGEON }
 ## Extra resource id -> amount spent to place this tile, on top of its colour cost
 ## (for example cuts). Leave empty if the colour is all it costs.
 @export var cost: Dictionary = {}
-## This room's colour, each channel 0-250: x = red, y = green, z = blue. It sets the
-## note cost (140, 240, 30 costs 14 red, 24 green and 3 blue notes) and, for dungeon
-## tiles, which enemies gather here: the lowest channel(s) are the most likely.
-@export var color := Vector3i.ZERO
 
 @export_group("Village")
 ## Resource id -> amount produced at the start of every day while it stands.
@@ -38,6 +34,12 @@ enum Category { VILLAGE, DUNGEON }
 @export_range(0.0, 100.0, 0.1) var blueprint_weight := 1.0
 ## Not offered before this day of a run.
 @export var blueprint_min_day := 1
+
+@export_group("Color")
+## The room's color, each channel 0-250 in steps of 10 (red, green, blue). Cost is
+## color / 10 notes per channel, so (140, 240, 30) costs 14 red, 24 green, 3 blue.
+## It also decides which enemies spawn here. Placed rooms keep their own copy.
+@export var color := Vector3i.ZERO
 
 @export_group("Presentation")
 ## The walkable chunk or visual for this tile. Optional until you build it.

@@ -13,7 +13,7 @@ script = ExtResource("6_y8yax")
 max_level = 20
 xp_thresholds = PackedInt32Array(30, 90, 270, 650, 1400, 2300, 3400, 4800, 6400, 8500, 10000, 12000, 14000, 16500, 19500, 22500, 26500, 30500, 35500)
 canto_every = 3
-attribute_every = 3
+attribute_every = 4
 metadata/_custom_type_script = "uid://cu31n7k0if3db"
 
 [resource]

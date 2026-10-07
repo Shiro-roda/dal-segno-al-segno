@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="TileDef" format=3 uid="uid://dv80ksq1gsi8l"]
+
+[ext_resource type="Script" uid="uid://7e2wjvm1ll1u" path="res://Systems/Combat/enemy_template.gd" id="1_n0ylm"]
+[ext_resource type="Script" uid="uid://b2sa2hhblvquv" path="res://Systems/World/tile_def.gd" id="2_6dx2u"]
+
+[resource]
+script = ExtResource("2_6dx2u")
+metadata/_custom_type_script = "uid://b2sa2hhblvquv"
