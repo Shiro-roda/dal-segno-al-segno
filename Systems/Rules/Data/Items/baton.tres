@@ -8,9 +8,9 @@
 script = ExtResource("2_cwtwu")
 id = &"baton"
 display_name = "Baton"
-modifiers = {
-"tempo": 1
-}
+modifiers = Dictionary[StringName, int]({
+&"tempo": 1
+})
 granted_actions = Array[ExtResource("1_wedyg")]([ExtResource("2_ryo3g")])
 damage_dice = "2d4 + 1"
 attack_stat = &"volume"

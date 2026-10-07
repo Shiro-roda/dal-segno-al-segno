@@ -11,7 +11,8 @@ const FOLLOWER_SCENE := preload("res://Exploration/Scenes/party_follower.tscn")
 const FALLBACK_MODEL := preload("res://Exploration/Scenes/placeholder_model.tscn")
 
 @export var follow_spacing := 1.4
-## Test levels only: recruit three placeholder characters if the roster is empty.
+## Test levels only: if the roster is empty, recruit every sheet in
+## Characters/Resources (see PartySetup). New Game already does this itself.
 @export var seed_test_roster := false
 
 var _followers: Array[PartyFollower] = []
@@ -47,9 +48,4 @@ func rebuild() -> void:
 
 
 func _seed_test_roster() -> void:
-	var entries := [[&"kendall", "Kendall"], [&"hue", "Hue"], [&"indra", "Indra"]]
-	for entry in entries:
-		var sheet := CharacterSheet.new()
-		sheet.id = entry[0]
-		sheet.display_name = entry[1]
-		Rules.recruit(sheet, true, entry[0] == &"kendall")
+	PartySetup.recruit_all()

@@ -60,6 +60,9 @@ func show_start_screen() -> void:
 
 ## Placeholder: drops the player into the exploration test level.
 func start_new_game() -> void:
+	# Testing: every sheet in Characters/Resources is recruited. Replace with real
+	# recruitment once the dungeon run decides who is available.
+	PartySetup.recruit_all()
 	pending_spawn = &"default"
 	load_world_scene(PLACEHOLDER_LEVEL)
 

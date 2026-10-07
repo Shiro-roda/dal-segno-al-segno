@@ -34,6 +34,10 @@ signal target_changed(actor: Combatant)
 ## Combatants closer than this get pushed apart.
 @export var separation_radius: float = 0.9
 ## Fraction of the reach a combatant walks up to before stopping.
+## Reach of an unarmed or ordinary melee weapon attack.
+@export var default_attack_range: float = 2.2
+## Reach of a weapon tagged "ranged" that has no weapon_range of its own.
+@export var ranged_attack_range: float = 10.0
 @export_range(0.5, 1.0, 0.05) var arrive_fraction: float = 0.9
 
 var engine: RulesEngine
@@ -79,11 +83,13 @@ func begin(party_blocks: Array, enemy_blocks: Array, p_engine: RulesEngine = nul
 	history.clear()
 	for i in party_blocks.size():
 		var c := Combatant.new(party_blocks[i] as StatBlock, Combatant.Side.PARTY)
+		c.attack_range = attack_range_for(c.block)   # new
 		if i < party_bodies.size():
 			c.body = party_bodies[i] as Node3D
 		party.append(c)
 	for i in enemy_blocks.size():
 		var c := Combatant.new(enemy_blocks[i] as StatBlock, Combatant.Side.ENEMY)
+		c.attack_range = attack_range_for(c.block)   # new
 		if i < enemy_bodies.size():
 			c.body = enemy_bodies[i] as Node3D
 		enemies.append(c)
@@ -97,7 +103,7 @@ func begin(party_blocks: Array, enemy_blocks: Array, p_engine: RulesEngine = nul
 	active = true
 	_set_player_lock(true)
 	combat_started.emit()
-	_say("Combat begins.")
+	say_event(&"combat_begins")
 	set_paused(start_paused)
 
 
@@ -216,10 +222,11 @@ func _begin_turn(c: Combatant) -> void:
 	for line in c.block.tick_round():
 		_say(line)
 	if c.is_down():
+		say_event(&"downed", {"actor": c.display_name()})
 		_check_end()
 		return
 	if not can_act_now:
-		_say("%s is unable to act." % c.display_name())
+		say_event(&"unable_to_act", {"actor": c.display_name()})
 		return
 	c.pending_plan = _plan_for(c)
 	c.turn_pending = true
@@ -238,7 +245,7 @@ func _try_act(c: Combatant) -> void:
 	var reach := reach_for(c, action)
 	if not _in_reach(c, targets[0], reach):
 		if c.side == Combatant.Side.PARTY and c.hold_position and not c.move_order:
-			_say("%s holds position; the target is out of reach." % c.display_name())
+			say_event(&"holds_position", {"actor": c.display_name()})
 			c.turn_pending = false
 			return
 		c.approach_target = targets[0]
@@ -280,8 +287,10 @@ func _enemy_plan(c: Combatant) -> Dictionary:
 func _execute(c: Combatant, plan: Dictionary, targets: Array[Combatant]) -> void:
 	var action: ActionDef = plan["action"]
 	var blocks: Array = []
+	var was_down: Array[bool] = []
 	for t in targets:
 		blocks.append(t.block)
+		was_down.append(t.is_down())
 	var result := engine.use_action(c.block, action, blocks, int(plan.get("level", 0)))
 	if not result["ok"]:
 		_say(str(result["reason"]))
@@ -293,6 +302,9 @@ func _execute(c: Combatant, plan: Dictionary, targets: Array[Combatant]) -> void
 		return
 	for line in result["log"]:
 		_say(line)
+	for i in targets.size():
+		if targets[i].is_down() and not was_down[i]:
+			say_event(&"downed", {"actor": targets[i].display_name()})
 	action_resolved.emit(c, result)
 
 
@@ -339,7 +351,7 @@ func _end(victory: bool) -> void:
 		c.move_order = false
 		c.moving = false
 	paused_changed.emit(false)
-	_say("Victory!" if victory else "The party has fallen.")
+	say_event(&"victory" if victory else &"defeat")
 	_set_player_lock(false)
 	combat_ended.emit(victory)
 
@@ -354,7 +366,7 @@ func reach_for(c: Combatant, action: ActionDef) -> float:
 		ActionDef.Target.SELF, ActionDef.Target.ALL_ALLIES, ActionDef.Target.ALL_ENEMIES:
 			return INF
 	# Use an ActionDef `range` property if the resource has one.
-	var r: Variant = action.get("range")
+	var r: Variant = action.get("max_range")
 	if r != null and float(r) > 0.0:
 		return float(r)
 	return spell_range
@@ -442,6 +454,27 @@ func _face(c: Combatant, t: Combatant) -> void:
 	if d.length() > 0.01:
 		c.body.rotation.y = atan2(-d.x, -d.z)
 
+## Reach of `block`'s basic attack: its equipped weapon's range, else the defaults.
+func attack_range_for(block: StatBlock) -> float:
+	var weapon := _equipped_weapon(block)
+	if weapon == null:
+		return default_attack_range
+	if weapon.weapon_range > 0.0:
+		return weapon.weapon_range
+	if weapon.weapon_tags.has("ranged"):
+		return ranged_attack_range
+	return default_attack_range
+
+
+## ASSUMPTION: StatBlock keeps the equipment it was given in a property called
+## `equipment`. If this returns null for armed characters, see the note below.
+func _equipped_weapon(block: StatBlock) -> ItemDef:
+	var gear: Variant = block.get("equipment")
+	if gear is Dictionary:
+		var item: Variant = gear.get(&"weapon")
+		if item is ItemDef:
+			return item
+	return null
 
 # ---------------------------------------------------------------- helpers
 
@@ -450,6 +483,12 @@ func _say(text: String) -> void:
 		return
 	history.append(text)
 	log_line.emit(text)
+
+
+## Logs one line of text from the LogText resource, so the wording is yours to write.
+## Nothing is logged if that event was left blank.
+func say_event(event: StringName, vars: Dictionary = {}) -> void:
+	_say(engine.say(event, vars))
 
 
 func _alive(group: Array[Combatant]) -> Array[Combatant]:

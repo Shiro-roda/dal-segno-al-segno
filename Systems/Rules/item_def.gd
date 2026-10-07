@@ -9,7 +9,7 @@ extends Resource
 @export var slot: StringName = &"weapon"
 ## stat id -> modifier value. Pseudo-stats such as "defense", "damage",
 ## "initiative", "corpus_max" and "anima_max" are allowed.
-@export var modifiers: Dictionary = {}
+@export var modifiers: Dictionary[StringName, int] = {}
 @export var granted_actions: Array[ActionDef] = []
 
 @export_group("Weapon")
@@ -21,4 +21,8 @@ extends Resource
 ## Stat whose modifier is added to the damage. Blank uses RulesConfig.default_damage_stat.
 @export var damage_stat: StringName = &""
 @export var damage_type: StringName = &"physical"
+## Reach of the weapon's attack in metres. 0 = use the default: melee reach, or
+## the ranged default if the weapon is tagged "ranged". Roughly: 2.2 sword,
+## 3.5 spear, 12 bow.
+@export var weapon_range: float = 0.0
 @export var weapon_tags: PackedStringArray = PackedStringArray()

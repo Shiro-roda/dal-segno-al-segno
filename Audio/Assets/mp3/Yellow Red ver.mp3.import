@@ -3,12 +3,12 @@
 importer="mp3"
 type="AudioStreamMP3"
 uid="uid://ck4yyjvj8y4qs"
-path="res://.godot/imported/Yellow Red ver.mp3-d059a1d3756f60f5e2c705a593f4f3b9.mp3str"
+path="res://.godot/imported/Yellow Red ver.mp3-c4992c9e5b792ba01186e1411c5c861a.mp3str"
 
 [deps]
 
-source_file="res://audio/Assets/mp3/Yellow Red ver.mp3"
-dest_files=["res://.godot/imported/Yellow Red ver.mp3-d059a1d3756f60f5e2c705a593f4f3b9.mp3str"]
+source_file="res://Audio/Assets/mp3/Yellow Red ver.mp3"
+dest_files=["res://.godot/imported/Yellow Red ver.mp3-c4992c9e5b792ba01186e1411c5c861a.mp3str"]
 
 [params]
 

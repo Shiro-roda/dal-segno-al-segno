@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://bmiwlxafmxx3a"]
+
+[ext_resource type="Script" uid="uid://bjun2arh8rfay" path="res://Systems/Progression/leveling_selftest.gd" id="1_6h5h3"]
+
+[node name="LevelingSelfTest" type="Node" unique_id=598244809]
+script = ExtResource("1_6h5h3")

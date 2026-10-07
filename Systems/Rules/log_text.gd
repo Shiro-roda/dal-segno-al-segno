@@ -15,6 +15,12 @@ extends Resource
 @export var defeat: Array[String] = ["The party has fallen."]
 ## {actor}
 @export var downed: Array[String] = ["{actor} is down."]
+## {actor}: their turn came, but a condition stopped them acting.
+@export var unable_to_act: Array[String] = ["{actor} is unable to act."]
+## {actor}: a party member on Hold whose target was out of reach.
+@export var holds_position: Array[String] = ["{actor} holds position; the target is out of reach."]
+## {amount}: XP the party earned from a won fight.
+@export var xp_gained: Array[String] = ["The party gains {amount} XP."]
 ## {actor}, {action}: a player order was queued.
 @export var order_queued: Array[String] = ["{actor}: {action} queued."]
 

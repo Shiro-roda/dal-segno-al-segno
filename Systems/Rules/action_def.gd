@@ -22,6 +22,8 @@ enum Target { SELF, SINGLE_ENEMY, SINGLE_ALLY, ALL_ENEMIES, ALL_ALLIES }
 @export var save_stat: StringName
 ## SAVE: the user's stat that sets the DC.
 @export var dc_stat: StringName
+## Reach in metres for single-target use. 0 = the session's default spell range.
+@export var max_range: float = 0.0
 @export var effects: Array[EffectDef] = []
 @export var tags: PackedStringArray = PackedStringArray()
 

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CharacterSheet" format=3 uid="uid://cg6j0qmyi7mlt"]
+
+[ext_resource type="Script" uid="uid://m5jx56lhrgsj" path="res://Systems/Rules/item_def.gd" id="1_xxwh2"]
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="2_21h8t"]
+[ext_resource type="Script" uid="uid://ch43wbypcqtmy" path="res://Systems/Progression/feat_def.gd" id="2_ieqx0"]
+[ext_resource type="Script" uid="uid://dgq0h13x363vr" path="res://Systems/Rules/character_sheet.gd" id="3_ieqx0"]
+[ext_resource type="PackedScene" uid="uid://b5one47frkahl" path="res://Exploration/Scenes/placeholder_model.tscn" id="4_383yv"]
+
+[resource]
+script = ExtResource("3_ieqx0")
+id = &"kendall"
+display_name = "Kendall"
+model_scene = ExtResource("4_383yv")
+scores = Dictionary[StringName, int]({
+&"tempo": 15,
+&"tone": 12
+})
+is_player = true
+metadata/_custom_type_script = "uid://dgq0h13x363vr"

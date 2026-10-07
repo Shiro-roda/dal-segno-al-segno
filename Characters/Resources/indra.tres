@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="CharacterSheet" format=3 uid="uid://brepgo6o2no6w"]
+
+[ext_resource type="Script" uid="uid://m5jx56lhrgsj" path="res://Systems/Rules/item_def.gd" id="1_ubu7k"]
+[ext_resource type="Resource" uid="uid://ctap7c8e55jk4" path="res://Systems/Rules/Data/Items/pipe.tres" id="2_h3l61"]
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="2_uaifi"]
+[ext_resource type="Script" uid="uid://dgq0h13x363vr" path="res://Systems/Rules/character_sheet.gd" id="3_h3l61"]
+[ext_resource type="Script" uid="uid://ch43wbypcqtmy" path="res://Systems/Progression/feat_def.gd" id="3_mgv03"]
+[ext_resource type="PackedScene" uid="uid://b5one47frkahl" path="res://Exploration/Scenes/placeholder_model.tscn" id="5_nlrtf"]
+[ext_resource type="Script" uid="uid://cu31n7k0if3db" path="res://Systems/Progression/progression_def.gd" id="6_y8yax"]
+
+[sub_resource type="Resource" id="Resource_27q3x"]
+script = ExtResource("6_y8yax")
+max_level = 20
+xp_thresholds = PackedInt32Array(30, 90, 270, 650, 1400, 2300, 3400, 4800, 6400, 8500, 10000, 12000, 14000, 16500, 19500, 22500, 26500, 30500, 35500)
+canto_every = 3
+attribute_every = 3
+metadata/_custom_type_script = "uid://cu31n7k0if3db"
+
+[resource]
+script = ExtResource("3_h3l61")
+id = &"indra"
+display_name = "Indra"
+model_scene = ExtResource("5_nlrtf")
+corpus_die = 10
+scores = Dictionary[StringName, int]({
+&"attachment": 7,
+&"aversion": 13,
+&"delusion": 15,
+&"tempo": 14,
+&"tone": 15,
+&"volume": 16
+})
+progression = SubResource("Resource_27q3x")
+equipment = Dictionary[StringName, ExtResource("1_ubu7k")]({
+&"weapon": ExtResource("2_h3l61")
+})
+metadata/_custom_type_script = "uid://dgq0h13x363vr"

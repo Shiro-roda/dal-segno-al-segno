@@ -30,6 +30,8 @@ func _ready() -> void:
 	_test_movement()
 	print("[combat] hold")
 	_test_hold()
+	print("[combat] weapon range")
+	_test_weapon_range()
 
 	print("[combat] %d checks, %d failures." % [_checks, _failures])
 	if _failures == 0:
@@ -72,7 +74,7 @@ func _test_victory() -> void:
 	_expect(not s.active, "combat ends")
 	_expect(results == [true], "reports a victory (got %s)" % str(results))
 	_expect(husk.is_down(), "the enemy is down")
-	_expect(s.history.has("Victory!"), "victory is logged")
+	_expect(s.history.has(_engine.say(&"victory")), "victory is logged")
 	s.queue_free()
 
 
@@ -149,10 +151,11 @@ func _test_stun_costs_a_turn() -> void:
 	s.begin([hero], [husk], _engine)
 	s.set_paused(false)
 	var guard := 0
-	while not s.history.any(func(l: String): return l.contains("unable to act")) and guard < 400:
+	var skipped := _engine.say(&"unable_to_act", {"actor": "Husk"})
+	while not s.history.has(skipped) and guard < 400:
 		s.advance(0.05)
 		guard += 1
-	_expect(s.history.any(func(l: String): return l.contains("Husk is unable to act")), "a 1-round Stun skips one turn")
+	_expect(s.history.has(skipped), "a 1-round Stun skips one turn")
 	_expect(not husk.has_condition(&"stunned"), "the Stun wears off afterwards")
 	s.queue_free()
 
@@ -290,6 +293,27 @@ func _test_hold() -> void:
 	hero_body.queue_free()
 	husk_body.queue_free()
 
+func _test_weapon_range() -> void:
+	var s := _session()
+	var unarmed := _block("Bare", 1)
+	_expect(is_equal_approx(s.attack_range_for(unarmed), s.default_attack_range),
+			"an unarmed combatant uses the default reach")
+
+	var bow := ItemDef.new()
+	bow.id = &"bow"
+	bow.slot = &"weapon"
+	bow.damage_dice = "1d6"
+	bow.weapon_tags = PackedStringArray(["ranged"])
+	var gear: Dictionary[StringName, ItemDef] = {&"weapon": bow}
+	var archer := _block("Archer", 3)
+	archer.apply_equipment(gear)
+	_expect(is_equal_approx(s.attack_range_for(archer), s.ranged_attack_range),
+			"a weapon tagged ranged uses the ranged default")
+
+	bow.weapon_range = 14.0
+	_expect(is_equal_approx(s.attack_range_for(archer), 14.0),
+			"an explicit weapon_range wins")
+	s.queue_free()
 
 func _expect(condition: bool, message: String) -> void:
 	_checks += 1

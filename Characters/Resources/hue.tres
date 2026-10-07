@@ -1,9 +1,21 @@
 [gd_resource type="Resource" script_class="CharacterSheet" format=3 uid="uid://bq4ycbixgair5"]
 
 [ext_resource type="Script" uid="uid://m5jx56lhrgsj" path="res://Systems/Rules/item_def.gd" id="1_p465c"]
+[ext_resource type="Resource" uid="uid://c55nvcq3kbl10" path="res://Systems/Rules/Data/Items/old_umbrella.tres" id="2_8qyo5"]
 [ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="2_w654p"]
+[ext_resource type="Script" uid="uid://ch43wbypcqtmy" path="res://Systems/Progression/feat_def.gd" id="3_0gb0a"]
 [ext_resource type="Script" uid="uid://dgq0h13x363vr" path="res://Systems/Rules/character_sheet.gd" id="3_8qyo5"]
 [ext_resource type="PackedScene" uid="uid://b5one47frkahl" path="res://Exploration/Scenes/placeholder_model.tscn" id="3_w654p"]
+[ext_resource type="Script" uid="uid://cu31n7k0if3db" path="res://Systems/Progression/progression_def.gd" id="6_5bm8v"]
+
+[sub_resource type="Resource" id="Resource_2b8b1"]
+script = ExtResource("6_5bm8v")
+max_level = 20
+xp_thresholds = PackedInt32Array(30, 90, 270, 650, 1400, 2300, 3400, 4800, 6400, 8500, 10000, 12000, 14000, 16500, 19500, 22500, 26500, 30500, 35500)
+feat_every = 4
+canto_every = 2
+attribute_every = 2
+metadata/_custom_type_script = "uid://cu31n7k0if3db"
 
 [resource]
 script = ExtResource("3_8qyo5")
@@ -11,10 +23,15 @@ id = &"hue"
 display_name = "Hue"
 model_scene = ExtResource("3_w654p")
 scores = {
-"attachment": 15,
-"aversion": 16,
-"delusion": 9,
-"tempo": "12",
-"tone": 14
+&"attachment": 15,
+&"aversion": 16,
+&"delusion": 9,
+&"tempo": 12,
+&"tone": 14,
+&"volume": 11
 }
+progression = SubResource("Resource_2b8b1")
+equipment = Dictionary[StringName, ExtResource("1_p465c")]({
+&"weapon": ExtResource("2_8qyo5")
+})
 metadata/_custom_type_script = "uid://dgq0h13x363vr"

@@ -7,6 +7,8 @@ extends Area3D
 ## Optional Marker3D children choose where enemies stand, in order.
 
 signal finished(victory: bool)
+## XP was handed out after a win. `ready` lists the companions who can now level up.
+signal xp_awarded(amount: int, ready: Array)
 
 @export var enemies: Array[EnemyTemplate] = []
 @export var auto_trigger := true
@@ -66,8 +68,10 @@ func start() -> void:
 	session.action_resolved.connect(_on_action_resolved)
 	session.begin(party_blocks, enemy_blocks, Rules.engine, _party_bodies(), _enemy_nodes)
 	for i in mini(session.enemies.size(), _templates.size()):
-		session.enemies[i].attack_range = _templates[i].attack_range
-		session.enemies[i].move_speed = _templates[i].move_speed
+		var e := session.enemies[i]
+		if _templates[i].attack_range > 0.0:
+			e.attack_range = _templates[i].attack_range
+		e.move_speed = _templates[i].move_speed
 
 	_hud = CombatHUD.new()
 	add_child(_hud)
@@ -171,6 +175,13 @@ func _on_combat_ended(victory: bool) -> void:
 			n.queue_free()
 	_enemy_nodes.clear()
 	if victory:
+		var xp := 0
+		for t in _templates:
+			xp += t.xp_value
+		if xp > 0:
+			var ready := Leveling.award_xp(Rules.roster, xp)
+			session.say_event(&"xp_gained", {"amount": xp})
+			xp_awarded.emit(xp, ready)
 		_done = one_shot
 	else:
 		# Placeholder: a real game-over flow goes here.

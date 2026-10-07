@@ -7,9 +7,6 @@
 script = ExtResource("2_mq0g5")
 id = &"old_umbrella"
 display_name = "Old Umbrella"
-modifiers = {
-"aversion": 1
-}
 damage_dice = "1d4"
 attack_stat = &"volume"
 damage_stat = &"volume"

@@ -21,6 +21,15 @@ var conditions: Array = []
 var known_actions: Array[ActionDef] = []
 ## slot id -> ItemDef currently equipped.
 var equipment: Dictionary = {}
+## Hit-die rolls for levels 2 and up (index 0 is level 2), stored on the CharacterSheet.
+## A level with no stored roll counts as the die's average, so enemies and test blocks
+## that were never rolled still have sensible Corpus.
+var corpus_rolls: Array[int] = []
+## Corpus gained from companions levelling up (the player character's main source;
+## see RulesConfig.player_corpus_share).
+var bonus_corpus: int = 0
+## Feats owned; a repeated entry is a stack.
+var feats: Array[FeatDef] = []
 var engine: RulesEngine
 
 
@@ -135,14 +144,21 @@ func effective_corpus_die() -> int:
 	return corpus_die if corpus_die > 0 else engine.config.default_corpus_die
 
 
-## Level 1 gets a full die; every later level gets the die's average (half + 1).
-## The corpus_stat modifier applies at every level, and each level gives at least 1.
+## What a level with no stored roll counts as: the die's average (half + 1).
+func corpus_average_gain() -> int:
+	return floori(effective_corpus_die() / 2.0) + 1
+
+
+## Level 1 gets a full die. Each later level gets that level's stored hit-die roll (or
+## the average if it was never rolled). The corpus_stat modifier applies at every
+## level, and a level always gives at least 1. bonus_corpus is added on top.
 func max_corpus() -> int:
-	var die := effective_corpus_die()
 	var mod := total_mod(engine.config.corpus_stat)
-	var first := maxi(1, die + mod)
-	var later := maxi(1, floori(die / 2.0) + 1 + mod)
-	return engine.config.corpus_base + first + later * maxi(0, level - 1) + modifier_bonus(&"corpus_max")
+	var total := engine.config.corpus_base + maxi(1, effective_corpus_die() + mod)
+	for i in maxi(0, level - 1):
+		var gain := corpus_rolls[i] if i < corpus_rolls.size() else corpus_average_gain()
+		total += maxi(1, gain + mod)
+	return total + bonus_corpus + modifier_bonus(&"corpus_max")
 
 
 func max_anima() -> int:
@@ -266,6 +282,22 @@ func apply_equipment(p_equipment: Dictionary) -> void:
 	anima = mini(anima, max_anima())
 
 
+## Replaces all feat modifiers with those from the given feats (repeats stack).
+func apply_feats(p_feats: Array) -> void:
+	remove_modifiers_by_origin(&"feat")
+	feats.clear()
+	for f in p_feats:
+		var feat := f as FeatDef
+		if feat == null:
+			continue
+		feats.append(feat)
+		for stat_id in feat.modifiers:
+			modifiers.append(StatModifier.make(
+					StringName(stat_id), int(feat.modifiers[stat_id]), feat.display_name, &"feat"))
+	corpus = mini(corpus, max_corpus())
+	anima = mini(anima, max_anima())
+
+
 ## The equipped weapon, or the unarmed fallback if there isn't one.
 func weapon() -> ItemDef:
 	var item := equipment.get(&"weapon") as ItemDef
@@ -322,6 +354,10 @@ func available_actions() -> Array[ActionDef]:
 		if item == null:
 			continue
 		for action in item.granted_actions:
+			if not out.has(action):
+				out.append(action)
+	for feat in feats:
+		for action in feat.granted_actions:
 			if not out.has(action):
 				out.append(action)
 	return out

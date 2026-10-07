@@ -37,6 +37,9 @@ extends Resource
 ## The corpus_stat modifier is added at every level.
 @export var default_corpus_die: int = 8
 @export var corpus_stat: StringName = &"tone"
+## When a companion levels up, the player character gains this fraction of that
+## companion's hit-die roll (rounded up, at least 1). The Tone modifier isn't shared.
+@export_range(0.0, 1.0, 0.05) var player_corpus_share: float = 0.5
 
 # --- Party and equipment ---
 @export var party_size: int = 3

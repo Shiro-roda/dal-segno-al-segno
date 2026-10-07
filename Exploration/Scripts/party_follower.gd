@@ -4,7 +4,7 @@ extends Node3D
 ## Built by ExplorationParty from the active roster.
 
 @export var model_scene: PackedScene
-@export var follow_distance := 1.4
+@export var follow_distance := 2.4
 @export var smoothing := 10.0
 @export var turn_smoothing := 12.0
 ## Animation names to play, if the model has them. Empty = don't animate.
@@ -17,6 +17,7 @@ extends Node3D
 var character_id: StringName = &""
 var model: Node3D
 var anim: AnimationPlayer
+var combat_controlled := false
 
 var _link: PlayerLink
 
@@ -33,6 +34,7 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if combat_controlled: return
 	if _link == null or not is_instance_valid(_link) or _link.body == null:
 		_link = get_tree().get_first_node_in_group("party_link") as PlayerLink
 		if _link != null and _link.body != null:

@@ -25,9 +25,6 @@ metadata/_custom_type_script = "uid://njw6l7ex23w0"
 script = ExtResource("2_st77g")
 id = &"fang"
 display_name = "Fang"
-modifiers = {
-"damage": 2
-}
 granted_actions = Array[ExtResource("1_84ryb")]([SubResource("Resource_jio0h")])
 damage_dice = "1d6 + 1"
 attack_stat = &"tempo"

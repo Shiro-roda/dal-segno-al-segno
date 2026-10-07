@@ -3,12 +3,12 @@
 importer="mp3"
 type="AudioStreamMP3"
 uid="uid://bv2bjeirujv5g"
-path="res://.godot/imported/Yellow End ver.mp3-c1ad0430adab5f40d1f49ba0b278e082.mp3str"
+path="res://.godot/imported/Yellow End ver.mp3-b3ae8f815d5c3ee03c67e3f649edc7a1.mp3str"
 
 [deps]
 
-source_file="res://audio/Assets/mp3/Yellow End ver.mp3"
-dest_files=["res://.godot/imported/Yellow End ver.mp3-c1ad0430adab5f40d1f49ba0b278e082.mp3str"]
+source_file="res://Audio/Assets/mp3/Yellow End ver.mp3"
+dest_files=["res://.godot/imported/Yellow End ver.mp3-b3ae8f815d5c3ee03c67e3f649edc7a1.mp3str"]
 
 [params]
 

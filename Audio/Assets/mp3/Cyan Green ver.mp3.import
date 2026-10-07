@@ -3,12 +3,12 @@
 importer="mp3"
 type="AudioStreamMP3"
 uid="uid://euhvpx68qe44"
-path="res://.godot/imported/Cyan Green ver.mp3-9ba104016e668c021dbd44c27032d3c3.mp3str"
+path="res://.godot/imported/Cyan Green ver.mp3-353a9e09713480565291e1182e5c7508.mp3str"
 
 [deps]
 
-source_file="res://audio/Assets/mp3/Cyan Green ver.mp3"
-dest_files=["res://.godot/imported/Cyan Green ver.mp3-9ba104016e668c021dbd44c27032d3c3.mp3str"]
+source_file="res://Audio/Assets/mp3/Cyan Green ver.mp3"
+dest_files=["res://.godot/imported/Cyan Green ver.mp3-353a9e09713480565291e1182e5c7508.mp3str"]
 
 [params]
 
