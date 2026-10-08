@@ -414,6 +414,8 @@ func _build_plan_screen() -> void:
 ## so only call it when the state actually changes.
 func _sync_plan_lock() -> void:
 	var want := _plan != null and _plan.is_open()
+	if _label != null:
+		_label.visible = not want  # the plan screen shows all of this itself
 	if want == _plan_locked:
 		return
 	var link := _party_link()

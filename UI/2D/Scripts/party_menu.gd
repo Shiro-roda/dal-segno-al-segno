@@ -29,7 +29,9 @@ var _detail_box: VBoxContainer
 
 
 func _ready() -> void:
-	layer = 120
+	# GameRoot's WorldLayer is 201 and fills the screen; stay above it, but below the
+	# system menu (229-230) so ESC still goes on top.
+	layer = 220
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	add_to_group("party_menu")
 	_build()

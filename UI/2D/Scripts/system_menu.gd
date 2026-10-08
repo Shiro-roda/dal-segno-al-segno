@@ -34,6 +34,11 @@ var C_DANGER    := Color(0.85, 0.22, 0.18, 1.0)
 # ── Layout constants ──────────────────────────────────────────────────────────
 const SIDEBAR_W := 220
 
+# Canvas layers. GameRoot's WorldLayer is 201 and covers the screen, so menus have to sit
+# above it or they are drawn underneath the game. The dim sits just below the menu.
+const SYSTEM_LAYER := 230
+const DIM_LAYER := 229
+
 # ── Node refs ─────────────────────────────────────────────────────────────────
 var _root_panel  : PanelContainer
 var _tab_btns    : Array = []
@@ -71,7 +76,7 @@ const OPT_DEFAULTS := {
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 func _ready() -> void:
-	layer = 130
+	layer = SYSTEM_LAYER
 	process_mode = PROCESS_MODE_ALWAYS
 	add_to_group("system_menu")
 	_refresh_palette()
@@ -151,7 +156,7 @@ func _input(event: InputEvent) -> void:
 # ── Dim overlay ───────────────────────────────────────────────────────────────
 func _build_dim_overlay() -> void:
 	_dim_layer = CanvasLayer.new()
-	_dim_layer.layer = 129
+	_dim_layer.layer = DIM_LAYER
 	get_tree().root.call_deferred("add_child", _dim_layer)
 	_dim_rect = ColorRect.new()
 	_dim_rect.color = Color(0.0, 0.0, 0.0, 0.70)

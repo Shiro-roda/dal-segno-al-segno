@@ -245,7 +245,7 @@ func _build() -> void:
 	_title = Label.new()
 	header.add_child(_title)
 	_stock = Label.new()
-	_stock.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_fit(_stock, 1.0)
 	_stock.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	header.add_child(_stock)
 	_close_button = Button.new()
@@ -301,34 +301,54 @@ func _build() -> void:
 	var footer := HBoxContainer.new()
 	outer.add_child(footer)
 	_tithe = Label.new()
-	_tithe.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_fit(_tithe, 3.0)
 	footer.add_child(_tithe)
 	_notes_first = CheckButton.new()
 	_notes_first.text = "Pay tithe with notes first"
 	_notes_first.toggled.connect(set_notes_first)
 	footer.add_child(_notes_first)
 
+	# Row of facts, then a row of status and buttons. Every label here can shrink, because a
+	# container never gets narrower than its children's minimum sizes: one long line of
+	# unwrapped text would make the whole screen wider than the viewport.
 	var footer2 := HBoxContainer.new()
 	outer.add_child(footer2)
 	_dungeon_count = Label.new()
+	_fit(_dungeon_count, 1.0)
 	footer2.add_child(_dungeon_count)
 	_path_label = Label.new()
 	_path_label.add_theme_color_override("font_color", PATH_COLOR)
+	_fit(_path_label, 2.0)
 	footer2.add_child(_path_label)
+	_party_label = Label.new()
+	_party_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_fit(_party_label, 2.0)
+	footer2.add_child(_party_label)
+
+	var footer3 := HBoxContainer.new()
+	outer.add_child(footer3)
 	_status = Label.new()
 	_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	footer2.add_child(_status)
-	_party_label = Label.new()
-	footer2.add_child(_party_label)
+	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART  # messages matter: wrap, don't trim
+	footer3.add_child(_status)
 	var party_button := Button.new()
 	party_button.text = "Party (TAB)"
 	party_button.pressed.connect(open_party_menu)
-	footer2.add_child(party_button)
+	footer3.add_child(party_button)
 	var go := Button.new()
 	go.text = "Start expedition"
 	go.pressed.connect(request_expedition)
-	footer2.add_child(go)
+	footer3.add_child(go)
+
+
+## Lets a label give up width instead of demanding it: trimmed with an ellipsis when the
+## row is tight. Needs expand so it still gets a share of the row.
+func _fit(label: Label, ratio: float) -> void:
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.size_flags_stretch_ratio = ratio
+	label.clip_text = true
+	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	label.mouse_filter = Control.MOUSE_FILTER_PASS
 
 
 func _make_tab(tabs: TabContainer, tab_name: String) -> VBoxContainer:
