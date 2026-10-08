@@ -1,0 +1,114 @@
+[gd_scene format=3 uid="uid://cjxbf8vye23w"]
+
+[ext_resource type="Script" uid="uid://syq664mbds4v" path="res://Systems/World/dungeon_room.gd" id="1_pujmf"]
+[ext_resource type="Script" uid="uid://otxum2th3g7w" path="res://Systems/World/room_door.gd" id="2_vpjd5"]
+[ext_resource type="Script" uid="uid://b8qcbriy06own" path="res://Exploration/Scripts/exploration_party.gd" id="3_bya34"]
+[ext_resource type="PackedScene" uid="uid://brvtpt2phx4bd" path="res://Exploration/Scenes/player.tscn" id="4_vpjd5"]
+[ext_resource type="PackedScene" uid="uid://n8xcjcsohka" path="res://Exploration/Scenes/drone_camera.tscn" id="5_bya34"]
+
+[node name="RoomBase" type="Node3D" unique_id=943235102]
+script = ExtResource("1_pujmf")
+
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=1872352433]
+transform = Transform3D(0.8660254, 0.38302222, -0.32139382, 0, 0.64278764, 0.76604444, 0.5, -0.66341394, 0.5566704, 0, 0, 0)
+
+[node name="Floor" type="CSGBox3D" parent="." unique_id=1580616478]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.25, 0)
+use_collision = true
+size = Vector3(24, 0.5, 24)
+
+[node name="WallN1" type="CSGBox3D" parent="." unique_id=1073173226]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2, -12.5)
+use_collision = true
+size = Vector3(11, 4, 1)
+
+[node name="WallN2" type="CSGBox3D" parent="." unique_id=19728610]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.5, 2, -12.5)
+use_collision = true
+size = Vector3(11, 4, 1)
+
+[node name="WallS1" type="CSGBox3D" parent="." unique_id=214788283]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -7.5, 2, 12.5)
+use_collision = true
+size = Vector3(11, 4, 1)
+
+[node name="WallS2" type="CSGBox3D" parent="." unique_id=116895448]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.5, 2, 12.5)
+use_collision = true
+size = Vector3(11, 4, 1)
+
+[node name="WallW1" type="CSGBox3D" parent="." unique_id=905276258]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12.5, 2, -7)
+use_collision = true
+size = Vector3(1, 4, 10)
+
+[node name="WallW2" type="CSGBox3D" parent="." unique_id=1164480262]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12.5, 2, 7)
+use_collision = true
+size = Vector3(1, 4, 10)
+
+[node name="WallE1" type="CSGBox3D" parent="." unique_id=1324608704]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.5, 2, -7)
+use_collision = true
+size = Vector3(1, 4, 10)
+
+[node name="WallE2" type="CSGBox3D" parent="." unique_id=1247105580]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.5, 2, 7)
+use_collision = true
+size = Vector3(1, 4, 10)
+
+[node name="DoorNorth" type="Area3D" parent="." unique_id=1332334312]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -12.5)
+script = ExtResource("2_vpjd5")
+
+[node name="Seal" type="CSGBox3D" parent="DoorNorth" unique_id=2016992625]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+visible = false
+size = Vector3(4, 4, 1)
+
+[node name="DoorEast" type="Area3D" parent="." unique_id=1524784185]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 12.5, 0, 0)
+script = ExtResource("2_vpjd5")
+side = 1.0
+
+[node name="Seal" type="CSGBox3D" parent="DoorEast" unique_id=1410012479]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+visible = false
+size = Vector3(4, 4, 1)
+
+[node name="DoorSouth" type="Area3D" parent="." unique_id=786659437]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 12.5)
+script = ExtResource("2_vpjd5")
+side = 2.0
+
+[node name="Seal" type="CSGBox3D" parent="DoorSouth" unique_id=1270053119]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+visible = false
+size = Vector3(4, 4, 1)
+
+[node name="DoorWest" type="Area3D" parent="." unique_id=2124430218]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -12.5, 0, 0)
+script = ExtResource("2_vpjd5")
+side = 3.0
+
+[node name="Seal" type="CSGBox3D" parent="DoorWest" unique_id=1394237440]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+visible = false
+size = Vector3(4, 4, 1)
+
+[node name="SpawnPoint" type="Marker3D" parent="." unique_id=111372074 groups=["spawn_point"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 6)
+
+[node name="SegnoSpawn" type="Marker3D" parent="." unique_id=239521416]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 8)
+
+[node name="EncounterPoint" type="Marker3D" parent="." unique_id=1447595678]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -4)
+
+[node name="Party" type="Node3D" parent="." unique_id=940871665]
+script = ExtResource("3_bya34")
+
+[node name="Player" parent="." unique_id=2026021167 instance=ExtResource("4_vpjd5")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 6)
+
+[node name="DroneCamera" parent="." unique_id=2130353505 instance=ExtResource("5_bya34")]

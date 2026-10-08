@@ -10,5 +10,5 @@ display_name = "Rusty Six Shooter"
 damage_dice = "1d12"
 attack_stat = &"tempo"
 damage_stat = &"tempo"
-weapon_tags = PackedStringArray("ranged")
+weapon_tags = PackedStringArray("ranged", "starter")
 metadata/_custom_type_script = "uid://m5jx56lhrgsj"

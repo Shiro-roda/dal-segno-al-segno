@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TileDef" format=3 uid="uid://dy8odmx3jfu05"]
+
+[ext_resource type="Script" uid="uid://7e2wjvm1ll1u" path="res://Systems/Combat/enemy_template.gd" id="1_xi3h6"]
+[ext_resource type="Script" uid="uid://b2sa2hhblvquv" path="res://Systems/World/tile_def.gd" id="2_ir7gb"]
+
+[resource]
+script = ExtResource("2_ir7gb")
+id = &"hallway"
+display_name = "Hallway"
+color = Vector3i(30, 30, 30)
+metadata/_custom_type_script = "uid://b2sa2hhblvquv"

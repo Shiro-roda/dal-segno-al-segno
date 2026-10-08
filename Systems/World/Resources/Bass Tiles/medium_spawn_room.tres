@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="TileDef" format=3 uid="uid://c1gxgdyxpxgkm"]
+
+[ext_resource type="Script" uid="uid://7e2wjvm1ll1u" path="res://Systems/Combat/enemy_template.gd" id="1_2xqb8"]
+[ext_resource type="Resource" uid="uid://1gxmu62qw4qb" path="res://Systems/Combat/Data/sturdy_shadow.tres" id="2_jcto5"]
+[ext_resource type="Resource" uid="uid://d0lq7n25eqtyg" path="res://Systems/Combat/Data/shadow.tres" id="3_bpto3"]
+[ext_resource type="Script" uid="uid://b2sa2hhblvquv" path="res://Systems/World/tile_def.gd" id="4_456dv"]
+
+[resource]
+script = ExtResource("4_456dv")
+id = &"medium_room"
+display_name = "Medium Room"
+enemies = Array[ExtResource("1_2xqb8")]([ExtResource("2_jcto5"), ExtResource("3_bpto3")])
+spawn_count = 2
+loot_per_kill = {
+&"cuts": 6
+}
+color = Vector3i(20, 20, 20)
+metadata/_custom_type_script = "uid://b2sa2hhblvquv"

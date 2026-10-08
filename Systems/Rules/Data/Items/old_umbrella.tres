@@ -10,5 +10,5 @@ display_name = "Old Umbrella"
 damage_dice = "1d4"
 attack_stat = &"volume"
 damage_stat = &"volume"
-weapon_tags = PackedStringArray("melee")
+weapon_tags = PackedStringArray("melee", "starter")
 metadata/_custom_type_script = "uid://m5jx56lhrgsj"

@@ -10,5 +10,5 @@ display_name = "Dirty Knife"
 damage_dice = "1d6"
 attack_stat = &"tempo"
 damage_stat = &"tempo"
-weapon_tags = PackedStringArray("melee")
+weapon_tags = PackedStringArray("melee", "starter")
 metadata/_custom_type_script = "uid://m5jx56lhrgsj"

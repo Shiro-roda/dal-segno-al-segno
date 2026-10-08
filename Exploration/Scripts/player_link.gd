@@ -53,6 +53,27 @@ func is_locked() -> bool:
 	return _locks > 0
 
 
+# ── Teleporting between spaces (Treble <-> Bass) ─────────────────────────────
+## Moves the player and snaps the party to the new spot, discarding the old trail so
+## followers don't run the whole distance between the two spaces.
+func teleport_to(pos: Vector3, yaw := NAN) -> void:
+	if body == null:
+		return
+	body.global_position = pos
+	if not is_nan(yaw):
+		body.global_rotation.y = yaw
+	if body is CharacterBody3D:
+		(body as CharacterBody3D).velocity = Vector3.ZERO
+	_trail.clear()
+	_trail.push_front(pos)
+	for f in get_tree().get_nodes_in_group("party_follower"):
+		var follower := f as Node3D
+		if follower != null and not bool(follower.get("combat_controlled")):
+			follower.global_position = pos
+	# The camera would otherwise fly the whole distance between the two spaces.
+	get_tree().call_group(&"drone_camera", &"snap_to_target")
+
+
 # ── Breadcrumb trail for followers (newest first) ────────────────────────────
 func _physics_process(_delta: float) -> void:
 	if body == null:

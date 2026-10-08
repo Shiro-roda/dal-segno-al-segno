@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="FeatDef" format=3 uid="uid://bxcyytfmgflm2"]
+
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="1_3stm3"]
+[ext_resource type="Script" uid="uid://ch43wbypcqtmy" path="res://Systems/Progression/feat_def.gd" id="2_hh8rf"]
+[ext_resource type="Resource" uid="uid://r1f0s1gadhds" path="res://Systems/Rules/Data/Feats/guerriero1.tres" id="3_bxtra"]
+[ext_resource type="Resource" uid="uid://c48w0t4qc6icj" path="res://Systems/Rules/Data/Feats/guerriero2.tres" id="4_hh8rf"]
+
+[resource]
+script = ExtResource("2_hh8rf")
+id = &"guerriero3"
+display_name = "Guerriero III"
+description = "(allows recipient to also make two attacks with an equipped secondary weapon on their turn, for four attacks total per turn)"
+modifiers = {
+&"attack": 1,
+&"damage": 1
+}
+required_feats = Array[ExtResource("2_hh8rf")]([ExtResource("3_bxtra"), ExtResource("4_hh8rf")])
+tags = null
+metadata/_custom_type_script = "uid://ch43wbypcqtmy"

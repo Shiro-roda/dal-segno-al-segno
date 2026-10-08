@@ -1,14 +1,22 @@
 [gd_resource type="Resource" script_class="EnemyTemplate" format=3 uid="uid://d0lq7n25eqtyg"]
 
 [ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="1_amiva"]
+[ext_resource type="Script" uid="uid://m5jx56lhrgsj" path="res://Systems/Rules/item_def.gd" id="1_ntcy4"]
 [ext_resource type="Script" uid="uid://7e2wjvm1ll1u" path="res://Systems/Combat/enemy_template.gd" id="2_4kpgo"]
-[ext_resource type="Resource" uid="uid://blpqp186tsu5c" path="res://Systems/Rules/Data/Actions/low_dim.tres" id="2_kbeig"]
-[ext_resource type="Resource" uid="uid://dfyrkojgtvwbl" path="res://Systems/Rules/Data/Actions/banality.tres" id="3_ntcy4"]
+[ext_resource type="Resource" uid="uid://blpqp186tsu5c" path="res://Systems/Rules/Data/Actions/Special Actions/low_dim.tres" id="2_kbeig"]
+[ext_resource type="Resource" uid="uid://dfyrkojgtvwbl" path="res://Systems/Rules/Data/Actions/Special Actions/banality.tres" id="3_ntcy4"]
 [ext_resource type="PackedScene" uid="uid://b5one47frkahl" path="res://Exploration/Scenes/placeholder_model.tscn" id="4_kpgqp"]
 
 [resource]
 script = ExtResource("2_4kpgo")
-display_name = "Shadow"
+display_name = "Banal Shadow"
+scores = Dictionary[StringName, int]({
+&"tempo": 12,
+&"tone": 14,
+&"volume": 15
+})
 known_actions = Array[ExtResource("1_amiva")]([ExtResource("2_kbeig"), ExtResource("3_ntcy4")])
 model_scene = ExtResource("4_kpgqp")
+xp_value = 6
+notes_per_kill = 3
 metadata/_custom_type_script = "uid://7e2wjvm1ll1u"

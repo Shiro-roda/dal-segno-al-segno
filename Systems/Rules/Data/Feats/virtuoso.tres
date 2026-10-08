@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="FeatDef" format=3 uid="uid://cqagxy84k7yor"]
+
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="1_uoadu"]
+[ext_resource type="Script" uid="uid://ch43wbypcqtmy" path="res://Systems/Progression/feat_def.gd" id="2_mpols"]
+
+[resource]
+script = ExtResource("2_mpols")
+id = &"virtuoso"
+display_name = "Virtuoso"
+description = "(Allows recipient to learn a Canto that is not in their list of available Cantos)"
+modifiers = {
+&"max_anima": 2
+}
+max_stacks = 3
+tags = null
+metadata/_custom_type_script = "uid://ch43wbypcqtmy"

@@ -1,36 +1,42 @@
 class_name WorldController
 extends Node3D
-## Runs the plan -> expedition -> bank loop inside a level. Put one in the level
-## next to the player; it needs the usual Player, drone camera and spawn point.
+## The Town (Treble Clef) controller. Put one in the Town level next to the player; it
+## needs the usual Player, drone camera and spawn point.
 ##
-##   - loads every TileDef under tile_dir (the exit tile is whichever sets is_exit)
-##   - draws the grid as tiles: a tile's own scene if it has one, else a placeholder
-##   - on start_expedition(), turns the day's remnants into CombatEncounters
-##   - wins record kills, a defeat ends the run, and walking back onto the exit
-##     tile banks the carried loot, rests the party and starts the next day
-##   - XP from a win opens the level-up screen for whoever earned a level
+##   - loads every TileDef under tile_dir (exit and origin tiles are picked by flag)
+##   - draws the Treble grid in this one scene: a tile's own scene if it has one, else
+##     a placeholder slab
+##   - a console on the origin tile opens the plan screen, where both clefs are planned
+##     and the Segno is placed
+##   - starting the expedition hands off to GameController, which loads the Segno's room.
+##     Each dungeon room is its own scene (see DungeonRoom); none of them live here
+##   - coming back from the dungeon reloads this scene; the return report is shown then
 ##
-## The run itself (DayCycle) lives on GameController so it survives scene reloads.
+## The run itself (DayCycle) lives on GameController so it survives scene changes.
 
 ## Emitted when the party returns: the return report, then the next day's report.
 signal summary(report: Dictionary, next_day: Dictionary)
 ## Anything the plan screen should redraw for.
 signal state_changed
 
-@export_dir var tile_dir := "res://Systems/World/Data"
+@export_dir var tile_dir := "res://Systems/World/Resources"
 ## Leave empty to use whichever TileDef under tile_dir sets is_exit (or a bare placeholder).
 @export var exit_def: TileDef
+## Leave empty to use whichever TileDef under tile_dir sets is_origin (or a bare placeholder).
+@export var origin_def: TileDef
+## Leave empty to use whichever TileDef under tile_dir sets is_segno (or a bare placeholder).
+@export var segno_def: TileDef
 ## Balance numbers. Empty = defaults.
 @export var config: WorldConfig
-## Metres per tile edge.
+## Metres per tile edge in the Town.
 @export var tile_size := 12.0
 
-## Show the plan screen at the start of every day.
+## Show the plan screen from the console on the Town's origin tile.
 @export var use_plan_screen := true
 
 @export_group("Testing")
 ## Skips the plan screen: places one of each village tile and every blueprint in
-## hand each day, then goes. Only for testing without the screen.
+## hand each day, sets a Segno, then goes. Only for testing without the screen.
 @export var autoplan := false
 @export var autoplan_delay := 1.5
 ## One debug label with day, stock and blueprints.
@@ -40,11 +46,10 @@ var day: DayCycle
 var village_defs: Array[TileDef] = []
 var dungeon_defs: Array[TileDef] = []
 
-var _tile_nodes: Dictionary = {}  # Vector2i -> Node3D
-var _encounters: Array[CombatEncounter] = []
-var _exit_zone: Area3D
+var _treble_root: Node3D
+var _treble_nodes: Dictionary = {}  # Vector2i -> Node3D
+var _console: Interactable
 var _label: Label
-var _busy := false  # a level-up screen is open
 var _plan: PlanScreen
 var _plan_locked := false  # lock_controls() is a counter, so keep our calls balanced
 var _rebuild_queued := false
@@ -52,14 +57,18 @@ var _rebuild_queued := false
 
 func _ready() -> void:
 	add_to_group("world_controller")
+	_remember_town_scene()
 	_load_defs()
 	_ensure_cycle()
-	_build_exit_zone()
+	_build_root()
+	_build_console()
 	_build_overlay()
 	if use_plan_screen and not autoplan:
 		_build_plan_screen()
 	rebuild_tiles()
 	_update_overlay()
+	_place_party.call_deferred()
+	_show_pending_report.call_deferred()
 	if autoplan and day.phase == DayCycle.Phase.PLAN:
 		_run_autoplan.call_deferred()
 
@@ -75,9 +84,18 @@ func _exit_tree() -> void:
 		day.log_line.disconnect(_on_log)
 	if day.tile_changed.is_connected(_on_tile_changed):
 		day.tile_changed.disconnect(_on_tile_changed)
+	if day.segno_changed.is_connected(_on_segno_changed):
+		day.segno_changed.disconnect(_on_segno_changed)
 
 
 # ----------------------------------------------------------------- setup
+
+## The dungeon sends the party back to whichever scene this controller is in.
+func _remember_town_scene() -> void:
+	var root := owner if owner != null else get_parent()
+	if root != null and root.scene_file_path != "":
+		GameController.town_scene = root.scene_file_path
+
 
 func _load_defs() -> void:
 	village_defs.clear()
@@ -88,6 +106,12 @@ func _load_defs() -> void:
 		if def.is_exit:
 			if exit_def == null:
 				exit_def = def
+		elif def.is_origin:
+			if origin_def == null:
+				origin_def = def
+		elif def.is_segno:
+			if segno_def == null:
+				segno_def = def
 		elif def.category == TileDef.Category.VILLAGE:
 			village_defs.append(def)
 		else:
@@ -121,9 +145,9 @@ func _ensure_cycle() -> void:
 			exit = TileDef.new()
 			exit.id = &"exit"
 			exit.display_name = "Exit"
-			exit.category = TileDef.Category.VILLAGE
+			exit.category = TileDef.Category.DUNGEON
 			exit.is_exit = true
-		GameController.day_cycle = DayCycle.new(exit, config, GameController.world_persistent)
+		GameController.day_cycle = DayCycle.new(exit, config, GameController.world_persistent, -1, origin_def, segno_def)
 		GameController.day_cycle.blueprint_pool = dungeon_defs
 		GameController.day_cycle.begin_run()
 	day = GameController.day_cycle
@@ -136,41 +160,69 @@ func _ensure_cycle() -> void:
 		day.log_line.connect(_on_log)
 	if not day.tile_changed.is_connected(_on_tile_changed):
 		day.tile_changed.connect(_on_tile_changed)
+	if not day.segno_changed.is_connected(_on_segno_changed):
+		day.segno_changed.connect(_on_segno_changed)
 
 
-func _build_exit_zone() -> void:
-	var box := BoxShape3D.new()
-	box.size = Vector3(tile_size * 0.5, 3.0, tile_size * 0.5)
-	var shape := CollisionShape3D.new()
-	shape.shape = box
-	shape.position.y = 1.0
-	_exit_zone = Area3D.new()
-	_exit_zone.name = "ExitZone"
-	_exit_zone.collision_layer = 0
-	_exit_zone.collision_mask = 1 << 1  # the player body is on layer 2
-	_exit_zone.add_child(shape)
-	add_child(_exit_zone)
-	_exit_zone.body_entered.connect(_on_exit_entered)
+func _build_root() -> void:
+	_treble_root = Node3D.new()
+	_treble_root.name = "TrebleClef"
+	add_child(_treble_root)
+
+
+## The planning console: stand next to it on the Town's origin tile and interact.
+func _build_console() -> void:
+	_console = Interactable.new()
+	_console.name = "PlanConsole"
+	_console.prompt = "Plan the day"
+	_console.auto_shape_radius = 1.6
+	var post := MeshInstance3D.new()
+	var cylinder := CylinderMesh.new()
+	cylinder.top_radius = 0.45
+	cylinder.bottom_radius = 0.6
+	cylinder.height = 1.2
+	post.mesh = cylinder
+	post.position.y = 0.6
+	_console.add_child(post)
+	var console_label := Label3D.new()
+	console_label.text = "Plan the day"
+	console_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	console_label.position.y = 1.8
+	_console.add_child(console_label)
+	_console.interacted.connect(_on_console_interacted)
+	_treble_root.add_child(_console)
 
 
 # ------------------------------------------------------------------ tiles
 
+## Where a Town cell sits, in this node's space.
 func world_pos(cell: Vector2i) -> Vector3:
 	return Vector3(cell.x * tile_size, 0.0, cell.y * tile_size)
 
 
+## Where the party wakes in the Town: on the origin tile, just beside the console.
+func town_spawn() -> Vector3:
+	return world_pos(DayCycle.ORIGIN) + Vector3(0.0, 0.5, tile_size * 0.25)
+
+
 func rebuild_tiles() -> void:
-	for node: Node3D in _tile_nodes.values():
+	_rebuild_treble()
+	state_changed.emit()
+
+
+func _rebuild_treble() -> void:
+	for node: Node3D in _treble_nodes.values():
 		if is_instance_valid(node):
+			node.get_parent().remove_child(node)
 			node.queue_free()
-	_tile_nodes.clear()
-	for cell: Vector2i in day.grid:
-		var node := _make_tile_node(day.grid[cell] as TileInstance)
+	_treble_nodes.clear()
+	var grid := day.grid_for(TileDef.Clef.TREBLE)
+	for cell: Vector2i in grid.cells:
+		var node := _make_tile_node(grid.cells[cell] as TileInstance)
 		node.position = world_pos(cell)
 		node.name = "Tile_%d_%d" % [cell.x, cell.y]
-		add_child(node)
-		_tile_nodes[cell] = node
-	state_changed.emit()
+		_treble_root.add_child(node)
+		_treble_nodes[cell] = node
 
 
 func _make_tile_node(tile: TileInstance) -> Node3D:
@@ -181,7 +233,7 @@ func _make_tile_node(tile: TileInstance) -> Node3D:
 	return _placeholder_tile(tile)
 
 
-## A flat coloured slab so the grid is walkable before real tiles exist.
+## A flat coloured slab so the Town is walkable before real tiles exist.
 func _placeholder_tile(tile: TileInstance) -> Node3D:
 	var size := Vector3(tile_size - 0.3, 0.5, tile_size - 0.3)
 	var body := StaticBody3D.new()
@@ -196,12 +248,10 @@ func _placeholder_tile(tile: TileInstance) -> Node3D:
 	var mat := StandardMaterial3D.new()
 	if tile.ruined:
 		mat.albedo_color = Color(0.4, 0.4, 0.4)
-	elif tile.def.is_exit:
-		mat.albedo_color = Color(0.9, 0.9, 0.9)
-	elif tile.def.category == TileDef.Category.VILLAGE:
-		mat.albedo_color = Color(0.35, 0.6, 0.35)
+	elif tile.def.is_origin:
+		mat.albedo_color = Color(0.8, 0.75, 0.45)
 	else:
-		mat.albedo_color = Color(0.6, 0.3, 0.3)
+		mat.albedo_color = Color(0.35, 0.6, 0.35)
 	bm.material = mat
 	var mesh := MeshInstance3D.new()
 	mesh.mesh = bm
@@ -210,23 +260,67 @@ func _placeholder_tile(tile: TileInstance) -> Node3D:
 	return body
 
 
+# ----------------------------------------------------------- party movement
+
+## Puts the party where the phase says it belongs. Runs once the level's own spawn
+## has happened. An expedition still running when the Town loads (for example after a
+## reload) sends the party straight back down.
+func _place_party() -> void:
+	if day.phase == DayCycle.Phase.EXPEDITION:
+		GameController.begin_expedition()
+		return
+	var link := _party_link()
+	if link != null:
+		link.teleport_to(global_transform * town_spawn())
+
+
+## The PlayerLink in this level. The previous scene may still be queued for deletion,
+## so asking the group for "the first" one could return its ghost.
+func _party_link() -> PlayerLink:
+	var root := owner if owner != null else get_parent()
+	for node in get_tree().get_nodes_in_group("party_link"):
+		if root != null and root.is_ancestor_of(node):
+			return node as PlayerLink
+	return null
+
+
+## The party came back from the dungeon: show how the day went.
+func _show_pending_report() -> void:
+	var pending := GameController.pending_report
+	if pending.is_empty():
+		return
+	GameController.pending_report = {}
+	var report: Dictionary = pending["report"]
+	var next_day: Dictionary = pending["next_day"]
+	if _plan != null:
+		_plan.show_report(report, next_day)
+	summary.emit(report, next_day)
+
+
 # ---------------------------------------------------------------- planning
+
+func _on_console_interacted(_who: Node3D) -> void:
+	if _plan != null:
+		_plan.show_screen()
+
 
 ## Tries every open slot in order; places `def` in the first that accepts it.
 func try_place_anywhere(def: TileDef) -> bool:
-	for cell in day.open_slots():
+	for cell in day.open_slots(def.clef()):
 		if day.can_place(cell, def)["ok"]:
 			return day.place_tile(cell, def)
 	return false
 
 
 ## Testing stand-in for a plan screen: one of each village tile, then every
-## blueprint in today's hand, wherever they fit. Then off on the expedition.
+## blueprint in today's hand, wherever they fit, a Segno at the far end. Then off on
+## the expedition.
 func _run_autoplan() -> void:
 	for def in village_defs:
 		try_place_anywhere(def)
 	for def in day.blueprints.duplicate():
 		try_place_anywhere(def)
+	_autoplan_segno()
 	rebuild_tiles()
 	_update_overlay()
 	await get_tree().create_timer(autoplan_delay).timeout
@@ -234,100 +328,50 @@ func _run_autoplan() -> void:
 		start_expedition()
 
 
+## Builds the Segno room in the empty cell next to the standing dungeon tile furthest
+## from the exit.
+func _autoplan_segno() -> void:
+	if day.has_segno():
+		return
+	var best := DayCycle.NO_SEGNO
+	var best_steps := -1
+	for pos in day.open_slots(TileDef.Clef.BASS):
+		if not day.can_set_segno(pos)["ok"]:
+			continue
+		var steps := -1
+		for step in DayCycle.NEIGHBOURS:
+			steps = maxi(steps, day.distance_to_exit(pos + step))
+		if steps > best_steps:
+			best = pos
+			best_steps = steps
+	if best != DayCycle.NO_SEGNO:
+		day.set_segno(best)
+
+
 # -------------------------------------------------------------- expedition
 
+## Locks in the plan and carries the party down to the Segno's room.
 func start_expedition() -> void:
 	if day.phase != DayCycle.Phase.PLAN:
 		return
-	var spawns := day.start_expedition()
-	_clear_encounters()
-	var by_cell := {}
-	for s in spawns:
-		if not by_cell.has(s["pos"]):
-			by_cell[s["pos"]] = []
-		(by_cell[s["pos"]] as Array).append(s)
-	# One fight per tile: everything gathered there is fought together.
-	for cell: Vector2i in by_cell:
-		var list: Array[EnemyTemplate] = []
-		var ids: Array[int] = []
-		for s: Dictionary in by_cell[cell]:
-			var scaled := (s["template"] as EnemyTemplate).duplicate() as EnemyTemplate
-			scaled.level = int(s["level"])
-			list.append(scaled)
-			ids.append(int(s["id"]))
-		var encounter := CombatEncounter.new()
-		encounter.enemies = list
-		encounter.position = world_pos(cell)
-		encounter.auto_shape_size = Vector3(tile_size * 0.5, 3.0, tile_size * 0.5)
-		encounter.finished.connect(_on_encounter_finished.bind(ids))
-		encounter.xp_awarded.connect(_on_xp_awarded)
-		add_child(encounter)
-		_encounters.append(encounter)
-	_update_overlay()
-
-
-func _on_encounter_finished(victory: bool, ids: Array) -> void:
-	if victory:
-		for id in ids:
-			day.record_kill(int(id))
-	else:
-		# CombatEncounter already sends the game back to the start screen.
-		day.defeat()
-	_update_overlay()
-
-
-func _on_exit_entered(body: Node3D) -> void:
-	if not body.is_in_group("party_leader") or day.phase != DayCycle.Phase.EXPEDITION or _busy:
+	if not Rules.roster.party_ready():
+		day.log_line.emit("Choose your companions first (TAB opens the party menu).")
 		return
-	for e in _encounters:
-		if is_instance_valid(e) and e.session != null and e.session.active:
-			return  # no leaving mid-fight
-	return_to_exit()
+	day.start_expedition()
+	if day.phase != DayCycle.Phase.EXPEDITION:
+		return  # refused, e.g. no Segno yet; the reason was logged
+	_release_player_lock()
+	GameController.begin_expedition()
 
 
-func return_to_exit() -> void:
-	var report := day.return_to_exit()
-	if report.is_empty():
-		return
-	_clear_encounters()
-	if day.config.rest_on_return:
-		Rules.roster.rest_all()
-	var next_day := day.begin_next_day()
-	rebuild_tiles()
-	_update_overlay()
-	if _plan != null:
-		_plan.show_report(report, next_day)
-	summary.emit(report, next_day)
-	if autoplan:
-		_run_autoplan.call_deferred()
-
-
-func _clear_encounters() -> void:
-	for e in _encounters:
-		if is_instance_valid(e):
-			e.queue_free()
-	_encounters.clear()
-
-
-# ---------------------------------------------------------------- level-up
-
-## One level-up screen per companion who earned a level, one after another.
-func _on_xp_awarded(_amount: int, ready: Array) -> void:
-	_busy = true
-	var link := get_tree().get_first_node_in_group("party_link") as PlayerLink
-	if link != null:
-		link.lock_controls()
-	for id in ready:
-		var offer := Leveling.build_offer(Rules.roster, id)
-		if offer == null:
-			continue
-		var screen := LevelUpScreen.new()
-		add_child(screen)
-		screen.open(offer)
-		await screen.finished
-	if link != null:
-		link.unlock_controls()
-	_busy = false
+## This scene is about to be replaced; make sure nothing keeps the controls frozen.
+## (The party link is freed with the scene, so this only matters if the load fails.)
+func _release_player_lock() -> void:
+	if _plan_locked:
+		var link := _party_link()
+		if link != null:
+			link.unlock_controls()
+		_plan_locked = false
 
 
 # ------------------------------------------------------------ debug overlay
@@ -348,13 +392,20 @@ func _on_phase_changed(_phase: DayCycle.Phase) -> void:
 	_update_overlay()
 
 
+func _on_segno_changed() -> void:
+	_update_overlay()
+
+
 # ------------------------------------------------------------ plan screen
 
 func _build_plan_screen() -> void:
 	_plan = PlanScreen.new()
+	_plan.auto_show = false  # opened from the console, not forced on the player
 	add_child(_plan)
 	_plan.open(day, village_defs)
 	_plan.expedition_requested.connect(start_expedition)
+	_plan.opened.connect(_sync_plan_lock)
+	_plan.closed.connect(_sync_plan_lock)
 	# The player may not exist yet, so lock once everything is ready.
 	_sync_plan_lock.call_deferred()
 
@@ -362,10 +413,10 @@ func _build_plan_screen() -> void:
 ## Freezes the player while the plan screen is open. lock_controls() is a counter,
 ## so only call it when the state actually changes.
 func _sync_plan_lock() -> void:
-	var want := _plan != null and day != null and day.phase == DayCycle.Phase.PLAN
+	var want := _plan != null and _plan.is_open()
 	if want == _plan_locked:
 		return
-	var link := get_tree().get_first_node_in_group("party_link") as PlayerLink
+	var link := _party_link()
 	if link == null:
 		return
 	if want:
@@ -375,11 +426,12 @@ func _sync_plan_lock() -> void:
 	_plan_locked = want
 
 
-## Placing or erasing a tile changes the 3D grid; several can land in one frame.
-func _on_tile_changed(_pos: Vector2i) -> void:
-	# Colour changes during an expedition don't alter the 3D tiles, so only rebuild
-	# when something was placed or erased.
-	if day.phase != DayCycle.Phase.PLAN or _rebuild_queued:
+## Placing or erasing a Town tile changes the 3D scene; several can land in one frame.
+## Dungeon tiles are only rooms in the grid until the expedition loads them.
+func _on_tile_changed(_pos: Vector2i, clef: TileDef.Clef) -> void:
+	if day.phase != DayCycle.Phase.PLAN or clef != TileDef.Clef.TREBLE:
+		return
+	if _rebuild_queued:
 		return
 	_rebuild_queued = true
 	_rebuild_after_changes.call_deferred()
@@ -387,8 +439,10 @@ func _on_tile_changed(_pos: Vector2i) -> void:
 
 func _rebuild_after_changes() -> void:
 	_rebuild_queued = false
-	if is_inside_tree():
-		rebuild_tiles()
+	if not is_inside_tree():
+		return
+	_rebuild_treble()
+	state_changed.emit()
 
 
 func _on_log(text: String) -> void:
@@ -401,16 +455,18 @@ func _update_overlay() -> void:
 	var lines: Array[String] = []
 	lines.append("Day %d  %s" % [day.day, DayCycle.Phase.keys()[day.phase]])
 	lines.append("Stock: " + _format_amounts(day.stock))
-	if day.phase == DayCycle.Phase.EXPEDITION:
-		lines.append("Carried: " + _format_amounts(day.carried_loot))
-		lines.append("Remnants left: %d" % day.remaining())
-	var tonight := day.config.tithe_base + day.config.tithe_per_day * day.day
-	lines.append("Tithe tonight: %d  Debt: %d" % [tonight, day.debt])
+	lines.append("Tithe tonight: %d  Debt: %d" % [day.tithe_tonight(), day.debt])
 	if day.phase == DayCycle.Phase.PLAN:
 		var counts := {}
 		for def in day.blueprints:
 			counts[def.display_name] = int(counts.get(def.display_name, 0)) + 1
 		lines.append("Blueprints: " + _format_amounts(counts))
+		if day.has_segno():
+			var info := day.main_path()
+			lines.append("Segno (%d, %d)  main path %d steps, %d loops" % [
+					day.segno.x, day.segno.y, int(info["steps"]), int(info["loops"])])
+		else:
+			lines.append("Segno: not placed")
 	_label.text = "\n".join(lines)
 
 

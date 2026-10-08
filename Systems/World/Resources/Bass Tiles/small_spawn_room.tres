@@ -2,7 +2,17 @@
 
 [ext_resource type="Script" uid="uid://7e2wjvm1ll1u" path="res://Systems/Combat/enemy_template.gd" id="1_n0ylm"]
 [ext_resource type="Script" uid="uid://b2sa2hhblvquv" path="res://Systems/World/tile_def.gd" id="2_6dx2u"]
+[ext_resource type="Resource" uid="uid://1gxmu62qw4qb" path="res://Systems/Combat/Data/sturdy_shadow.tres" id="2_atpkf"]
+[ext_resource type="Resource" uid="uid://d0lq7n25eqtyg" path="res://Systems/Combat/Data/shadow.tres" id="3_dtyfx"]
 
 [resource]
 script = ExtResource("2_6dx2u")
+id = &"small_room"
+display_name = "Small Room"
+enemies = Array[ExtResource("1_n0ylm")]([ExtResource("2_atpkf"), ExtResource("3_dtyfx")])
+spawn_count = 1
+loot_per_kill = {
+&"cuts": 5
+}
+color = Vector3i(10, 10, 10)
 metadata/_custom_type_script = "uid://b2sa2hhblvquv"

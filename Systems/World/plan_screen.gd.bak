@@ -1,39 +1,27 @@
 class_name PlanScreen
 extends CanvasLayer
-## The planning phase: spend stock on tiles, place the Segno, choose how the tithe is
-## paid, then go.
+## The planning phase: spend stock on tiles, choose how the tithe is paid, then go.
 ##
-## Two grids, one screen. The Treble tab shows the Town and lists village tiles, which
-## are always available. The Bass tab shows the Dungeon and lists today's blueprints.
-## Pick a tile, then click an open slot to place it. Segno mode (Bass tab) moves the
-## party's spawn. Erase mode removes tiles: only spent rooms, unless
+## One screen for both kinds of tile. The Hub tab lists village tiles, which are
+## always available. The Dungeon tab lists today's blueprints. Pick one, then click
+## an open slot to place it. Erase mode removes tiles: only spent rooms, unless
 ## WorldConfig.erase_any_tile is on.
 ##
 ## Every label here is functional. Names, descriptions and colours come from your
 ## TileDef resources; nothing is written for you.
 
 signal expedition_requested
-## The screen became visible / hidden (the world controller locks the player on this).
-signal opened
-signal closed
 
 const CELL := Vector2(104, 64)
 const FAR := Vector2i(1 << 20, 1 << 20)  # a cell far from any ruin: undiscounted prices
 const RUIN_COLOR := Color(0.28, 0.28, 0.28)
 const SPENT_COLOR := Color(0.85, 0.85, 0.85)
-const SEGNO_COLOR := Color(1.0, 0.85, 0.2)
-const PATH_COLOR := Color(0.45, 0.75, 1.0)
 
 var day: DayCycle
-## Show the screen whenever a day's planning begins. Turn off when something else (the
-## console on the Town's origin tile) opens it with show_screen().
-var auto_show := true
 
 var _hub_defs: Array[TileDef] = []
 var _selected: TileDef
 var _erase := false
-var _segno_mode := false
-var _view: TileDef.Clef = TileDef.Clef.TREBLE
 
 var _root: Control
 var _title: Label
@@ -41,18 +29,13 @@ var _stock: Label
 var _report: Label
 var _status: Label
 var _grid: GridContainer
-var _tabs: TabContainer
 var _hub_list: VBoxContainer
 var _dungeon_list: VBoxContainer
 var _info: Label
 var _tithe: Label
 var _dungeon_count: Label
-var _path_label: Label
-var _party_label: Label
 var _notes_first: CheckButton
 var _erase_button: Button
-var _segno_button: Button
-var _close_button: Button
 
 
 func _ready() -> void:
@@ -73,11 +56,10 @@ func open(p_day: DayCycle, hub_defs: Array[TileDef]) -> void:
 	day = p_day
 	_hub_defs.clear()
 	for def in hub_defs:
-		if def != null and not def.is_exit and not def.is_origin:
+		if def != null and not def.is_exit:
 			_hub_defs.append(def)
 	day.phase_changed.connect(_on_phase_changed)
 	day.tile_changed.connect(_on_tile_changed)
-	day.segno_changed.connect(_refresh)
 	day.blueprints_changed.connect(_refresh)
 	day.log_line.connect(_on_log)
 	_notes_first.set_pressed_no_signal(day.tithe_notes_first)
@@ -86,36 +68,6 @@ func open(p_day: DayCycle, hub_defs: Array[TileDef]) -> void:
 
 func is_open() -> bool:
 	return _root != null and _root.visible
-
-
-## Opens the screen (only while planning).
-func show_screen() -> void:
-	if day == null or day.phase != DayCycle.Phase.PLAN:
-		return
-	_set_visible(true)
-	_refresh()
-
-
-func close_screen() -> void:
-	_set_visible(false)
-
-
-## Which grid is on show.
-func view() -> TileDef.Clef:
-	return _view
-
-
-func set_view(clef: TileDef.Clef) -> void:
-	if _view == clef:
-		return
-	_view = clef
-	_tabs.current_tab = int(clef)
-	if _selected != null and _selected.clef() != clef:
-		_selected = null
-	if clef == TileDef.Clef.TREBLE:
-		_segno_mode = false
-		_segno_button.set_pressed_no_signal(false)
-	_refresh()
 
 
 ## Shows what the last expedition and the new day's turnover did.
@@ -132,34 +84,22 @@ func show_report(report: Dictionary, next_day: Dictionary) -> void:
 	_report.visible = true
 
 
-## Picks a tile from the palette (or puts it back if it was already picked). Switches to
-## the tab of the clef the tile belongs on.
+## Picks a tile from the palette (or puts it back if it was already picked).
 func choose_def(def: TileDef) -> void:
 	_selected = null if _selected == def else def
 	_erase = false
-	_segno_mode = false
 	_erase_button.set_pressed_no_signal(false)
-	_segno_button.set_pressed_no_signal(false)
-	if _selected != null:
-		set_view(_selected.clef())
 	_refresh()
 
 
-## Clicks a grid cell: erase it, move the Segno there, place the chosen tile on it, or
-## just inspect it.
+## Clicks a grid cell: erase it, place the chosen tile on it, or just inspect it.
 func click_cell(pos: Vector2i) -> void:
 	if day == null:
 		return
 	if _erase:
-		day.erase_tile(pos, _view)
-		return
-	if _segno_mode:
-		day.set_segno(pos)
+		day.erase_tile(pos)
 		return
 	if _selected != null:
-		if _selected.clef() != _view:
-			_status.text = "That tile belongs on the other clef."
-			return
 		if day.place_tile(pos, _selected):
 			# A blueprint is one card for one placement.
 			if day.needs_blueprint(_selected) and not day.blueprints.has(_selected):
@@ -173,21 +113,6 @@ func set_erase(on: bool) -> void:
 	_erase_button.set_pressed_no_signal(on)
 	if on:
 		_selected = null
-		_segno_mode = false
-		_segno_button.set_pressed_no_signal(false)
-	_refresh()
-
-
-## Segno mode: clicking an empty Bass cell next to a standing room builds the Segno room
-## there (free), moving it if it was already placed. Press Erase on it to pick it up.
-func set_segno_mode(on: bool) -> void:
-	_segno_mode = on
-	_segno_button.set_pressed_no_signal(on)
-	if on:
-		_selected = null
-		_erase = false
-		_erase_button.set_pressed_no_signal(false)
-		set_view(TileDef.Clef.BASS)
 	_refresh()
 
 
@@ -205,17 +130,6 @@ func request_expedition() -> void:
 	expedition_requested.emit()
 
 
-## Opens the party menu over this screen: pick companions, equip them, spend level-ups.
-func open_party_menu() -> void:
-	var menu := get_tree().get_first_node_in_group("party_menu") as PartyMenu
-	if menu == null:
-		_status.text = "The party menu isn't available."
-		return
-	if not menu.menu_closed.is_connected(_refresh_party):
-		menu.menu_closed.connect(_refresh_party)
-	menu.show_menu()
-
-
 # ------------------------------------------------------------------- build
 
 func _build() -> void:
@@ -223,7 +137,6 @@ func _build() -> void:
 		return
 	_root = Control.new()
 	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_root.visible = false
 	add_child(_root)
 
 	var dim := ColorRect.new()
@@ -248,10 +161,6 @@ func _build() -> void:
 	_stock.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_stock.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	header.add_child(_stock)
-	_close_button = Button.new()
-	_close_button.text = "Close"
-	_close_button.pressed.connect(close_screen)
-	header.add_child(_close_button)
 
 	_report = Label.new()
 	_report.visible = false
@@ -272,26 +181,17 @@ func _build() -> void:
 	side_panel.custom_minimum_size = Vector2(340, 0)
 	body.add_child(side_panel)
 
-	# Tab order matches TileDef.Clef: TREBLE = 0, BASS = 1.
-	_tabs = TabContainer.new()
-	_tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	side_panel.add_child(_tabs)
-	_hub_list = _make_tab(_tabs, "Treble")
-	_dungeon_list = _make_tab(_tabs, "Bass")
-	_tabs.tab_changed.connect(_on_tab_changed)
+	var tabs := TabContainer.new()
+	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	side_panel.add_child(tabs)
+	_hub_list = _make_tab(tabs, "Hub")
+	_dungeon_list = _make_tab(tabs, "Dungeon")
 
-	var tools := HBoxContainer.new()
-	side_panel.add_child(tools)
 	_erase_button = Button.new()
 	_erase_button.text = "Erase"
 	_erase_button.toggle_mode = true
 	_erase_button.toggled.connect(set_erase)
-	tools.add_child(_erase_button)
-	_segno_button = Button.new()
-	_segno_button.text = "Place Segno"
-	_segno_button.toggle_mode = true
-	_segno_button.toggled.connect(set_segno_mode)
-	tools.add_child(_segno_button)
+	side_panel.add_child(_erase_button)
 
 	_info = Label.new()
 	_info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -312,19 +212,10 @@ func _build() -> void:
 	outer.add_child(footer2)
 	_dungeon_count = Label.new()
 	footer2.add_child(_dungeon_count)
-	_path_label = Label.new()
-	_path_label.add_theme_color_override("font_color", PATH_COLOR)
-	footer2.add_child(_path_label)
 	_status = Label.new()
 	_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	footer2.add_child(_status)
-	_party_label = Label.new()
-	footer2.add_child(_party_label)
-	var party_button := Button.new()
-	party_button.text = "Party (TAB)"
-	party_button.pressed.connect(open_party_menu)
-	footer2.add_child(party_button)
 	var go := Button.new()
 	go.text = "Start expedition"
 	go.pressed.connect(request_expedition)
@@ -349,46 +240,25 @@ func _disconnect() -> void:
 		day.phase_changed.disconnect(_on_phase_changed)
 	if day.tile_changed.is_connected(_on_tile_changed):
 		day.tile_changed.disconnect(_on_tile_changed)
-	if day.segno_changed.is_connected(_refresh):
-		day.segno_changed.disconnect(_refresh)
 	if day.blueprints_changed.is_connected(_refresh):
 		day.blueprints_changed.disconnect(_refresh)
 	if day.log_line.is_connected(_on_log):
 		day.log_line.disconnect(_on_log)
 
 
-func _set_visible(on: bool) -> void:
-	if _root.visible == on:
-		return
-	_root.visible = on
-	if on:
-		opened.emit()
-	else:
-		closed.emit()
-
-
 # ----------------------------------------------------------------- signals
 
 func _on_phase_changed(phase: DayCycle.Phase) -> void:
-	if phase != DayCycle.Phase.PLAN:
-		_set_visible(false)
-		return
-	_selected = null
-	_erase = false
-	_segno_mode = false
-	_erase_button.set_pressed_no_signal(false)
-	_segno_button.set_pressed_no_signal(false)
-	_status.text = ""
-	if auto_show:
-		_set_visible(true)
-	_refresh()
+	_root.visible = phase == DayCycle.Phase.PLAN
+	if _root.visible:
+		_selected = null
+		_erase = false
+		_erase_button.set_pressed_no_signal(false)
+		_status.text = ""
+		_refresh()
 
 
-func _on_tab_changed(index: int) -> void:
-	set_view(index as TileDef.Clef)
-
-
-func _on_tile_changed(_pos: Vector2i, _clef: TileDef.Clef) -> void:
+func _on_tile_changed(_pos: Vector2i) -> void:
 	_refresh()
 
 
@@ -403,36 +273,11 @@ func _refresh() -> void:
 		return
 	_title.text = "Day %d" % day.day
 	_stock.text = _amounts(_stock_with_zeros())
-	_close_button.visible = not auto_show
 	_refresh_tithe()
 	_refresh_palette()
 	_refresh_grid()
 	_refresh_dungeon_count()
-	_refresh_path()
-	_refresh_party()
 	_info.text = _describe_def(_selected, null) if _selected != null else ""
-
-
-## Who is going, and a nudge when the party needs choosing or someone can level up.
-func _refresh_party() -> void:
-	if _party_label == null:
-		return
-	var roster := Rules.roster
-	if roster == null:
-		_party_label.text = ""
-		return
-	var names: Array[String] = []
-	for id in roster.active_companions():
-		var sheet := roster.get_sheet(id)
-		if sheet != null:
-			names.append(sheet.display_name if sheet.display_name != "" else String(id))
-	var text := "Party: " + (", ".join(names) if not names.is_empty() else "nobody chosen")
-	if not roster.party_ready():
-		text += "  (choose companions)"
-	var levels := Leveling.ready_to_level(roster).size()
-	if levels > 0:
-		text += "  [%d ready to level up]" % levels
-	_party_label.text = text
 
 
 func _refresh_tithe() -> void:
@@ -444,39 +289,19 @@ func _refresh_tithe() -> void:
 	_tithe.text = text
 
 
-## Dungeon rooms with a walking route to where the party will spawn, and their remnants.
 func _refresh_dungeon_count() -> void:
 	var tiles := 0
 	var remnants := 0
-	var reach: Dictionary = day.main_path()["reach"]
-	for pos: Vector2i in day.bass.cells:
-		var tile: TileInstance = day.bass.cells[pos]
-		if not tile.is_live() or tile.def.is_exit or tile.def.enemies.is_empty():
+	for pos: Vector2i in day.grid:
+		var tile: TileInstance = day.grid[pos]
+		if not tile.is_live() or tile.def.category != TileDef.Category.DUNGEON \
+				or tile.def.is_exit or tile.def.enemies.is_empty():
 			continue
-		if not reach.has(pos):
+		if day.distance_to_exit(pos) < 0:
 			continue
 		tiles += 1
 		remnants += tile.def.spawn_count + int(day.carried.get(pos, 0))
 	_dungeon_count.text = "Dungeon tiles: %d   Remnants: %d" % [tiles, remnants]
-
-
-## The Segno and its scored main path.
-func _refresh_path() -> void:
-	if not day.config.require_segno:
-		_path_label.text = ""
-		return
-	if not day.has_segno():
-		_path_label.text = "   Segno: not placed"
-		return
-	var info := day.main_path()
-	if not bool(info["found"]):
-		_path_label.text = "   Segno (%d, %d): no route to the exit" % [day.segno.x, day.segno.y]
-		return
-	var text := "   Main path: %d steps, %d loops, loot +%d%%" % [
-			int(info["steps"]), int(info["loops"]), roundi(float(info["bonus"]) * 100.0)]
-	if bool(info["capped"]):
-		text += " (search capped)"
-	_path_label.text = text
 
 
 func _refresh_palette() -> void:
@@ -512,19 +337,25 @@ func _palette_button(def: TileDef, copies: int) -> Button:
 
 func _refresh_grid() -> void:
 	_clear(_grid)
-	var slots := day.open_slots(_view)
+	var slots := day.open_slots()
 	var slot_set := {}
+	var lo := Vector2i.ZERO
+	var hi := Vector2i.ZERO
+	for pos: Vector2i in day.grid:
+		lo = Vector2i(mini(lo.x, pos.x), mini(lo.y, pos.y))
+		hi = Vector2i(maxi(hi.x, pos.x), maxi(hi.y, pos.y))
 	for pos in slots:
 		slot_set[pos] = true
-	var rect := day.grid_for(_view).bounds(slots)
-	_grid.columns = rect.size.x
-	for y in range(rect.position.y, rect.end.y):
-		for x in range(rect.position.x, rect.end.x):
+		lo = Vector2i(mini(lo.x, pos.x), mini(lo.y, pos.y))
+		hi = Vector2i(maxi(hi.x, pos.x), maxi(hi.y, pos.y))
+	_grid.columns = hi.x - lo.x + 1
+	for y in range(lo.y, hi.y + 1):
+		for x in range(lo.x, hi.x + 1):
 			_grid.add_child(_make_cell(Vector2i(x, y), slot_set))
 
 
 func _make_cell(pos: Vector2i, slot_set: Dictionary) -> Control:
-	var tile: TileInstance = day.grid_for(_view).get_tile(pos)
+	var tile: TileInstance = day.grid.get(pos)
 	if tile == null and not slot_set.has(pos):
 		var gap := Control.new()
 		gap.custom_minimum_size = CELL
@@ -534,31 +365,22 @@ func _make_cell(pos: Vector2i, slot_set: Dictionary) -> Control:
 	b.clip_text = true
 	b.pressed.connect(click_cell.bind(pos))
 	b.mouse_entered.connect(_show_cell_info.bind(pos))
-	var is_bass := _view == TileDef.Clef.BASS
-	var is_segno: bool = is_bass and day.has_segno() and day.segno == pos
 	if tile != null:
 		b.text = _tile_text(tile)
-		if is_segno:
-			b.text = "(S) " + b.text
 		var bg := Color(tile.color.x / 250.0, tile.color.y / 250.0, tile.color.z / 250.0).darkened(0.45)
 		var border := Color(0.9, 0.5, 0.5)
-		if tile.def.is_exit or tile.def.is_origin:
+		if tile.def.is_exit:
 			border = Color.WHITE
 		elif tile.def.category == TileDef.Category.VILLAGE:
 			border = Color(0.6, 0.9, 0.6)
-		if is_bass and (day.main_path()["on_path"] as Dictionary).has(pos):
-			border = PATH_COLOR
-		if is_segno:
-			border = SEGNO_COLOR
 		if tile.ruined:
 			bg = RUIN_COLOR
 		elif tile.is_depleted():
 			bg = SPENT_COLOR.darkened(0.5)
-		_apply_box(b, bg, border, 4 if is_segno else 3)
+		_apply_box(b, bg, border, 3)
 	else:
 		b.text = "+"
-		var ok: bool = (_selected != null and day.can_place(pos, _selected)["ok"]) \
-				or (_segno_mode and is_bass and day.can_set_segno(pos)["ok"])
+		var ok: bool = _selected != null and day.can_place(pos, _selected)["ok"]
 		_apply_box(b, Color(0.1, 0.1, 0.1), Color(0.4, 0.9, 0.4) if ok else Color(0.3, 0.3, 0.3), 2)
 	return b
 
@@ -574,10 +396,10 @@ func _show_cell_info(pos: Vector2i) -> void:
 
 
 func _info_for_cell(pos: Vector2i) -> String:
-	var tile: TileInstance = day.grid_for(_view).get_tile(pos)
+	var tile: TileInstance = day.grid.get(pos)
 	if tile != null:
 		return _describe_tile(tile)
-	if _selected != null and _selected.clef() == _view:
+	if _selected != null:
 		return _describe_def(_selected, pos)
 	return "(%d, %d)" % [pos.x, pos.y]
 
@@ -588,7 +410,7 @@ func _tile_text(tile: TileInstance) -> String:
 		text += "\nruin"
 	elif tile.is_depleted():
 		text += "\nspent"
-	elif tile.def.category == TileDef.Category.DUNGEON and not tile.def.is_exit and not tile.def.is_segno:
+	elif tile.def.category == TileDef.Category.DUNGEON and not tile.def.is_exit:
 		text += "\n%d %d %d" % [tile.color.x, tile.color.y, tile.color.z]
 		var left := int(day.carried.get(tile.pos, 0))
 		if left > 0:
@@ -600,7 +422,7 @@ func _tile_text(tile: TileInstance) -> String:
 func _describe_def(def: TileDef, pos: Variant) -> String:
 	var lines: Array[String] = []
 	lines.append(_name_of(def))
-	lines.append("Treble (Town)" if def.clef() == TileDef.Clef.TREBLE else "Bass (Dungeon)")
+	lines.append("Hub" if def.category == TileDef.Category.VILLAGE else "Dungeon")
 	lines.append("Color: %d %d %d" % [def.color.x, def.color.y, def.color.z])
 	lines.append("Cost: " + _amounts(day.cost_of(pos if pos != null else FAR, def)))
 	if pos != null:
@@ -616,24 +438,18 @@ func _describe_def(def: TileDef, pos: Variant) -> String:
 
 ## A tile that is standing (or in ruins) on the grid.
 func _describe_tile(tile: TileInstance) -> String:
-	var clef := tile.def.clef()
 	var lines: Array[String] = []
 	lines.append(_name_of(tile.def))
-	lines.append("Treble (Town)" if clef == TileDef.Clef.TREBLE else "Bass (Dungeon)")
+	lines.append("Hub" if tile.def.category == TileDef.Category.VILLAGE else "Dungeon")
 	lines.append("(%d, %d)" % [tile.pos.x, tile.pos.y])
 	if tile.ruined:
 		lines.append("Ruined")
 	elif tile.is_depleted():
 		lines.append("Spent")
-	if clef == TileDef.Clef.BASS:
-		if day.has_segno() and day.segno == tile.pos:
-			lines.append("The Segno: the party spawns here")
-		if (day.main_path()["on_path"] as Dictionary).has(tile.pos):
-			lines.append("On the main path")
-		var steps := day.distance_to_exit(tile.pos)
-		lines.append("Distance to exit: " + (str(steps) if steps >= 0 else "cut off"))
+	var steps := day.distance_to_exit(tile.pos)
+	lines.append("Distance to exit: " + (str(steps) if steps >= 0 else "cut off"))
 	lines.append("Color: %d %d %d" % [tile.color.x, tile.color.y, tile.color.z])
-	if tile.def.category == TileDef.Category.DUNGEON and not tile.def.is_exit and not tile.def.is_segno:
+	if tile.def.category == TileDef.Category.DUNGEON and not tile.def.is_exit:
 		var names: Array[String] = []
 		for i in tile.lowest_channels():
 			names.append(_channel_name(i))
@@ -642,7 +458,7 @@ func _describe_tile(tile: TileInstance) -> String:
 		if left > 0:
 			lines.append("Remnants left alive: %d" % left)
 	lines.append_array(_effects_of(tile.def))
-	var erase := day.can_erase(tile.pos, clef)
+	var erase := day.can_erase(tile.pos)
 	if not erase["ok"]:
 		lines.append(String(erase["reason"]))
 	if tile.def.description != "":
@@ -656,7 +472,7 @@ func _effects_of(def: TileDef) -> Array[String]:
 	if def.category == TileDef.Category.VILLAGE:
 		if not def.income.is_empty():
 			lines.append("Income: " + _amounts(def.income))
-	elif not def.is_exit and not def.is_segno:
+	elif not def.is_exit:
 		lines.append("Remnants: %d" % def.spawn_count)
 		var names := {}
 		for template in def.enemies:
@@ -667,18 +483,8 @@ func _effects_of(def: TileDef) -> Array[String]:
 			for enemy_name: String in names:
 				enemy_names.append(enemy_name)
 			lines.append("Enemies: " + ", ".join(enemy_names))
-		var fewest := -1
-		var most := 0
-		for template in def.enemies:
-			if template == null:
-				continue
-			var drop := day.notes_dropped(def, template)
-			fewest = drop if fewest < 0 else mini(fewest, drop)
-			most = maxi(most, drop)
-		if most > 0:
-			lines.append("Notes per kill: %s" % (str(most) if fewest == most else "%d-%d" % [fewest, most]))
-		if not is_equal_approx(def.note_multiplier, 1.0):
-			lines.append("Note multiplier: x%s" % String.num(def.note_multiplier, 2))
+		if def.notes_per_kill > 0:
+			lines.append("Notes per kill: %d" % def.notes_per_kill)
 		if not def.loot_per_kill.is_empty():
 			lines.append("Loot per kill: " + _amounts(def.loot_per_kill))
 	return lines

@@ -7,14 +7,25 @@
 [ext_resource type="Script" uid="uid://dgq0h13x363vr" path="res://Systems/Rules/character_sheet.gd" id="3_8qyo5"]
 [ext_resource type="PackedScene" uid="uid://b5one47frkahl" path="res://Exploration/Scenes/placeholder_model.tscn" id="3_w654p"]
 [ext_resource type="Script" uid="uid://cu31n7k0if3db" path="res://Systems/Progression/progression_def.gd" id="6_5bm8v"]
+[ext_resource type="Resource" uid="uid://cgmsgmhe4m8k0" path="res://Systems/Rules/Data/Actions/Cantos/decelerando.tres" id="6_jvphd"]
+[ext_resource type="Resource" uid="uid://dlah7x5v0ryr7" path="res://Systems/Rules/Data/Actions/Cantos/dissonante.tres" id="7_sckt6"]
+[ext_resource type="Resource" uid="uid://ci2aij7j45bn1" path="res://Systems/Rules/Data/Actions/Cantos/dolore.tres" id="8_fydsw"]
+[ext_resource type="Resource" uid="uid://hek840kdquku" path="res://Systems/Rules/Data/Actions/Cantos/flebile.tres" id="9_rpmqr"]
+[ext_resource type="Resource" uid="uid://r1f0s1gadhds" path="res://Systems/Rules/Data/Feats/guerriero1.tres" id="10_86sl1"]
+[ext_resource type="Resource" uid="uid://c48w0t4qc6icj" path="res://Systems/Rules/Data/Feats/guerriero2.tres" id="11_4fxiq"]
+[ext_resource type="Resource" uid="uid://bxcyytfmgflm2" path="res://Systems/Rules/Data/Feats/guerriero3.tres" id="12_vjpyq"]
+[ext_resource type="Resource" uid="uid://cqagxy84k7yor" path="res://Systems/Rules/Data/Feats/virtuoso.tres" id="13_bkgy5"]
 
 [sub_resource type="Resource" id="Resource_2b8b1"]
 script = ExtResource("6_5bm8v")
 max_level = 20
 xp_thresholds = PackedInt32Array(30, 90, 270, 650, 1400, 2300, 3400, 4800, 6400, 8500, 10000, 12000, 14000, 16500, 19500, 22500, 26500, 30500, 35500)
+first_pick_level = 1
 feat_every = 4
 canto_every = 2
 attribute_every = 2
+feat_pool = Array[ExtResource("3_0gb0a")]([ExtResource("10_86sl1"), ExtResource("11_4fxiq"), ExtResource("12_vjpyq"), ExtResource("13_bkgy5")])
+canto_pool = Array[ExtResource("2_w654p")]([ExtResource("6_jvphd"), ExtResource("7_sckt6"), ExtResource("8_fydsw"), ExtResource("9_rpmqr")])
 metadata/_custom_type_script = "uid://cu31n7k0if3db"
 
 [resource]
@@ -22,14 +33,14 @@ script = ExtResource("3_8qyo5")
 id = &"hue"
 display_name = "Hue"
 model_scene = ExtResource("3_w654p")
-scores = {
+scores = Dictionary[StringName, int]({
 &"attachment": 15,
 &"aversion": 16,
 &"delusion": 9,
 &"tempo": 12,
 &"tone": 14,
 &"volume": 11
-}
+})
 progression = SubResource("Resource_2b8b1")
 equipment = Dictionary[StringName, ExtResource("1_p465c")]({
 &"weapon": ExtResource("2_8qyo5")

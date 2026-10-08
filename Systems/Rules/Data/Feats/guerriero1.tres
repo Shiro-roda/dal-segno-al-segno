@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="FeatDef" format=3 uid="uid://r1f0s1gadhds"]
+
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="1_pvchi"]
+[ext_resource type="Script" uid="uid://ch43wbypcqtmy" path="res://Systems/Progression/feat_def.gd" id="2_7000i"]
+
+[resource]
+script = ExtResource("2_7000i")
+id = &"guerriero1"
+display_name = "Guerriero I"
+description = "(allows recipient to equip a secondary weapon in place of their armor or trinket and use it to take an extra attack on their turn)"
+tags = null
+metadata/_custom_type_script = "uid://ch43wbypcqtmy"

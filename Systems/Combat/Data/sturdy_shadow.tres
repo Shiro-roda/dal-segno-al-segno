@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="EnemyTemplate" format=3 uid="uid://1gxmu62qw4qb"]
+
+[ext_resource type="Script" uid="uid://m5jx56lhrgsj" path="res://Systems/Rules/item_def.gd" id="1_b6w4u"]
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="2_nsyth"]
+[ext_resource type="Resource" uid="uid://blpqp186tsu5c" path="res://Systems/Rules/Data/Actions/Special Actions/low_dim.tres" id="3_aoqn4"]
+[ext_resource type="Script" uid="uid://7e2wjvm1ll1u" path="res://Systems/Combat/enemy_template.gd" id="3_ewx5a"]
+[ext_resource type="Resource" uid="uid://dfyrkojgtvwbl" path="res://Systems/Rules/Data/Actions/Special Actions/banality.tres" id="4_audwc"]
+[ext_resource type="PackedScene" uid="uid://b5one47frkahl" path="res://Exploration/Scenes/placeholder_model.tscn" id="5_65ml6"]
+
+[resource]
+script = ExtResource("3_ewx5a")
+display_name = "Sturdy Shadow"
+corpus_die = 12
+scores = Dictionary[StringName, int]({
+&"tempo": 13,
+&"tone": 17,
+&"volume": 14
+})
+known_actions = Array[ExtResource("2_nsyth")]([ExtResource("3_aoqn4"), ExtResource("4_audwc")])
+model_scene = ExtResource("5_65ml6")
+xp_value = 8
+metadata/_custom_type_script = "uid://7e2wjvm1ll1u"

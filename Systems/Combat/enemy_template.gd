@@ -7,7 +7,7 @@ extends Resource
 ## This enemy's Corpus die: d6 for a frail one, d12 for a bruiser.
 @export_range(2, 20) var corpus_die: int = 8
 ## Attribute id -> score, e.g. {"volume": 14, "tone": 12}. Missing attributes use the default.
-@export var scores: Dictionary = {}
+@export var scores: Dictionary[StringName, int] = {}
 @export var known_actions: Array[ActionDef] = []
 ## slot id -> ItemDef, same as a CharacterSheet. A weapon sets the attack dice and reach.
 @export var equipment: Dictionary[StringName, ItemDef] = {}
@@ -22,9 +22,12 @@ extends Resource
 
 enum NoteColor { NONE, RED, GREEN, BLUE }
 ## The colour this enemy belongs to. A room is most likely to gather enemies of its
-## lowest colour(s), and a kill drops notes of this colour. NONE counts as neutral when
-## a room picks enemies, and drops the room's lowest colour.
+## lowest colour(s), and every note a kill drops is this colour. NONE (uncoloured) counts
+## as neutral when a room picks enemies, and each note it drops is a random colour.
 @export var note_color: NoteColor = NoteColor.NONE
+## How many notes this enemy drops when it is laid to rest, before the room's
+## note_multiplier and the main-path bonus. 0 = drops none.
+@export_range(0, 100) var notes_per_kill: int = 4
 
 
 func build_block(engine: RulesEngine) -> StatBlock:

@@ -12,6 +12,8 @@ var sheets: Dictionary = {}
 var blocks: Dictionary = {}
 ## Active party, in order. At most RulesConfig.party_size.
 var active: Array[StringName] = []
+## The shared bag. Items worn by a character are not in it.
+var inventory := PartyInventory.new()
 
 
 func _init(p_engine: RulesEngine) -> void:
@@ -72,6 +74,87 @@ func set_active(ids: Array) -> bool:
 	return true
 
 
+# ------------------------------------------------------- choosing a party
+
+## The player character: the sheet that sets is_player, else whoever is first in the
+## roster. Always leads the active party and can't be left behind.
+func leader_id() -> StringName:
+	for char_id in sheets:
+		if (sheets[char_id] as CharacterSheet).is_player:
+			return char_id
+	if not active.is_empty():
+		return active[0]
+	for char_id in sheets:
+		return char_id
+	return &""
+
+
+## Everyone recruited except the leader, in the order they joined.
+func companion_ids() -> Array[StringName]:
+	var out: Array[StringName] = []
+	var lead := leader_id()
+	for char_id in sheets:
+		if char_id != lead:
+			out.append(char_id)
+	return out
+
+
+## How many companions go on an expedition: the party size minus the leader.
+func companion_slots() -> int:
+	return maxi(engine.config.party_size - 1, 0)
+
+
+## The companions currently in the active party, in party order.
+func active_companions() -> Array[StringName]:
+	var out: Array[StringName] = []
+	var lead := leader_id()
+	for char_id in active:
+		if char_id != lead:
+			out.append(char_id)
+	return out
+
+
+## True once the party is as full as the roster allows: every companion slot is taken,
+## or there are no spare companions left to take.
+func party_ready() -> bool:
+	if sheets.is_empty() or not active.has(leader_id()):
+		return false
+	return active_companions().size() >= mini(companion_slots(), companion_ids().size())
+
+
+## Sets the companions who go (the leader is always added in front). Returns false
+## and changes nothing for an unknown or repeated id, the leader, or too many.
+func set_companions(ids: Array) -> bool:
+	var lead := leader_id()
+	if lead == &"" or ids.size() > companion_slots():
+		return false
+	var party: Array = [lead]
+	for char_id in ids:
+		var key := StringName(char_id)
+		if key == lead or party.has(key):
+			return false
+		party.append(key)
+	return set_active(party)
+
+
+## Takes `char_id` along, or leaves them behind if they are already going. With every
+## slot full, bringing someone new bumps the companion who has been in the party
+## longest. Returns false for the leader or an unknown id.
+func toggle_companion(char_id: StringName) -> bool:
+	if char_id == leader_id() or not blocks.has(char_id):
+		return false
+	var going := active_companions()
+	if going.has(char_id):
+		going.erase(char_id)
+	else:
+		if going.size() >= companion_slots():
+			if going.is_empty():
+				return false
+			going.pop_front()
+		going.append(char_id)
+	return set_companions(going)
+
+
 ## Equips an item in its slot. Returns the item it replaced, or null.
 func equip(char_id: StringName, item: ItemDef) -> ItemDef:
 	var sheet := get_sheet(char_id)
@@ -94,6 +177,29 @@ func unequip(char_id: StringName, slot: StringName) -> ItemDef:
 	blocks[char_id].apply_equipment(sheet.equipment)
 	changed.emit()
 	return removed
+
+
+## Equips an item from the shared bag. Whatever it replaces goes back into the bag.
+## Returns false (and changes nothing) if the bag doesn't hold it or the slot is unknown.
+func equip_from_inventory(char_id: StringName, item: ItemDef) -> bool:
+	var sheet := get_sheet(char_id)
+	if sheet == null or item == null or not inventory.has(item) \
+			or not engine.config.equipment_slots.has(item.slot):
+		return false
+	inventory.remove(item)
+	var previous := equip(char_id, item)
+	if previous != null:
+		inventory.add(previous)
+	return true
+
+
+## Takes whatever is in `slot` off and puts it in the shared bag.
+func unequip_to_inventory(char_id: StringName, slot: StringName) -> bool:
+	var removed := unequip(char_id, slot)
+	if removed == null:
+		return false
+	inventory.add(removed)
+	return true
 
 
 ## Writes runtime state (Corpus, Anima, level) back to the sheets, ready to save.

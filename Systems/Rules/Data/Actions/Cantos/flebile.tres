@@ -1,0 +1,46 @@
+[gd_resource type="Resource" script_class="ActionDef" format=3 uid="uid://hek840kdquku"]
+
+[ext_resource type="Script" uid="uid://hgdwyugnb20t" path="res://Systems/Rules/effect_def.gd" id="1_xovcq"]
+[ext_resource type="Script" uid="uid://6nbup8pfuhsr" path="res://Systems/Rules/condition_def.gd" id="2_43rw4"]
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="2_wo7ll"]
+
+[sub_resource type="Resource" id="Resource_43rw4"]
+script = ExtResource("1_xovcq")
+dice = "2d6"
+damage_type = &"red"
+on_save = 2
+upcast_dice = "1d6"
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[sub_resource type="Resource" id="Resource_2a73a"]
+script = ExtResource("2_43rw4")
+id = &"feeble"
+display_name = "Feeble"
+duration_rounds = 5
+modifiers = {
+&"volume": -3
+}
+advantage_on = PackedStringArray()
+disadvantage_on = PackedStringArray("tempo")
+metadata/_custom_type_script = "uid://6nbup8pfuhsr"
+
+[sub_resource type="Resource" id="Resource_koy4k"]
+script = ExtResource("1_xovcq")
+kind = 2
+condition = SubResource("Resource_2a73a")
+upcast_duration = 2
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[resource]
+script = ExtResource("2_wo7ll")
+id = &"flebile"
+display_name = "Flebile"
+roll = 2
+target = 3
+save_stat = &"attachment"
+dc_stat = &"attachment"
+effects = Array[ExtResource("1_xovcq")]([SubResource("Resource_43rw4"), SubResource("Resource_koy4k")])
+tags = PackedStringArray("canto", "red")
+canto_level = 1
+max_canto_level = 3
+metadata/_custom_type_script = "uid://njw6l7ex23w0"

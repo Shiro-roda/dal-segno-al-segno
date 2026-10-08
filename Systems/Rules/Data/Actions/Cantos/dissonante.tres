@@ -1,0 +1,45 @@
+[gd_resource type="Resource" script_class="ActionDef" format=3 uid="uid://dlah7x5v0ryr7"]
+
+[ext_resource type="Script" uid="uid://hgdwyugnb20t" path="res://Systems/Rules/effect_def.gd" id="1_sup0o"]
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="2_16trk"]
+[ext_resource type="Script" uid="uid://6nbup8pfuhsr" path="res://Systems/Rules/condition_def.gd" id="2_viagp"]
+
+[sub_resource type="Resource" id="Resource_viagp"]
+script = ExtResource("1_sup0o")
+dice = "2d8"
+bonus_stat = &"aversion"
+damage_type = &"green"
+on_save = 2
+upcast_dice = "1d8"
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[sub_resource type="Resource" id="Resource_rx3e5"]
+script = ExtResource("2_viagp")
+id = &"dissonant"
+display_name = "Dissonant"
+duration_rounds = 4
+advantage_on = null
+disadvantage_on = PackedStringArray("delusion", "attachment")
+metadata/_custom_type_script = "uid://6nbup8pfuhsr"
+
+[sub_resource type="Resource" id="Resource_g5xk4"]
+script = ExtResource("1_sup0o")
+kind = 2
+damage_type = &"green"
+condition = SubResource("Resource_rx3e5")
+on_save = 1
+upcast_duration = 2
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[resource]
+script = ExtResource("2_16trk")
+id = &"dissonante"
+display_name = "Dissonante"
+roll = 2
+save_stat = &"aversion"
+dc_stat = &"aversion"
+effects = Array[ExtResource("1_sup0o")]([SubResource("Resource_viagp"), SubResource("Resource_g5xk4")])
+tags = PackedStringArray("canto", "green")
+canto_level = 1
+max_canto_level = 3
+metadata/_custom_type_script = "uid://njw6l7ex23w0"

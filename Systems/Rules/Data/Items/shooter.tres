@@ -8,9 +8,9 @@ script = ExtResource("2_6trjo")
 id = &"sixshooter"
 display_name = "Six Shooter"
 description = "(every 6th bullet is a guaranteed crit)"
-modifiers = {
-"initiative": 5
-}
+modifiers = Dictionary[StringName, int]({
+&"initiative": 5
+})
 damage_dice = "2d6 + 1"
 attack_stat = &"tempo"
 damage_stat = &"tempo"

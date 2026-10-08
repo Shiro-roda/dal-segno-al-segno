@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="FeatDef" format=3 uid="uid://c48w0t4qc6icj"]
+
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="1_6upe4"]
+[ext_resource type="Script" uid="uid://ch43wbypcqtmy" path="res://Systems/Progression/feat_def.gd" id="2_knvsn"]
+[ext_resource type="Resource" uid="uid://r1f0s1gadhds" path="res://Systems/Rules/Data/Feats/guerriero1.tres" id="3_knvsn"]
+
+[resource]
+script = ExtResource("2_knvsn")
+id = &"guerriero2"
+display_name = "Guerriero II"
+description = "(allows recipient to make two attacks with their primary weapon on their turn; does not require or impede the use of a secondary weapon and its extra attack)"
+modifiers = {
+&"attack": 1
+}
+required_feats = Array[ExtResource("2_knvsn")]([ExtResource("3_knvsn")])
+tags = null
+metadata/_custom_type_script = "uid://ch43wbypcqtmy"

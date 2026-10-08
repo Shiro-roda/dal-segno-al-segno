@@ -6,7 +6,15 @@
 [ext_resource type="Script" uid="uid://dgq0h13x363vr" path="res://Systems/Rules/character_sheet.gd" id="3_h3l61"]
 [ext_resource type="Script" uid="uid://ch43wbypcqtmy" path="res://Systems/Progression/feat_def.gd" id="3_mgv03"]
 [ext_resource type="PackedScene" uid="uid://b5one47frkahl" path="res://Exploration/Scenes/placeholder_model.tscn" id="5_nlrtf"]
+[ext_resource type="Resource" uid="uid://cgmsgmhe4m8k0" path="res://Systems/Rules/Data/Actions/Cantos/decelerando.tres" id="6_vgsv6"]
 [ext_resource type="Script" uid="uid://cu31n7k0if3db" path="res://Systems/Progression/progression_def.gd" id="6_y8yax"]
+[ext_resource type="Resource" uid="uid://dlah7x5v0ryr7" path="res://Systems/Rules/Data/Actions/Cantos/dissonante.tres" id="7_mk1f8"]
+[ext_resource type="Resource" uid="uid://bb14mw2dyt6wr" path="res://Systems/Rules/Data/Actions/Cantos/fuoco.tres" id="8_xbyhu"]
+[ext_resource type="Resource" uid="uid://wcokfytvvwge" path="res://Systems/Rules/Data/Actions/Cantos/obbligato.tres" id="9_257wu"]
+[ext_resource type="Resource" uid="uid://r1f0s1gadhds" path="res://Systems/Rules/Data/Feats/guerriero1.tres" id="10_w1gjw"]
+[ext_resource type="Resource" uid="uid://c48w0t4qc6icj" path="res://Systems/Rules/Data/Feats/guerriero2.tres" id="11_a25ht"]
+[ext_resource type="Resource" uid="uid://bxcyytfmgflm2" path="res://Systems/Rules/Data/Feats/guerriero3.tres" id="12_1l3ww"]
+[ext_resource type="Resource" uid="uid://cqagxy84k7yor" path="res://Systems/Rules/Data/Feats/virtuoso.tres" id="13_r1ahi"]
 
 [sub_resource type="Resource" id="Resource_27q3x"]
 script = ExtResource("6_y8yax")
@@ -14,6 +22,8 @@ max_level = 20
 xp_thresholds = PackedInt32Array(30, 90, 270, 650, 1400, 2300, 3400, 4800, 6400, 8500, 10000, 12000, 14000, 16500, 19500, 22500, 26500, 30500, 35500)
 canto_every = 3
 attribute_every = 4
+feat_pool = Array[ExtResource("3_mgv03")]([ExtResource("10_w1gjw"), ExtResource("11_a25ht"), ExtResource("12_1l3ww"), ExtResource("13_r1ahi")])
+canto_pool = Array[ExtResource("2_uaifi")]([ExtResource("6_vgsv6"), ExtResource("7_mk1f8"), ExtResource("8_xbyhu"), ExtResource("9_257wu")])
 metadata/_custom_type_script = "uid://cu31n7k0if3db"
 
 [resource]

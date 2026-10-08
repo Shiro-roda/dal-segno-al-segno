@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="1_wedyg"]
 [ext_resource type="Script" uid="uid://m5jx56lhrgsj" path="res://Systems/Rules/item_def.gd" id="2_cwtwu"]
-[ext_resource type="Resource" uid="uid://bharujhq5s6vw" path="res://Systems/Rules/Data/Actions/crucify.tres" id="2_ryo3g"]
+[ext_resource type="Resource" uid="uid://bharujhq5s6vw" path="res://Systems/Rules/Data/Actions/Special Actions/crucify.tres" id="2_ryo3g"]
 
 [resource]
 script = ExtResource("2_cwtwu")

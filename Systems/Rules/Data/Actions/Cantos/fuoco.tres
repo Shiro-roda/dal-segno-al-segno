@@ -1,0 +1,43 @@
+[gd_resource type="Resource" script_class="ActionDef" format=3 uid="uid://bb14mw2dyt6wr"]
+
+[ext_resource type="Script" uid="uid://hgdwyugnb20t" path="res://Systems/Rules/effect_def.gd" id="1_1fmq6"]
+[ext_resource type="Script" uid="uid://6nbup8pfuhsr" path="res://Systems/Rules/condition_def.gd" id="2_en55n"]
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="2_h0shh"]
+
+[sub_resource type="Resource" id="Resource_en55n"]
+script = ExtResource("1_1fmq6")
+dice = "3d6"
+damage_type = &"blue"
+on_save = 2
+upcast_dice = "1d6"
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[sub_resource type="Resource" id="Resource_1s4k0"]
+script = ExtResource("2_en55n")
+id = &"heartburn"
+display_name = "Heartburn"
+advantage_on = null
+disadvantage_on = null
+tick_damage = "2d6"
+metadata/_custom_type_script = "uid://6nbup8pfuhsr"
+
+[sub_resource type="Resource" id="Resource_5ghjg"]
+script = ExtResource("1_1fmq6")
+kind = 2
+damage_type = &"blue"
+condition = SubResource("Resource_1s4k0")
+on_save = 1
+upcast_duration = 1
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[resource]
+script = ExtResource("2_h0shh")
+id = &"fuoco"
+display_name = "Fuoco"
+roll = 1
+attack_stat = &"delusion"
+effects = Array[ExtResource("1_1fmq6")]([SubResource("Resource_en55n"), SubResource("Resource_5ghjg")])
+tags = PackedStringArray("canto", "blue")
+canto_level = 1
+max_canto_level = 3
+metadata/_custom_type_script = "uid://njw6l7ex23w0"

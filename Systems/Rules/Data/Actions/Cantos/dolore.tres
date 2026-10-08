@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="ActionDef" format=3 uid="uid://ci2aij7j45bn1"]
+
+[ext_resource type="Script" uid="uid://hgdwyugnb20t" path="res://Systems/Rules/effect_def.gd" id="1_clksx"]
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="2_xl6wt"]
+
+[sub_resource type="Resource" id="Resource_cp2yt"]
+script = ExtResource("1_clksx")
+dice = "3d10"
+damage_type = &"red"
+on_save = 2
+upcast_dice = "1d10"
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[resource]
+script = ExtResource("2_xl6wt")
+id = &"dolore"
+display_name = "Dolore"
+roll = 1
+attack_stat = &"attachment"
+effects = Array[ExtResource("1_clksx")]([SubResource("Resource_cp2yt")])
+tags = PackedStringArray("canto", "red")
+canto_level = 1
+max_canto_level = 3
+metadata/_custom_type_script = "uid://njw6l7ex23w0"

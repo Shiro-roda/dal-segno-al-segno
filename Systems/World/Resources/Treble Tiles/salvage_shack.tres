@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="TileDef" format=3 uid="uid://cwvaqumny0ygx"]
+
+[ext_resource type="Script" uid="uid://7e2wjvm1ll1u" path="res://Systems/Combat/enemy_template.gd" id="1_wybp1"]
+[ext_resource type="Script" uid="uid://b2sa2hhblvquv" path="res://Systems/World/tile_def.gd" id="2_7j6cx"]
+
+[resource]
+script = ExtResource("2_7j6cx")
+id = &"shack"
+display_name = "Salvage Shack"
+category = 0
+color = Vector3i(50, 50, 0)
+metadata/_custom_type_script = "uid://b2sa2hhblvquv"

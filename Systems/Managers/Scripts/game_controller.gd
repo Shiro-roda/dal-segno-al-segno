@@ -20,8 +20,25 @@ var day_cycle: DayCycle
 ## What survives a defeat (ruins, built tile ids, best day). Never cleared in play.
 var world_persistent: WorldPersistent = WorldPersistent.new()
 
+## Used for a dungeon room whose TileDef has no scene of its own yet.
+const FALLBACK_ROOM := "res://Systems/World/Rooms/room_base.tscn"
+
+## The Town scene the party returns to after an expedition. WorldController fills this
+## in from the level it sits in; New Game resets it.
+var town_scene := PLACEHOLDER_LEVEL
+## The Bass Clef cell whose room is loaded (or about to be) during an expedition.
+var bass_cell := DayCycle.ORIGIN
+## Which side's door the party came in through (DayCycle.Side), or -1 when they
+## appeared at the Segno. Read by DungeonRoom on load.
+var arrival_side := -1
+## {report, next_day} handed to the Town when the party returns; the plan screen
+## shows it once and WorldController clears it.
+var pending_report: Dictionary = {}
+
 
 func _ready() -> void:
+	# TAB opens it from anywhere in a running game; it lives here so it survives scene changes.
+	add_child(PartyMenu.new())
 	await _wait_for_layers()
 	world_layer.visible = false
 	event_layer.visible = false
@@ -70,6 +87,10 @@ func start_new_game() -> void:
 	# recruitment once the dungeon run decides who is available.
 	PartySetup.recruit_all()
 	day_cycle = null  # WorldController starts a fresh run
+	bass_cell = DayCycle.ORIGIN
+	arrival_side = -1
+	pending_report = {}
+	town_scene = PLACEHOLDER_LEVEL
 	pending_spawn = &"default"
 	load_world_scene(PLACEHOLDER_LEVEL)
 
@@ -79,6 +100,57 @@ func start_new_game() -> void:
 func travel_to(scene_path: String, spawn: StringName = &"default") -> void:
 	pending_spawn = spawn
 	load_world_scene.call_deferred(scene_path)
+
+
+# ── Dungeon: one scene per room ──────────────────────────────────────────────
+## The plan is locked in and the day's expedition has begun: load the room the party
+## spawns in (the Segno's).
+func begin_expedition() -> void:
+	if day_cycle == null or day_cycle.phase != DayCycle.Phase.EXPEDITION:
+		return
+	enter_room(day_cycle.spawn_cell(), -1)
+
+
+## Loads the scene for the Bass Clef tile at `cell`. `side` is the DayCycle.Side of the
+## door the party arrives through, or -1 to appear at the room's SegnoSpawn.
+func enter_room(cell: Vector2i, side := -1) -> void:
+	if day_cycle == null:
+		return
+	var tile := day_cycle.tile_at(cell, TileDef.Clef.BASS)
+	if tile == null or not tile.is_live():
+		push_error("GameController: no standing room at (%d, %d)." % [cell.x, cell.y])
+		return
+	bass_cell = cell
+	arrival_side = side
+	var path := FALLBACK_ROOM
+	if tile.def.scene != null and tile.def.scene.resource_path != "":
+		path = tile.def.scene.resource_path
+	load_world_scene.call_deferred(path)
+
+
+## The party walked through the door on `side` of the current room.
+func go_through_door(side: int) -> void:
+	if day_cycle == null or day_cycle.phase != DayCycle.Phase.EXPEDITION:
+		return
+	var next := bass_cell + DayCycle.side_offset(side)
+	enter_room(next, DayCycle.opposite_side(side))
+
+
+## The party reached the exit room's RoomExit: bank the loot, start the next day, and
+## wake up in the Town, which shows the report.
+func return_to_town() -> void:
+	if day_cycle == null:
+		return
+	var report := day_cycle.return_to_exit()
+	if report.is_empty():
+		return
+	if day_cycle.config.rest_on_return:
+		Rules.roster.rest_all()
+	var next_day := day_cycle.begin_next_day()
+	pending_report = {"report": report, "next_day": next_day}
+	arrival_side = -1
+	bass_cell = DayCycle.ORIGIN
+	travel_to(town_scene, &"default")
 
 
 ## Returns the SubViewport inside WorldLayer.

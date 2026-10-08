@@ -15,6 +15,10 @@ extends Resource
 ## Colour points per note. A room's colour divided by this is its note cost, and each
 ## note dropped in a room raises its matching colour channel by this much.
 @export var color_per_note := 10
+## Colour points a room gains for each note looted in it. Deliberately separate from
+## color_per_note (which prices rooms): a room that cost 14 red notes to place only
+## shifts one point of red for each red note taken out of it.
+@export var color_gain_per_note := 1
 
 @export_group("Tithe")
 ## What the tithe is paid with, first to last. Each unit of tithe is one of any of these.
@@ -32,10 +36,25 @@ extends Resource
 ## Extra levels for a tile that still holds remnants you left alive yesterday.
 @export var carried_level_bonus := 1
 
-## Loot per kill is multiplied by (1 + this * steps from the exit). Greed lever.
-@export var loot_distance_bonus := 0.25
+@export_group("Segno and main path")
+## A day cannot start until the Segno (the party's spawn on the Bass Clef) is placed on a
+## standing tile that connects to the exit. Off: the party spawns at the exit instead
+## and nothing is scored.
+@export var require_segno := true
+## The main path is the longest walk from the Segno to the exit. Loot from encounter
+## rooms ON it is multiplied by 1 + (this * its length in steps - loop_penalty * loops).
+## Greed lever: a long spine pays, and is a longer walk back to safety.
+@export var main_path_bonus_per_step := 0.25
+## Subtracted from that bonus for every loop where the layout rejoins the main path.
+@export var loop_penalty := 0.25
+## Loot multiplier for rooms with no walking route to the Segno along standing tiles.
+@export_range(0.0, 1.0) var disconnected_loot_multiplier := 0.5
+## Search budget for the longest-path search, so a huge dungeon cannot stall planning.
+## If it runs out, the best path found so far is used.
+@export var main_path_search_limit := 200000
 
-## Cost multiplier for rebuilding a ruined village tile after a defeat.
+@export_group("Ruins")
+## Cost multiplier for rebuilding a ruined Treble Clef tile after a defeat.
 @export_range(0.0, 1.0) var ruin_discount := 0.5
 
 @export_group("Blueprints")
