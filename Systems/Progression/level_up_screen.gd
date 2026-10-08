@@ -34,7 +34,9 @@ func open(p_offer: LevelUpOffer) -> void:
 	panel.add_child(column)
 
 	var title := Label.new()
-	title.text = "%s: level %d" % [sheet.display_name if sheet != null else str(offer.char_id), offer.new_level]
+	var who := sheet.display_name if sheet != null else str(offer.char_id)
+	title.text = "%s: starting picks" % who if offer.is_starting \
+		else "%s: level %d" % [who, offer.new_level]
 	column.add_child(title)
 
 	for i in offer.picks.size():
@@ -87,8 +89,11 @@ func _label(option: Variant) -> String:
 		return (option as FeatDef).display_name
 	if option is ActionDef:
 		var action := option as ActionDef
-		return action.display_name if not action.is_canto() \
-				else "%s L%d" % [action.display_name, action.canto_level]
+		if action.is_canto():
+			return "%s L%d" % [action.display_name, action.canto_level]
+		if action.is_cantrip():
+			return "%s (Cantrip)" % action.display_name
+		return action.display_name
 	var def := Rules.engine.get_stat(StringName(option))
 	return def.display_name if def != null else str(option)
 

@@ -36,10 +36,17 @@ enum Target { SELF, SINGLE_ENEMY, SINGLE_ALLY, ALL_ENEMIES, ALL_ALLIES }
 ## price and adds each effect's upcast dice and duration for every level gained.
 @export_range(0, 3) var max_canto_level: int = 0
 
+@export_group("Cantrip")
+## A cantrip costs no Anima and can be used every turn. Leave canto_level at 0.
+## Its effects gain `upcast_dice` / `upcast_duration` once per tier of the caster's
+## level (RulesConfig.cantrip_scale_levels).
+@export var cantrip: bool = false
 
 func is_canto() -> bool:
 	return canto_level > 0
 
+func is_cantrip() -> bool:
+	return cantrip and not is_canto()
 
 ## Highest level this can be cast at (0 for an ordinary action).
 func top_level() -> int:

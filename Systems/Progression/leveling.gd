@@ -46,36 +46,75 @@ static func build_offer(roster: PartyRoster, char_id: StringName,
 	var sheet := roster.get_sheet(char_id)
 	if not can_level_up(sheet):
 		return null
-	var engine := roster.engine
-	var rng := p_rng if p_rng != null else engine.rng
-	var prog := sheet.progression
 	var offer := LevelUpOffer.new()
 	offer.char_id = char_id
 	offer.new_level = sheet.level + 1
-	var counts := prog.picks_for(offer.new_level)
+	_add_picks(offer, sheet, roster.engine, p_rng, sheet.progression.picks_for(offer.new_level))
+	return offer
 
-	var shown: Array = []  # never offer the same option in two picks of one level-up
-	for _i in int(counts[LevelUpOffer.FEAT]):
+
+## True if this companion still owes their level-1 starting picks.
+static func needs_starting_picks(sheet: CharacterSheet) -> bool:
+	if sheet == null or sheet.is_player or sheet.progression == null or sheet.starting_picks_done:
+		return false
+	var s = sheet.progression.starting_picks()
+	return int(s[LevelUpOffer.FEAT]) + int(s[LevelUpOffer.CANTO]) + int(s[LevelUpOffer.CANTRIP]) > 0
+
+
+static func pending_starting(roster: PartyRoster) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for id in roster.sheets:
+		if needs_starting_picks(roster.get_sheet(id)):
+			out.append(id)
+	return out
+
+
+## The level-1 picks. Apply it with Leveling.apply() like any offer.
+static func build_starting_offer(roster: PartyRoster, char_id: StringName,
+		p_rng: RandomNumberGenerator = null) -> LevelUpOffer:
+	var sheet := roster.get_sheet(char_id)
+	if not needs_starting_picks(sheet):
+		return null
+	var offer := LevelUpOffer.new()
+	offer.char_id = char_id
+	offer.new_level = sheet.level
+	offer.is_starting = true
+	_add_picks(offer, sheet, roster.engine, p_rng, sheet.progression.starting_picks())
+	return offer
+
+
+static func _add_picks(offer: LevelUpOffer, sheet: CharacterSheet, engine: RulesEngine,
+		p_rng: RandomNumberGenerator, counts: Dictionary) -> void:
+	var rng := p_rng if p_rng != null else engine.rng
+	var prog := sheet.progression
+	var shown: Array = []  # never offer the same option in two picks of one offer
+	for _i in int(counts.get(LevelUpOffer.FEAT, 0)):
 		var options := _roll(_feat_candidates(sheet, prog, engine, offer.new_level, shown),
 				_feat_weights, prog.offer_size, rng)
 		if options.is_empty():
 			break
 		shown.append_array(options)
 		offer.picks.append({"kind": LevelUpOffer.FEAT, "options": options, "chosen": null})
-	for _i in int(counts[LevelUpOffer.CANTO]):
-		var options := _roll(_canto_candidates(sheet, prog, engine, offer.new_level, shown),
+	for _i in int(counts.get(LevelUpOffer.CANTO, 0)):
+		var options := _roll(_action_candidates(prog.canto_pool, sheet, engine, offer.new_level, shown),
 				_even_weights, prog.offer_size, rng)
 		if options.is_empty():
 			break
 		shown.append_array(options)
 		offer.picks.append({"kind": LevelUpOffer.CANTO, "options": options, "chosen": null})
-	for _i in int(counts[LevelUpOffer.ATTRIBUTE]):
+	for _i in int(counts.get(LevelUpOffer.CANTRIP, 0)):
+		var options := _roll(_action_candidates(prog.cantrip_pool, sheet, engine, offer.new_level, shown),
+				_even_weights, prog.offer_size, rng)
+		if options.is_empty():
+			break
+		shown.append_array(options)
+		offer.picks.append({"kind": LevelUpOffer.CANTRIP, "options": options, "chosen": null})
+	for _i in int(counts.get(LevelUpOffer.ATTRIBUTE, 0)):
 		var ids: Array = []
 		for def in engine.stats_in_category(StatDef.Category.ATTRIBUTE):
 			ids.append(def.id)
 		if not ids.is_empty():
 			offer.picks.append({"kind": LevelUpOffer.ATTRIBUTE, "options": ids, "chosen": null})
-	return offer
 
 
 ## Applies a completed offer: raises the level and records the choices on the
@@ -94,20 +133,24 @@ static func apply(offer: LevelUpOffer, roster: PartyRoster, p_rng: RandomNumberG
 	var max_corpus_before := block.max_corpus()
 	var max_anima_before := block.max_anima()
 
-	# Settle any earlier unrolled levels first, then roll this level's hit die.
-	var rng := p_rng if p_rng != null else roster.engine.rng
-	sheet.fill_corpus_rolls(roster.engine)
-	var corpus_roll := Dice.roll(block.effective_corpus_die(), rng)
-	sheet.corpus_rolls.append(corpus_roll)
-	block.corpus_rolls = sheet.corpus_rolls.duplicate()
-	offer.corpus_roll = corpus_roll
+	var corpus_roll := 0
+	if offer.is_starting:
+		sheet.starting_picks_done = true
+	else:
+		# Settle any earlier unrolled levels first, then roll this level's hit die.
+		var rng := p_rng if p_rng != null else roster.engine.rng
+		sheet.fill_corpus_rolls(roster.engine)
+		corpus_roll = Dice.roll(block.effective_corpus_die(), rng)
+		sheet.corpus_rolls.append(corpus_roll)
+		block.corpus_rolls = sheet.corpus_rolls.duplicate()
+		offer.corpus_roll = corpus_roll
+		sheet.level = offer.new_level
 
-	sheet.level = offer.new_level
 	for p in offer.picks:
 		match p["kind"]:
 			LevelUpOffer.FEAT:
 				sheet.feats.append(p["chosen"] as FeatDef)
-			LevelUpOffer.CANTO:
+			LevelUpOffer.CANTO, LevelUpOffer.CANTRIP:
 				sheet.known_actions.append(p["chosen"] as ActionDef)
 			LevelUpOffer.ATTRIBUTE:
 				var key := StringName(p["chosen"])
@@ -120,7 +163,8 @@ static func apply(offer: LevelUpOffer, roster: PartyRoster, p_rng: RandomNumberG
 	block.apply_feats(sheet.feats)
 	block.corpus = mini(block.corpus + maxi(0, block.max_corpus() - max_corpus_before), block.max_corpus())
 	block.anima = mini(block.anima + maxi(0, block.max_anima() - max_anima_before), block.max_anima())
-	_share_corpus(offer.char_id, corpus_roll, roster)
+	if not offer.is_starting:
+		_share_corpus(offer.char_id, corpus_roll, roster)
 	roster.changed.emit()
 	return true
 
@@ -183,10 +227,10 @@ static func _feat_candidates(sheet: CharacterSheet, prog: ProgressionDef, engine
 	return out
 
 
-static func _canto_candidates(sheet: CharacterSheet, prog: ProgressionDef, engine: RulesEngine,
+static func _action_candidates(pool: Array, sheet: CharacterSheet, engine: RulesEngine,
 		level: int, shown: Array) -> Array:
 	var out: Array = []
-	for action in prog.canto_pool:
+	for action in pool:
 		if not shown.has(action) and canto_eligible(action, sheet, engine, level):
 			out.append(action)
 	return out

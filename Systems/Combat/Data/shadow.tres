@@ -3,8 +3,8 @@
 [ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="1_amiva"]
 [ext_resource type="Script" uid="uid://m5jx56lhrgsj" path="res://Systems/Rules/item_def.gd" id="1_ntcy4"]
 [ext_resource type="Script" uid="uid://7e2wjvm1ll1u" path="res://Systems/Combat/enemy_template.gd" id="2_4kpgo"]
-[ext_resource type="Resource" uid="uid://blpqp186tsu5c" path="res://Systems/Rules/Data/Actions/Special Actions/low_dim.tres" id="2_kbeig"]
-[ext_resource type="Resource" uid="uid://dfyrkojgtvwbl" path="res://Systems/Rules/Data/Actions/Special Actions/banality.tres" id="3_ntcy4"]
+[ext_resource type="Resource" uid="uid://blpqp186tsu5c" path="res://Systems/Rules/Data/Actions/Cantrips/low_dim.tres" id="2_kbeig"]
+[ext_resource type="Resource" uid="uid://dfyrkojgtvwbl" path="res://Systems/Rules/Data/Actions/Cantos/banality.tres" id="3_ntcy4"]
 [ext_resource type="PackedScene" uid="uid://b5one47frkahl" path="res://Exploration/Scenes/placeholder_model.tscn" id="4_kpgqp"]
 
 [resource]

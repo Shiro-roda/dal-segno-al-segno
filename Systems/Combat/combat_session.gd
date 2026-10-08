@@ -207,8 +207,8 @@ func options_for(actor: Combatant) -> Array[Dictionary]:
 		else:
 			var cost := engine.anima_cost_for(action)
 			out.append({"action": action, "level": 0, "cost": cost,
-					"label": action.display_name,
-					"affordable": actor.block.anima >= cost})
+				"label": action.display_name + (" (Cantrip)" if action.is_cantrip() else ""),
+				"affordable": actor.block.anima >= cost})
 	return out
 
 

@@ -19,6 +19,8 @@ extends Resource
 @export var feat_every: int = 1
 ## A Canto pick every N levels. 0 = never (the player character).
 @export var canto_every: int = 1
+## A cantrip pick every N levels, starting at first_pick_level. 0 = never.
+@export var cantrip_every: int = 6
 ## An attribute pick every N levels. 0 = never.
 @export var attribute_every: int = 0
 ## How many random choices each feat or Canto pick offers.
@@ -26,11 +28,19 @@ extends Resource
 ## Points added by one attribute pick.
 @export var attribute_amount: int = 1
 
+@export_group("Starting picks")
+## Picks offered once at level 1, before the first expedition.
+@export var starting_feats: int = 0
+@export var starting_cantos: int = 0
+@export var starting_cantrips: int = 0
+
 @export_group("Pools")
 ## Feats this character can be offered.
 @export var feat_pool: Array[FeatDef] = []
 ## Cantos (and other actions) this character can be offered.
 @export var canto_pool: Array[ActionDef] = []
+## Cantrips this character can be offered.
+@export var cantrip_pool: Array[ActionDef] = []
 
 
 ## Cumulative XP needed to reach `level`, or -1 if that level can't be reached.
@@ -51,13 +61,17 @@ func can_level(level: int, xp: int) -> bool:
 	return need >= 0 and xp >= need
 
 
-## How many picks of each kind reaching `level` grants: {feat, canto, attribute}.
 func picks_for(level: int) -> Dictionary:
 	return {
 		&"feat": _picks(feat_every, level),
 		&"canto": _picks(canto_every, level),
+		&"cantrip": _picks(cantrip_every, level),
 		&"attribute": _picks(attribute_every, level),
 	}
+
+
+func starting_picks() -> Dictionary:
+	return {&"feat": starting_feats, &"canto": starting_cantos, &"cantrip": starting_cantrips}
 
 
 func _picks(every: int, level: int) -> int:

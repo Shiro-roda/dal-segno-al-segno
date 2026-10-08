@@ -5,10 +5,13 @@ extends RefCounted
 
 const FEAT := &"feat"
 const CANTO := &"canto"
+const CANTRIP := &"cantrip"
 const ATTRIBUTE := &"attribute"
 
 var char_id: StringName
 var new_level: int = 1
+## True for the level-1 starting picks: no level gained, no hit die rolled.
+var is_starting: bool = false
 ## The hit-die roll made when this offer was applied (0 until then).
 var corpus_roll: int = 0
 ## One entry per pick: {kind: StringName, options: Array, chosen: Variant}.

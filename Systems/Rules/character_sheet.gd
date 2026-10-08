@@ -28,6 +28,8 @@ extends Resource
 @export var progression: ProgressionDef
 ## Feats taken so far (repeat an entry for stacks).
 @export var feats: Array[FeatDef] = []
+## True once the level-1 starting picks (ProgressionDef.starting_*) have been made.
+@export var starting_picks_done: bool = false
 ## slot id -> ItemDef
 @export var equipment: Dictionary[StringName, ItemDef] = {}
 ## Corpus gained from companions levelling up (the player character's main source).

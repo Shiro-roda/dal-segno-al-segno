@@ -86,6 +86,7 @@ func start_new_game() -> void:
 	# Testing: every sheet in Characters/Resources is recruited. Replace with real
 	# recruitment once the dungeon run decides who is available.
 	PartySetup.recruit_all()
+	await _offer_starting_picks()
 	day_cycle = null  # WorldController starts a fresh run
 	bass_cell = DayCycle.ORIGIN
 	arrival_side = -1
@@ -100,6 +101,19 @@ func start_new_game() -> void:
 func travel_to(scene_path: String, spawn: StringName = &"default") -> void:
 	pending_spawn = spawn
 	load_world_scene.call_deferred(scene_path)
+
+func _offer_starting_picks() -> void:
+	for id in Leveling.pending_starting(Rules.roster):
+		var offer := Leveling.build_starting_offer(Rules.roster, id)
+		if offer == null:
+			continue
+		if offer.is_empty():
+			Leveling.apply(offer, Rules.roster)  # empty pools: just mark it done
+			continue
+		var screen := LevelUpScreen.new()
+		add_child(screen)
+		screen.open(offer)
+		await screen.finished
 
 
 # ── Dungeon: one scene per room ──────────────────────────────────────────────

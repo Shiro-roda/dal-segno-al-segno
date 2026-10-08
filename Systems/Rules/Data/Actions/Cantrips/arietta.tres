@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="ActionDef" format=3 uid="uid://dmrn6jlunkd5v"]
+
+[ext_resource type="Script" uid="uid://hgdwyugnb20t" path="res://Systems/Rules/effect_def.gd" id="1_qraqj"]
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="2_hdrbs"]
+[ext_resource type="Script" uid="uid://6nbup8pfuhsr" path="res://Systems/Rules/condition_def.gd" id="2_q8h80"]
+
+[sub_resource type="Resource" id="Resource_q8h80"]
+script = ExtResource("1_qraqj")
+dice = "1d4"
+damage_type = &"blue"
+on_save = 2
+upcast_dice = "1d4"
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[sub_resource type="Resource" id="Resource_rm3ge"]
+script = ExtResource("2_q8h80")
+id = &"emotional"
+display_name = "Emotional"
+advantage_on = null
+disadvantage_on = PackedStringArray("attack")
+metadata/_custom_type_script = "uid://6nbup8pfuhsr"
+
+[sub_resource type="Resource" id="Resource_a7eva"]
+script = ExtResource("1_qraqj")
+kind = 2
+damage_type = &"blue"
+condition = SubResource("Resource_rm3ge")
+upcast_duration = 1
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[resource]
+script = ExtResource("2_hdrbs")
+id = &"arietta"
+display_name = "Arietta"
+roll = 2
+save_stat = &"delusion"
+dc_stat = &"delusion"
+effects = Array[ExtResource("1_qraqj")]([SubResource("Resource_q8h80"), SubResource("Resource_a7eva")])
+tags = null
+metadata/_custom_type_script = "uid://njw6l7ex23w0"

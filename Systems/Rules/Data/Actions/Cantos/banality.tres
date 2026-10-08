@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="ActionDef" format=3 uid="uid://dfyrkojgtvwbl"]
+
+[ext_resource type="Script" uid="uid://hgdwyugnb20t" path="res://Systems/Rules/effect_def.gd" id="1_lsd4r"]
+[ext_resource type="Resource" uid="uid://cx68bwn1pvn8a" path="res://Systems/Rules/Data/Conditions/deluded.tres" id="2_qwedl"]
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="3_youlj"]
+
+[sub_resource type="Resource" id="Resource_7pwpn"]
+script = ExtResource("1_lsd4r")
+dice = "1d4"
+upcast_dice = "1d4"
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[sub_resource type="Resource" id="Resource_20pbk"]
+script = ExtResource("1_lsd4r")
+kind = 2
+condition = ExtResource("2_qwedl")
+upcast_duration = 1
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[resource]
+script = ExtResource("3_youlj")
+id = &"banality"
+display_name = "Banality"
+description = "The very banality and innocence of the first act only allowed the blow to fall afterward with more awful effect."
+roll = 2
+target = 3
+save_stat = &"delusion"
+dc_stat = &"tone"
+effects = Array[ExtResource("1_lsd4r")]([SubResource("Resource_7pwpn"), SubResource("Resource_20pbk")])
+tags = PackedStringArray("canto", "enemy")
+canto_level = 1
+max_canto_level = 3
+metadata/_custom_type_script = "uid://njw6l7ex23w0"

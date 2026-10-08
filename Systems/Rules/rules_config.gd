@@ -62,6 +62,11 @@ extends Resource
 ## upcasting is held at it.
 @export var canto_unlock_levels: Array[int] = [1, 5, 10]
 
+# --- Cantrips ---
+## Character levels at which a cantrip's damage/duration scales up one tier.
+## Default: tier 1 at level 5, tier 2 at level 10.
+@export var cantrip_scale_levels: Array[int] = [5, 10, 15, 20]
+
 # --- Weapons ---
 ## Used when nothing is equipped in the weapon slot, and for any stat a weapon
 ## leaves blank.
@@ -98,6 +103,13 @@ func max_canto_level_for(character_level: int) -> int:
 			best = i + 1
 	return mini(best, canto_costs.size())
 
+## How many scaling tiers a caster of `character_level` has reached (0 = base).
+func cantrip_tier(character_level: int) -> int:
+	var tier := 0
+	for lvl in cantrip_scale_levels:
+		if character_level >= lvl:
+			tier += 1
+	return tier
 
 ## The weapon used when none is equipped.
 func unarmed_weapon() -> ItemDef:

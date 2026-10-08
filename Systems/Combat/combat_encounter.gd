@@ -179,9 +179,9 @@ func _on_combat_ended(victory: bool) -> void:
 		for t in _templates:
 			xp += t.xp_value
 		if xp > 0:
-			var ready := Leveling.award_xp(Rules.roster, xp)
+			var lvready := Leveling.award_xp(Rules.roster, xp)
 			session.say_event(&"xp_gained", {"amount": xp})
-			xp_awarded.emit(xp, ready)
+			xp_awarded.emit(xp, lvready)
 		_done = one_shot
 	else:
 		# Placeholder: a real game-over flow goes here.

@@ -3,12 +3,12 @@
 importer="mp3"
 type="AudioStreamMP3"
 uid="uid://b7xnaermq507v"
-path="res://.godot/imported/AlessandroMoreschi-AveMaria.mp3-e54f0bcef1c40e261a47fc196dd8c344.mp3str"
+path="res://.godot/imported/AlessandroMoreschi-AveMaria.mp3-3884c6815cf97f38489d04159d2b6930.mp3str"
 
 [deps]
 
-source_file="res://Audio/Assets/mp3/AlessandroMoreschi-AveMaria.mp3"
-dest_files=["res://.godot/imported/AlessandroMoreschi-AveMaria.mp3-e54f0bcef1c40e261a47fc196dd8c344.mp3str"]
+source_file="res://audio/Assets/mp3/AlessandroMoreschi-AveMaria.mp3"
+dest_files=["res://.godot/imported/AlessandroMoreschi-AveMaria.mp3-3884c6815cf97f38489d04159d2b6930.mp3str"]
 
 [params]
 

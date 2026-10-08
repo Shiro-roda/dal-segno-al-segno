@@ -30,6 +30,8 @@ extends Resource
 @export var action_used: Array[String] = ["{actor} uses {action}."]
 ## {actor}, {action}, {level}: casting a Canto, at the level it was actually cast.
 @export var canto_used: Array[String] = ["{actor} casts {action} at level {level}."]
+## {actor}, {action}: using a cantrip.
+@export var cantrip_used: Array[String] = ["{actor} casts {action}."]
 ## {actor}
 @export var cannot_act: Array[String] = ["{actor} cannot act."]
 @export var canto_locked: Array[String] = ["{actor} has not unlocked {action} (level {level}) yet."]

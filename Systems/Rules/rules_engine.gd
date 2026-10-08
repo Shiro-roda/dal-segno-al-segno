@@ -173,6 +173,8 @@ func roll_initiative(actor: StatBlock) -> int:
 func anima_cost_for(action: ActionDef, level: int = 0) -> int:
 	if action.is_canto():
 		return config.canto_cost(action.resolve_level(level))
+	if action.is_cantrip():
+		return 0
 	return action.anima_cost
 
 
@@ -199,7 +201,9 @@ func use_action(user: StatBlock, action: ActionDef, targets: Array, cast_level: 
 	result["level"] = level
 	if action.is_canto():
 		_log(result, &"canto_used", {"actor": user.display_name, "action": action.display_name,
-				"level": level})
+			"level": level})
+	elif action.is_cantrip():
+		_log(result, &"cantrip_used", {"actor": user.display_name, "action": action.display_name})
 	else:
 		_log(result, &"action_used", {"actor": user.display_name, "action": action.display_name})
 	var resolved_targets: Array = [user] if action.target == ActionDef.Target.SELF else targets
@@ -234,7 +238,11 @@ func _apply_to_target(user: StatBlock, action: ActionDef, target: StatBlock, res
 	if not hit:
 		return
 	# How many levels above the Canto's own level this was cast at.
-	var levels_up := maxi(0, level - action.canto_level) if action.is_canto() else 0
+	var levels_up := 0
+	if action.is_canto():
+		levels_up = maxi(0, level - action.canto_level)
+	elif action.is_cantrip():
+		levels_up = config.cantrip_tier(user.level)
 	for effect in action.effects:
 		_apply_effect(user, effect, target, crit, saved, result, levels_up)
 
