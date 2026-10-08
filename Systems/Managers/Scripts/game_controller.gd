@@ -110,6 +110,8 @@ func _offer_starting_picks() -> void:
 		if offer.is_empty():
 			Leveling.apply(offer, Rules.roster)  # empty pools: just mark it done
 			continue
+		if Leveling.auto_resolve(Rules.roster, offer):
+			continue  # set to pick recommended automatically, and it all fit
 		var screen := LevelUpScreen.new()
 		add_child(screen)
 		screen.open(offer)

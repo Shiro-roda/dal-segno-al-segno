@@ -173,17 +173,26 @@ func _on_encounter_finished(victory: bool, ids: Array) -> void:
 	_update_overlay()
 
 
-## Level-ups are spent in the party menu (TAB), not forced on the player: this only says
-## who has earned one.
+## Level-ups are spent in the party menu (TAB), not forced on the player. Characters set
+## to pick automatically (CharacterSheet.auto_pick_recommended) level up right here from
+## their recommended picks; for everyone else this only says who has earned one.
 func _on_xp_awarded(_amount: int, ready_ids: Array) -> void:
 	var names: Array[String] = []
+	var auto_names: Array[String] = []
 	for id in ready_ids:
 		var sheet := Rules.roster.get_sheet(id)
-		if sheet != null and Leveling.can_level_up(sheet):
-			names.append(sheet.display_name if sheet.display_name != "" else String(id))
-	if names.is_empty():
-		return
-	Notice.show_text(self, "%s can level up. Open the party menu (TAB)." % ", ".join(names))
+		if sheet == null or not Leveling.can_level_up(sheet):
+			continue
+		var who := sheet.display_name if sheet.display_name != "" else String(id)
+		if sheet.auto_pick_recommended \
+				and Leveling.auto_resolve(Rules.roster, Leveling.build_offer(Rules.roster, id)):
+			auto_names.append("%s (level %d)" % [who, sheet.level])
+		else:
+			names.append(who)
+	if not auto_names.is_empty():
+		Notice.show_text(self, "Levelled up: %s." % ", ".join(auto_names))
+	if not names.is_empty():
+		Notice.show_text(self, "%s can level up. Open the party menu (TAB)." % ", ".join(names))
 
 
 # --------------------------------------------------------------------- exit

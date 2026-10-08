@@ -7,6 +7,8 @@
 [ext_resource type="Script" uid="uid://ch43wbypcqtmy" path="res://Systems/Progression/feat_def.gd" id="3_p7b1g"]
 [ext_resource type="PackedScene" uid="uid://b5one47frkahl" path="res://Exploration/Scenes/placeholder_model.tscn" id="5_ylmth"]
 [ext_resource type="Script" uid="uid://cu31n7k0if3db" path="res://Systems/Progression/progression_def.gd" id="6_m14pq"]
+[ext_resource type="Resource" uid="uid://dmrn6jlunkd5v" path="res://Systems/Rules/Data/Actions/Cantrips/arietta.tres" id="10_ybxug"]
+[ext_resource type="Resource" uid="uid://gc72gjqx3tw4" path="res://Systems/Rules/Data/Actions/Cantrips/break.tres" id="11_3lipo"]
 [ext_resource type="Resource" uid="uid://ci2aij7j45bn1" path="res://Systems/Rules/Data/Actions/Cantos/dolore.tres" id="pool_dol"]
 [ext_resource type="Resource" uid="uid://hek840kdquku" path="res://Systems/Rules/Data/Actions/Cantos/flebile.tres" id="pool_fle"]
 [ext_resource type="Resource" uid="uid://bb14mw2dyt6wr" path="res://Systems/Rules/Data/Actions/Cantos/fuoco.tres" id="pool_fuo"]
@@ -20,11 +22,16 @@
 script = ExtResource("6_m14pq")
 max_level = 20
 xp_thresholds = PackedInt32Array(30, 90, 270, 650, 1400, 2300, 3400, 4800, 6400, 8500, 10000, 12000, 14000, 16500, 19500, 22500, 26500, 30500, 35500)
+first_pick_level = 1
 feat_every = 2
 canto_every = 2
 attribute_every = 3
+starting_feats = 1
+starting_cantos = 1
+starting_cantrips = 1
 feat_pool = Array[ExtResource("3_p7b1g")]([ExtResource("pool_g1"), ExtResource("pool_g2"), ExtResource("pool_g3"), ExtResource("pool_vir")])
 canto_pool = Array[ExtResource("2_k1wby")]([ExtResource("pool_dol"), ExtResource("pool_fle"), ExtResource("pool_fuo"), ExtResource("pool_obb")])
+cantrip_pool = Array[ExtResource("2_k1wby")]([ExtResource("10_ybxug"), ExtResource("11_3lipo")])
 metadata/_custom_type_script = "uid://cu31n7k0if3db"
 
 [resource]
@@ -45,4 +52,8 @@ progression = SubResource("Resource_5bm8v")
 equipment = Dictionary[StringName, ExtResource("1_ibfs8")]({
 &"weapon": ExtResource("2_lmex6")
 })
+recommended_feats = Array[ExtResource("3_p7b1g")]([ExtResource("pool_g1"), ExtResource("pool_g2"), ExtResource("pool_g3"), ExtResource("pool_vir")])
+recommended_actions = Array[ExtResource("2_k1wby")]([ExtResource("pool_dol"), ExtResource("pool_fle"), ExtResource("pool_fuo"), ExtResource("pool_obb"), ExtResource("11_3lipo"), ExtResource("10_ybxug")])
+auto_pick_recommended = true
+auto_pick_fallback = 1
 metadata/_custom_type_script = "uid://dgq0h13x363vr"

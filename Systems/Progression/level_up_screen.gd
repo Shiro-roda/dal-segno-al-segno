@@ -13,6 +13,7 @@ signal finished(char_id: StringName)
 
 var offer: LevelUpOffer
 
+var _sheet: CharacterSheet
 var _confirm: Button
 var _buttons: Array = []  # per pick: Array of {button, option}
 
@@ -21,6 +22,11 @@ func open(p_offer: LevelUpOffer) -> void:
 	offer = p_offer
 	layer = 30
 	var sheet := Rules.roster.get_sheet(offer.char_id)
+	_sheet = sheet
+	# A character set to pick automatically arrives here only when something was left
+	# open; show what could be filled from their recommendations already chosen.
+	if sheet != null and sheet.auto_pick_recommended:
+		Leveling.apply_recommended(offer, sheet)
 	var root := Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(root)
@@ -49,7 +55,7 @@ func open(p_offer: LevelUpOffer) -> void:
 		var entries: Array = []
 		for option in pick["options"]:
 			var b := Button.new()
-			b.text = _label(option)
+			b.text = _label(option) + (" ★" if Leveling.is_recommended(sheet, option) else "")
 			b.tooltip_text = _tooltip(option)
 			b.focus_mode = Control.FOCUS_NONE
 			b.toggle_mode = true
@@ -57,6 +63,20 @@ func open(p_offer: LevelUpOffer) -> void:
 			row.add_child(b)
 			entries.append({"button": b, "option": option})
 		_buttons.append(entries)
+
+	if Leveling.has_recommendations(sheet):
+		var recommended := Button.new()
+		recommended.text = "Use recommended"
+		recommended.tooltip_text = "Fill every pick with this character's recommended choice (marked with a star) where one is on offer."
+		recommended.focus_mode = Control.FOCUS_NONE
+		recommended.pressed.connect(_on_use_recommended)
+		column.add_child(recommended)
+		var auto := CheckBox.new()
+		auto.text = "Pick recommended automatically from now on"
+		auto.button_pressed = sheet.auto_pick_recommended
+		auto.focus_mode = Control.FOCUS_NONE
+		auto.toggled.connect(_on_auto_toggled)
+		column.add_child(auto)
 
 	_confirm = Button.new()
 	_confirm.text = "Confirm"
@@ -69,6 +89,16 @@ func open(p_offer: LevelUpOffer) -> void:
 func _on_option(index: int, option: Variant) -> void:
 	offer.choose(index, option)
 	_refresh()
+
+
+func _on_use_recommended() -> void:
+	Leveling.apply_recommended(offer, _sheet, true)
+	_refresh()
+
+
+func _on_auto_toggled(on: bool) -> void:
+	if _sheet != null:
+		_sheet.auto_pick_recommended = on
 
 
 func _refresh() -> void:

@@ -301,6 +301,13 @@ func _refresh_detail() -> void:
 		return
 	_detail_box.add_child(_heading(_name_of(sheet).to_upper()))
 	_detail_box.add_child(_text(_level_line(sheet, block)))
+	if not sheet.is_player and Leveling.has_recommendations(sheet):
+		var auto_pick := CheckBox.new()
+		auto_pick.text = "Pick recommended level-ups automatically"
+		auto_pick.button_pressed = sheet.auto_pick_recommended
+		auto_pick.disabled = _leveling
+		auto_pick.toggled.connect(_on_auto_pick_toggled.bind(_selected))
+		_detail_box.add_child(auto_pick)
 	if Leveling.can_level_up(sheet):
 		var level_up := Button.new()
 		level_up.text = "Level up to %d" % (sheet.level + 1)
@@ -370,6 +377,18 @@ func _select(char_id: StringName) -> void:
 func _on_bring(char_id: StringName) -> void:
 	if party_editable():
 		_roster.toggle_companion(char_id)  # emits changed, which refreshes
+
+
+## Switches automatic picking for a character. If they have a level waiting, it is spent
+## now; whatever can't be settled from the recommendations stays for the Level up button.
+func _on_auto_pick_toggled(on: bool, char_id: StringName) -> void:
+	var sheet := _roster.get_sheet(char_id)
+	if sheet == null:
+		return
+	sheet.auto_pick_recommended = on
+	if on and Leveling.can_level_up(sheet):
+		Leveling.auto_resolve(_roster, Leveling.build_offer(_roster, char_id))
+	_refresh()
 
 
 ## Opens the level-up screen above the menu. Leveling.apply() emits roster.changed, which

@@ -189,6 +189,81 @@ static func _share_corpus(source_id: StringName, roll: int, roster: PartyRoster)
 		other_block.corpus = mini(other_block.corpus + share, other_block.max_corpus())
 
 
+# ------------------------------------------------------- recommended picks
+
+## True if the character has anything in their recommended lists.
+static func has_recommendations(sheet: CharacterSheet) -> bool:
+	return sheet != null and not (sheet.recommended_feats.is_empty()
+			and sheet.recommended_actions.is_empty() and sheet.recommended_attributes.is_empty())
+
+
+## True if `option` (a FeatDef, ActionDef or attribute id) is on the character's list.
+static func is_recommended(sheet: CharacterSheet, option: Variant) -> bool:
+	if sheet == null:
+		return false
+	if option is FeatDef:
+		return sheet.recommended_feats.has(option)
+	if option is ActionDef:
+		return sheet.recommended_actions.has(option)
+	return sheet.recommended_attributes.has(StringName(option))
+
+
+## Fills picks on `offer` from the character's recommended lists: for each pick, the
+## highest-ranked recommendation among its options. Picks already chosen are left alone
+## unless `overwrite` is set. With `random_fallback`, a pick with nothing recommended
+## on offer is chosen at random. Returns how many picks are still open.
+static func apply_recommended(offer: LevelUpOffer, sheet: CharacterSheet, overwrite := false,
+		random_fallback := false, p_rng: RandomNumberGenerator = null) -> int:
+	if offer == null or sheet == null:
+		return 0
+	var still_open := 0
+	for pick in offer.picks:
+		if pick["chosen"] != null and not overwrite:
+			continue
+		var options: Array = pick["options"]
+		var found: Variant = _best_recommended(sheet, pick["kind"], options)
+		if found != null:
+			pick["chosen"] = found
+		elif pick["chosen"] == null:
+			if random_fallback and p_rng != null and not options.is_empty():
+				pick["chosen"] = options[p_rng.randi_range(0, options.size() - 1)]
+			else:
+				still_open += 1
+	return still_open
+
+
+## If this character is set to pick automatically, fills `offer` from their
+## recommendations and applies it when that completes it. True means it is done and
+## there is nothing to show the player; false means the offer still needs them (it may
+## be partly filled).
+static func auto_resolve(roster: PartyRoster, offer: LevelUpOffer) -> bool:
+	if offer == null:
+		return false
+	var sheet := roster.get_sheet(offer.char_id)
+	if sheet == null or not sheet.auto_pick_recommended:
+		return false
+	var random := sheet.auto_pick_fallback == CharacterSheet.AutoFallback.RANDOM
+	apply_recommended(offer, sheet, false, random, roster.engine.rng)
+	if not offer.is_complete():
+		return false
+	return apply(offer, roster)
+
+
+static func _best_recommended(sheet: CharacterSheet, kind: StringName, options: Array) -> Variant:
+	var ranked: Array = []
+	match kind:
+		LevelUpOffer.FEAT:
+			ranked = sheet.recommended_feats
+		LevelUpOffer.CANTO, LevelUpOffer.CANTRIP:
+			ranked = sheet.recommended_actions
+		LevelUpOffer.ATTRIBUTE:
+			ranked = sheet.recommended_attributes
+	for preferred in ranked:
+		if options.has(preferred):
+			return preferred
+	return null
+
+
 # ------------------------------------------------------------ eligibility
 
 static func feat_eligible(feat: FeatDef, sheet: CharacterSheet, engine: RulesEngine, level: int) -> bool:

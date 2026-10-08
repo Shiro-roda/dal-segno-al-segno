@@ -12,6 +12,8 @@
 [ext_resource type="Resource" uid="uid://bb14mw2dyt6wr" path="res://Systems/Rules/Data/Actions/Cantos/fuoco.tres" id="8_xbyhu"]
 [ext_resource type="Resource" uid="uid://wcokfytvvwge" path="res://Systems/Rules/Data/Actions/Cantos/obbligato.tres" id="9_257wu"]
 [ext_resource type="Resource" uid="uid://r1f0s1gadhds" path="res://Systems/Rules/Data/Feats/guerriero1.tres" id="10_w1gjw"]
+[ext_resource type="Resource" uid="uid://dmrn6jlunkd5v" path="res://Systems/Rules/Data/Actions/Cantrips/arietta.tres" id="10_xbyhu"]
+[ext_resource type="Resource" uid="uid://grbpcursif34" path="res://Systems/Rules/Data/Actions/Cantrips/repel.tres" id="11_257wu"]
 [ext_resource type="Resource" uid="uid://c48w0t4qc6icj" path="res://Systems/Rules/Data/Feats/guerriero2.tres" id="11_a25ht"]
 [ext_resource type="Resource" uid="uid://bxcyytfmgflm2" path="res://Systems/Rules/Data/Feats/guerriero3.tres" id="12_1l3ww"]
 [ext_resource type="Resource" uid="uid://cqagxy84k7yor" path="res://Systems/Rules/Data/Feats/virtuoso.tres" id="13_r1ahi"]
@@ -20,10 +22,15 @@
 script = ExtResource("6_y8yax")
 max_level = 20
 xp_thresholds = PackedInt32Array(30, 90, 270, 650, 1400, 2300, 3400, 4800, 6400, 8500, 10000, 12000, 14000, 16500, 19500, 22500, 26500, 30500, 35500)
+first_pick_level = 1
 canto_every = 3
 attribute_every = 4
+starting_feats = 1
+starting_cantos = 1
+starting_cantrips = 1
 feat_pool = Array[ExtResource("3_mgv03")]([ExtResource("10_w1gjw"), ExtResource("11_a25ht"), ExtResource("12_1l3ww"), ExtResource("13_r1ahi")])
 canto_pool = Array[ExtResource("2_uaifi")]([ExtResource("6_vgsv6"), ExtResource("7_mk1f8"), ExtResource("8_xbyhu"), ExtResource("9_257wu")])
+cantrip_pool = Array[ExtResource("2_uaifi")]([ExtResource("10_xbyhu"), ExtResource("11_257wu")])
 metadata/_custom_type_script = "uid://cu31n7k0if3db"
 
 [resource]
@@ -44,4 +51,8 @@ progression = SubResource("Resource_27q3x")
 equipment = Dictionary[StringName, ExtResource("1_ubu7k")]({
 &"weapon": ExtResource("2_h3l61")
 })
+recommended_feats = Array[ExtResource("3_mgv03")]([ExtResource("10_w1gjw"), ExtResource("11_a25ht"), ExtResource("12_1l3ww"), ExtResource("13_r1ahi")])
+recommended_actions = Array[ExtResource("2_uaifi")]([ExtResource("8_xbyhu"), ExtResource("6_vgsv6"), ExtResource("7_mk1f8"), ExtResource("9_257wu"), ExtResource("11_257wu"), ExtResource("10_xbyhu")])
+auto_pick_recommended = true
+auto_pick_fallback = 1
 metadata/_custom_type_script = "uid://dgq0h13x363vr"

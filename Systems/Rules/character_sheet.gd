@@ -38,6 +38,25 @@ extends Resource
 @export var current_corpus: int = -1
 @export var current_anima: int = -1
 
+## What to do when automatic picking finds nothing recommended among the options.
+enum AutoFallback { ASK_ME, RANDOM }
+
+@export_group("Recommended picks")
+## Feats you'd like this character to take, best first. A feat pick takes the
+## highest-ranked one that is among the options offered; owned or ineligible feats
+## are never offered, so they are skipped on their own.
+@export var recommended_feats: Array[FeatDef] = []
+## Cantos and cantrips, best first. Same rule as the feats.
+@export var recommended_actions: Array[ActionDef] = []
+## Attribute ids, best first, for attribute picks.
+@export var recommended_attributes: Array[StringName] = []
+## When on, level-ups and starting picks are made from the lists above without asking.
+## Also switched from the party menu and the level-up screen.
+@export var auto_pick_recommended := false
+## If a pick has nothing recommended among its options: ASK_ME opens the level-up
+## screen (with whatever could be filled already chosen), RANDOM picks one.
+@export var auto_pick_fallback: AutoFallback = AutoFallback.ASK_ME
+
 
 func build_block(engine: RulesEngine) -> StatBlock:
 	var block := StatBlock.new(engine, display_name, level)

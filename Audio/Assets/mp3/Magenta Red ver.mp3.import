@@ -3,12 +3,12 @@
 importer="mp3"
 type="AudioStreamMP3"
 uid="uid://ciqvr3jj37hcg"
-path="res://.godot/imported/Magenta Red ver.mp3-5065952606c9fdab15765d440efc9a53.mp3str"
+path="res://.godot/imported/Magenta Red ver.mp3-44378004fc5c1ffc4eff963e9cea12d0.mp3str"
 
 [deps]
 
-source_file="res://audio/Assets/mp3/Magenta Red ver.mp3"
-dest_files=["res://.godot/imported/Magenta Red ver.mp3-5065952606c9fdab15765d440efc9a53.mp3str"]
+source_file="res://Audio/Assets/mp3/Magenta Red ver.mp3"
+dest_files=["res://.godot/imported/Magenta Red ver.mp3-44378004fc5c1ffc4eff963e9cea12d0.mp3str"]
 
 [params]
 

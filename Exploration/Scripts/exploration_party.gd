@@ -42,9 +42,20 @@ func rebuild() -> void:
 		var f := FOLLOWER_SCENE.instantiate() as PartyFollower
 		f.character_id = ids[i]
 		f.model_scene = sheet.model_scene if sheet != null and sheet.model_scene != null else FALLBACK_MODEL
-		f.follow_distance = follow_spacing * i
+		f.slot_index = i
+		f.link = _find_link()
+		f.follow_distance = follow_spacing
 		add_child(f)
 		_followers.append(f)
+
+
+## The PlayerLink in this level, found by name so a previous scene still queued for
+## deletion can't answer by mistake.
+func _find_link() -> PlayerLink:
+	var root := get_parent()
+	if root == null:
+		return null
+	return root.find_child("PlayerLink", true, false) as PlayerLink
 
 
 func _seed_test_roster() -> void:

@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="ActionDef" format=3 uid="uid://gc72gjqx3tw4"]
+
+[ext_resource type="Script" uid="uid://hgdwyugnb20t" path="res://Systems/Rules/effect_def.gd" id="1_386e3"]
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="2_gnrpq"]
+
+[sub_resource type="Resource" id="Resource_yltrm"]
+script = ExtResource("1_386e3")
+dice = "1d12"
+bonus_stat = &"attachment"
+on_save = 1
+upcast_dice = "1d12"
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[resource]
+script = ExtResource("2_gnrpq")
+id = &"break"
+display_name = "Break"
+roll = 2
+save_stat = &"tone"
+dc_stat = &"attachment"
+effects = Array[ExtResource("1_386e3")]([SubResource("Resource_yltrm")])
+tags = null
+cantrip = true
+metadata/_custom_type_script = "uid://njw6l7ex23w0"

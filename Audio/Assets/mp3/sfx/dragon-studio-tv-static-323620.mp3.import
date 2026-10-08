@@ -3,12 +3,12 @@
 importer="mp3"
 type="AudioStreamMP3"
 uid="uid://cm72xpcl4s3ys"
-path="res://.godot/imported/dragon-studio-tv-static-323620.mp3-961ea331fbbd61b3a9d9992c1328f555.mp3str"
+path="res://.godot/imported/dragon-studio-tv-static-323620.mp3-a4d90927bee4de25efe24d2ce7be12be.mp3str"
 
 [deps]
 
-source_file="res://audio/Assets/mp3/sfx/dragon-studio-tv-static-323620.mp3"
-dest_files=["res://.godot/imported/dragon-studio-tv-static-323620.mp3-961ea331fbbd61b3a9d9992c1328f555.mp3str"]
+source_file="res://Audio/Assets/mp3/sfx/dragon-studio-tv-static-323620.mp3"
+dest_files=["res://.godot/imported/dragon-studio-tv-static-323620.mp3-a4d90927bee4de25efe24d2ce7be12be.mp3str"]
 
 [params]
 

@@ -39,6 +39,14 @@ signal target_changed(actor: Combatant)
 ## Reach of a weapon tagged "ranged" that has no weapon_range of its own.
 @export var ranged_attack_range: float = 10.0
 @export_range(0.5, 1.0, 0.05) var arrive_fraction: float = 0.9
+## Extra "distance" a foe counts as having for every ally already aimed at it, when
+## picking who to attack. Higher spreads the party across more enemies.
+@export var target_spread_penalty: float = 2.5
+## A combatant keeps its current target unless another scores this much better,
+## so nobody flip-flops between two foes.
+@export var target_hysteresis: float = 1.5
+## Minimum spacing between combatants standing round the same foe.
+@export var crowd_gap: float = 1.1
 
 var engine: RulesEngine
 var party: Array[Combatant] = []
@@ -97,9 +105,9 @@ func begin(party_blocks: Array, enemy_blocks: Array, p_engine: RulesEngine = nul
 	for c: Combatant in party + enemies:
 		c.gauge = clampf(engine.roll_initiative(c.block) / 40.0, 0.0, 0.6)
 	for c: Combatant in party:
-		c.target = _nearest_alive(c, enemies)
+		c.target = _spread_target(c, enemies)
 	for c: Combatant in enemies:
-		c.target = _nearest_alive(c, party)
+		c.target = _spread_target(c, party)
 	active = true
 	_set_player_lock(true)
 	combat_started.emit()
@@ -384,24 +392,53 @@ func _flat_distance(a: Combatant, b: Combatant) -> float:
 	return d.length()
 
 
-## Living foes keep their targets fresh: enemies always hunt the nearest
-## party member; party members only retarget when theirs has fallen.
+## Living foes keep their targets fresh: enemies re-pick every frame (nearest, but
+## spread out and with some stickiness); party members only retarget when theirs
+## has fallen, so a target the player chose stays chosen.
 func _retarget() -> void:
 	for c: Combatant in party + enemies:
 		if c.is_down():
 			continue
 		var foes := enemies if c.side == Combatant.Side.PARTY else party
 		if c.side == Combatant.Side.ENEMY or c.target == null or c.target.is_down():
-			c.target = _nearest_alive(c, foes)
+			c.target = _spread_target(c, foes)
+
+
+## Picks a foe for `c`: close ones score better, foes that allies are already aimed at
+## score worse, and the current target wins unless something is clearly better.
+func _spread_target(c: Combatant, foes: Array[Combatant]) -> Combatant:
+	var allies := party if c.side == Combatant.Side.PARTY else enemies
+	var best: Combatant = null
+	var best_score := INF
+	var current_score := INF
+	for foe in foes:
+		if foe.is_down():
+			continue
+		var crowd := 0
+		for ally in allies:
+			if ally != c and not ally.is_down() and ally.target == foe:
+				crowd += 1
+		var score := target_spread_penalty * crowd
+		if c.body != null and foe.body != null:
+			score += _flat_distance(c, foe)
+		if foe == c.target:
+			current_score = score
+		if score < best_score:
+			best = foe
+			best_score = score
+	if c.target != null and not c.target.is_down() and current_score <= best_score + target_hysteresis:
+		return c.target
+	return best
 
 
 func _step_movement(delta: float) -> void:
 	var everyone: Array[Combatant] = party + enemies
+	var slots := _plan_slots(everyone)
 	for c in everyone:
 		c.moving = false
 		if c.is_down() or c.body == null:
 			continue
-		var goal: Variant = _goal_for(c)
+		var goal: Variant = c.move_goal if c.move_order else slots.get(c)
 		if goal == null:
 			continue
 		var pos = c.body.global_position
@@ -411,8 +448,12 @@ func _step_movement(delta: float) -> void:
 		if dist < 0.05:
 			c.move_order = false
 			continue
+		# Walk the way steering says (round walls and props), not blindly straight.
+		var heading := Steering.direction(c.body, goal as Vector3)
+		if heading == Vector3.ZERO:
+			continue
 		var step := minf(c.move_speed * delta, dist)
-		var new_pos = pos + to / dist * step
+		var new_pos = pos + heading * step
 		# Don't stack on top of each other.
 		for o in everyone:
 			if o == c or o.is_down() or o.body == null:
@@ -423,27 +464,99 @@ func _step_movement(delta: float) -> void:
 			if d > 0.001 and d < separation_radius:
 				new_pos += away / d * (separation_radius - d) * 0.5
 		c.body.global_position = Vector3(new_pos.x, pos.y, new_pos.z)
-		var yaw := atan2(-to.x, -to.z)  # forward is -Z
+		var yaw := atan2(-heading.x, -heading.z)  # forward is -Z
 		c.body.rotation.y = lerp_angle(c.body.rotation.y, yaw, minf(1.0, 12.0 * delta))
 		c.moving = true
 
 
-## Where `c` wants to be: an explicit move order, else just inside reach of its target.
-func _goal_for(c: Combatant) -> Variant:
-	if c.move_order:
-		return c.move_goal
-	if c.side == Combatant.Side.PARTY and c.hold_position:
-		return null
+## Who `c` is closing in on: the target of its pending action, else its target.
+func _approach_foe(c: Combatant) -> Combatant:
 	var foe: Combatant = c.approach_target if c.turn_pending else c.target
+	if foe == null or foe.is_down() or foe.body == null or foe == c:
+		return null
+	return foe
+
+
+## How far from that foe `c` stands: just inside its reach. INF = no need to move.
+func _approach_stop(c: Combatant) -> float:
 	var reach: float = c.approach_reach if c.turn_pending else c.attack_range
-	if foe == null or foe.is_down() or foe.body == null or is_inf(reach):
-		return null
-	var to_foe = foe.body.global_position - c.body.global_position
-	to_foe.y = 0.0
-	var stop := reach * arrive_fraction
-	if to_foe.length() <= stop:
-		return null
-	return foe.body.global_position - to_foe.normalized() * stop
+	if is_inf(reach):
+		return INF
+	return reach * arrive_fraction
+
+
+## Where each combatant should move this frame: {Combatant: Vector3}. Combatants who
+## are fine where they are (in reach, uncrowded), on Hold, or on a move order are left
+## out. Everyone closing in on the same foe gets their own spot on a ring round it, so
+## the party spreads out instead of piling onto one point and blocking each other.
+func _plan_slots(everyone: Array[Combatant]) -> Dictionary:
+	var out := {}
+	var seekers := {}  # foe -> Array[Combatant]
+	var fixed: Array[Vector3] = []  # where combatants who aren't moving stand
+	for c in everyone:
+		if c.is_down() or c.body == null:
+			continue
+		var foe := _approach_foe(c)
+		var holding := c.side == Combatant.Side.PARTY and c.hold_position
+		if c.move_order or holding or foe == null or is_inf(_approach_stop(c)):
+			fixed.append(c.body.global_position)
+			continue
+		if not seekers.has(foe):
+			seekers[foe] = []
+		(seekers[foe] as Array).append(c)
+	for foe: Combatant in seekers:
+		_assign_ring(foe, seekers[foe], fixed, out)
+	return out
+
+
+## Gives each seeker of `foe` a standing spot at its own distance from the foe, as near
+## as possible to the direction it is already coming from, with at least `crowd_gap`
+## between everyone and no wall in the way. Those already in place choose first.
+func _assign_ring(foe: Combatant, seekers: Array, fixed: Array[Vector3], out: Dictionary) -> void:
+	var centre: Vector3 = foe.body.global_position
+	var ordered: Array = seekers.duplicate()
+	ordered.sort_custom(func(a: Combatant, b: Combatant) -> bool:
+		var a_in := _flat_distance(a, foe) <= _approach_stop(a) + 0.3
+		var b_in := _flat_distance(b, foe) <= _approach_stop(b) + 0.3
+		if a_in != b_in:
+			return a_in
+		return a.get_instance_id() < b.get_instance_id())  # fixed order, so spots don't swap
+	var taken: Array[Vector3] = fixed.duplicate()
+	for c: Combatant in ordered:
+		var here: Vector3 = c.body.global_position
+		var offset := here - centre
+		offset.y = 0.0
+		var radius := clampf(minf(offset.length(), _approach_stop(c)), 0.5, 1000.0)
+		var bearing := atan2(offset.x, offset.z) if offset.length() > 0.01 else 0.0
+		var step := crowd_gap / radius
+		var tries := int(ceil(PI / maxf(step, 0.05)))
+		var chosen := here
+		var found := false
+		for k in range(0, tries + 1):
+			for sign_ in ([1.0, -1.0] if k > 0 else [1.0]):
+				var angle: float = bearing + sign_ * k * step
+				var spot := centre + Vector3(sin(angle), 0.0, cos(angle)) * radius
+				spot.y = here.y
+				if _spot_is_free(spot, taken) and Steering.line_is_clear(c.body, centre, spot):
+					chosen = spot
+					found = true
+					break
+			if found:
+				break
+		taken.append(chosen)
+		var flat := chosen - here
+		flat.y = 0.0
+		if flat.length() > 0.25:
+			out[c] = chosen
+
+
+func _spot_is_free(spot: Vector3, taken: Array[Vector3]) -> bool:
+	for other in taken:
+		var d := spot - other
+		d.y = 0.0
+		if d.length() < crowd_gap:
+			return false
+	return true
 
 
 func _face(c: Combatant, t: Combatant) -> void:

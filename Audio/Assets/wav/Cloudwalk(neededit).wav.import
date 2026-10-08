@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://4mjuppios830"
-path="res://.godot/imported/Cloudwalk(neededit).wav-4138899c5db0f2d9851c82a3fc246612.sample"
+path="res://.godot/imported/Cloudwalk(neededit).wav-b5aa6a0c6a4989f5b2be50ad5bcf1ff9.sample"
 
 [deps]
 
-source_file="res://audio/Assets/wav/Cloudwalk(neededit).wav"
-dest_files=["res://.godot/imported/Cloudwalk(neededit).wav-4138899c5db0f2d9851c82a3fc246612.sample"]
+source_file="res://Audio/Assets/wav/Cloudwalk(neededit).wav"
+dest_files=["res://.godot/imported/Cloudwalk(neededit).wav-b5aa6a0c6a4989f5b2be50ad5bcf1ff9.sample"]
 
 [params]
 

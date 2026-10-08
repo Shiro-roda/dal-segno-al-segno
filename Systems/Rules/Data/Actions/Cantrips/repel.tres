@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="ActionDef" format=3 uid="uid://grbpcursif34"]
+
+[ext_resource type="Script" uid="uid://hgdwyugnb20t" path="res://Systems/Rules/effect_def.gd" id="1_1pi6d"]
+[ext_resource type="Script" uid="uid://6nbup8pfuhsr" path="res://Systems/Rules/condition_def.gd" id="2_1gtyk"]
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="2_3acfo"]
+
+[sub_resource type="Resource" id="Resource_1gtyk"]
+script = ExtResource("1_1pi6d")
+dice = "1d8"
+damage_type = &"green"
+upcast_dice = "1d8"
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[sub_resource type="Resource" id="Resource_w615c"]
+script = ExtResource("2_1gtyk")
+id = &"repelled"
+display_name = "Repelled"
+advantage_on = null
+disadvantage_on = null
+metadata/_custom_type_script = "uid://6nbup8pfuhsr"
+
+[sub_resource type="Resource" id="Resource_skd0k"]
+script = ExtResource("1_1pi6d")
+kind = 2
+condition = SubResource("Resource_w615c")
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[resource]
+script = ExtResource("2_3acfo")
+id = &"repel"
+display_name = "Repel"
+description = "(On a hit, pushes an enemy away 10 metres and reduces their movement speed to 0 for one turn.)"
+roll = 1
+attack_stat = &"aversion"
+effects = Array[ExtResource("1_1pi6d")]([SubResource("Resource_1gtyk"), SubResource("Resource_skd0k")])
+tags = null
+metadata/_custom_type_script = "uid://njw6l7ex23w0"
