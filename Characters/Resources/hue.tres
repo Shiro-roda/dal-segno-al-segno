@@ -20,7 +20,6 @@
 script = ExtResource("6_5bm8v")
 max_level = 20
 xp_thresholds = PackedInt32Array(30, 90, 270, 650, 1400, 2300, 3400, 4800, 6400, 8500, 10000, 12000, 14000, 16500, 19500, 22500, 26500, 30500, 35500)
-first_pick_level = 1
 feat_every = 4
 canto_every = 2
 attribute_every = 2
