@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://r0cumsjk250g"]
+
+[ext_resource type="Script" uid="uid://cjs8w5i8bfm3v" path="res://Systems/World/room_features_selftest.gd" id="1_qivt1"]
+
+[node name="RoomFeaturesSelfTest" type="Node" unique_id=194418172]
+script = ExtResource("1_qivt1")

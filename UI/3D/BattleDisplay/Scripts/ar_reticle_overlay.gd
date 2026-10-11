@@ -120,8 +120,6 @@ func _update_rects(delta: float) -> void:
 	if camera == null:
 		return
 
-	var vp_size : Vector2 = get_viewport().get_visible_rect().size
-
 	for id in _boxes.keys():
 		var entry : Dictionary = _boxes[id]
 		var actor = entry["actor"]
@@ -281,7 +279,7 @@ func _on_draw() -> void:
 		_draw_label(rect, entry, c_line, c_lbl, t, progress)
 
 
-func _draw_box(rect: Rect2, c_line: Color, c_fill: Color, progress: float, vp_rect: Rect2) -> void:
+func _draw_box(rect: Rect2, c_line: Color, c_fill: Color, progress: float, _vp_rect: Rect2) -> void:
 	var tl := rect.position
 	var br := rect.end
 	var w  := rect.size.x
@@ -303,11 +301,11 @@ func _draw_box(rect: Rect2, c_line: Color, c_fill: Color, progress: float, vp_re
 	_draw_node.draw_line(tl + Vector2(0, cy), tl + Vector2(TICK_LEN, cy),  c_line, LINE_WIDTH)
 
 	# Top-right
-	var tr := Vector2(br.x, tl.y)
-	_draw_node.draw_line(tr, tr + Vector2(-cx, 0),           c_line, LINE_WIDTH)
-	_draw_node.draw_line(tr, tr + Vector2(0,   cy),          c_line, LINE_WIDTH)
-	_draw_node.draw_line(tr + Vector2(-cx, 0), tr + Vector2(-cx, TICK_LEN), c_line, LINE_WIDTH)
-	_draw_node.draw_line(tr + Vector2(0, cy),  tr + Vector2(-TICK_LEN, cy), c_line, LINE_WIDTH)
+	var top_right := Vector2(br.x, tl.y)
+	_draw_node.draw_line(top_right, top_right + Vector2(-cx, 0),           c_line, LINE_WIDTH)
+	_draw_node.draw_line(top_right, top_right + Vector2(0,   cy),          c_line, LINE_WIDTH)
+	_draw_node.draw_line(top_right + Vector2(-cx, 0), top_right + Vector2(-cx, TICK_LEN), c_line, LINE_WIDTH)
+	_draw_node.draw_line(top_right + Vector2(0, cy),  top_right + Vector2(-TICK_LEN, cy), c_line, LINE_WIDTH)
 
 	# Bottom-left
 	var bl := Vector2(tl.x, br.y)

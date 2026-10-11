@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="ActionDef" format=3 uid="uid://cr4aveicfpadm"]
+
+[ext_resource type="Script" uid="uid://hgdwyugnb20t" path="res://Systems/Rules/effect_def.gd" id="1_gpyii"]
+[ext_resource type="Script" uid="uid://0bb6gaktbv7m" path="res://Systems/Rules/mechanic.gd" id="2_sui5k"]
+[ext_resource type="Script" uid="uid://bqirgqoruc8j" path="res://Systems/Rules/Mechanics/temp_corpus_from_damage.gd" id="3_fnodr"]
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="4_gcjhb"]
+
+[sub_resource type="Resource" id="Resource_rr2qu"]
+script = ExtResource("1_gpyii")
+kind = 4
+dice = "1d4"
+bonus_stat = &"attachment"
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[sub_resource type="Resource" id="Resource_ob1dy"]
+script = ExtResource("3_fnodr")
+metadata/_custom_type_script = "uid://bqirgqoruc8j"
+
+[resource]
+script = ExtResource("4_gcjhb")
+id = &"banquet"
+display_name = "Banquet"
+description = "Grants damage done as temporary CORP."
+roll = 1
+attack_stat = &"attachment"
+effects = Array[ExtResource("1_gpyii")]([SubResource("Resource_rr2qu")])
+mechanics = Array[ExtResource("2_sui5k")]([SubResource("Resource_ob1dy")])
+tags = null
+metadata/_custom_type_script = "uid://njw6l7ex23w0"

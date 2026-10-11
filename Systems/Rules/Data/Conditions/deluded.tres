@@ -1,5 +1,6 @@
 [gd_resource type="Resource" script_class="ConditionDef" format=3 uid="uid://cx68bwn1pvn8a"]
 
+[ext_resource type="Script" uid="uid://0bb6gaktbv7m" path="res://Systems/Rules/mechanic.gd" id="1_id6ff"]
 [ext_resource type="Script" uid="uid://6nbup8pfuhsr" path="res://Systems/Rules/condition_def.gd" id="1_qu6hp"]
 
 [resource]

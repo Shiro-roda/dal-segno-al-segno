@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="EnemyTemplate" format=3 uid="uid://dbhadhmcml5fk"]
+
+[ext_resource type="Script" uid="uid://m5jx56lhrgsj" path="res://Systems/Rules/item_def.gd" id="1_pai4h"]
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="2_bqacw"]
+[ext_resource type="Resource" uid="uid://blpqp186tsu5c" path="res://Systems/Rules/Data/Actions/Cantrips/low_dim.tres" id="3_7erqt"]
+[ext_resource type="Script" uid="uid://0bb6gaktbv7m" path="res://Systems/Rules/mechanic.gd" id="4_of6vj"]
+[ext_resource type="PackedScene" uid="uid://bfhksagask2vp" path="res://Exploration/Scenes/placeholder_model.tscn" id="5_dk8sq"]
+[ext_resource type="Script" uid="uid://7e2wjvm1ll1u" path="res://Systems/Combat/enemy_template.gd" id="6_o0nnq"]
+
+[resource]
+script = ExtResource("6_o0nnq")
+display_name = "Small Shadow"
+corpus_die = 4
+scores = Dictionary[StringName, int]({
+&"attachment": 5,
+&"aversion": 5,
+&"delusion": 5,
+&"tempo": 16,
+&"volume": 12
+})
+known_actions = Array[ExtResource("2_bqacw")]([ExtResource("3_7erqt")])
+model_scene = ExtResource("5_dk8sq")
+xp_value = 4
+metadata/_custom_type_script = "uid://7e2wjvm1ll1u"

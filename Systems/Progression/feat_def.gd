@@ -9,6 +9,7 @@ extends Resource
 ## ("defense", "damage", "initiative", "corpus_max", "anima_max") work here.
 @export var modifiers: Dictionary = {}
 @export var granted_actions: Array[ActionDef] = []
+@export var mechanics: Array[Mechanic] = []
 
 @export_group("Offering")
 ## Relative chance of being offered when it is eligible.

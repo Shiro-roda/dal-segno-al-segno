@@ -8,5 +8,8 @@ script = ExtResource("2_7j6cx")
 id = &"shack"
 display_name = "Salvage Shack"
 category = 0
-color = Vector3i(50, 50, 0)
+income = {
+&"cuts": 1
+}
+color = Vector3i(50, 50, 50)
 metadata/_custom_type_script = "uid://b2sa2hhblvquv"

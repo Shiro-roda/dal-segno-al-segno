@@ -13,6 +13,8 @@ extends CanvasLayer
 ## TileDef resources; nothing is written for you.
 
 signal expedition_requested
+## A standing shop tile on the Treble grid was double-clicked. `pos` is its cell.
+signal shop_requested(pos: Vector2i)
 ## The screen became visible / hidden (the world controller locks the player on this).
 signal opened
 signal closed
@@ -162,7 +164,7 @@ func click_cell(pos: Vector2i) -> void:
 			return
 		if day.place_tile(pos, _selected):
 			# A blueprint is one card for one placement.
-			if day.needs_blueprint(_selected) and not day.blueprints.has(_selected):
+			if day.needs_blueprint(_selected) and not day.has_blueprint_for(_selected):
 				_selected = null
 		return
 	_info.text = _info_for_cell(pos)
@@ -269,7 +271,7 @@ func _build() -> void:
 	scroll.add_child(_grid)
 
 	var side_panel := VBoxContainer.new()
-	side_panel.custom_minimum_size = Vector2(340, 0)
+	side_panel.custom_minimum_size = Vector2(380, 0)
 	body.add_child(side_panel)
 
 	# Tab order matches TileDef.Clef: TREBLE = 0, BASS = 1.
@@ -464,10 +466,10 @@ func _refresh_tithe() -> void:
 	_tithe.text = text
 
 
-## Dungeon rooms with a walking route to where the party will spawn, and their remnants.
+## Dungeon rooms with a walking route to where the party will spawn, and their enemies.
 func _refresh_dungeon_count() -> void:
 	var tiles := 0
-	var remnants := 0
+	var enemies := 0
 	var reach: Dictionary = day.main_path()["reach"]
 	for pos: Vector2i in day.bass.cells:
 		var tile: TileInstance = day.bass.cells[pos]
@@ -476,8 +478,8 @@ func _refresh_dungeon_count() -> void:
 		if not reach.has(pos):
 			continue
 		tiles += 1
-		remnants += tile.def.spawn_count + int(day.carried.get(pos, 0))
-	_dungeon_count.text = "Dungeon tiles: %d   Remnants: %d" % [tiles, remnants]
+		enemies += tile.def.spawn_count + int(day.carried.get(pos, 0))
+	_dungeon_count.text = "Dungeon tiles: %d   Enemies: %d" % [tiles, enemies]
 
 
 ## The Segno and its scored main path.
@@ -503,7 +505,10 @@ func _refresh_palette() -> void:
 	_clear(_hub_list)
 	_clear(_dungeon_list)
 	for def in _hub_defs:
-		_hub_list.add_child(_palette_button(def, 1))
+		if day.is_unlocked(def):
+			_hub_list.add_child(_palette_button(def, 1))
+		else:
+			_hub_list.add_child(_locked_button(def))
 	var counts := {}
 	var order: Array[TileDef] = []
 	for def in day.blueprints:
@@ -511,14 +516,40 @@ func _refresh_palette() -> void:
 			order.append(def)
 		counts[def] = int(counts.get(def, 0)) + 1
 	for def in order:
-		_dungeon_list.add_child(_palette_button(def, int(counts[def])))
+		_dungeon_list.add_child(_palette_button(def, int(counts[def]), day.extra_blueprint == def))
+	# The standing copy of a blueprint that isn't in the normal hand gets its own entry.
+	if day.extra_blueprint != null and not counts.has(day.extra_blueprint):
+		_dungeon_list.add_child(_palette_button(day.extra_blueprint, 1, true))
 
 
-func _palette_button(def: TileDef, copies: int) -> Button:
+## A tile that can't be built yet: greyed out, with what it needs.
+func _locked_button(def: TileDef) -> Button:
+	var names: Array[String] = []
+	for id in day.missing_unlocks(def):
+		var shown := String(id)
+		for known in _hub_defs:
+			if known.id == id:
+				shown = _name_of(known)
+		for known in day.blueprint_pool:
+			if known != null and known.id == id:
+				shown = _name_of(known)
+		names.append(shown)
+	var b := Button.new()
+	b.text = "%s\nLocked: needs %s standing" % [_name_of(def), ", ".join(names)]
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	b.disabled = true
+	return b
+
+
+func _palette_button(def: TileDef, copies: int, standing := false) -> Button:
 	var b := Button.new()
 	var label := _name_of(def)
 	if copies > 1:
 		label += "  x%d" % copies
+	if standing:
+		var mult := maxi(1, day.config.extra_blueprint_cost_multiplier)
+		label += "  (+1 counterfeit, x%d notes)" % mult if copies > 1 or day.blueprints.has(def) \
+				else "  (counterfeit, x%d notes)" % mult
 	b.text = "%s\n%s" % [label, _amounts(_price(def))]
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	b.toggle_mode = true
@@ -554,6 +585,8 @@ func _make_cell(pos: Vector2i, slot_set: Dictionary) -> Control:
 	b.clip_text = true
 	b.pressed.connect(click_cell.bind(pos))
 	b.mouse_entered.connect(_show_cell_info.bind(pos))
+	if tile != null and tile.def.shop != null and not tile.ruined:
+		b.gui_input.connect(_on_shop_cell_input.bind(pos))
 	var is_bass := _view == TileDef.Clef.BASS
 	var is_segno: bool = is_bass and day.has_segno() and day.segno == pos
 	if tile != null:
@@ -584,6 +617,16 @@ func _make_cell(pos: Vector2i, slot_set: Dictionary) -> Control:
 
 
 # ------------------------------------------------------------ descriptions
+
+## Double-clicking a standing shop on the Treble grid opens its shelves. Ignored while a
+## tool or tile is picked, so it never fights with placing, erasing or the Segno.
+func _on_shop_cell_input(event: InputEvent, pos: Vector2i) -> void:
+	var click := event as InputEventMouseButton
+	if click == null or click.button_index != MOUSE_BUTTON_LEFT or not click.double_click:
+		return
+	if _view != TileDef.Clef.TREBLE or _erase or _segno_mode or _selected != null:
+		return
+	shop_requested.emit(pos)
 
 func _show_def_info(def: TileDef) -> void:
 	_info.text = _describe_def(def, null)
@@ -660,8 +703,10 @@ func _describe_tile(tile: TileInstance) -> String:
 		lines.append("Lowest: " + ", ".join(names))
 		var left := int(day.carried.get(tile.pos, 0))
 		if left > 0:
-			lines.append("Remnants left alive: %d" % left)
+			lines.append("Enemies left alive: %d" % left)
 	lines.append_array(_effects_of(tile.def))
+	if tile.def.shop != null and not tile.ruined:
+		lines.append("Double-click to open the shop")
 	var erase := day.can_erase(tile.pos, clef)
 	if not erase["ok"]:
 		lines.append(String(erase["reason"]))
@@ -677,7 +722,7 @@ func _effects_of(def: TileDef) -> Array[String]:
 		if not def.income.is_empty():
 			lines.append("Income: " + _amounts(def.income))
 	elif not def.is_exit and not def.is_segno:
-		lines.append("Remnants: %d" % def.spawn_count)
+		lines.append("Enemies: %d" % def.spawn_count)
 		var names := {}
 		for template in def.enemies:
 			if template != null:

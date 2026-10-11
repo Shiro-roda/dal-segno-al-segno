@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="StatDef" format=3]
+
+[ext_resource type="Script" path="res://Systems/Rules/stat_def.gd" id="1_622t6"]
+
+[resource]
+script = ExtResource("1_622t6")
+id = &"volume"
+display_name = "Volume"
+abbreviation = "VOL"
+tags = PackedStringArray("physical")
+description = "Melee attacks and physical skills."

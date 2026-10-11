@@ -1,11 +1,28 @@
 [gd_resource type="Resource" script_class="CharacterSheet" format=3 uid="uid://cg6j0qmyi7mlt"]
 
+[ext_resource type="Script" uid="uid://0bb6gaktbv7m" path="res://Systems/Rules/mechanic.gd" id="1_xpaye"]
 [ext_resource type="Script" uid="uid://m5jx56lhrgsj" path="res://Systems/Rules/item_def.gd" id="1_xxwh2"]
 [ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="2_21h8t"]
 [ext_resource type="Resource" uid="uid://dyok0aaaggfjl" path="res://Systems/Rules/Data/Items/rusty.tres" id="2_383yv"]
 [ext_resource type="Script" uid="uid://ch43wbypcqtmy" path="res://Systems/Progression/feat_def.gd" id="2_ieqx0"]
 [ext_resource type="Script" uid="uid://dgq0h13x363vr" path="res://Systems/Rules/character_sheet.gd" id="3_ieqx0"]
-[ext_resource type="PackedScene" uid="uid://b5one47frkahl" path="res://Exploration/Scenes/placeholder_model.tscn" id="4_383yv"]
+[ext_resource type="PackedScene" uid="uid://bfhksagask2vp" path="res://Exploration/Scenes/placeholder_model.tscn" id="4_383yv"]
+[ext_resource type="Script" uid="uid://dgjru07ppk3il" path="res://Systems/Rules/Mechanics/damage_type_affinity.gd" id="7_qkteq"]
+
+[sub_resource type="Resource" id="Resource_6v0pj"]
+script = ExtResource("7_qkteq")
+damage_type = &"red"
+metadata/_custom_type_script = "uid://dgjru07ppk3il"
+
+[sub_resource type="Resource" id="Resource_sbnf3"]
+script = ExtResource("7_qkteq")
+damage_type = &"green"
+metadata/_custom_type_script = "uid://dgjru07ppk3il"
+
+[sub_resource type="Resource" id="Resource_mb16f"]
+script = ExtResource("7_qkteq")
+damage_type = &"blue"
+metadata/_custom_type_script = "uid://dgjru07ppk3il"
 
 [resource]
 script = ExtResource("3_ieqx0")
@@ -17,6 +34,7 @@ scores = Dictionary[StringName, int]({
 &"tone": 12
 })
 is_player = true
+mechanics = Array[ExtResource("1_xpaye")]([SubResource("Resource_6v0pj"), SubResource("Resource_sbnf3"), SubResource("Resource_mb16f")])
 equipment = Dictionary[StringName, ExtResource("1_xxwh2")]({
 &"weapon": ExtResource("2_383yv")
 })

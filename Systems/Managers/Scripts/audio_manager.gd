@@ -221,13 +221,6 @@ func update_dungeon_color_layers(removed_mask: int) -> void:
 		var muted : bool = (removed_mask & bit) != 0
 		_set_layer_volume(bgm_layers[bit], muted, DUNGEON_VOLUME_DB)
 
-	# Count removed channels for degradation.
-	var removed_count : int = 0
-	var mask : int = removed_mask
-	while mask > 0:
-		removed_count += mask & 1
-		mask >>= 1
-
 	# No bus degradation in dungeon mode — stem muting is the only effect.
 
 

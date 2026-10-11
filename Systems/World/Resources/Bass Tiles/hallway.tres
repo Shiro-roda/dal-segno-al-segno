@@ -7,5 +7,6 @@
 script = ExtResource("2_ir7gb")
 id = &"hallway"
 display_name = "Hallway"
+blueprint_min_day = 6
 color = Vector3i(30, 30, 30)
 metadata/_custom_type_script = "uid://b2sa2hhblvquv"

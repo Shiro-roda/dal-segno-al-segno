@@ -26,6 +26,9 @@ extends Resource
 @export var is_player: bool = false
 ## How this character levels up. Null = no level-ups.
 @export var progression: ProgressionDef
+## Rules this character always has (resistances, weaknesses, quirks), independent of
+## feats and gear. Copied to the StatBlock as innate mechanics.
+@export var mechanics: Array[Mechanic] = []
 ## Feats taken so far (repeat an entry for stacks).
 @export var feats: Array[FeatDef] = []
 ## True once the level-1 starting picks (ProgressionDef.starting_*) have been made.
@@ -37,6 +40,8 @@ extends Resource
 ## Persistent Corpus / Anima Portions. -1 means "full".
 @export var current_corpus: int = -1
 @export var current_anima: int = -1
+## Extra picks owed from feats like Virtuoso. One entry per pick: the mechanic that granted it.
+@export var bonus_picks: Array[Mechanic] = []
 
 ## What to do when automatic picking finds nothing recommended among the options.
 enum AutoFallback { ASK_ME, RANDOM }
@@ -67,6 +72,7 @@ func build_block(engine: RulesEngine) -> StatBlock:
 			block.scores[def.id] = engine.config.attribute_base
 	block.skill_ranks = skill_ranks.duplicate()
 	block.known_actions = known_actions.duplicate()
+	block.innate_mechanics.assign(mechanics)
 	fill_corpus_rolls(engine)
 	block.corpus_rolls = corpus_rolls.duplicate()
 	block.bonus_corpus = bonus_corpus

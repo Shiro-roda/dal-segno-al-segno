@@ -19,6 +19,8 @@ signal blueprints_changed
 signal tile_changed(pos: Vector2i, clef: TileDef.Clef)
 ## The Segno was placed, moved or cleared.
 signal segno_changed
+## A shop's shelves were restocked or something was bought. `pos` is its Treble cell.
+signal shop_changed(pos: Vector2i)
 
 enum Phase { PLAN, EXPEDITION, SUMMARY, OVER }
 ## The four sides of a dungeon room. NORTH is -Z, matching the Town, where a cell's y
@@ -55,8 +57,20 @@ var blueprint_pool: Array[TileDef] = []
 ## Today's blueprints, one card each. A card is spent when its tile is placed, and
 ## whatever is left expires when the day turns over.
 var blueprints: Array[TileDef] = []
+## Today's extra copy of the standing blueprint, or null. Kept apart from `blueprints`
+## because placing it costs more notes. Spent when its tile is placed.
+var extra_blueprint: TileDef = null
 ## Pay the tithe from notes before cuts. The plan screen toggles this.
 var tithe_notes_first := false
+
+## Times each room's feature (rest, hazard) was used today. Key: feature_key().
+var feature_uses: Dictionary = {}
+## Hit dice each character has spent today (character id -> int).
+var hit_dice_spent: Dictionary = {}
+## Bonus blueprints earned from hazards today, added to the next day's hand.
+var bonus_blueprints_pending := 0
+## Shop shelves, per Treble cell: Vector2i -> Array of {offer: ShopOffer, left: int}.
+var shop_stock: Dictionary = {}
 
 var _next_spawn_id := 0
 var _path_cache: Dictionary = {}
@@ -75,7 +89,7 @@ func _init(p_exit: TileDef, p_config: WorldConfig = null, p_persistent: WorldPer
 		segno_def.id = &"segno"
 		segno_def.display_name = "Segno Room"
 		segno_def.category = TileDef.Category.DUNGEON
-		segno_def.is_segno = true
+		segno_def.role = TileDef.Role.SEGNO
 		segno_def.blueprint_weight = 0.0
 	if p_origin != null:
 		origin_def = p_origin
@@ -84,7 +98,7 @@ func _init(p_exit: TileDef, p_config: WorldConfig = null, p_persistent: WorldPer
 		origin_def.id = &"origin"
 		origin_def.display_name = "Town Square"
 		origin_def.category = TileDef.Category.VILLAGE
-		origin_def.is_origin = true
+		origin_def.role = TileDef.Role.ORIGIN
 	if seed_value >= 0:
 		rng.seed = seed_value
 	else:
@@ -153,6 +167,9 @@ func begin_run() -> void:
 	spawns.clear()
 	debt = 0
 	tithe_notes_first = false
+	_reset_daily_features()
+	shop_stock.clear()
+	bonus_blueprints_pending = 0
 	bass.set_tile(ORIGIN, TileInstance.new(exit_def, ORIGIN))
 	treble.set_tile(ORIGIN, TileInstance.new(origin_def, ORIGIN))
 	for ruin in persistent.ruins:
@@ -160,10 +177,41 @@ func begin_run() -> void:
 		if not treble.has_tile(pos):
 			treble.set_tile(pos, TileInstance.new(ruin["def"], pos, true))
 	_path_dirty = true
+	_restock_shops()
 	draw_blueprints()
 	_set_phase(Phase.PLAN)
 	segno_changed.emit()
 	log_line.emit("Day %d begins." % day)
+
+
+# ------------------------------------------------------------ unlocks
+
+## Ids of the tiles that currently count as built: every standing Town tile (ruins do
+## not count), plus the dungeon exit. Unlocks last only while these stand.
+func _built_ids() -> Dictionary:
+	var ids := {exit_def.id: true, origin_def.id: true}
+	for pos: Vector2i in treble.cells:
+		var tile: TileInstance = treble.cells[pos]
+		if tile.is_live():
+			ids[tile.def.id] = true
+	return ids
+
+
+## Ids `def` needs that have not been built yet.
+func missing_unlocks(def: TileDef) -> Array[StringName]:
+	var out: Array[StringName] = []
+	if def == null or def.unlock_requires_ids.is_empty():
+		return out
+	var built := _built_ids()
+	for id in def.unlock_requires_ids:
+		if not built.has(id):
+			out.append(id)
+	return out
+
+
+## True while every Town tile `def` requires is standing.
+func is_unlocked(def: TileDef) -> bool:
+	return missing_unlocks(def).is_empty()
 
 
 # --------------------------------------------------------------- planning
@@ -177,6 +225,10 @@ func cost_of(pos: Vector2i, def: TileDef) -> Dictionary:
 		var notes := floori(points / float(maxi(1, config.color_per_note)))
 		if notes > 0:
 			out[_note_id(i)] = int(out.get(_note_id(i), 0)) + notes
+	if uses_extra_blueprint(def):
+		for i in 3:
+			if out.has(_note_id(i)):
+				out[_note_id(i)] = int(out[_note_id(i)]) * maxi(1, config.extra_blueprint_cost_multiplier)
 	var existing := grid_for(def.clef()).get_tile(pos)
 	if existing != null and existing.ruined and existing.def == def:
 		for key in out:
@@ -195,7 +247,9 @@ func can_place(pos: Vector2i, def: TileDef) -> Dictionary:
 		return {"ok": false, "reason": "The origin cannot be built."}
 	if def.is_segno:
 		return {"ok": false, "reason": "Use Place Segno for the Segno room."}
-	if needs_blueprint(def) and not blueprints.has(def):
+	if not is_unlocked(def):
+		return {"ok": false, "reason": "Locked: needs %s standing." % ", ".join(missing_unlocks(def))}
+	if needs_blueprint(def) and not has_blueprint_for(def):
 		return {"ok": false, "reason": "No blueprint for that today."}
 	var grid := grid_for(def.clef())
 	var existing := grid.get_tile(pos)
@@ -226,12 +280,17 @@ func place_tile(pos: Vector2i, def: TileDef) -> bool:
 	var clef := def.clef()
 	grid_for(clef).set_tile(pos, TileInstance.new(def, pos))
 	if needs_blueprint(def):
-		blueprints.erase(def)  # spends one card
+		if blueprints.has(def):
+			blueprints.erase(def)  # spends one card
+		else:
+			extra_blueprint = null  # spends the standing copy
 		blueprints_changed.emit()
 	if not persistent.built_ids.has(def.id):
 		persistent.built_ids.append(def.id)
 	if clef == TileDef.Clef.BASS:
 		_path_dirty = true
+	elif def.shop != null:
+		_stock_shop(pos)
 	tile_changed.emit(pos, clef)
 	return true
 
@@ -264,6 +323,9 @@ func erase_tile(pos: Vector2i, clef: TileDef.Clef = TileDef.Clef.BASS) -> bool:
 		log_line.emit(String(check["reason"]))
 		return false
 	grid_for(clef).remove_tile(pos)
+	if clef == TileDef.Clef.TREBLE:
+		if shop_stock.erase(pos):
+			shop_changed.emit(pos)
 	if clef == TileDef.Clef.BASS:
 		carried.erase(pos)
 		_path_dirty = true
@@ -284,18 +346,23 @@ func needs_blueprint(def: TileDef) -> bool:
 
 
 ## Throws away unspent blueprints and draws a fresh hand. Rarer tiles have lower
-## weights, and every copy already in the hand makes another less likely.
+## weights, and every copy already in the hand makes another less likely. Bonus
+## blueprints earned from hazards are added to this hand and then used up.
 func draw_blueprints() -> void:
 	blueprints.clear()
+	extra_blueprint = null
 	if config.require_blueprints:
+		var standing := _standing_bass_ids()
 		var copies := {}
-		for _i in config.blueprints_per_day:
+		for _i in config.blueprints_per_day + bonus_blueprints_pending:
 			var candidates: Array[TileDef] = []
 			var weights: Array[float] = []
 			for def in blueprint_pool:
 				if def == null or def.clef() != TileDef.Clef.BASS or def.is_exit or def.is_segno:
 					continue
 				if def.blueprint_weight <= 0.0 or def.blueprint_min_day > day:
+					continue
+				if not _sources_standing(def, standing) or not is_unlocked(def):
 					continue
 				candidates.append(def)
 				weights.append(def.blueprint_weight
@@ -305,7 +372,99 @@ func draw_blueprints() -> void:
 				break
 			blueprints.append(candidates[index])
 			copies[candidates[index]] = int(copies.get(candidates[index], 0)) + 1
+			if not persistent.seen_blueprints.has(candidates[index].id):
+				persistent.seen_blueprints.append(candidates[index].id)
+		extra_blueprint = _standing_pick(standing)
+	bonus_blueprints_pending = 0
 	blueprints_changed.emit()
+
+
+## Ids of every standing Bass Clef room. Blueprint sources are checked against these.
+func _standing_bass_ids() -> Dictionary:
+	var ids := {}
+	for pos: Vector2i in bass.cells:
+		var tile: TileInstance = bass.cells[pos]
+		if tile.is_live():
+			ids[tile.def.id] = true
+	return ids
+
+
+## True if `def` has no source rooms, or one of them is in `standing` (see
+## _standing_bass_ids).
+func _sources_standing(def: TileDef, standing: Dictionary) -> bool:
+	if def.blueprint_source_ids.is_empty():
+		return true
+	for source_id in def.blueprint_source_ids:
+		if standing.has(source_id):
+			return true
+	return false
+
+
+## True if `def` could be drawn today as far as its source rooms go.
+func blueprint_sources_met(def: TileDef) -> bool:
+	return _sources_standing(def, _standing_bass_ids())
+
+
+## The standing pick as a TileDef, if it can be offered today: it must be in the pool,
+## a dungeon tile, and have a source room standing. Null otherwise.
+func _standing_pick(standing: Dictionary) -> TileDef:
+	if persistent.standing_blueprint == &"":
+		return null
+	for def in blueprint_pool:
+		if def == null or def.id != persistent.standing_blueprint:
+			continue
+		if def.clef() != TileDef.Clef.BASS or def.is_exit or def.is_segno:
+			return null
+		return def if _sources_standing(def, standing) and is_unlocked(def) else null
+	return null
+
+
+# ---- standing blueprint
+
+## True if a card for `def` is in hand, either a normal one or today's extra copy.
+func has_blueprint_for(def: TileDef) -> bool:
+	return blueprints.has(def) or extra_blueprint == def
+
+
+## True if placing `def` right now would spend the extra copy (so it costs more): there
+## is no normal card for it, only the standing one.
+func uses_extra_blueprint(def: TileDef) -> bool:
+	return extra_blueprint != null and extra_blueprint == def and not blueprints.has(def) \
+			and needs_blueprint(def)
+
+
+## Blueprints from the pool the player has seen before: the ones the standing pick can
+## be changed to.
+func seen_blueprint_defs() -> Array[TileDef]:
+	var out: Array[TileDef] = []
+	for def in blueprint_pool:
+		if def != null and persistent.seen_blueprints.has(def.id) \
+				and def.clef() == TileDef.Clef.BASS and not def.is_exit and not def.is_segno:
+			out.append(def)
+	return out
+
+
+## {ok: bool, reason: String}. Only a blueprint seen before can be made the standing pick.
+func can_set_standing_blueprint(def: TileDef) -> Dictionary:
+	if def == null:
+		return {"ok": true, "reason": ""}  # clears the pick
+	if def.clef() != TileDef.Clef.BASS or def.is_exit or def.is_segno:
+		return {"ok": false, "reason": "Not a dungeon blueprint."}
+	if not persistent.seen_blueprints.has(def.id):
+		return {"ok": false, "reason": "You haven't seen that blueprint yet."}
+	return {"ok": true, "reason": ""}
+
+
+## Sets (or with null clears) the blueprint that gets an extra copy in every day's hand.
+## It takes effect at the next dawn; today's hand is left as it is.
+func set_standing_blueprint(def: TileDef) -> bool:
+	var check := can_set_standing_blueprint(def)
+	if not check["ok"]:
+		log_line.emit(String(check["reason"]))
+		return false
+	persistent.standing_blueprint = def.id if def != null else &""
+	blueprints_changed.emit()
+	return true
 
 
 ## Empty cells on `clef` a tile could be placed on right now: next to a standing tile,
@@ -648,6 +807,10 @@ func defeat() -> void:
 	segno = NO_SEGNO
 	_path_dirty = true
 	blueprints.clear()
+	extra_blueprint = null
+	bonus_blueprints_pending = 0
+	shop_stock.clear()
+	_reset_daily_features()
 	_set_phase(Phase.OVER)
 	log_line.emit("The run ends on day %d." % day)
 
@@ -674,11 +837,213 @@ func begin_next_day() -> Dictionary:
 		stock[id] = int(stock.get(id, 0)) - int(paid_with[id])
 	var shortfall := int(payment["shortfall"])
 	debt += shortfall
+	_reset_daily_features()
+	_restock_shops()
 	draw_blueprints()
 	_set_phase(Phase.PLAN)
 	log_line.emit("Day %d begins." % day)
 	return {"income": income, "tithe_due": due, "tithe_paid": due - shortfall,
 			"tithe_paid_with": paid_with, "shortfall": shortfall}
+
+
+# ------------------------------------------------------- room features
+
+## Key for feature_uses: one entry per clef and cell.
+static func feature_key(pos: Vector2i, clef: TileDef.Clef) -> Vector3i:
+	return Vector3i(int(clef), pos.x, pos.y)
+
+
+func feature_uses_today(pos: Vector2i, clef: TileDef.Clef = TileDef.Clef.BASS) -> int:
+	return int(feature_uses.get(feature_key(pos, clef), 0))
+
+
+## Day boundary: rooms can be used again and every character's hit dice come back.
+func _reset_daily_features() -> void:
+	feature_uses.clear()
+	hit_dice_spent.clear()
+
+
+## The standing Bass Clef room at `pos`, or null if there is none.
+func _live_bass_tile(pos: Vector2i) -> TileInstance:
+	var tile := bass.get_tile(pos)
+	return tile if tile != null and tile.is_live() else null
+
+
+## True if a remnant is still alive in the room at `pos`.
+func has_living_remnants(pos: Vector2i) -> bool:
+	for s in spawns:
+		if bool(s["alive"]) and s["pos"] == pos:
+			return true
+	return false
+
+
+# ---- short rest rooms
+
+## {ok: bool, reason: String}. A rest room works on an expedition, up to its uses per
+## day, and only once nothing is left alive in it.
+func can_short_rest(pos: Vector2i) -> Dictionary:
+	if phase != Phase.EXPEDITION:
+		return {"ok": false, "reason": "Not on an expedition."}
+	var tile := _live_bass_tile(pos)
+	if tile == null or tile.def.rest == null:
+		return {"ok": false, "reason": "No rest room here."}
+	if has_living_remnants(pos):
+		return {"ok": false, "reason": "Remnants still hold this room."}
+	if feature_uses_today(pos) >= tile.def.rest.uses_per_day:
+		return {"ok": false, "reason": "Already used today."}
+	return {"ok": true, "reason": ""}
+
+
+## Uses the rest room at `pos` once and returns its RestDef, or null if it can't be used
+## (the reason is logged). What the rest does to the party is RoomFeatures.short_rest.
+func use_short_rest(pos: Vector2i) -> RestDef:
+	var check := can_short_rest(pos)
+	if not check["ok"]:
+		log_line.emit(String(check["reason"]))
+		return null
+	var key := feature_key(pos, TileDef.Clef.BASS)
+	feature_uses[key] = int(feature_uses.get(key, 0)) + 1
+	log_line.emit("Short rest at (%d, %d)." % [pos.x, pos.y])
+	return bass.get_tile(pos).def.rest
+
+
+## Hit dice character `char_id` (at `level`) still has today.
+func hit_dice_left(char_id: StringName, level: int) -> int:
+	var pool := maxi(0, level) * config.hit_dice_per_level
+	return maxi(0, pool - int(hit_dice_spent.get(char_id, 0)))
+
+
+## Spends up to `count` of the character's hit dice. Returns how many were spent.
+func spend_hit_dice(char_id: StringName, level: int, count: int) -> int:
+	var spent := clampi(count, 0, hit_dice_left(char_id, level))
+	if spent > 0:
+		hit_dice_spent[char_id] = int(hit_dice_spent.get(char_id, 0)) + spent
+	return spent
+
+
+# ---- hazard rooms
+
+## {ok: bool, reason: String}. A hazard goes off once per room per day, on an expedition.
+func can_trigger_hazard(pos: Vector2i) -> Dictionary:
+	if phase != Phase.EXPEDITION:
+		return {"ok": false, "reason": "Not on an expedition."}
+	var tile := _live_bass_tile(pos)
+	if tile == null or tile.def.hazard == null:
+		return {"ok": false, "reason": "No hazard here."}
+	if feature_uses_today(pos) > 0:
+		return {"ok": false, "reason": "Already sprung today."}
+	return {"ok": true, "reason": ""}
+
+
+## Sets the hazard at `pos` off: marks it used and queues its bonus blueprints for the
+## next dawn (up to WorldConfig.hazard_bonus_cap in total). Returns its HazardDef, or
+## null if it can't go off. The saves and damage are RoomFeatures.resolve_hazard.
+func trigger_hazard(pos: Vector2i) -> HazardDef:
+	if not can_trigger_hazard(pos)["ok"]:
+		return null
+	var def := bass.get_tile(pos).def.hazard
+	var key := feature_key(pos, TileDef.Clef.BASS)
+	feature_uses[key] = 1
+	bonus_blueprints_pending = mini(bonus_blueprints_pending + def.bonus_blueprints,
+			maxi(config.hazard_bonus_cap, bonus_blueprints_pending))
+	log_line.emit("Hazard at (%d, %d)." % [pos.x, pos.y])
+	blueprints_changed.emit()
+	return def
+
+
+# ---- shops
+
+## The shop on the standing Town tile at `pos`, or null.
+func shop_def_at(pos: Vector2i) -> ShopDef:
+	var tile := treble.get_tile(pos)
+	if tile == null or not tile.is_live():
+		return null
+	return tile.def.shop
+
+
+## What the shop at `pos` has on its shelves: Array of {offer: ShopOffer, left: int}.
+## Empty if there is no shop. Shelf order is stable until the next restock.
+func shop_offers(pos: Vector2i) -> Array:
+	return (shop_stock.get(pos, []) as Array).duplicate()
+
+
+## Rolls the shop at `pos` afresh.
+func _stock_shop(pos: Vector2i) -> void:
+	shop_stock.erase(pos)
+	var shop := shop_def_at(pos)
+	if shop == null:
+		shop_changed.emit(pos)
+		return
+	var pool: Array[ShopOffer] = []
+	for offer in shop.offers:
+		if offer != null and offer.item != null and offer.weight > 0.0 and offer.copies > 0 \
+				and offer.min_day <= day and not offer.price.is_empty():
+			pool.append(offer)
+	var shelves: Array = []
+	for _i in shop.slots:
+		var weights: Array[float] = []
+		for offer in pool:
+			weights.append(offer.weight)
+		var index := _weighted_index(weights)
+		if index < 0:
+			break
+		var picked: ShopOffer = pool.pop_at(index)
+		shelves.append({"offer": picked, "left": picked.copies})
+	shop_stock[pos] = shelves
+	shop_changed.emit(pos)
+
+
+## Restocks every shop that stands. Called at dawn.
+func _restock_shops() -> void:
+	shop_stock.clear()
+	var cells: Array = treble.cells.keys()
+	cells.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		return a.x < b.x or (a.x == b.x and a.y < b.y))
+	for pos: Vector2i in cells:
+		if shop_def_at(pos) != null:
+			_stock_shop(pos)
+
+
+## What shelf `index` of the shop at `pos` costs, normalised to StringName keys.
+func shop_price(pos: Vector2i, index: int) -> Dictionary:
+	var shelves: Array = shop_stock.get(pos, [])
+	if index < 0 or index >= shelves.size():
+		return {}
+	return _normalised((shelves[index]["offer"] as ShopOffer).price)
+
+
+## {ok: bool, reason: String}. Shopping happens while planning, in the Town.
+func can_buy(pos: Vector2i, index: int) -> Dictionary:
+	if phase != Phase.PLAN:
+		return {"ok": false, "reason": "Not planning."}
+	if shop_def_at(pos) == null:
+		return {"ok": false, "reason": "No shop there."}
+	var shelves: Array = shop_stock.get(pos, [])
+	if index < 0 or index >= shelves.size():
+		return {"ok": false, "reason": "Nothing on that shelf."}
+	if int(shelves[index]["left"]) <= 0:
+		return {"ok": false, "reason": "Sold out."}
+	var price := shop_price(pos, index)
+	for key in price:
+		if int(stock.get(key, 0)) < int(price[key]):
+			return {"ok": false, "reason": "Cannot afford it."}
+	return {"ok": true, "reason": ""}
+
+
+## Pays for one of shelf `index` and returns the ItemDef, or null if the purchase is
+## refused (the reason is logged). Putting the item in the bag is RoomFeatures.buy.
+func buy(pos: Vector2i, index: int) -> ItemDef:
+	var check := can_buy(pos, index)
+	if not check["ok"]:
+		log_line.emit(String(check["reason"]))
+		return null
+	var price := shop_price(pos, index)
+	for key in price:
+		stock[key] = int(stock.get(key, 0)) - int(price[key])
+	var entry: Dictionary = (shop_stock[pos] as Array)[index]
+	entry["left"] = int(entry["left"]) - 1
+	shop_changed.emit(pos)
+	return (entry["offer"] as ShopOffer).item
 
 
 # ----------------------------------------------------------------- helpers

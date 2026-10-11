@@ -91,6 +91,23 @@ enum Mode { DRONE, CLOSE, FRONT, OVERHEAD }
 ## How quickly an orbit or zoom eases back to normal once the fight ends.
 @export var control_release_smoothing: float = 3.0
 
+@export_group("Combat focus")
+## Camera position in the focused combatant's own space: +X right, +Z behind them.
+@export var focus_offset := Vector3(1.8, 2.0, 4.2)
+## What it looks at, in the same space.
+@export var focus_look := Vector3(0.0, 1.2, -1.0)
+@export var focus_chase_frequency: float = 4.0
+@export_range(0.1, 1.5, 0.05) var focus_damping_ratio: float = 0.9
+@export var focus_look_smoothing: float = 6.0
+@export var focus_turn_smoothing: float = 3.0
+## How quickly the view blends between the normal camera and the focus camera.
+@export var focus_blend_rate: float = 3.0
+
+var _focus: Node3D
+var _focus_wanted := false
+var _focus_blend := 0.0
+var _focus_yaw := 0.0
+
 ## Banking and idle sway are scaled per perspective (indexed by Mode).
 const BANK_SCALE: Array[float] = [1.0, 0.5, 0.5, 0.0]
 const SWAY_SCALE: Array[float] = [1.0, 0.3, 0.5, 0.2]
@@ -279,17 +296,36 @@ func _process(delta: float) -> void:
 	_swing_yaw = lerp_angle(_swing_yaw, 0.0, 1.0 - exp(-swing_smoothing * dt))
 
 	# Spring-damper toward the goal: acceleration pulls toward it, drag resists motion.
+	var focus_ok := _focus != null and is_instance_valid(_focus) and _focus.is_inside_tree()
+	var focusing := fight != null and _focus_wanted and focus_ok
+	_focus_blend = lerpf(_focus_blend, 1.0 if focusing else 0.0, 1.0 - exp(-focus_blend_rate * dt))
+	if not focus_ok or _focus_blend < 0.002:
+		_focus_blend = 0.0
+	var fw := _focus_blend
+
 	var goal := leader_pos + Basis(Vector3.UP, _swing_yaw + _orbit_yaw) * (_base_offset(active, leader_pos) * _zoom)
+	var look_pt := _look_point(active, leader_pos)
 	var omega := _chase_frequency
-	var accel := omega * omega * (goal - global_position) - 2.0 * _damping * omega * _drift
+	var damping := _damping
+	var look_smooth := _look_smoothing
+	if fw > 0.0:
+		_focus_yaw = lerp_angle(_focus_yaw, _focus.global_rotation.y, 1.0 - exp(-focus_turn_smoothing * dt))
+		var fpos := _focus.global_position
+		var fbasis := Basis(Vector3.UP, _focus_yaw + _orbit_yaw)  # orbit and zoom still work
+		goal = goal.lerp(fpos + fbasis * (focus_offset * _zoom), fw)
+		look_pt = look_pt.lerp(fpos + Basis(Vector3.UP, _focus_yaw) * focus_look, fw)
+		omega = lerpf(omega, focus_chase_frequency, fw)
+		damping = lerpf(damping, focus_damping_ratio, fw)
+		look_smooth = lerpf(look_smooth, focus_look_smoothing, fw)
+
+	var accel := omega * omega * (goal - global_position) - 2.0 * damping * omega * _drift
 	_drift += accel * dt
 	global_position += _drift * dt
 
-	# Ease the view toward the look target.
-	var to_look := _look_point(active, leader_pos) - global_position
+	var to_look := look_pt - global_position
 	if to_look.length_squared() > 0.001:
 		var wanted := Basis.looking_at(to_look.normalized(), Vector3.UP)
-		var blend := 1.0 - exp(-_look_smoothing * dt)
+		var blend := 1.0 - exp(-look_smooth * dt)
 		global_basis = Basis(Quaternion(global_basis.orthonormalized()).slerp(Quaternion(wanted), blend))
 
 	# Bank into sideways drift, and sway a little while idle. Both hold still while a
@@ -332,3 +368,17 @@ func _find_targets() -> void:
 	_leader = get_tree().get_first_node_in_group("party_leader") as Node3D
 	# Start already in place instead of flying in from the origin.
 	snap_to_target()
+
+## Called by CombatSession (Focus view): frame this combatant until cleared.
+func set_combat_focus(node: Node3D) -> void:
+	if node == null:
+		clear_combat_focus()
+		return
+	if _focus == null or _focus_blend < 0.01:
+		_focus_yaw = node.global_rotation.y
+	_focus = node
+	_focus_wanted = true
+
+
+func clear_combat_focus() -> void:
+	_focus_wanted = false

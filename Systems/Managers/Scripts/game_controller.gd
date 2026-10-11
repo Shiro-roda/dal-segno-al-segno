@@ -87,6 +87,7 @@ func start_new_game() -> void:
 	# recruitment once the dungeon run decides who is available.
 	PartySetup.recruit_all()
 	await _offer_starting_picks()
+	await _offer_bonus_picks()
 	day_cycle = null  # WorldController starts a fresh run
 	bass_cell = DayCycle.ORIGIN
 	arrival_side = -1
@@ -95,6 +96,15 @@ func start_new_game() -> void:
 	pending_spawn = &"default"
 	load_world_scene(PLACEHOLDER_LEVEL)
 
+func _offer_bonus_picks() -> void:
+	for id in Rules.roster.sheets:
+		var offer := Leveling.build_bonus_offer(Rules.roster, id)
+		if offer == null or offer.is_empty():
+			continue
+		var screen := LevelUpScreen.new()
+		add_child(screen)
+		screen.open(offer)
+		await screen.finished
 
 ## Travel to another level, arriving at the named spawn point.
 ## Deferred so it is safe to call from physics callbacks (body_entered).

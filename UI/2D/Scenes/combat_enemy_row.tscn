@@ -1,0 +1,18 @@
+[gd_scene format=3 uid="uid://j7tc7isu7typ"]
+
+[ext_resource type="Script" uid="uid://bsqn1it4cautf" path="res://UI/2D/Scripts/combat_enemy_row.gd" id="1_lytv3"]
+
+[node name="CombatEnemyRow" type="VBoxContainer" unique_id=653644403]
+script = ExtResource("1_lytv3")
+
+[node name="SelectButton" type="Button" parent="." unique_id=968660520]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+
+[node name="HealthBar" type="ProgressBar" parent="." unique_id=1487754682]
+unique_name_in_owner = true
+modulate = Color(0.8, 0.2, 0.2, 1)
+custom_minimum_size = Vector2(110, 10)
+layout_mode = 2
+show_percentage = false

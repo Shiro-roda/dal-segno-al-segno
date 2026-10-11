@@ -10,6 +10,8 @@ signal finished(victory: bool)
 ## XP was handed out after a win. `ready` lists the companions who can now level up.
 signal xp_awarded(amount: int, ready: Array)
 
+const HUD_SCENE := preload("res://UI/2D/Scenes/combat_hud.tscn")
+
 @export var enemies: Array[EnemyTemplate] = []
 @export var auto_trigger := true
 ## Victory removes the encounter for good.
@@ -73,7 +75,7 @@ func start() -> void:
 			e.attack_range = _templates[i].attack_range
 		e.move_speed = _templates[i].move_speed
 
-	_hud = CombatHUD.new()
+	_hud = HUD_SCENE.instantiate() as CombatHUD
 	add_child(_hud)
 	_hud.bind(session)
 
@@ -160,7 +162,9 @@ func _placeholder_body() -> Node3D:
 	return root
 
 
-func _on_action_resolved(_actor: Combatant, _result: Dictionary) -> void:
+func _on_action_resolved(actor: Combatant, _result: Dictionary) -> void:
+	# Let the dice readout (and any other feedback) finish before bodies vanish.
+	await session.wait_for_feedback(actor)
 	for i in mini(session.enemies.size(), _enemy_nodes.size()):
 		var n := _enemy_nodes[i]
 		if n != null and is_instance_valid(n) and session.enemies[i].is_down():

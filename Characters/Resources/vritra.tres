@@ -1,16 +1,21 @@
 [gd_resource type="Resource" script_class="CharacterSheet" format=3 uid="uid://dg480heb8uo72"]
 
 [ext_resource type="Script" uid="uid://m5jx56lhrgsj" path="res://Systems/Rules/item_def.gd" id="1_ibfs8"]
+[ext_resource type="Script" uid="uid://0bb6gaktbv7m" path="res://Systems/Rules/mechanic.gd" id="1_oht5i"]
 [ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="2_k1wby"]
 [ext_resource type="Resource" uid="uid://b3a4csh51vycu" path="res://Systems/Rules/Data/Items/dirtyknife.tres" id="2_lmex6"]
 [ext_resource type="Script" uid="uid://dgq0h13x363vr" path="res://Systems/Rules/character_sheet.gd" id="3_lmex6"]
 [ext_resource type="Script" uid="uid://ch43wbypcqtmy" path="res://Systems/Progression/feat_def.gd" id="3_p7b1g"]
-[ext_resource type="PackedScene" uid="uid://b5one47frkahl" path="res://Exploration/Scenes/placeholder_model.tscn" id="5_ylmth"]
+[ext_resource type="PackedScene" uid="uid://b4k4kb38xdrmw" path="res://Characters/Assets/placeholder_vritra_model.tscn" id="5_c5t6c"]
 [ext_resource type="Script" uid="uid://cu31n7k0if3db" path="res://Systems/Progression/progression_def.gd" id="6_m14pq"]
+[ext_resource type="Script" uid="uid://dgjru07ppk3il" path="res://Systems/Rules/Mechanics/damage_type_affinity.gd" id="7_i8p5x"]
+[ext_resource type="Resource" uid="uid://b4giwg1jsuc47" path="res://Systems/Rules/Data/Actions/Cantos/amore.tres" id="10_c5t6c"]
 [ext_resource type="Resource" uid="uid://dmrn6jlunkd5v" path="res://Systems/Rules/Data/Actions/Cantrips/arietta.tres" id="10_ybxug"]
 [ext_resource type="Resource" uid="uid://gc72gjqx3tw4" path="res://Systems/Rules/Data/Actions/Cantrips/break.tres" id="11_3lipo"]
+[ext_resource type="Resource" uid="uid://by223nx2ccfy1" path="res://Systems/Rules/Data/Actions/Cantos/dolce.tres" id="11_fuwr3"]
+[ext_resource type="Resource" uid="uid://mj31xj8kp4em" path="res://Systems/Rules/Data/Feats/barbaro.tres" id="18_fuwr3"]
 [ext_resource type="Resource" uid="uid://ci2aij7j45bn1" path="res://Systems/Rules/Data/Actions/Cantos/dolore.tres" id="pool_dol"]
-[ext_resource type="Resource" uid="uid://hek840kdquku" path="res://Systems/Rules/Data/Actions/Cantos/flebile.tres" id="pool_fle"]
+[ext_resource type="Resource" uid="uid://dua3ttvwyaysw" path="res://Systems/Rules/Data/Actions/Cantos/flebile.tres" id="pool_fle"]
 [ext_resource type="Resource" uid="uid://bb14mw2dyt6wr" path="res://Systems/Rules/Data/Actions/Cantos/fuoco.tres" id="pool_fuo"]
 [ext_resource type="Resource" uid="uid://r1f0s1gadhds" path="res://Systems/Rules/Data/Feats/guerriero1.tres" id="pool_g1"]
 [ext_resource type="Resource" uid="uid://c48w0t4qc6icj" path="res://Systems/Rules/Data/Feats/guerriero2.tres" id="pool_g2"]
@@ -18,19 +23,23 @@
 [ext_resource type="Resource" uid="uid://wcokfytvvwge" path="res://Systems/Rules/Data/Actions/Cantos/obbligato.tres" id="pool_obb"]
 [ext_resource type="Resource" uid="uid://cqagxy84k7yor" path="res://Systems/Rules/Data/Feats/virtuoso.tres" id="pool_vir"]
 
+[sub_resource type="Resource" id="Resource_idrh8"]
+script = ExtResource("7_i8p5x")
+damage_type = &"green"
+multiplier = 1.5
+metadata/_custom_type_script = "uid://dgjru07ppk3il"
+
 [sub_resource type="Resource" id="Resource_5bm8v"]
 script = ExtResource("6_m14pq")
 max_level = 20
 xp_thresholds = PackedInt32Array(30, 90, 270, 650, 1400, 2300, 3400, 4800, 6400, 8500, 10000, 12000, 14000, 16500, 19500, 22500, 26500, 30500, 35500)
-first_pick_level = 1
 feat_every = 2
 canto_every = 2
 attribute_every = 3
-starting_feats = 1
 starting_cantos = 1
 starting_cantrips = 1
-feat_pool = Array[ExtResource("3_p7b1g")]([ExtResource("pool_g1"), ExtResource("pool_g2"), ExtResource("pool_g3"), ExtResource("pool_vir")])
-canto_pool = Array[ExtResource("2_k1wby")]([ExtResource("pool_dol"), ExtResource("pool_fle"), ExtResource("pool_fuo"), ExtResource("pool_obb")])
+feat_pool = Array[ExtResource("3_p7b1g")]([ExtResource("pool_g1"), ExtResource("pool_g2"), ExtResource("pool_g3"), ExtResource("pool_vir"), ExtResource("18_fuwr3")])
+canto_pool = Array[ExtResource("2_k1wby")]([ExtResource("pool_dol"), ExtResource("pool_fle"), ExtResource("pool_fuo"), ExtResource("pool_obb"), ExtResource("10_c5t6c"), ExtResource("11_fuwr3")])
 cantrip_pool = Array[ExtResource("2_k1wby")]([ExtResource("10_ybxug"), ExtResource("11_3lipo")])
 metadata/_custom_type_script = "uid://cu31n7k0if3db"
 
@@ -38,7 +47,7 @@ metadata/_custom_type_script = "uid://cu31n7k0if3db"
 script = ExtResource("3_lmex6")
 id = &"vritra"
 display_name = "Vritra"
-model_scene = ExtResource("5_ylmth")
+model_scene = ExtResource("5_c5t6c")
 corpus_die = 6
 scores = Dictionary[StringName, int]({
 &"attachment": 15,
@@ -49,6 +58,7 @@ scores = Dictionary[StringName, int]({
 &"volume": 9
 })
 progression = SubResource("Resource_5bm8v")
+mechanics = Array[ExtResource("1_oht5i")]([SubResource("Resource_idrh8")])
 equipment = Dictionary[StringName, ExtResource("1_ibfs8")]({
 &"weapon": ExtResource("2_lmex6")
 })

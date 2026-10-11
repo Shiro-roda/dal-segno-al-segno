@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="StatDef" format=3]
+
+[ext_resource type="Script" path="res://Systems/Rules/stat_def.gd" id="1_m7spp"]
+
+[resource]
+script = ExtResource("1_m7spp")
+id = &"tempo"
+display_name = "Tempo"
+abbreviation = "TMP"
+tags = PackedStringArray("physical")
+description = "Ranged attacks, defense, and initiative."

@@ -2,9 +2,10 @@ class_name PartyFollower
 extends Node3D
 ## Party member that moves on its own while exploring. It doesn't walk the leader's
 ## trail: it keeps a formation slot beside and behind the leader, and only starts
-## walking when the leader gets further than `slack` from that slot. It goes around
-## walls (see Steering), keeps clear of the leader and the other followers, and
-## sprints to catch up if left behind.
+## walking (and turning) when the leader gets further than `leave_distance` from where
+## they stood the last time this follower settled. It goes around walls (see Steering),
+## keeps clear of the leader and the other followers, and sprints to catch up if left
+## behind.
 ## Built by ExplorationParty from the active roster. During a fight the
 ## CombatSession moves it instead (combat_controlled).
 
@@ -16,23 +17,27 @@ extends Node3D
 @export var side_spacing := 1.1
 ## Extra metres back for each further row (two followers per row).
 @export var row_spacing := 1.0
-## How far the leader may wander from this follower's slot before it starts walking.
-@export var slack := 2.0
+## The leader must walk this far from where they stood when this follower last settled
+## before it starts moving or turning. Until then it stays put, however the slot has
+## shifted.
+@export var leave_distance := 3.0
+## Safety net: if the leader ends up this far from the follower, it moves anyway.
+@export var max_leader_distance := 9.0
 ## It stops once this close to its slot.
 @export var settle_radius := 0.35
 @export_group("Movement")
 @export var walk_speed := 3.6
 ## Top speed when far behind.
 @export var run_speed := 6.5
-## Beyond slack by this much, it runs flat out.
-@export var catch_up_distance := 4.0
+## Once the leader is this much further away than leave_distance, it runs flat out.
+@export var catch_up_distance := 4.5
 ## Further than this from the slot (stuck, or the leader teleported): snap to it.
 @export var teleport_distance := 25.0
 ## Followers and the leader push each other apart inside this distance.
 @export var separation_radius := 1.0
 ## How quickly velocity follows what it wants (higher = snappier).
-@export var smoothing := 5.0
-@export var turn_smoothing := 3.0
+@export var smoothing := 8.0
+@export var turn_smoothing := 6.0
 @export_group("Animation")
 ## Animation names to play, if the model has them. Empty = don't animate.
 @export var idle_anim: StringName = &""
@@ -54,6 +59,10 @@ var _heading := Vector3(0.0, 0.0, -1.0)  # which way the leader is travelling
 var _velocity := Vector3.ZERO
 var _walking := false
 var _placed := false
+## Where the leader stood when this follower last settled; the trigger to move is the
+## leader getting `leave_distance` away from here.
+var _anchor := Vector3.ZERO
+var _anchored := false
 
 
 func _ready() -> void:
@@ -71,6 +80,7 @@ func _physics_process(delta: float) -> void:
 	if combat_controlled:
 		_velocity = Vector3.ZERO
 		_walking = false
+		_anchored = false  # after the fight, wait for the leader to move off before following
 		return
 	var leader := _leader()
 	if leader == null:
@@ -80,8 +90,13 @@ func _physics_process(delta: float) -> void:
 	if not _placed:
 		_placed = true
 		global_position = slot
+		_anchor = leader.global_position
+		_anchored = true
 		rotation.y = atan2(-_heading.x, -_heading.z)
 		return
+	if not _anchored:
+		_anchor = leader.global_position
+		_anchored = true
 
 	var to_slot := slot - global_position
 	to_slot.y = 0.0
@@ -90,33 +105,41 @@ func _physics_process(delta: float) -> void:
 		global_position = slot
 		_velocity = Vector3.ZERO
 		_walking = false
+		_anchor = leader.global_position
 		return
 
-	# Start walking once the slot is out of reach; stop when settled (no jitter).
+	var from_anchor := leader.global_position - _anchor
+	from_anchor.y = 0.0
+	var to_leader := leader.global_position - global_position
+	to_leader.y = 0.0
+
+	# Start walking once the leader has moved `leave_distance` away from where they were
+	# when we last settled; stop when settled (no jitter), and note where they stand now.
 	if _walking:
 		if dist <= settle_radius:
 			_walking = false
-	elif dist > slack:
+			_anchor = leader.global_position
+	elif from_anchor.length() > leave_distance or to_leader.length() > max_leader_distance:
 		_walking = true
 
 	var want := Vector3.ZERO
+	var walk_dir := Vector3.ZERO
 	if _walking:
-		var urgency := clampf((dist - slack) / maxf(catch_up_distance, 0.1), 0.0, 1.0)
-		want = Steering.direction(self, slot) * lerpf(walk_speed, run_speed, urgency)
+		walk_dir = Steering.direction(self, slot)
+		var urgency := clampf((to_leader.length() - leave_distance) / maxf(catch_up_distance, 0.1), 0.0, 1.0)
+		want = walk_dir * lerpf(walk_speed, run_speed, urgency)
 	want += _separation(leader) * walk_speed
 	_velocity = _velocity.lerp(want, 1.0 - exp(-smoothing * delta))
 	global_position += _velocity * delta
 	global_position.y = lerpf(global_position.y, leader.global_position.y,
 			1.0 - exp(-8.0 * delta))
 
-	var speed := _velocity.length()
-	var yaw: float
-	if speed > 0.3:
-		yaw = atan2(-_velocity.x, -_velocity.z)  # forward is -Z
-	else:
-		yaw = atan2(-_heading.x, -_heading.z)  # idle: look where the leader looks
-	rotation.y = lerp_angle(rotation.y, yaw, 1.0 - exp(-turn_smoothing * delta))
-	_animate(speed)
+	# Turn only while walking, towards the way it is heading. Standing still, it keeps
+	# whatever facing it had, even if the leader turns or something nudges it.
+	if _walking and walk_dir != Vector3.ZERO:
+		var yaw := atan2(-walk_dir.x, -walk_dir.z)  # forward is -Z
+		rotation.y = lerp_angle(rotation.y, yaw, 1.0 - exp(-turn_smoothing * delta))
+	_animate(_velocity.length())
 
 
 ## Where this follower wants to stand, given the leader.

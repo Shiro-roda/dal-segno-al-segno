@@ -16,7 +16,7 @@ var offer: LevelUpOffer
 var _sheet: CharacterSheet
 var _confirm: Button
 var _buttons: Array = []  # per pick: Array of {button, option}
-
+var _root: Control
 
 func open(p_offer: LevelUpOffer) -> void:
 	offer = p_offer
@@ -28,6 +28,7 @@ func open(p_offer: LevelUpOffer) -> void:
 	if sheet != null and sheet.auto_pick_recommended:
 		Leveling.apply_recommended(offer, sheet)
 	var root := Control.new()
+	_root = root
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(root)
 
@@ -41,8 +42,12 @@ func open(p_offer: LevelUpOffer) -> void:
 
 	var title := Label.new()
 	var who := sheet.display_name if sheet != null else str(offer.char_id)
-	title.text = "%s: starting picks" % who if offer.is_starting \
-		else "%s: level %d" % [who, offer.new_level]
+	if offer.is_starting:
+		title.text = "%s: starting picks" % who
+	elif offer.is_bonus:
+		title.text = "%s: bonus pick" % who
+	else:
+		title.text = "%s: level %d" % [who, offer.new_level]
 	column.add_child(title)
 
 	for i in offer.picks.size():
@@ -109,9 +114,19 @@ func _refresh() -> void:
 
 
 func _on_confirm() -> void:
-	if Leveling.apply(offer, Rules.roster):
-		finished.emit(offer.char_id)
-		queue_free()
+	if not Leveling.apply(offer, Rules.roster):
+		return
+	var next := Leveling.build_bonus_offer(Rules.roster, offer.char_id)
+	if next != null and not next.is_empty():
+		if _root != null:
+			_root.queue_free()
+		_buttons.clear()
+		var keep_layer := layer  # open() resets it; a caller may have raised it above a menu
+		open(next)
+		layer = keep_layer
+		return
+	finished.emit(offer.char_id)
+	queue_free()
 
 
 func _label(option: Variant) -> String:

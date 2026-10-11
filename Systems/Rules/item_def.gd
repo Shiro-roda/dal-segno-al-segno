@@ -11,6 +11,7 @@ extends Resource
 ## "initiative", "corpus_max" and "anima_max" are allowed.
 @export var modifiers: Dictionary[StringName, int] = {}
 @export var granted_actions: Array[ActionDef] = []
+@export var mechanics: Array[Mechanic] = []
 
 @export_group("Weapon")
 ## Only used by items in the weapon slot. Every character's Attack action rolls the

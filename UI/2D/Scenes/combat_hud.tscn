@@ -1,5 +1,10 @@
 [gd_scene format=3 uid="uid://b63m6ss8wwnve"]
 
+[ext_resource type="Script" uid="uid://dtpipmmnj7k2s" path="res://Systems/Combat/combat_hud.gd" id="1_sx6pb"]
+[ext_resource type="PackedScene" uid="uid://bo3qwix3hrfh2" path="res://UI/2D/Scenes/combat_party_row.tscn" id="2_14ckf"]
+[ext_resource type="PackedScene" uid="uid://j7tc7isu7typ" path="res://UI/2D/Scenes/combat_enemy_row.tscn" id="3_uf6yc"]
+[ext_resource type="Script" uid="uid://n23c4250ttu2" path="res://UI/2D/Scripts/roll_display.gd" id="4_14ckf"]
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tuq1w"]
 content_margin_left = 16.0
 content_margin_top = 16.0
@@ -11,6 +16,9 @@ corner_radius_bottom_right = 4
 
 [node name="CombatHud" type="CanvasLayer" unique_id=1520319456]
 layer = 20
+script = ExtResource("1_sx6pb")
+party_row_scene = ExtResource("2_14ckf")
+enemy_row_scene = ExtResource("3_uf6yc")
 
 [node name="Root" type="Control" parent="." unique_id=1366121557]
 layout_mode = 3
@@ -30,6 +38,8 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 0
+offset_transform_enabled = true
+offset_transform_position_ratio = Vector2(0, -0.1)
 mouse_filter = 2
 theme_override_constants/separation = 12
 alignment = 1
@@ -38,12 +48,15 @@ alignment = 1
 unique_name_in_owner = true
 custom_minimum_size = Vector2(240, 0)
 layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -40.0
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -120.0
+offset_right = 120.0
 offset_bottom = 40.0
-grow_horizontal = 0
+grow_horizontal = 2
+offset_transform_enabled = true
+offset_transform_position_ratio = Vector2(0, 1)
 mouse_filter = 2
 theme_override_constants/separation = 6
 
@@ -51,7 +64,7 @@ theme_override_constants/separation = 6
 unique_name_in_owner = true
 custom_minimum_size = Vector2(260, 0)
 layout_mode = 1
-anchors_preset = 6
+anchors_preset = -1
 anchor_left = 1.0
 anchor_top = 0.5
 anchor_right = 1.0
@@ -60,17 +73,18 @@ offset_left = -40.0
 offset_top = -20.0
 offset_bottom = 20.0
 grow_horizontal = 0
-grow_vertical = 2
+offset_transform_enabled = true
+offset_transform_position_ratio = Vector2(-0.01, 0)
 
 [node name="Log" type="RichTextLabel" parent="Root" unique_id=1971045175]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(460, 200)
+custom_minimum_size = Vector2(400, 200)
 layout_mode = 1
 anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
 offset_top = -200.0
-offset_right = 460.0
+offset_right = 400.0
 grow_vertical = 0
 mouse_filter = 2
 theme_override_styles/normal = SubResource("StyleBoxFlat_tuq1w")
@@ -92,3 +106,38 @@ theme_override_font_sizes/font_size = 28
 text = "PAUSED
 press space to resume"
 horizontal_alignment = 1
+
+[node name="OptionsBar" type="HBoxContainer" parent="Root" unique_id=1503066856]
+unique_name_in_owner = true
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="LogToggle" type="CheckButton" parent="Root/OptionsBar" unique_id=1149257804]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Log"
+
+[node name="ViewToggle" type="CheckButton" parent="Root/OptionsBar" unique_id=1682700217]
+unique_name_in_owner = true
+layout_mode = 2
+text = "View"
+
+[node name="BannerLabel" type="Label" parent="Root" unique_id=1683637231]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -20.0
+offset_right = 20.0
+offset_bottom = 17.0
+grow_horizontal = 2
+offset_transform_enabled = true
+offset_transform_position_ratio = Vector2(0, 0.1)
+
+[node name="RollDisplay" type="Control" parent="Root" unique_id=113381969]
+unique_name_in_owner = true
+anchors_preset = 0
+mouse_filter = 2
+script = ExtResource("4_14ckf")

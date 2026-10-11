@@ -14,6 +14,7 @@ const FONT_TERM   := "res://UI/Themes/Fonts/TerminalVector.ttf"
 var C_GREEN        := Color.WHITE
 var C_AMBER        := Color.WHITE
 var C_RED          := Color.WHITE
+var C_GOLD         := Color("#D4AF37")
 var C_DIM          := Color.WHITE
 var C_WHITE        := Color.WHITE
 var C_BG           := Color.BLACK
@@ -63,16 +64,16 @@ func _ready() -> void:
 
 func _refresh_palette() -> void:
 	var p := ThemeManager.palette
-	C_GREEN       = p.primary
-	C_AMBER       = p.secondary
-	C_RED         = p.alert
-	C_DIM         = p.dim
-	C_WHITE       = p.text
-	C_BG          = p.bg
-	C_KEY_FACE    = p.key_face
-	C_KEY_LIT_DUN = p.key_lit_primary
-	C_KEY_LIT_BAT = p.key_lit_secondary
-	C_KEY_EDGE    = p.key_edge
+	C_GREEN       = Color(0.18,  1.00,  0.35,  1.0)
+	C_AMBER       = Color(1.00,  0.72,  0.08,  1.0)
+	C_RED         = Color(1.00,  0.22,  0.18,  1.0)
+	C_DIM         = Color(0.698, 0.788, 0.697, 0.7)
+	C_WHITE       = Color(0.92,  0.95,  0.92,  1.0)
+	C_BG          = Color(0.012, 0.018, 0.012, 1.0)
+	C_KEY_FACE    = Color(0.10,  0.13,  0.10,  1.0)
+	C_KEY_LIT_DUN = Color(0.08,  0.55,  0.22,  1.0)
+	C_KEY_LIT_BAT = Color(0.69,  0.365, 0.0,   1.0)
+	C_KEY_EDGE    = Color(0.30,  0.40,  0.30,  0.85)
 
 
 func _on_theme_changed(_id: int) -> void:
@@ -144,7 +145,7 @@ func _build_post_lines() -> void:
 	var hex_bios   := _random_hex(4) + "h"
 	var hex_cmos   := _random_hex(2) + "h"
 	_post_lines = [
-		_line("OURO BORO SYSTEMS  OUROBOY SECURITY UNIT  BIOS REV 1.04C", C_WHITE, 0.0),
+		_line("OURO BORO SYSTEMS  OUROBOY ASOMATOUS COGNITIVE INPUT UNIT  BIOS REV 1.04C", C_WHITE, 0.0),
 		_line("(C) OURO BORO SYSTEMS INC.  ALL RIGHTS RESERVED", C_DIM, 0.10),
 		_line("UNIT S/N: " + hex_serial, C_DIM, 0.18),
 		_line(" ", C_DIM, 0.0),
@@ -157,33 +158,33 @@ func _build_post_lines() -> void:
 		_line("RTC: " + _rtc_string() + "             PASS", C_GREEN, 0.04),
 		_line(" ", C_DIM, 0.0),
 		_line("PERIPHERAL ENUMERATION:", C_WHITE, 0.0),
-		_line("  DISPLAY .......... ONYX-CRT  640x960  PHOSPHOR-G", C_GREEN, 0.0),
-		_line("  STORAGE .......... FERRO-CELL 512K  WEAR:LOW", C_GREEN, 0.0),
-		_line("  INPUT MATRIX ..... TACTILE ARRAY  84-KEY  OK", C_GREEN, 0.0),
-		_line("  AUDIO ............ OBS-DSP  3CH MONO  OK", C_GREEN, 0.0),
-		_line("  COMM ANTENNA ..... PASSIVE  NO CARRIER", C_GREEN, 0.0),
+		_line("  ACI DISPLAY ........ ONYX-CRT  640x960  PHOSPHOR-G", C_GREEN, 0.0),
+		_line("  STORAGE ............ FERRO-CELL 512K  WEAR:HIGH", C_AMBER, 0.0),
+		_line("  INPUT MATRIX ....... TACTILE ARRAY  84-KEY  OK", C_GREEN, 0.0),
+		_line("  AUDIO .............. OBS-DSP  3CH MONO  OK", C_GREEN, 0.0),
+		_line("  NEURAL MESH PORT ... DENDRITE I/F REV 2  STANDBY", C_GREEN, 0.0),
+		_line("  COMM ANTENNA ....... ACTIVE  AERIAL SECURITY UNIT, CONNECTION STABLE", C_GREEN, 0.0),
 		
 		_line("SYNESTHESIA ENGINE INIT:", C_WHITE, 0.0),
-		_line("  BIOMETRIC OCULAR    CORPA-SCAN SUBSYSTEM  OK", C_GREEN, 0.0),
-		_line("  NEURAL MESH PORT .. DENDRITE I/F REV 2  STANDBY", C_GREEN, 0.0),
-		_line("  ENV HAZARD MON .... PARTICULATE / RAD / GAS  OK", C_GREEN, 0.0),
-		_line("  PROXIMITY ALERT ... SONAR MESH  3.0m RADIUS  OK", C_GREEN, 0.0),
+		_line("  BIOPNEUMIC OCULAR .. CORPAL-SCAN SUBSYSTEM  OK", C_GREEN, 0.0),
+		_line("  COGNITOHAZARD MON .. PARTICULATE / RAD / GAS  OK", C_GREEN, 0.0),
+		_line("  PROXIMITY ALERT .... EM-SONAR MESH  3.0m RADIUS  OK", C_GREEN, 0.0),
 		
 		_line("STRUCTURAL SURVEY DAEMON:", C_WHITE, 0.0),
-		_line("  ZONE REGISTRY ....  LOADING KNOWN SECTORS", C_GREEN, 0.0),
-		_line("  TOPOLOGY CACHE .... PARTIAL  (UNCHARTED REGIONS FLAGGED)", C_AMBER, 0.0),
-		_line("  ARCHITECT SIGNATURE ... NOT FOUND (EXPECTED)", C_DIM, 0.0),
-		_line("  FAULTLINE TETHER ...... DISRUPTED  CHECK ANCHOR POINTS", C_AMBER, 0.10),
+		_line("  CELESTIAL ZONE REGISTRY ..... LOADING KNOWN SECTORS", C_GREEN, 0.0),
+		_line("  METASTRATAL TOPOLOGY CACHE .. PARTIAL  (UNCHARTED REGIONS FLAGGED)", C_AMBER, 0.0),
+		_line("  ARCHITECT SIGNATURE ......... NOT FOUND (EXPECTED)", C_DIM, 0.0),
+		_line("  FAULTLINE TETHER ............ DISRUPTED  CHECK ANCHOR POINTS", C_AMBER, 0.10),
 		
 		_line("SECURITY SUBSYSTEM:", C_WHITE, 1.5),
 		_line("  CIPHER ENGINE ..... ONYX-CRYPT  256-bit  OK", C_GREEN, 0.0),
-		_line("  ANIMUS CONTAMINANT LOCK ........ BIOMETRIC COMPROMISED (SEEK IMMEDIATE MEDICAL ASSISTANCE/EUTHANASIA)", C_RED, 0.0),
+		_line("  ANIMUS CONTAMINANT LOCK ........ BIOPNEUMA COMPROMISED (SEEK IMMEDIATE MEDICAL ASSISTANCE/EUTHANASIA)", C_RED, 0.0),
 		_line("  INTRUSION LOG ..... 1 EVENT(S) SINCE LAST BOOT, 1 EVENT(S) PRIOR (2 INTRUDERS FOUND)", C_AMBER, 0.0),
 		_line("  SAFEGUARD MODE .... CUSTOM(ADMIN OVERRIDE)", C_RED, 0.0),
 		_line(" ", C_DIM, 0.04),
 		_line("  WARNING: MUNICIPAL AUTHORITY SIGNATURE  --  NO RESPONSE (LOCAL OYARSE NOT FOUND, ANCILLARY ELDIRA ABSENT)", C_AMBER, 1.56),
-		_line("  WARNING: BIOMASS ENCROACHMENT DETECTED IN CACHE", C_AMBER, 0.0),
-		_line("  SYSTEM MESSAGE: have fun loser", C_RED, 0.56),
+		_line("  WARNING: BIOPNEUMIC MATERIAL ENCROACHMENT DETECTED IN CACHE", C_RED, 0.0),
+		_line("  SYSTEM MESSAGE: Good morning, K&$^%&*]#.", C_GOLD, 0.56),
 		_line(" ", C_DIM, 0.04),
 		_line("ALL CRITICAL SYSTEMS OPERATIONAL(QUERY RETURNED VARIABLE RESULTS)", C_AMBER, 0.22),
 		_line(" ", C_DIM, 0.04),

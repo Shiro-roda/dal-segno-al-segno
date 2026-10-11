@@ -50,7 +50,7 @@ center_offset = Vector3(640, 480, 0)
 [node name="GameRoot" type="Node" unique_id=1011693636]
 
 [node name="WorldLayer" type="CanvasLayer" parent="." unique_id=5428774 groups=["world_layer"]]
-layer = 201
+layer = 50
 visible = false
 
 [node name="SubViewportContainer" type="SubViewportContainer" parent="WorldLayer" unique_id=1530188973]

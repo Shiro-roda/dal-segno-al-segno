@@ -272,11 +272,11 @@ func _build_settings_menu() -> void:
 # ── Helper: audio bus slider row ──────────────────────────────────────────────
 func _make_slider_row(label_text: String, bus_name: String,
 		min_v: float, max_v: float, step: float) -> Control:
-	var wrap := VBoxContainer.new()
-	wrap.add_theme_constant_override("separation", 2)
+	var holder := VBoxContainer.new()
+	holder.add_theme_constant_override("separation", 2)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
-	wrap.add_child(row)
+	holder.add_child(row)
 	var lbl := Label.new()
 	lbl.text = label_text
 	lbl.custom_minimum_size = Vector2(120, 0)
@@ -310,16 +310,16 @@ func _make_slider_row(label_text: String, bus_name: String,
 		val_lbl.text = "%d%%" % int(v * 100)
 		if bus_idx >= 0:
 			AudioServer.set_bus_volume_db(bus_idx, linear_to_db(v) if v > 0.0 else -80.0))
-	return wrap
+	return holder
 
 # ── Helper: CRT shader parameter slider row ───────────────────────────────────
 func _make_shader_slider_row(label_text: String, mat: ShaderMaterial,
 		param: String, min_v: float, max_v: float, step: float, cur: float) -> Control:
-	var wrap := VBoxContainer.new()
-	wrap.add_theme_constant_override("separation", 2)
+	var holder := VBoxContainer.new()
+	holder.add_theme_constant_override("separation", 2)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
-	wrap.add_child(row)
+	holder.add_child(row)
 	var lbl := Label.new()
 	lbl.text = label_text
 	lbl.custom_minimum_size = Vector2(120, 0)
@@ -348,7 +348,7 @@ func _make_shader_slider_row(label_text: String, mat: ShaderMaterial,
 	slider.value_changed.connect(func(v: float):
 		val_lbl.text = "%.2f" % v
 		mat.set_shader_parameter(param, v))
-	return wrap
+	return holder
 
 # ── Helper: get CRT ShaderMaterial ───────────────────────────────────────────
 func _get_crt_mat() -> ShaderMaterial:
@@ -418,8 +418,8 @@ func _clear_col() -> void:
 
 
 func _make_btn(label: String, hint: String, font: Font, callback: Callable, disabled: bool = false) -> Control:
-	var wrap := VBoxContainer.new()
-	wrap.add_theme_constant_override("separation", 4)
+	var holder := VBoxContainer.new()
+	holder.add_theme_constant_override("separation", 4)
 
 	var btn := Button.new()
 	btn.text = label
@@ -448,7 +448,7 @@ func _make_btn(label: String, hint: String, font: Font, callback: Callable, disa
 
 	if not disabled:
 		btn.pressed.connect(callback)
-	wrap.add_child(btn)
+	holder.add_child(btn)
 
 	if hint != "":
 		var hint_lbl := Label.new()
@@ -457,9 +457,9 @@ func _make_btn(label: String, hint: String, font: Font, callback: Callable, disa
 		hint_lbl.add_theme_font_size_override("font_size", 11)
 		hint_lbl.add_theme_font_override("font", font)
 		hint_lbl.add_theme_color_override("font_color", C_DIM)
-		wrap.add_child(hint_lbl)
+		holder.add_child(hint_lbl)
 
-	return wrap
+	return holder
 
 
 ## Open the boot_sequence manual directly (skipping the POST sequence).

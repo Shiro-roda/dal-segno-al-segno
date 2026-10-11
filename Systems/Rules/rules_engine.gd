@@ -41,6 +41,14 @@ func register_stat(def: StatDef) -> void:
 func get_stat(id: StringName) -> StatDef:
 	return stats.get(id) as StatDef
 
+## How a stat is named in log text: attributes use their abbreviation, everything else its full name.
+func stat_label(stat_id: StringName) -> String:
+	var def := get_stat(stat_id)
+	if def == null:
+		return String(stat_id)
+	if text.abbreviate_attributes and def.category == StatDef.Category.ATTRIBUTE:
+		return def.short_name()
+	return def.display_name
 
 ## Loads every StatDef .tres found in `dir` and its subfolders.
 func load_stat_defs(dir: String) -> int:
@@ -105,7 +113,12 @@ func _resolve(kind: RollResult.Kind, actor: StatBlock, stat_id: StringName, targ
 	r.kind = kind
 	r.stat = stat_id
 	r.target = target
-	var adv := actor.advantage_sources(stat_id)
+	var roll_key := &""
+	if kind == RollResult.Kind.ATTACK:
+		roll_key = &"attack"
+	elif kind == RollResult.Kind.SAVE:
+		roll_key = &"save"
+	var adv := actor.advantage_sources(stat_id, roll_key)
 	r.mode = resolve_mode(mode, adv["adv"], adv["dis"])
 	var die := roll_die(r.mode)
 	r.natural = die["natural"]
@@ -134,9 +147,8 @@ func _resolve(kind: RollResult.Kind, actor: StatBlock, stat_id: StringName, targ
 	if label != "":
 		r.label = label
 	else:
-		var def := get_stat(stat_id)
 		r.label = say(&"check_label", {"actor": actor.display_name,
-				"stat": def.display_name if def != null else String(stat_id)})
+				"stat": stat_label(stat_id)})
 	r.text = text
 	return r
 
@@ -152,8 +164,9 @@ func attack(attacker: StatBlock, stat_id: StringName, defender: StatBlock,
 		mode: RollMode = RollMode.NORMAL, extra_bonus: int = 0, label: String = "") -> RollResult:
 	if label == "":
 		label = say(&"attack_label", {"attacker": attacker.display_name, "defender": defender.display_name})
-	return _resolve(RollResult.Kind.ATTACK, attacker, stat_id, defender.defense(), mode, extra_bonus, label)
-
+	var flat := attacker.modifier_bonus(&"attack")
+	return _resolve(RollResult.Kind.ATTACK, attacker, stat_id, defender.defense(), mode,
+			extra_bonus + flat, label)
 
 ## Saving throw for `target` against a fixed DC.
 func save(target: StatBlock, stat_id: StringName, dc: int, mode: RollMode = RollMode.NORMAL,
@@ -180,9 +193,14 @@ func anima_cost_for(action: ActionDef, level: int = 0) -> int:
 
 ## Uses an action. For a Canto, `cast_level` picks the level to cast it at (0 means
 ## its own level; anything else is limited to what the Canto allows).
-## Returns {ok, reason, level, rolls: Array[RollResult], log: Array[String]}.
-func use_action(user: StatBlock, action: ActionDef, targets: Array, cast_level: int = 0) -> Dictionary:
-	var result := {"ok": false, "reason": "", "level": 0, "rolls": [], "log": []}
+## `targets` is either a flat Array of StatBlocks (used for every effect not
+## aimed at SELF) or a Dictionary {EffectDef.Target: Array[StatBlock]}. SELF always means
+## the user. Returns {ok, reason, level, rolls: Array[RollResult], log: Array[String],
+## action: String, readout: Array[Dictionary]}. `readout` lists every number rolled, in
+## order, for the combat roll display (see _readout).
+func use_action(user: StatBlock, action: ActionDef, targets: Variant, cast_level: int = 0) -> Dictionary:
+	var result := {"ok": false, "reason": "", "level": 0, "rolls": [], "log": [],
+			"readout": [], "action": action.display_name}
 	if not user.can_act():
 		result["reason"] = say(&"cannot_act", {"actor": user.display_name})
 		return result
@@ -190,7 +208,6 @@ func use_action(user: StatBlock, action: ActionDef, targets: Array, cast_level: 
 		result["reason"] = say(&"canto_locked", {"actor": user.display_name,
 				"action": action.display_name, "level": action.canto_level})
 		return result
-	# An upcast is held at the highest level the caster has unlocked.
 	var level := action.resolve_level(cast_level)
 	if action.is_canto():
 		level = mini(level, user.max_canto_level())
@@ -206,49 +223,107 @@ func use_action(user: StatBlock, action: ActionDef, targets: Array, cast_level: 
 		_log(result, &"cantrip_used", {"actor": user.display_name, "action": action.display_name})
 	else:
 		_log(result, &"action_used", {"actor": user.display_name, "action": action.display_name})
-	var resolved_targets: Array = [user] if action.target == ActionDef.Target.SELF else targets
-	for t: StatBlock in resolved_targets:
-		_apply_to_target(user, action, t, result, level)
-	return result
 
-
-func _apply_to_target(user: StatBlock, action: ActionDef, target: StatBlock, result: Dictionary,
-		level: int = 0) -> void:
-	var hit := true
-	var crit := false
-	var saved := false
-	match action.roll:
-		ActionDef.Roll.ATTACK:
-			var attack_stat := action.attack_stat if action.attack_stat != &"" else user.weapon_attack_stat()
-			var r := attack(user, attack_stat, target)
-			result["rolls"].append(r)
-			var attack_line := r.describe()
-			if attack_line != "":
-				result["log"].append(attack_line)
-			hit = r.success
-			crit = r.crit
-		ActionDef.Roll.SAVE:
-			var dc := save_dc(user, action.dc_stat)
-			var r := save(target, action.save_stat, dc)
-			result["rolls"].append(r)
-			var save_line := r.describe()
-			if save_line != "":
-				result["log"].append(save_line)
-			saved = r.success
-	if not hit:
-		return
-	# How many levels above the Canto's own level this was cast at.
+	var by_kind := _targets_by_kind(user, action, targets)
 	var levels_up := 0
 	if action.is_canto():
 		levels_up = maxi(0, level - action.canto_level)
 	elif action.is_cantrip():
 		levels_up = config.cantrip_tier(user.level)
+	# Everyone hit, in the order the effects first name them, so the log reads target by
+	# target: that target's roll, then its effects.
+	var hit_order: Array = []
 	for effect in action.effects:
-		_apply_effect(user, effect, target, crit, saved, result, levels_up)
+		if effect == null:
+			continue
+		for t in by_kind.get(effect.target, []):
+			if not hit_order.has(t):
+				hit_order.append(t)
+	var passes := _attack_passes(user, action)
+	for i in passes.size():
+		user.weapon_override = passes[i]
+		for t in hit_order:
+			var foe := t as StatBlock
+			if i > 0 and foe != user and foe.corpus <= 0:
+				continue  # already down: skip the remaining attacks on it
+			_apply_to_target(user, action, foe, by_kind, result, levels_up)
+	user.weapon_override = null
+	return result
 
 
-func _apply_effect(user: StatBlock, effect: EffectDef, target: StatBlock,
-		crit: bool, saved: bool, result: Dictionary, levels_up: int = 0) -> void:
+## Adds one rolled number to an action result's readout, which the combat roll display
+## plays back. kind: attack, save, damage, heal or anima. `who` made the roll, `against`
+## is who it was made against or aimed at. outcome: hit, miss, saved, failed, or empty.
+func _readout(result: Dictionary, kind: StringName, value: int, who: String, against: String,
+		detail := "", outcome: StringName = &"", crit := false, fumble := false) -> void:
+	(result["readout"] as Array).append({"kind": kind, "value": value, "who": who,
+			"against": against, "detail": detail, "outcome": outcome,
+			"crit": crit, "fumble": fumble})
+
+
+func _targets_by_kind(user: StatBlock, action: ActionDef, targets: Variant) -> Dictionary:
+	var out := {}
+	if targets is Dictionary:
+		out = (targets as Dictionary).duplicate()
+	else:
+		for kind in action.target_kinds():
+			out[kind] = targets
+	out[EffectDef.Target.SELF] = [user]
+	return out
+
+
+func _apply_to_target(user: StatBlock, action: ActionDef, target: StatBlock, by_kind: Dictionary,
+		result: Dictionary, levels_up: int = 0) -> void:
+	var hit := true
+	var crit := false
+	var saved := false
+	# Only enemy-aimed effects are rolled for; self and ally effects always land.
+	var rolled := false
+	if target != user:
+		for effect in action.effects:
+			if effect != null and effect.is_hostile() \
+					and (by_kind.get(effect.target, []) as Array).has(target):
+				rolled = true
+				break
+	if rolled:
+		match action.roll:
+			ActionDef.Roll.ATTACK:
+				var attack_stat := action.attack_stat if action.attack_stat != &"" else user.weapon_attack_stat()
+				var r := attack(user, attack_stat, target)
+				for m in _mechanics_for(user, action):
+					m.on_attack_rolled(user, action, r, target)
+				result["rolls"].append(r)
+				var attack_line := r.describe()
+				if attack_line != "":
+					result["log"].append(attack_line)
+				_readout(result, &"attack", r.total, user.display_name, target.display_name,
+						"d20 %d %+d  vs %d" % [r.natural, r.bonus, r.target],
+						&"hit" if r.success else &"miss", r.crit, r.fumble)
+				hit = r.success
+				crit = r.crit
+			ActionDef.Roll.SAVE:
+				var dc := save_dc(user, action.dc_stat)
+				var r := save(target, action.save_stat, dc)
+				result["rolls"].append(r)
+				var save_line := r.describe()
+				if save_line != "":
+					result["log"].append(save_line)
+				_readout(result, &"save", r.total, target.display_name, user.display_name,
+						"d20 %d %+d  vs DC %d" % [r.natural, r.bonus, r.target],
+						&"saved" if r.success else &"failed")
+				saved = r.success
+	for effect in action.effects:
+		if effect == null or not (by_kind.get(effect.target, []) as Array).has(target):
+			continue
+		if effect.is_hostile():
+			if hit:
+				_apply_effect(user, effect, target, action, crit, saved, result, levels_up)
+		else:
+			_apply_effect(user, effect, target, action, false, false, result, levels_up)
+
+
+func _apply_effect(user: StatBlock, effect: EffectDef, target: StatBlock, action: ActionDef,
+		crit: bool, saved: bool, result: Dictionary, levels_up: int = 0,) -> void:
 	if saved and effect.on_save == EffectDef.OnSave.NEGATES:
 		_log(result, &"resisted", {"target": target.display_name})
 		return
@@ -270,16 +345,35 @@ func _apply_effect(user: StatBlock, effect: EffectDef, target: StatBlock,
 			if saved and effect.on_save == EffectDef.OnSave.HALF:
 				amount = floori(amount / 2.0)
 			amount = maxi(0, amount)
-			var dealt := target.take_damage(amount)
+			var note := String(damage_type)
+			if saved and effect.on_save == EffectDef.OnSave.HALF:
+				note += ", halved"
+			var event := DamageEvent.new()
+			event.source = user
+			event.target = target
+			event.action = action
+			event.amount = amount
+			event.damage_type = damage_type
+			event.crit = crit
+			var dealt := target.receive_damage(event)
+			for n in event.notes:
+				note += ", " + n
+			_readout(result, &"damage", event.amount, user.display_name, target.display_name, note, &"", crit)
+			for m in _mechanics_for(user, action):
+				m.on_damage_dealt(user, event)
 			_log(result, &"damage", {"target": target.display_name, "amount": dealt,
 					"type": damage_type, "corpus": target.corpus, "max_corpus": target.max_corpus()})
 		EffectDef.Kind.HEAL:
 			var total := int(Dice.roll_expr(effect.dice, rng)["total"]) + _upcast_total(effect, levels_up)
-			var healed := target.heal(maxi(0, total + bonus))
+			var healing := maxi(0, total + bonus)
+			_readout(result, &"heal", healing, user.display_name, target.display_name, "healing")
+			var healed := target.heal(healing)
 			_log(result, &"heal", {"target": target.display_name, "amount": healed})
 		EffectDef.Kind.RESTORE_ANIMA:
 			var total := int(Dice.roll_expr(effect.dice, rng)["total"]) + _upcast_total(effect, levels_up)
-			var restored := target.restore_anima(maxi(0, total + bonus))
+			var refill := maxi(0, total + bonus)
+			_readout(result, &"anima", refill, user.display_name, target.display_name, "anima")
+			var restored := target.restore_anima(refill)
 			_log(result, &"anima_restored", {"target": target.display_name, "amount": restored})
 		EffectDef.Kind.APPLY_CONDITION:
 			if effect.condition != null:
@@ -291,6 +385,9 @@ func _apply_effect(user: StatBlock, effect: EffectDef, target: StatBlock,
 				target.add_condition(effect.condition, user.display_name, dur)
 				_log(result, &"condition_applied", {"target": target.display_name,
 						"condition": effect.condition.display_name})
+		EffectDef.Kind.CUSTOM:
+			effect.apply_custom(self, user, target, {"crit": crit, "saved": saved,
+					"levels_up": levels_up, "result": result})
 
 
 ## Extra dice from casting a Canto above its own level: `upcast_dice` once per level.
@@ -301,3 +398,24 @@ func _upcast_total(effect: EffectDef, levels_up: int, mult: int = 1) -> int:
 	for _i in levels_up:
 		total += int(Dice.roll_expr(effect.upcast_dice, rng, mult)["total"])
 	return total
+
+func _mechanics_for(user: StatBlock, action: ActionDef) -> Array[Mechanic]:
+	var out = user.active_mechanics()
+	for m in action.mechanics:
+		if m != null:
+			out.append(m)
+	return out
+
+## One entry per attack the action makes: null = the equipped weapon, else the weapon to
+## swap in. Only weapon actions (those with a weapon-damage step) get extra attacks.
+func _attack_passes(user: StatBlock, action: ActionDef) -> Array:
+	if not action.is_weapon_action():
+		return [null]
+	var out: Array = []
+	for _i in maxi(1, user.attacks_with(false)):
+		out.append(null)
+	var secondary := user.secondary_weapon()
+	if secondary != null:
+		for _i in user.attacks_with(true):
+			out.append(secondary)
+	return out

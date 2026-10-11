@@ -28,7 +28,7 @@ enum NoteColor { NONE, RED, GREEN, BLUE }
 ## How many notes this enemy drops when it is laid to rest, before the room's
 ## note_multiplier and the main-path bonus. 0 = drops none.
 @export_range(0, 100) var notes_per_kill: int = 4
-
+@export var mechanics: Array[Mechanic] = []
 
 func build_block(engine: RulesEngine) -> StatBlock:
 	var b := StatBlock.new(engine, display_name, level)
@@ -41,5 +41,6 @@ func build_block(engine: RulesEngine) -> StatBlock:
 			b.scores[def.id] = engine.config.attribute_base
 	b.known_actions = known_actions.duplicate()
 	b.apply_equipment(equipment)
+	b.innate_mechanics.assign(mechanics)
 	b.refill()
 	return b

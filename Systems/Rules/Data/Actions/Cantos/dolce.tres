@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="ActionDef" format=3 uid="uid://by223nx2ccfy1"]
+
+[ext_resource type="Script" uid="uid://hgdwyugnb20t" path="res://Systems/Rules/effect_def.gd" id="1_f5du0"]
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="2_6h0ld"]
+[ext_resource type="Script" uid="uid://0bb6gaktbv7m" path="res://Systems/Rules/mechanic.gd" id="2_vdjmb"]
+
+[sub_resource type="Resource" id="Resource_vdjmb"]
+script = ExtResource("1_f5du0")
+target = 4
+kind = 1
+dice = "1d8"
+bonus_stat = &"delusion"
+upcast_dice = "1d8"
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[resource]
+script = ExtResource("2_6h0ld")
+id = &"dolce"
+display_name = "Dolce"
+effects = Array[ExtResource("1_f5du0")]([SubResource("Resource_vdjmb")])
+tags = PackedStringArray("canto", "heal", "blue")
+canto_level = 1
+max_canto_level = 3
+cantrip = null
+metadata/_custom_type_script = "uid://njw6l7ex23w0"

@@ -1,0 +1,49 @@
+[gd_resource type="Resource" script_class="ActionDef" format=3 uid="uid://c18g0xae3vc4j"]
+
+[ext_resource type="Script" uid="uid://hgdwyugnb20t" path="res://Systems/Rules/effect_def.gd" id="1_v8xhu"]
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="2_aa4am"]
+[ext_resource type="Script" uid="uid://6nbup8pfuhsr" path="res://Systems/Rules/condition_def.gd" id="2_n7nnx"]
+[ext_resource type="Script" uid="uid://0bb6gaktbv7m" path="res://Systems/Rules/mechanic.gd" id="2_q2jn3"]
+[ext_resource type="Resource" uid="uid://fmc67ao44d2w" path="res://Systems/Rules/Data/Conditions/bleed.tres" id="3_q2jn3"]
+
+[sub_resource type="Resource" id="Resource_n7nnx"]
+script = ExtResource("1_v8xhu")
+target = 4
+kind = 1
+dice = "2d4"
+bonus_stat = &"aversion"
+upcast_dice = "2d4"
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[sub_resource type="Resource" id="Resource_oa7it"]
+script = ExtResource("2_n7nnx")
+id = &"roused"
+display_name = "Roused"
+advantage_on = PackedStringArray("attack")
+disadvantage_on = null
+metadata/_custom_type_script = "uid://6nbup8pfuhsr"
+
+[sub_resource type="Resource" id="Resource_q2jn3"]
+script = ExtResource("1_v8xhu")
+target = 4
+kind = 2
+condition = SubResource("Resource_oa7it")
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[sub_resource type="Resource" id="Resource_3sd5v"]
+script = ExtResource("1_v8xhu")
+target = 0
+kind = 2
+condition = ExtResource("3_q2jn3")
+upcast_dice = "1d4"
+upcast_duration = 1
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[resource]
+script = ExtResource("2_aa4am")
+id = &"asceta"
+display_name = "Asceta"
+effects = Array[ExtResource("1_v8xhu")]([SubResource("Resource_n7nnx"), SubResource("Resource_q2jn3"), SubResource("Resource_3sd5v")])
+tags = null
+canto_level = 1
+metadata/_custom_type_script = "uid://njw6l7ex23w0"

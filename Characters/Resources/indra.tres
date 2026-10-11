@@ -1,35 +1,45 @@
 [gd_resource type="Resource" script_class="CharacterSheet" format=3 uid="uid://brepgo6o2no6w"]
 
+[ext_resource type="Script" uid="uid://0bb6gaktbv7m" path="res://Systems/Rules/mechanic.gd" id="1_r1ahi"]
 [ext_resource type="Script" uid="uid://m5jx56lhrgsj" path="res://Systems/Rules/item_def.gd" id="1_ubu7k"]
 [ext_resource type="Resource" uid="uid://ctap7c8e55jk4" path="res://Systems/Rules/Data/Items/pipe.tres" id="2_h3l61"]
 [ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="2_uaifi"]
 [ext_resource type="Script" uid="uid://dgq0h13x363vr" path="res://Systems/Rules/character_sheet.gd" id="3_h3l61"]
 [ext_resource type="Script" uid="uid://ch43wbypcqtmy" path="res://Systems/Progression/feat_def.gd" id="3_mgv03"]
-[ext_resource type="PackedScene" uid="uid://b5one47frkahl" path="res://Exploration/Scenes/placeholder_model.tscn" id="5_nlrtf"]
-[ext_resource type="Resource" uid="uid://cgmsgmhe4m8k0" path="res://Systems/Rules/Data/Actions/Cantos/decelerando.tres" id="6_vgsv6"]
+[ext_resource type="PackedScene" uid="uid://dn5epo5gdb3md" path="res://Characters/Assets/placeholder_indra_model.tscn" id="5_w1gjw"]
+[ext_resource type="Resource" uid="uid://bmww6821xcxg0" path="res://Systems/Rules/Data/Actions/Cantos/decelerando.tres" id="6_vgsv6"]
+[ext_resource type="Script" uid="uid://dgjru07ppk3il" path="res://Systems/Rules/Mechanics/damage_type_affinity.gd" id="6_xiw0k"]
 [ext_resource type="Script" uid="uid://cu31n7k0if3db" path="res://Systems/Progression/progression_def.gd" id="6_y8yax"]
 [ext_resource type="Resource" uid="uid://dlah7x5v0ryr7" path="res://Systems/Rules/Data/Actions/Cantos/dissonante.tres" id="7_mk1f8"]
 [ext_resource type="Resource" uid="uid://bb14mw2dyt6wr" path="res://Systems/Rules/Data/Actions/Cantos/fuoco.tres" id="8_xbyhu"]
 [ext_resource type="Resource" uid="uid://wcokfytvvwge" path="res://Systems/Rules/Data/Actions/Cantos/obbligato.tres" id="9_257wu"]
+[ext_resource type="Resource" uid="uid://c18g0xae3vc4j" path="res://Systems/Rules/Data/Actions/Cantos/asceta.tres" id="10_a25ht"]
 [ext_resource type="Resource" uid="uid://r1f0s1gadhds" path="res://Systems/Rules/Data/Feats/guerriero1.tres" id="10_w1gjw"]
 [ext_resource type="Resource" uid="uid://dmrn6jlunkd5v" path="res://Systems/Rules/Data/Actions/Cantrips/arietta.tres" id="10_xbyhu"]
+[ext_resource type="Resource" uid="uid://by223nx2ccfy1" path="res://Systems/Rules/Data/Actions/Cantos/dolce.tres" id="11_1l3ww"]
 [ext_resource type="Resource" uid="uid://grbpcursif34" path="res://Systems/Rules/Data/Actions/Cantrips/repel.tres" id="11_257wu"]
 [ext_resource type="Resource" uid="uid://c48w0t4qc6icj" path="res://Systems/Rules/Data/Feats/guerriero2.tres" id="11_a25ht"]
 [ext_resource type="Resource" uid="uid://bxcyytfmgflm2" path="res://Systems/Rules/Data/Feats/guerriero3.tres" id="12_1l3ww"]
 [ext_resource type="Resource" uid="uid://cqagxy84k7yor" path="res://Systems/Rules/Data/Feats/virtuoso.tres" id="13_r1ahi"]
+[ext_resource type="Resource" uid="uid://mj31xj8kp4em" path="res://Systems/Rules/Data/Feats/barbaro.tres" id="18_a25ht"]
+
+[sub_resource type="Resource" id="Resource_afcwg"]
+script = ExtResource("6_xiw0k")
+damage_type = &"red"
+multiplier = 1.5
+metadata/_custom_type_script = "uid://dgjru07ppk3il"
 
 [sub_resource type="Resource" id="Resource_27q3x"]
 script = ExtResource("6_y8yax")
 max_level = 20
 xp_thresholds = PackedInt32Array(30, 90, 270, 650, 1400, 2300, 3400, 4800, 6400, 8500, 10000, 12000, 14000, 16500, 19500, 22500, 26500, 30500, 35500)
-first_pick_level = 1
 canto_every = 3
 attribute_every = 4
 starting_feats = 1
 starting_cantos = 1
 starting_cantrips = 1
-feat_pool = Array[ExtResource("3_mgv03")]([ExtResource("10_w1gjw"), ExtResource("11_a25ht"), ExtResource("12_1l3ww"), ExtResource("13_r1ahi")])
-canto_pool = Array[ExtResource("2_uaifi")]([ExtResource("6_vgsv6"), ExtResource("7_mk1f8"), ExtResource("8_xbyhu"), ExtResource("9_257wu")])
+feat_pool = Array[ExtResource("3_mgv03")]([ExtResource("10_w1gjw"), ExtResource("11_a25ht"), ExtResource("12_1l3ww"), ExtResource("13_r1ahi"), ExtResource("18_a25ht")])
+canto_pool = Array[ExtResource("2_uaifi")]([ExtResource("6_vgsv6"), ExtResource("7_mk1f8"), ExtResource("8_xbyhu"), ExtResource("9_257wu"), ExtResource("10_a25ht"), ExtResource("11_1l3ww")])
 cantrip_pool = Array[ExtResource("2_uaifi")]([ExtResource("10_xbyhu"), ExtResource("11_257wu")])
 metadata/_custom_type_script = "uid://cu31n7k0if3db"
 
@@ -37,7 +47,7 @@ metadata/_custom_type_script = "uid://cu31n7k0if3db"
 script = ExtResource("3_h3l61")
 id = &"indra"
 display_name = "Indra"
-model_scene = ExtResource("5_nlrtf")
+model_scene = ExtResource("5_w1gjw")
 corpus_die = 10
 scores = Dictionary[StringName, int]({
 &"attachment": 7,
@@ -48,6 +58,7 @@ scores = Dictionary[StringName, int]({
 &"volume": 16
 })
 progression = SubResource("Resource_27q3x")
+mechanics = Array[ExtResource("1_r1ahi")]([SubResource("Resource_afcwg")])
 equipment = Dictionary[StringName, ExtResource("1_ubu7k")]({
 &"weapon": ExtResource("2_h3l61")
 })

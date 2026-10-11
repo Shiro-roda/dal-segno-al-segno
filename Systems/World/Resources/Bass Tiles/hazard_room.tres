@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="TileDef" format=3 uid="uid://cbojwmtdsfo4o"]
+
+[ext_resource type="Script" uid="uid://7e2wjvm1ll1u" path="res://Systems/Combat/enemy_template.gd" id="1_q3hsj"]
+[ext_resource type="Script" uid="uid://ctdr6c6mprt8h" path="res://Systems/World/Features/hazard_def.gd" id="2_w47eo"]
+[ext_resource type="Script" uid="uid://b2sa2hhblvquv" path="res://Systems/World/tile_def.gd" id="3_51vmc"]
+
+[sub_resource type="Resource" id="Resource_ogvfk"]
+script = ExtResource("2_w47eo")
+save_stat = &"tone"
+trigger_text = "The air around you groans in reticent anger, and sweat pours down your faces. You should leave quickly."
+
+[resource]
+script = ExtResource("3_51vmc")
+id = &"hazard_room"
+display_name = "Boiler Room"
+hazard = SubResource("Resource_ogvfk")
+color = Vector3i(0, 0, 60)
+description = "[Hazard room description shown on the blueprint.]"

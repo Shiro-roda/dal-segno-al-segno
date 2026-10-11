@@ -1,0 +1,50 @@
+[gd_resource type="Resource" script_class="FeatDef" format=3 uid="uid://mj31xj8kp4em"]
+
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="1_plec1"]
+[ext_resource type="Script" uid="uid://hgdwyugnb20t" path="res://Systems/Rules/effect_def.gd" id="2_0kupj"]
+[ext_resource type="Script" uid="uid://ch43wbypcqtmy" path="res://Systems/Progression/feat_def.gd" id="2_p5bvt"]
+[ext_resource type="Script" uid="uid://0bb6gaktbv7m" path="res://Systems/Rules/mechanic.gd" id="3_redom"]
+[ext_resource type="Script" uid="uid://6nbup8pfuhsr" path="res://Systems/Rules/condition_def.gd" id="4_nmo4w"]
+
+[sub_resource type="Resource" id="Resource_ryphl"]
+script = ExtResource("4_nmo4w")
+id = &"reckless"
+display_name = "Reckless"
+duration_rounds = 1
+modifiers = {
+&"attack": -5,
+&"damage": 10
+}
+advantage_on = PackedStringArray()
+disadvantage_on = null
+metadata/_custom_type_script = "uid://6nbup8pfuhsr"
+
+[sub_resource type="Resource" id="Resource_wggb8"]
+script = ExtResource("2_0kupj")
+target = 0
+kind = 2
+condition = SubResource("Resource_ryphl")
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[sub_resource type="Resource" id="Resource_redom"]
+script = ExtResource("2_0kupj")
+kind = 4
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[sub_resource type="Resource" id="Resource_0kupj"]
+script = ExtResource("1_plec1")
+id = &"brute_force"
+display_name = "Brute Force"
+roll = 1
+attack_stat = &"volume"
+effects = Array[ExtResource("2_0kupj")]([SubResource("Resource_wggb8"), SubResource("Resource_redom")])
+tags = null
+metadata/_custom_type_script = "uid://njw6l7ex23w0"
+
+[resource]
+script = ExtResource("2_p5bvt")
+id = &"barbaro"
+display_name = "Barbaro"
+granted_actions = Array[ExtResource("1_plec1")]([SubResource("Resource_0kupj")])
+tags = null
+metadata/_custom_type_script = "uid://ch43wbypcqtmy"

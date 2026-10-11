@@ -136,6 +136,8 @@ static func apply(offer: LevelUpOffer, roster: PartyRoster, p_rng: RandomNumberG
 	var corpus_roll := 0
 	if offer.is_starting:
 		sheet.starting_picks_done = true
+	elif offer.is_bonus:
+		pass  # no level gained, no hit die rolled
 	else:
 		# Settle any earlier unrolled levels first, then roll this level's hit die.
 		var rng := p_rng if p_rng != null else roster.engine.rng
@@ -149,7 +151,11 @@ static func apply(offer: LevelUpOffer, roster: PartyRoster, p_rng: RandomNumberG
 	for p in offer.picks:
 		match p["kind"]:
 			LevelUpOffer.FEAT:
-				sheet.feats.append(p["chosen"] as FeatDef)
+				var feat := p["chosen"] as FeatDef
+				sheet.feats.append(feat)
+				for m in feat.mechanics:
+					if m != null:
+						m.on_chosen(sheet)
 			LevelUpOffer.CANTO, LevelUpOffer.CANTRIP:
 				sheet.known_actions.append(p["chosen"] as ActionDef)
 			LevelUpOffer.ATTRIBUTE:
@@ -157,13 +163,16 @@ static func apply(offer: LevelUpOffer, roster: PartyRoster, p_rng: RandomNumberG
 				var base := roster.engine.config.attribute_base
 				sheet.scores[key] = _score(sheet.scores, key, base) + prog.attribute_amount
 				block.scores[key] = int(sheet.scores[key])
-
+	
+	if offer.is_bonus:
+		for p in offer.picks:
+			sheet.bonus_picks.erase(p.get("source"))
 	block.level = sheet.level
 	block.known_actions = sheet.known_actions.duplicate()
 	block.apply_feats(sheet.feats)
 	block.corpus = mini(block.corpus + maxi(0, block.max_corpus() - max_corpus_before), block.max_corpus())
 	block.anima = mini(block.anima + maxi(0, block.max_anima() - max_anima_before), block.max_anima())
-	if not offer.is_starting:
+	if not offer.is_starting and not offer.is_bonus:
 		_share_corpus(offer.char_id, corpus_roll, roster)
 	roster.changed.emit()
 	return true
@@ -246,7 +255,10 @@ static func auto_resolve(roster: PartyRoster, offer: LevelUpOffer) -> bool:
 	apply_recommended(offer, sheet, false, random, roster.engine.rng)
 	if not offer.is_complete():
 		return false
-	return apply(offer, roster)
+	if not apply(offer, roster):
+		return false
+	auto_resolve_bonus(roster, offer.char_id)
+	return true
 
 
 static func _best_recommended(sheet: CharacterSheet, kind: StringName, options: Array) -> Variant:
@@ -356,3 +368,41 @@ static func _score(scores: Dictionary, key: StringName, fallback: int) -> int:
 	if scores.has(String(key)):
 		return int(scores[String(key)])
 	return fallback
+
+## The next follow-up pick owed to `char_id` (one at a time), or null if none are owed.
+## An offer with no picks means every owed pick currently has nothing to offer.
+static func build_bonus_offer(roster: PartyRoster, char_id: StringName) -> LevelUpOffer:
+	var sheet := roster.get_sheet(char_id)
+	if sheet == null or sheet.bonus_picks.is_empty():
+		return null
+	var offer := LevelUpOffer.new()
+	offer.char_id = char_id
+	offer.new_level = sheet.level
+	offer.is_bonus = true
+	for m in sheet.bonus_picks:
+		var grant = m as GrantBonusPicks
+		if grant == null:
+			continue
+		var options = grant.build_options(sheet, roster.engine)
+		if options.is_empty():
+			continue
+		offer.picks.append({"kind": grant.kind, "options": options, "chosen": null, "source": m})
+		break
+	return offer
+
+
+## For a character set to pick automatically: resolves every owed bonus pick from their
+## recommendations. True if none are left that can be resolved; false if one needs the player.
+static func auto_resolve_bonus(roster: PartyRoster, char_id: StringName) -> bool:
+	var sheet := roster.get_sheet(char_id)
+	if sheet == null or not sheet.auto_pick_recommended:
+		return false
+	var random := sheet.auto_pick_fallback == CharacterSheet.AutoFallback.RANDOM
+	for _i in 16:
+		var offer := build_bonus_offer(roster, char_id)
+		if offer == null or offer.is_empty():
+			return true
+		apply_recommended(offer, sheet, false, random, roster.engine.rng)
+		if not offer.is_complete() or not apply(offer, roster):
+			return false
+	return false

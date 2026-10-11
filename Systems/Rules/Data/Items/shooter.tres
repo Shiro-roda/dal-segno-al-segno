@@ -2,15 +2,22 @@
 
 [ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="1_cb0fo"]
 [ext_resource type="Script" uid="uid://m5jx56lhrgsj" path="res://Systems/Rules/item_def.gd" id="2_6trjo"]
+[ext_resource type="Script" uid="uid://0bb6gaktbv7m" path="res://Systems/Rules/mechanic.gd" id="2_thrvg"]
+[ext_resource type="Script" uid="uid://b57rjp0l0o2ci" path="res://Systems/Rules/Mechanics/nth_shot_crit.gd" id="3_7800m"]
+
+[sub_resource type="Resource" id="Resource_qmytt"]
+script = ExtResource("3_7800m")
+metadata/_custom_type_script = "uid://b57rjp0l0o2ci"
 
 [resource]
 script = ExtResource("2_6trjo")
 id = &"sixshooter"
 display_name = "Six Shooter"
-description = "(every 6th bullet is a guaranteed crit)"
+description = "Every 6th bullet is a guaranteed crit."
 modifiers = Dictionary[StringName, int]({
 &"initiative": 5
 })
+mechanics = Array[ExtResource("2_thrvg")]([SubResource("Resource_qmytt")])
 damage_dice = "2d6 + 1"
 attack_stat = &"tempo"
 damage_stat = &"tempo"

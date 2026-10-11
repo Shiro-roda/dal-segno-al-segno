@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3 uid="uid://bxkeowheyat73"]
+
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="1_ieqo3"]
+[ext_resource type="Script" uid="uid://0bb6gaktbv7m" path="res://Systems/Rules/mechanic.gd" id="2_5han8"]
+[ext_resource type="Script" uid="uid://m5jx56lhrgsj" path="res://Systems/Rules/item_def.gd" id="3_3uhhm"]
+
+[resource]
+script = ExtResource("3_3uhhm")
+id = &"cool_stick"
+display_name = "Cool Stick"
+description = "A really cool looking stick you found. What is it doing here?"
+damage_dice = "1d6"
+attack_stat = &"volume"
+damage_stat = &"volume"
+weapon_tags = PackedStringArray("weapon")
+metadata/_custom_type_script = "uid://m5jx56lhrgsj"

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="TileDef" format=3 uid="uid://b08ue1nbh1urq"]
+
+[ext_resource type="Script" uid="uid://7e2wjvm1ll1u" path="res://Systems/Combat/enemy_template.gd" id="1_rbmbn"]
+[ext_resource type="Resource" uid="uid://dbhadhmcml5fk" path="res://Systems/Combat/Data/small_shadow.tres" id="2_2hwfg"]
+[ext_resource type="Script" uid="uid://b2sa2hhblvquv" path="res://Systems/World/tile_def.gd" id="3_sednr"]
+
+[resource]
+script = ExtResource("3_sednr")
+id = &"dark_room"
+display_name = "Dark Room"
+enemies = Array[ExtResource("1_rbmbn")]([ExtResource("2_2hwfg")])
+spawn_count = 6
+loot_per_kill = {
+&"cuts": 1
+}
+blueprint_min_day = 5
+color = Vector3i(50, 50, 50)
+metadata/_custom_type_script = "uid://b2sa2hhblvquv"

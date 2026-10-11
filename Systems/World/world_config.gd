@@ -25,8 +25,8 @@ extends Resource
 @export var tithe_order: Array[StringName] = [&"cuts", &"red_notes", &"green_notes", &"blue_notes"]
 ## Tithe due at the start of day N is tithe_base + tithe_per_day * (N - 1).
 @export var tithe_base := 0
-@export var tithe_per_day := 1
-## Unpaid tithe adds to a debt that makes remnants stronger.
+@export var tithe_per_day := 0.5
+## Unpaid tithe adds to a debt that makes enemies stronger.
 @export var debt_per_level := 4
 
 @export_group("Pressure")
@@ -62,9 +62,12 @@ extends Resource
 ## their notes cost. Village tiles never need one.
 @export var require_blueprints := true
 ## Blueprints offered at the start of each planning phase. Unused ones expire.
-@export var blueprints_per_day := 3
+@export var blueprints_per_day := 1
 ## A blueprint's draw weight is divided by (1 + this * copies already drawn today).
 @export var blueprint_repeat_penalty := 1.0
+## The standing blueprint adds one extra copy to every day's hand. Placing that copy
+## costs this many times the usual notes (the tile's other costs are unchanged).
+@export_range(1, 10) var extra_blueprint_cost_multiplier := 2
 
 @export_group("Recovery")
 ## Restore the party's Corpus and Anima when they return to the exit.
@@ -77,3 +80,10 @@ extends Resource
 ## Allow erasing any tile while planning. Off: only a spent room (every channel at
 ## 250) can be erased.
 @export var erase_any_tile := false
+
+@export_group("Rest and hazards")
+## Hit dice each character can spend per day in rest rooms: level times this. The pool
+## is shared by every rest room and refills when the next day begins.
+@export_range(0, 10) var hit_dice_per_level := 1
+## The most bonus blueprints hazards can add to a single day's hand.
+@export_range(0, 20) var hazard_bonus_cap := 3

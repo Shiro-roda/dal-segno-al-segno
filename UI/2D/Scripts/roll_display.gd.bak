@@ -1,0 +1,540 @@
+class_name RollDisplay
+extends Control
+## A slot-machine readout of every number rolled on a combatant's turn, stacked down the
+## top-right of the combat screen. The attack and save rolls, then the damage, healing
+## and anima dice, play one at a time in the order they were rolled, top to bottom. Each
+## digit spins through 0-9 and locks in with a pop, left to right.
+##
+## CombatHUD creates one and calls bind(). It listens to CombatSession.action_resolved and
+## reads the `readout` list that RulesEngine.use_action() puts in every result. The rolls
+## are already settled by then; this only plays them back, so it never touches the rules
+## RNG. Everything is drawn here, with colours from the active UI palette.
+
+const SLIDE_IN := 0.22
+const HEADER_LEAD := 0.12
+const FADE_OUT := 0.25
+const LAND_POP := 0.22
+const HEADER_H := 30.0
+const ROW_GAP := 8.0
+const CRIT_COLOR := Color(1.0, 0.86, 0.3)
+const FUMBLE_COLOR := Color(0.85, 0.22, 0.2)
+const ANIMA_COLOR := Color(0.3, 0.55, 1.0)
+const SAVE_COLOR := Color(0.35, 0.85, 1.0)
+
+@export_group("Timing")
+## Seconds before the first digit of a roll locks in.
+@export var spin_time := 0.6
+## Extra seconds for each further digit.
+@export var digit_stagger := 0.14
+## How often a spinning digit changes.
+@export var tick_seconds := 0.04
+## Pause between one roll landing and the next one starting.
+@export var row_pause := 0.12
+## How long a finished turn stays up.
+@export var hold_time := 1.8
+## When another turn is waiting, a finished one leaves after this long.
+@export var min_hold_time := 0.7
+
+@export_group("Behaviour")
+## Play the biggest number first, instead of the order the rolls were made.
+@export var sort_by_value := false
+@export var include_enemy_turns := true
+
+@export_group("Layout")
+## Gap between the stack and the top-right corner of the screen.
+@export var edge_margin := Vector2(28.0, 24.0)
+
+var _batches: Array[DisplayBatch] = []
+var _t := 0.0
+var _rng := RandomNumberGenerator.new()
+var _row_h := 64.0
+var _panel_w := 360.0
+var _list_top := 54.0
+
+
+## One number to show.
+class DisplayRow extends RefCounted:
+	var kind: StringName = &"attack"
+	var value := 0
+	var who := ""
+	var against := ""
+	var detail := ""
+	var outcome: StringName = &""
+	var crit := false
+	var fumble := false
+	var negative := false
+	var digits := PackedInt32Array()
+	var shown := PackedInt32Array()
+	var next_tick := PackedFloat32Array()
+	var lock_times := PackedFloat32Array()
+	var last_lock := 0.0
+	var started := false
+	var landed := false
+	var placed := false
+	var age := 0.0
+	var y := 0.0
+	var fade := 1.0
+	var shake := 0.0
+	var seed_angle := 0.0
+
+
+## Everything one action rolled: shown together under one header.
+class DisplayBatch extends RefCounted:
+	var actor_name := ""
+	var action_name := ""
+	var enemy := false
+	var rows: Array[DisplayRow] = []
+	var next_row := 0
+	var gap := 0.0
+	var hold := 0.0
+	var age := 0.0
+	var fade := 1.0
+	var retiring := false
+
+
+func _ready() -> void:
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_rng.randomize()
+
+
+func bind(session: CombatSession) -> void:
+	session.action_resolved.connect(_on_action_resolved)
+
+
+## True once nothing is left to show, so the HUD can close.
+func is_idle() -> bool:
+	return _batches.is_empty()
+
+
+# ------------------------------------------------------------------ intake
+
+func _on_action_resolved(actor: Combatant, result: Dictionary) -> void:
+	if actor.side == Combatant.Side.ENEMY and not include_enemy_turns:
+		return
+	var readout: Array = result.get("readout", [])
+	if readout.is_empty():
+		return
+	var batch := DisplayBatch.new()
+	batch.actor_name = actor.display_name()
+	batch.action_name = String(result.get("action", ""))
+	batch.enemy = actor.side == Combatant.Side.ENEMY
+	for entry: Dictionary in readout:
+		batch.rows.append(_make_row(entry))
+	if sort_by_value:
+		batch.rows.sort_custom(func(a: DisplayRow, b: DisplayRow) -> bool:
+			return a.value > b.value)
+	_batches.append(batch)
+
+
+func _make_row(entry: Dictionary) -> DisplayRow:
+	var row := DisplayRow.new()
+	row.kind = StringName(entry.get("kind", "attack"))
+	row.value = int(entry.get("value", 0))
+	row.who = String(entry.get("who", ""))
+	row.against = String(entry.get("against", ""))
+	row.detail = String(entry.get("detail", ""))
+	row.outcome = StringName(entry.get("outcome", ""))
+	row.crit = bool(entry.get("crit", false))
+	row.fumble = bool(entry.get("fumble", false))
+	row.negative = row.value < 0
+	var digits_text := str(absi(row.value))
+	for i in digits_text.length():
+		var digit := int(digits_text.substr(i, 1))
+		row.digits.append(digit)
+		row.shown.append(digit)
+		row.next_tick.append(0.0)
+		row.lock_times.append(0.0)
+	row.seed_angle = _rng.randf() * TAU
+	return row
+
+
+# ------------------------------------------------------------------ timing
+
+func _process(delta: float) -> void:
+	_t += delta
+	if _batches.is_empty():
+		return
+	_metrics()
+	var dt := delta * _speed()
+	var front := _batches[0]
+	_step_batch(front, dt)
+	if front.retiring and front.fade <= 0.0:
+		_batches.pop_front()
+	queue_redraw()
+
+
+## Plays faster when turns are piling up, so the display never falls far behind.
+func _speed() -> float:
+	return minf(1.0 + 0.75 * maxf(0.0, _batches.size() - 2.0), 3.0)
+
+
+func _metrics() -> void:
+	_row_h = clampf(size.y * 0.075, 46.0, 84.0)
+	_panel_w = clampf(_row_h * 5.6, 260.0, maxf(size.x * 0.45, 260.0))
+	_list_top = edge_margin.y + HEADER_H
+
+
+## How many rows fit before the stack would reach the action menu at mid-screen.
+func _max_rows() -> int:
+	return clampi(int((size.y * 0.5 - _list_top) / (_row_h + ROW_GAP)), 3, 8)
+
+
+func _step_batch(batch: DisplayBatch, dt: float) -> void:
+	batch.age += dt
+	if batch.retiring:
+		batch.fade -= dt / FADE_OUT
+		return
+	if batch.next_row < batch.rows.size():
+		batch.gap -= dt
+		if batch.gap <= 0.0 and batch.age >= HEADER_LEAD:
+			_start_row(batch, batch.rows[batch.next_row])
+			batch.next_row += 1
+	var all_landed := batch.next_row >= batch.rows.size()
+	var started: Array[DisplayRow] = []
+	for row in batch.rows:
+		if not row.started:
+			continue
+		_step_row(row, dt)
+		started.append(row)
+		if not row.landed:
+			all_landed = false
+	_arrange(started, dt)
+	if all_landed:
+		batch.hold += dt
+		if batch.hold >= hold_time or (_batches.size() > 1 and batch.hold >= min_hold_time):
+			batch.retiring = true
+
+
+func _start_row(batch: DisplayBatch, row: DisplayRow) -> void:
+	row.started = true
+	for i in row.digits.size():
+		row.lock_times[i] = spin_time + i * digit_stagger
+		row.shown[i] = _rng.randi_range(0, 9)
+		row.next_tick[i] = _rng.randf() * tick_seconds
+	row.last_lock = spin_time + (row.digits.size() - 1) * digit_stagger
+	batch.gap = row.last_lock + row_pause
+
+
+func _step_row(row: DisplayRow, dt: float) -> void:
+	row.age += dt
+	row.shake = maxf(0.0, row.shake - dt * 3.0)
+	for i in row.digits.size():
+		if row.age >= row.lock_times[i]:
+			row.shown[i] = row.digits[i]
+			continue
+		row.next_tick[i] -= dt
+		if row.next_tick[i] <= 0.0:
+			row.next_tick[i] = tick_seconds
+			row.shown[i] = _other_digit(row.shown[i])
+	if not row.landed and row.age >= row.last_lock:
+		row.landed = true
+		if row.crit or row.fumble:
+			row.shake = 1.0
+
+
+## Stacks the started rows from the top. If there are more than fit, the oldest fade out
+## and the rest slide up.
+func _arrange(started: Array[DisplayRow], dt: float) -> void:
+	var hidden := maxi(0, started.size() - _max_rows())
+	var slot := 0
+	for i in started.size():
+		var row := started[i]
+		if i < hidden:
+			row.fade = maxf(0.0, row.fade - dt / 0.2)
+			continue
+		var goal := _list_top + slot * (_row_h + ROW_GAP)
+		if not row.placed:
+			row.placed = true
+			row.y = goal
+		else:
+			row.y = lerpf(row.y, goal, 1.0 - exp(-dt * 14.0))
+		slot += 1
+
+
+func _other_digit(previous: int) -> int:
+	var digit := _rng.randi_range(0, 9)
+	if digit == previous:
+		digit = (digit + _rng.randi_range(1, 9)) % 10
+	return digit
+
+
+# -------------------------------------------------------------------- draw
+
+func _draw() -> void:
+	if _batches.is_empty():
+		return
+	var batch := _batches[0]
+	var font := _font()
+	_draw_header(batch, font)
+	for row in batch.rows:
+		if row.started and row.fade > 0.0:
+			_draw_row(row, batch, font)
+
+
+## "KENDALL  >  FIREBALL", a small tag above the stack.
+func _draw_header(batch: DisplayBatch, font: Font) -> void:
+	var intro := _ease_out(clampf(batch.age / SLIDE_IN, 0.0, 1.0))
+	var alpha := batch.fade * intro
+	var accent := MenuStyle.pal("alert") if batch.enemy else MenuStyle.pal("primary")
+	var font_size := 13
+	var caption := batch.actor_name.to_upper()
+	if batch.action_name != "":
+		caption += "  >  " + batch.action_name.to_upper()
+	var text_w := font.get_string_size(caption, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	var h := HEADER_H - 6.0
+	var skew := h * 0.5
+	var slide := (1.0 - intro) * 160.0
+	var x1 := size.x - edge_margin.x + slide
+	var x0 := x1 - (text_w + skew + 28.0)
+	var y := edge_margin.y
+	var poly := PackedVector2Array([
+			Vector2(x0 + skew, y), Vector2(x1, y), Vector2(x1 - skew, y + h), Vector2(x0, y + h)])
+	draw_colored_polygon(poly, _mul(MenuStyle.pal("bg", Color.BLACK).lightened(0.06), 0.92 * alpha))
+	draw_polyline(_loop(poly), _mul(accent, 0.9 * alpha), 1.5)
+	draw_string(font, Vector2(x0 + skew + 10.0, y + h - 7.0), caption,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, _mul(accent, alpha))
+
+
+func _draw_row(row: DisplayRow, batch: DisplayBatch, font: Font) -> void:
+	var h := _row_h
+	var w := _panel_w
+	var skew := h * 0.26
+	var intro := clampf(row.age / SLIDE_IN, 0.0, 1.0)
+	var alpha := row.fade * batch.fade * clampf(row.age / 0.08, 0.0, 1.0)
+	var since_land := row.age - row.last_lock
+	var accent := _accent(row)
+	if row.landed and row.crit:
+		accent = CRIT_COLOR
+	elif row.landed and row.fumble:
+		accent = FUMBLE_COLOR
+	var shake := Vector2.ZERO
+	if row.shake > 0.0:
+		shake = Vector2(_rng.randf_range(-1.0, 1.0), _rng.randf_range(-1.0, 1.0)) * row.shake * 5.0
+	var x1 := size.x - edge_margin.x + (1.0 - _ease_out(intro)) * (w + 80.0) + shake.x
+	var x0 := x1 - w
+	var y := row.y + shake.y
+
+	# The slanted panel: a soft glow, the body, and a bar down its left edge.
+	var poly := PackedVector2Array([
+			Vector2(x0 + skew, y), Vector2(x1, y), Vector2(x1 - skew, y + h), Vector2(x0, y + h)])
+	var outline := _loop(poly)
+	draw_polyline(outline, _mul(accent, 0.22 * alpha), 8.0)
+	draw_colored_polygon(poly, _mul(MenuStyle.pal("bg", Color.BLACK).lightened(0.05), 0.9 * alpha))
+	draw_colored_polygon(PackedVector2Array([
+			Vector2(x0 + skew, y), Vector2(x0 + skew + 8.0, y),
+			Vector2(x0 + 8.0, y + h), Vector2(x0, y + h)]), _mul(accent, alpha))
+
+	# A band of light sweeps across while the digits spin; a flash lands with the last one.
+	if not row.landed:
+		var band := 22.0
+		var span := w - skew - band
+		var bx := x0 + fposmod(row.age * 1.7, 1.0) * span
+		draw_colored_polygon(PackedVector2Array([
+				Vector2(bx + skew, y), Vector2(bx + skew + band, y),
+				Vector2(bx + band, y + h), Vector2(bx, y + h)]),
+				_mul(accent.lightened(0.4), 0.16 * alpha))
+	elif since_land < 0.3:
+		draw_colored_polygon(poly, _mul(Color.WHITE, (1.0 - since_land / 0.3) * 0.35 * alpha))
+	var pulse := 0.5 + 0.5 * sin(_t * 9.0)
+	var edge_w := 2.0 + (2.0 * pulse if row.landed and row.crit else 0.0)
+	draw_polyline(outline, _mul(accent, 0.95 * alpha), edge_w)
+
+	# Words on the left.
+	var small := int(clampf(h * 0.22, 11.0, 16.0))
+	var tiny := maxi(10, small - 2)
+	var text_x := x0 + skew + 18.0
+	var text_w := w * 0.46
+	var kind_text := _kind_label(row)
+	draw_string(font, Vector2(text_x, y + h * 0.36), kind_text,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, small, _mul(accent, alpha))
+	if row.landed:
+		var verdict := _verdict(row)
+		if verdict != "":
+			var kind_w := font.get_string_size(kind_text, HORIZONTAL_ALIGNMENT_LEFT, -1, small).x
+			var ramp := clampf(since_land / 0.12, 0.0, 1.0)
+			draw_string(font, Vector2(text_x + kind_w + 12.0, y + h * 0.36), verdict,
+					HORIZONTAL_ALIGNMENT_LEFT, -1, small, _mul(_verdict_color(row), alpha * ramp))
+	draw_string(font, Vector2(text_x, y + h * 0.64),
+			_fit(font, _subject_line(row), text_w, tiny),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, tiny, _mul(MenuStyle.pal("text"), 0.75 * alpha))
+	if row.landed and row.detail != "":
+		draw_string(font, Vector2(text_x, y + h * 0.86), _fit(font, row.detail, text_w, tiny),
+				HORIZONTAL_ALIGNMENT_LEFT, -1, tiny,
+				_mul(MenuStyle.pal("dim"), alpha * clampf(since_land / 0.2, 0.0, 1.0)))
+
+	# The number, right-aligned. A leading minus sign counts as a cell that is already set.
+	var minus := 1 if row.negative else 0
+	var cells := row.digits.size() + minus
+	var font_size := int(h * 0.74)
+	var advance := font.get_string_size("0", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	var room := w * 0.5 - skew
+	if advance * cells > room:
+		font_size = int(font_size * room / (advance * cells))
+		advance = font.get_string_size("0", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	var right := x1 - skew * 0.5 - 14.0
+	var left := right - advance * cells
+	var base_y := y + h * 0.5 + font_size * 0.35
+	var colour := _digit_color(row, pulse)
+	for c in cells:
+		var cell_x := left + c * advance
+		var di := c - minus
+		if di < 0:
+			_draw_cell(font, "-", cell_x, base_y, advance, font_size, colour, accent,
+					row.age, alpha, row.seed_angle)
+		else:
+			_draw_cell(font, str(row.shown[di]), cell_x, base_y, advance, font_size, colour,
+					accent, row.age - row.lock_times[di], alpha, row.seed_angle + di)
+	if row.landed and row.kind == &"attack" and row.outcome == &"miss":
+		var strike := clampf(since_land / 0.15, 0.0, 1.0)
+		draw_line(Vector2(left - 6.0, y + h * 0.5), Vector2(left - 6.0 + (right - left + 10.0) * strike, y + h * 0.5),
+				_mul(MenuStyle.pal("alert"), 0.85 * alpha), 3.0)
+
+
+## One digit. While `t_lock` is negative it is still spinning: the digit plus its two
+## neighbours, faint, like a blurred reel. Once locked it pops in from large, flashes
+## white, and throws off a ring of sparks.
+func _draw_cell(font: Font, ch: String, cell_x: float, base_y: float, advance: float,
+		font_size: int, colour: Color, accent: Color, t_lock: float, alpha: float, spark: float) -> void:
+	if t_lock < 0.0:
+		var reel := _mul(accent.lightened(0.35), alpha)
+		var lift := font_size * 0.22
+		var digit := int(ch)
+		draw_string(font, Vector2(cell_x, base_y - lift), str((digit + 9) % 10),
+				HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, _mul(reel, 0.22))
+		draw_string(font, Vector2(cell_x, base_y + lift), str((digit + 1) % 10),
+				HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, _mul(reel, 0.22))
+		draw_string(font, Vector2(cell_x, base_y), ch,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, _mul(reel, 0.95))
+		return
+	var pop := 1.0 + 0.6 * pow(1.0 - clampf(t_lock / LAND_POP, 0.0, 1.0), 2.0)
+	var flash := clampf(t_lock / 0.3, 0.0, 1.0)
+	var centre := Vector2(cell_x + advance * 0.5, base_y - font_size * 0.35)
+	var origin := Vector2(-advance * 0.5, font_size * 0.35)
+	draw_set_transform(centre, 0.0, Vector2(pop, pop))
+	draw_string_outline(font, origin, ch, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, 8,
+			_mul(accent, 0.28 * alpha * (1.0 - flash * 0.5)))
+	draw_string(font, origin, ch, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size,
+			_mul(Color.WHITE.lerp(colour, flash), alpha))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	if t_lock < 0.35:
+		var k := t_lock / 0.35
+		for n in 8:
+			var dir := Vector2.from_angle(n * TAU / 8.0 + spark)
+			var start := font_size * (0.35 + 0.9 * _ease_out(k))
+			draw_line(centre + dir * start, centre + dir * (start + font_size * 0.22 * (1.0 - k)),
+					_mul(accent.lightened(0.3), (1.0 - k) * alpha), 2.0)
+
+
+# ----------------------------------------------------------------- helpers
+
+func _accent(row: DisplayRow) -> Color:
+	match row.kind:
+		&"damage":
+			return MenuStyle.pal("alert")
+		&"heal":
+			return MenuStyle.pal("primary")
+		&"anima":
+			return ANIMA_COLOR
+		&"save":
+			return SAVE_COLOR
+	return MenuStyle.pal("secondary")
+
+
+## Colour of the digits once set: bright, tinted by the roll's colour; gold and shimmering
+## for a critical, red for a fumble, and dimmed for a miss.
+func _digit_color(row: DisplayRow, pulse: float) -> Color:
+	var base := MenuStyle.pal("text").lerp(_accent(row), 0.35)
+	if row.crit:
+		return CRIT_COLOR.lerp(Color.WHITE, 0.35 * pulse)
+	if row.fumble:
+		return FUMBLE_COLOR
+	if row.kind == &"attack" and row.outcome == &"miss":
+		return _mul(base, 0.55)
+	return base
+
+
+func _kind_label(row: DisplayRow) -> String:
+	match row.kind:
+		&"damage":
+			return "DAMAGE"
+		&"heal":
+			return "HEAL"
+		&"anima":
+			return "ANIMA"
+		&"save":
+			return "SAVE"
+	return "ATTACK"
+
+
+func _verdict(row: DisplayRow) -> String:
+	if row.crit:
+		return "CRIT!"
+	if row.fumble:
+		return "FUMBLE"
+	match row.outcome:
+		&"hit":
+			return "HIT"
+		&"miss":
+			return "MISS"
+		&"saved":
+			return "SAVED"
+		&"failed":
+			return "FAILED"
+	return ""
+
+
+func _verdict_color(row: DisplayRow) -> Color:
+	if row.crit:
+		return CRIT_COLOR
+	if row.fumble:
+		return FUMBLE_COLOR
+	match row.outcome:
+		&"hit":
+			return MenuStyle.pal("primary")
+		&"miss":
+			return MenuStyle.pal("alert")
+		&"saved":
+			return SAVE_COLOR
+		&"failed":
+			return MenuStyle.pal("secondary")
+	return MenuStyle.pal("text")
+
+
+func _subject_line(row: DisplayRow) -> String:
+	match row.kind:
+		&"save":
+			return "%s saves" % row.who
+		&"damage", &"heal", &"anima":
+			return "to %s" % row.against
+	return "vs %s" % row.against
+
+
+func _font() -> Font:
+	var mono := ThemeManager.mono_font()
+	return mono if mono != null else ThemeDB.fallback_font
+
+
+## Shortens `text` with an ellipsis until it fits `max_width`.
+func _fit(font: Font, text: String, max_width: float, font_size: int) -> String:
+	if font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x <= max_width:
+		return text
+	var cut := text
+	while cut.length() > 1 and font.get_string_size(cut + "...", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x > max_width:
+		cut = cut.substr(0, cut.length() - 1)
+	return cut + "..."
+
+
+static func _mul(colour: Color, factor: float) -> Color:
+	return Color(colour.r, colour.g, colour.b, colour.a * factor)
+
+
+static func _ease_out(t: float) -> float:
+	return 1.0 - pow(1.0 - t, 3.0)
+
+
+## The points of a polygon plus its first point again, for drawing a closed outline.
+static func _loop(points: PackedVector2Array) -> PackedVector2Array:
+	var out := points.duplicate()
+	out.append(points[0])
+	return out

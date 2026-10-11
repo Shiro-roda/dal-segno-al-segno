@@ -8,6 +8,11 @@ extends Resource
 ## for that event. Put {placeholders} where values go; the ones each entry offers
 ## are listed above it. An unknown placeholder is left as written.
 
+@export_group("Wording")
+## Attributes print as their abbreviations (VOL, TMP...) in check labels and roll
+## breakdowns. Skills always keep their full names.
+@export var abbreviate_attributes: bool = true
+
 # ------------------------------------------------------------ combat flow
 @export_group("Combat flow")
 @export var combat_begins: Array[String] = ["Combat begins."]

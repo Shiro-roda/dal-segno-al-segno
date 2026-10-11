@@ -1,0 +1,63 @@
+[gd_resource type="Resource" script_class="ActionDef" format=3 uid="uid://b4giwg1jsuc47"]
+
+[ext_resource type="Script" uid="uid://hgdwyugnb20t" path="res://Systems/Rules/effect_def.gd" id="1_gtxia"]
+[ext_resource type="Script" uid="uid://6nbup8pfuhsr" path="res://Systems/Rules/condition_def.gd" id="2_qbeaq"]
+[ext_resource type="Script" uid="uid://0bb6gaktbv7m" path="res://Systems/Rules/mechanic.gd" id="2_r4w81"]
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="2_y7ges"]
+
+[sub_resource type="Resource" id="Resource_qbeaq"]
+script = ExtResource("1_gtxia")
+target = 2
+dice = "2d4"
+bonus_stat = &"attachment"
+damage_type = &"red"
+upcast_dice = "1d4"
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[sub_resource type="Resource" id="Resource_qonum"]
+script = ExtResource("2_qbeaq")
+id = &"amorous"
+display_name = "Amorous"
+description = "Drunk on Love, your movements turn sluggish, and your strikes impotent."
+modifiers = {
+&"attachment": -2
+}
+advantage_on = null
+disadvantage_on = PackedStringArray("attack", "tempo")
+metadata/_custom_type_script = "uid://6nbup8pfuhsr"
+
+[sub_resource type="Resource" id="Resource_r4w81"]
+script = ExtResource("1_gtxia")
+target = 2
+kind = 2
+condition = SubResource("Resource_qonum")
+upcast_duration = 1
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[sub_resource type="Resource" id="Resource_y7ges"]
+script = ExtResource("1_gtxia")
+target = 0
+kind = 1
+dice = "2d10"
+bonus_stat = &"attachment"
+upcast_dice = "1d10 + 2"
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[sub_resource type="Resource" id="Resource_qab3y"]
+script = ExtResource("1_gtxia")
+target = 0
+kind = 2
+condition = SubResource("Resource_qonum")
+upcast_duration = 1
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[resource]
+script = ExtResource("2_y7ges")
+id = &"amore"
+display_name = "Amore"
+effects = Array[ExtResource("1_gtxia")]([SubResource("Resource_qbeaq"), SubResource("Resource_r4w81"), SubResource("Resource_y7ges"), SubResource("Resource_qab3y")])
+tags = PackedStringArray("canto", "heal", "red")
+canto_level = 1
+max_canto_level = 3
+cantrip = null
+metadata/_custom_type_script = "uid://njw6l7ex23w0"

@@ -17,3 +17,5 @@ extends Resource
 @export var blocks_actions: bool = false
 ## Dice expression dealt to the bearer at the end of each round, e.g. "1d4". Empty = none.
 @export var tick_damage: String = ""
+@export var tick_damage_type: StringName = &"physical"
+@export var mechanics: Array[Mechanic] = []

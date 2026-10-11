@@ -31,6 +31,30 @@ func recruit(sheet: CharacterSheet, make_active: bool = true) -> StatBlock:
 	changed.emit()
 	return block
 
+## Guerriero I: holds a weapon from the bag in the armor or trinket slot instead.
+## Whatever was in that slot, and any other secondary weapon, goes back to the bag.
+func equip_secondary_from_inventory(char_id: StringName, item: ItemDef, host_slot: StringName) -> bool:
+	var sheet := get_sheet(char_id)
+	var block := get_block(char_id)
+	if sheet == null or block == null or item == null or not inventory.has(item):
+		return false
+	if item.slot != &"weapon" or item.damage_dice == "" or host_slot == &"weapon" \
+			or not engine.config.equipment_slots.has(host_slot) \
+			or not block.allows_secondary_weapon():
+		return false
+	inventory.remove(item)
+	for slot in sheet.equipment.keys():
+		var held := sheet.equipment[slot] as ItemDef
+		if slot != &"weapon" and held != null and held.slot == &"weapon":
+			sheet.equipment.erase(slot)
+			inventory.add(held)
+	var previous: ItemDef = sheet.equipment.get(host_slot)
+	sheet.equipment[host_slot] = item
+	if previous != null:
+		inventory.add(previous)
+	block.apply_equipment(sheet.equipment)
+	changed.emit()
+	return true
 
 func dismiss(char_id: StringName) -> void:
 	sheets.erase(char_id)

@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="EnemyTemplate" format=3 uid="uid://bae6cik3ru1ko"]
+
+[ext_resource type="Script" uid="uid://m5jx56lhrgsj" path="res://Systems/Rules/item_def.gd" id="1_rxlwe"]
+[ext_resource type="Resource" uid="uid://ftpllnwemrbw" path="res://Systems/Rules/Data/Items/tendril.tres" id="2_acapp"]
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="3_5ppgw"]
+[ext_resource type="Resource" uid="uid://d7sovmh2rx8y" path="res://Systems/Rules/Data/Actions/Cantos/banality.tres" id="4_d8me6"]
+[ext_resource type="Resource" uid="uid://blpqp186tsu5c" path="res://Systems/Rules/Data/Actions/Cantrips/low_dim.tres" id="5_rpxw6"]
+[ext_resource type="Script" uid="uid://0bb6gaktbv7m" path="res://Systems/Rules/mechanic.gd" id="6_td3l7"]
+[ext_resource type="Script" uid="uid://7e2wjvm1ll1u" path="res://Systems/Combat/enemy_template.gd" id="7_30k0e"]
+
+[resource]
+script = ExtResource("7_30k0e")
+display_name = "Deadly Shadow"
+corpus_die = 6
+scores = Dictionary[StringName, int]({
+&"tempo": 16,
+&"tone": 12,
+&"volume": 16
+})
+known_actions = Array[ExtResource("3_5ppgw")]([ExtResource("4_d8me6"), ExtResource("5_rpxw6")])
+equipment = Dictionary[StringName, ExtResource("1_rxlwe")]({
+&"weapon": ExtResource("2_acapp")
+})
+metadata/_custom_type_script = "uid://7e2wjvm1ll1u"

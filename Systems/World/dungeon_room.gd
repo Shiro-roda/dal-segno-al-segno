@@ -28,7 +28,8 @@ extends Node3D
 ## Add a RoomExit to the exit tile's room if the scene doesn't have its own.
 @export var auto_exit := true
 ## One debug label with day, carried loot and remnants left.
-@export var debug_overlay := true
+## The corner text now lives in the party menu's Map tab; this is only for debugging.
+@export var debug_overlay := false
 
 var day: DayCycle
 ## The grid cell this room stands for.
@@ -54,8 +55,10 @@ func _ready() -> void:
 	_seal_doors()
 	_spawn_encounters()
 	_ensure_exit()
+	_ensure_rest()
 	_build_overlay()
 	_place_party.call_deferred()
+	_trigger_hazard.call_deferred()
 
 
 ## False while a fight is running; doors and the exit wait.
@@ -195,6 +198,24 @@ func _on_xp_awarded(_amount: int, ready_ids: Array) -> void:
 		Notice.show_text(self, "%s can level up. Open the party menu (TAB)." % ", ".join(names))
 
 
+# ------------------------------------------------------------------ hazards
+
+## If this room holds a hazard that hasn't gone off today, it goes off now that the
+## party has arrived. Shows the hazard's own text, then one line per character.
+func _trigger_hazard() -> void:
+	var report := RoomFeatures.enter_room(day, cell, Rules.roster)
+	if not bool(report["triggered"]):
+		return
+	var tile := day.tile_at(cell, TileDef.Clef.BASS)
+	if tile != null and tile.def.hazard != null and tile.def.hazard.trigger_text != "":
+		Notice.show_text(self, tile.def.hazard.trigger_text)
+	for result: Dictionary in report["results"]:
+		var sheet := Rules.roster.get_sheet(result["id"])
+		var who := sheet.display_name if sheet != null and sheet.display_name != "" else String(result["id"])
+		var outcome := "saves" if bool(result["saved"]) else "fails the save"
+		Notice.show_text(self, "%s %s and takes %d damage." % [who, outcome, int(result["damage"])])
+
+
 # --------------------------------------------------------------------- exit
 
 func _ensure_exit() -> void:
@@ -208,6 +229,19 @@ func _ensure_exit() -> void:
 	exit_zone.name = "RoomExit"
 	add_child(exit_zone)
 	exit_zone.global_position = global_position
+
+
+## A rest room tile gets a RoomRest to interact with, unless the scene has its own.
+func _ensure_rest() -> void:
+	var tile := day.tile_at(cell, TileDef.Clef.BASS)
+	if tile == null or tile.def.rest == null:
+		return
+	for child in find_children("*", "RoomRest", true, false):
+		return
+	var rest := RoomRest.new()
+	rest.name = "RoomRest"
+	add_child(rest)
+	rest.global_position = global_position
 
 
 # ------------------------------------------------------------------ arrival

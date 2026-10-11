@@ -7,19 +7,15 @@ enum Category { VILLAGE, DUNGEON }
 ## The two overlapping grids. Each is its own 3D space.
 enum Clef { TREBLE, BASS }
 
+enum Role { NORMAL, EXIT, ORIGIN, SEGNO }
+
 @export var id: StringName
 @export var display_name := ""
 @export var category: Category = Category.DUNGEON
-## The dungeon's exit, on the Bass Clef. Placed for free at the origin; cannot be built
-## or erased. Reaching it ends the expedition.
-@export var is_exit := false
-## The Town's origin tile, on the Treble Clef. The party starts each day here and plans
-## from it. Placed for free at the origin; cannot be built or erased.
-@export var is_origin := false
-## The Segno room, on the Bass Clef. Placed for free in an empty cell next to a standing
-## room (it is its own room, never put on top of one) and the party spawns in it. Can be
-## moved or erased during planning. Never offered as a blueprint.
-@export var is_segno := false
+
+@export var role: Role = Role.NORMAL
+
+
 ## Extra resource id -> amount spent to place this tile, on top of its colour cost
 ## (for example cuts). Leave empty if the colour is all it costs.
 @export var cost: Dictionary = {}
@@ -41,12 +37,32 @@ enum Clef { TREBLE, BASS }
 ## Scaled by the main-path bonus; note_multiplier does not affect it.
 @export var loot_per_kill: Dictionary = {}
 
+@export_group("Features")
+## Dungeon tile: a short rest room (Anima back, hit dice spent for Corpus).
+@export var rest: RestDef
+## Dungeon tile: a trap that goes off when the party walks in and earns bonus blueprints.
+@export var hazard: HazardDef
+## Village tile: sells items, restocked every dawn. Paid for from the run's stock.
+@export var shop: ShopDef
+
 @export_group("Blueprint")
 ## Dungeon tiles are placed from a blueprint drawn fresh each day. Relative draw
 ## chance: high = common, low = rare, 0 = never offered.
 @export_range(0.0, 100.0, 0.1) var blueprint_weight := 1.0
 ## Not offered before this day of a run.
 @export var blueprint_min_day := 1
+## Ids of the dungeon tiles this blueprint can come from. It is only drawn while at
+## least one of them is standing in the dungeon. Empty = can be drawn anywhere. Ids,
+## not TileDef references, so two tiles can name each other without a circular load.
+@export var blueprint_source_ids: Array[StringName] = []
+
+@export_group("Unlock")
+## Ids of Treble Clef (Town) tiles that must each be standing for this tile (Bass or
+## Treble) to be built or drawn as a blueprint. Temporary: a run starts with the Town in
+## ruins, so these have to be rebuilt each run, which keeps the early draw pool small. A
+## ruined or erased requirement locks the tile again. Rooms already built stay standing.
+## Empty = available from the start. Ids, not references, to avoid cycles.
+@export var unlock_requires_ids: Array[StringName] = []
 
 @export_group("Color")
 ## The room's color, each channel 0-250 in steps of 10 (red, green, blue). Cost is
@@ -68,3 +84,25 @@ func clef() -> Clef:
 	if is_origin:
 		return Clef.TREBLE
 	return Clef.TREBLE if category == Category.VILLAGE else Clef.BASS
+
+## Role shortcuts. Kept as properties so `def.is_exit` and `def.is_exit = true` both work.
+## Do not turn these into methods: callers use them without parentheses, and a method
+## reference is always truthy.
+var is_exit: bool:
+	get: return role == Role.EXIT
+	set(value): _set_role(Role.EXIT, value)
+
+var is_origin: bool:
+	get: return role == Role.ORIGIN
+	set(value): _set_role(Role.ORIGIN, value)
+
+var is_segno: bool:
+	get: return role == Role.SEGNO
+	set(value): _set_role(Role.SEGNO, value)
+
+
+func _set_role(which: Role, on: bool) -> void:
+	if on:
+		role = which
+	elif role == which:
+		role = Role.NORMAL

@@ -7,6 +7,9 @@ enum Category { ATTRIBUTE, SKILL, DERIVED, SAVE }
 
 @export var id: StringName
 @export var display_name: String = ""
+## Short form shown in log text, e.g. "VOL". Blank = first three letters of display_name, uppercased.
+@export var abbreviation: String = ""
+
 @export var category: Category = Category.ATTRIBUTE
 ## For skills and saves: the attributes this stat is built from. With more than one,
 ## each attribute contributes its modifier divided by the count, rounded up
@@ -21,3 +24,8 @@ enum Category { ATTRIBUTE, SKILL, DERIVED, SAVE }
 
 func has_tag(tag: String) -> bool:
 	return tags.has(tag)
+
+func short_name() -> String:
+	if abbreviation != "":
+		return abbreviation
+	return display_name.left(3).to_upper()

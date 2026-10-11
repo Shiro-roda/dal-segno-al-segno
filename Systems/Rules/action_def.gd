@@ -6,7 +6,6 @@ extends Resource
 ## and costs whatever RulesConfig.canto_costs says for the level it is cast at.
 
 enum Roll { AUTO, ATTACK, SAVE }
-enum Target { SELF, SINGLE_ENEMY, SINGLE_ALLY, ALL_ENEMIES, ALL_ALLIES }
 
 @export var id: StringName
 @export var display_name: String = ""
@@ -15,7 +14,6 @@ enum Target { SELF, SINGLE_ENEMY, SINGLE_ALLY, ALL_ENEMIES, ALL_ALLIES }
 ## their level's price from RulesConfig.canto_costs.
 @export var anima_cost: int = 0
 @export var roll: Roll = Roll.AUTO
-@export var target: Target = Target.SINGLE_ENEMY
 ## ATTACK: the stat added to the attack roll. Blank uses the equipped weapon's.
 @export var attack_stat: StringName
 ## SAVE: the stat the target rolls.
@@ -25,6 +23,7 @@ enum Target { SELF, SINGLE_ENEMY, SINGLE_ALLY, ALL_ENEMIES, ALL_ALLIES }
 ## Reach in metres for single-target use. 0 = the session's default spell range.
 @export var max_range: float = 0.0
 @export var effects: Array[EffectDef] = []
+@export var mechanics: Array[Mechanic] = []
 @export var tags: PackedStringArray = PackedStringArray()
 
 @export_group("Canto")
@@ -59,6 +58,15 @@ func can_upcast() -> bool:
 	return top_level() > canto_level
 
 
+## True if any step deals the equipped weapon's damage (Attack, Crucify, Brute Force...).
+## These are the actions that get extra attacks from feats such as Guerriero.
+func is_weapon_action() -> bool:
+	for e in effects:
+		if e != null and e.kind == EffectDef.Kind.WEAPON_DAMAGE:
+			return true
+	return false
+
+
 ## Every level this can be cast at, lowest first. Empty for an ordinary action.
 func castable_levels() -> Array[int]:
 	var out: Array[int] = []
@@ -76,3 +84,31 @@ func resolve_level(requested: int = 0) -> int:
 	if requested <= 0:
 		return canto_level
 	return clampi(requested, canto_level, top_level())
+
+## Every kind of target the effects aim at, in effect order, without repeats. An action
+## with no effects counts as SINGLE_ENEMY so it still has someone to aim at.
+func target_kinds() -> Array[int]:
+	var out: Array[int] = []
+	for effect in effects:
+		if effect != null and not out.has(int(effect.target)):
+			out.append(int(effect.target))
+	if out.is_empty():
+		out.append(EffectDef.Target.SINGLE_ENEMY)
+	return out
+
+
+## The first effect aimed at one chosen individual; it decides reach and who gets picked.
+## -1 if every effect is SELF or an ALL kind.
+func first_pick() -> int:
+	for kind in target_kinds():
+		if kind == EffectDef.Target.SINGLE_ENEMY or kind == EffectDef.Target.SINGLE_ALLY:
+			return kind
+	return -1
+
+
+## Target kind of the first HEAL effect aimed at the user's side, or -1 if none.
+func friendly_heal_target() -> int:
+	for effect in effects:
+		if effect != null and effect.kind == EffectDef.Kind.HEAL and not effect.is_hostile():
+			return effect.target
+	return -1

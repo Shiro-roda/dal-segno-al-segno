@@ -16,6 +16,7 @@ func _ready() -> void:
 	_test_tithe()
 	_test_colors()
 	_test_blueprints()
+	_test_features()
 	print("[day] %d checks, %d failures." % [_checks, _failures])
 	if _failures == 0:
 		print("[day] ALL PASSED")
@@ -510,6 +511,299 @@ func _test_blueprints() -> void:
 	cycle.draw_blueprints()
 	_expect(cycle.blueprints.is_empty() and not cycle.needs_blueprint(common),
 			"require_blueprints = false turns the whole rule off")
+	_test_blueprint_rules()
+	_test_unlocks()
+
+
+## Source rooms, the seen list, and the standing extra copy.
+func _test_blueprint_rules() -> void:
+	var gate := _tile(&"gate", TileDef.Category.DUNGEON)
+	gate.is_exit = true
+	var den := _tile(&"den", TileDef.Category.DUNGEON)
+	var vault := _tile(&"vault", TileDef.Category.DUNGEON, {&"notes": 3})
+	vault.blueprint_source_ids = [&"den"]
+	var small := _tile(&"small_room", TileDef.Category.DUNGEON)
+	small.color = Vector3i(20, 0, 0)  # 2 red notes
+
+	var config := WorldConfig.new()
+	config.starting_resources = {RED: 50}
+	config.require_segno = false
+	config.blueprints_per_day = 3
+	var persistent := WorldPersistent.new()
+	var cycle := DayCycle.new(gate, config, persistent, 5)
+	cycle.blueprint_pool = [den, vault]
+
+	# Source rooms: the vault needs a den standing.
+	cycle.begin_run()
+	var vault_early := false
+	for _i in 30:
+		cycle.draw_blueprints()
+		vault_early = vault_early or cycle.blueprints.has(vault)
+	_expect(not vault_early, "a blueprint with source rooms is never drawn while none of them stand")
+	_expect(not cycle.blueprint_sources_met(vault) and cycle.blueprint_sources_met(den),
+			"blueprint_sources_met reports it")
+	_expect(cycle.place_tile(Vector2i(1, 0), den), "the den is built from its blueprint")
+	_expect(cycle.blueprint_sources_met(vault), "a standing source room opens the blueprint")
+	var vault_seen := false
+	for _i in 40:
+		cycle.draw_blueprints()
+		vault_seen = vault_seen or cycle.blueprints.has(vault)
+	_expect(vault_seen, "and the blueprint is drawn once a source room stands")
+
+	# Seen blueprints.
+	_expect(persistent.seen_blueprints.has(&"vault") and persistent.seen_blueprints.has(&"den"),
+			"every drawn blueprint is remembered")
+
+	# The standing pick.
+	cycle.blueprint_pool = [den, vault, small]
+	persistent.seen_blueprints = [&"den"]
+	_expect(not cycle.can_set_standing_blueprint(small)["ok"],
+			"a blueprint never seen can't be the standing pick")
+	_expect(cycle.set_standing_blueprint(den) and persistent.standing_blueprint == &"den",
+			"a seen blueprint can")
+	config.blueprints_per_day = 1
+	cycle.begin_run()
+	_expect(cycle.extra_blueprint == den, "the standing pick adds an extra copy to the day")
+	_expect(cycle.blueprints.size() == 1, "and does not change the normal hand")
+
+	# Doubled cost, and a normal card is spent first.
+	persistent.seen_blueprints.append(&"small_room")
+	_expect(cycle.set_standing_blueprint(small), "the pick can be changed to another seen blueprint")
+	cycle.draw_blueprints()
+	_expect(cycle.extra_blueprint == small, "the new pick is the extra copy from the next draw")
+	cycle.blueprints.clear()
+	var before := int(cycle.stock[RED])
+	_expect(cycle.uses_extra_blueprint(small) and int(cycle.cost_of(Vector2i(1, 0), small)[RED]) == 4,
+			"the extra copy costs twice the notes (2 -> 4)")
+	_expect(cycle.place_tile(Vector2i(1, 0), small) and int(cycle.stock[RED]) == before - 4
+			and cycle.extra_blueprint == null, "placing it pays double and spends the copy")
+	_expect(not cycle.can_place(Vector2i(2, 0), small)["ok"], "and there is no second one")
+	cycle.draw_blueprints()
+	cycle.blueprints = [small]
+	_expect(not cycle.uses_extra_blueprint(small) and int(cycle.cost_of(Vector2i(1, 0), small)[RED]) == 2,
+			"a normal card for the same tile is used first, at the normal price")
+
+	# The extra copy follows the source rule, and clears on defeat.
+	cycle.begin_run()
+	persistent.seen_blueprints.append(&"vault")
+	cycle.set_standing_blueprint(vault)
+	cycle.draw_blueprints()
+	_expect(cycle.extra_blueprint == null, "no extra copy while the pick's source room is missing")
+	cycle.set_standing_blueprint(small)
+	cycle.draw_blueprints()
+	_expect(cycle.extra_blueprint == small, "a pick with no source rooms is always offered")
+	cycle.start_expedition()
+	cycle.defeat()
+	_expect(cycle.extra_blueprint == null and persistent.standing_blueprint == &"small_room",
+			"a defeat clears today's copy but keeps the standing pick")
+
+
+## Tiles locked behind Town tiles that have to be built first.
+func _test_unlocks() -> void:
+	var gate := _tile(&"gate", TileDef.Category.DUNGEON)
+	gate.is_exit = true
+	var forge := _tile(&"forge", TileDef.Category.VILLAGE)
+	forge.color = Vector3i(10, 0, 0)
+	var smithy := _tile(&"smithy", TileDef.Category.VILLAGE)
+	smithy.color = Vector3i(10, 0, 0)
+	smithy.unlock_requires_ids = [&"forge"]
+	var pit := _tile(&"pit", TileDef.Category.DUNGEON)
+	pit.unlock_requires_ids = [&"forge"]
+
+	var config := WorldConfig.new()
+	config.starting_resources = {RED: 50}
+	config.require_segno = false
+	config.blueprints_per_day = 3
+	var persistent := WorldPersistent.new()
+	var cycle := DayCycle.new(gate, config, persistent, 9)
+	cycle.blueprint_pool = [pit]
+	cycle.begin_run()
+
+	_expect(not cycle.is_unlocked(smithy) and cycle.is_unlocked(forge), "a tile is locked until its requirements are built")
+	_expect(cycle.missing_unlocks(smithy) == [&"forge"], "missing_unlocks names what is still needed")
+	var refusal := cycle.can_place(Vector2i(0, 1), smithy)
+	_expect(not refusal["ok"] and String(refusal["reason"]).contains("Locked"), "a locked Town tile can't be built")
+	_expect(cycle.blueprints.is_empty(), "a locked dungeon tile is not drawn as a blueprint")
+
+	_expect(cycle.place_tile(Vector2i(1, 0), forge), "the requirement can be built")
+	_expect(cycle.is_unlocked(smithy) and cycle.place_tile(Vector2i(0, 1), smithy), "which unlocks the tile")
+
+	cycle.start_expedition()
+	cycle.return_to_exit()
+	cycle.begin_next_day()
+	_expect(cycle.blueprints.size() == 3 and cycle.blueprints.all(func(d: TileDef) -> bool: return d == pit),
+			"the dungeon blueprint is drawn from the next day")
+
+	# Unlocks are temporary: a defeat leaves the Town in ruins, so they start locked again.
+	cycle.start_expedition()
+	cycle.defeat()
+	cycle.begin_run()
+	_expect(not cycle.is_unlocked(smithy) and cycle.blueprints.is_empty(),
+			"a defeat re-locks everything: ruins don't count, and the early pool stays small")
+	_expect(not cycle.can_place(Vector2i(0, 1), smithy)["ok"], "a ruined requirement can't be built on")
+	_expect(cycle.place_tile(Vector2i(1, 0), forge) and cycle.is_unlocked(smithy),
+			"rebuilding the requirement unlocks the tile again")
+	_expect(cycle.blueprints.is_empty(), "but only tomorrow's draw gets the dungeon blueprint")
+	cycle.start_expedition()
+	cycle.return_to_exit()
+	cycle.begin_next_day()
+	_expect(not cycle.blueprints.is_empty(), "which arrives the next dawn")
+
+	# A locked standing pick is not offered.
+	var persistent2 := WorldPersistent.new()
+	persistent2.seen_blueprints = [&"pit"]
+	persistent2.standing_blueprint = &"pit"
+	var locked := DayCycle.new(gate, config, persistent2, 9)
+	locked.blueprint_pool = [pit]
+	locked.begin_run()
+	_expect(locked.extra_blueprint == null, "a locked standing pick gives no extra copy")
+
+
+# ----------------------------------------------------------- room features
+
+func _test_features() -> void:
+	var gate := _tile(&"gate", TileDef.Category.DUNGEON)
+	gate.is_exit = true
+	var calm := _tile(&"calm", TileDef.Category.DUNGEON)
+	var rest_room := _tile(&"rest_room", TileDef.Category.DUNGEON)
+	rest_room.rest = RestDef.new()
+	var guarded := _tile(&"guarded", TileDef.Category.DUNGEON)
+	guarded.rest = RestDef.new()
+	guarded.enemies = [_enemy(&"grunt", EnemyTemplate.NoteColor.RED)]
+	guarded.spawn_count = 1
+	var trap := _tile(&"trap", TileDef.Category.DUNGEON)
+	trap.hazard = HazardDef.new()
+	trap.hazard.bonus_blueprints = 2
+	var trap_b := _tile(&"trap_b", TileDef.Category.DUNGEON)
+	trap_b.hazard = HazardDef.new()
+	trap_b.hazard.bonus_blueprints = 2
+
+	var item_a := ItemDef.new()
+	item_a.id = &"item_a"
+	var item_b := ItemDef.new()
+	item_b.id = &"item_b"
+	var item_c := ItemDef.new()
+	item_c.id = &"item_c"
+	var stall := _tile(&"stall", TileDef.Category.VILLAGE, {CUTS: 2})
+	stall.shop = ShopDef.new()
+	stall.shop.slots = 2
+	stall.shop.offers = [_offer(item_a, {CUTS: 5}, 2), _offer(item_b, {CUTS: 30}),
+			_offer(item_c, {CUTS: 1}, 1, 3), _offer(null, {CUTS: 1}), _offer(item_c, {})]
+
+	var config := WorldConfig.new()
+	config.require_blueprints = false  # placed directly; the hand is checked further down
+	config.require_segno = false
+	config.starting_resources = {CUTS: 20}
+	config.blueprints_per_day = 1
+	config.hit_dice_per_level = 2
+	config.hazard_bonus_cap = 3
+	var cycle := DayCycle.new(gate, config, WorldPersistent.new(), 5)
+	cycle.blueprint_pool = [calm]
+	cycle.begin_run()
+
+	var rest_pos := Vector2i(1, 0)
+	var trap_pos := Vector2i(2, 0)
+	var trap_b_pos := Vector2i(0, -1)
+	var guarded_pos := Vector2i(0, 1)
+	var shop_pos := Vector2i(1, 0)
+	_expect(cycle.place_tile(rest_pos, rest_room) and cycle.place_tile(trap_pos, trap)
+			and cycle.place_tile(trap_b_pos, trap_b) and cycle.place_tile(guarded_pos, guarded),
+			"feature rooms can be placed")
+	_expect(cycle.place_tile(shop_pos, stall) and cycle.stock[CUTS] == 18, "a shop is placed like any village tile")
+
+	# ---- shop stock
+	var shelves := cycle.shop_offers(shop_pos)
+	_expect(shelves.size() == 2, "the shop fills its slots (%d)" % shelves.size())
+	_expect(shelves.all(func(s: Dictionary) -> bool:
+			return s["offer"].item == item_a or s["offer"].item == item_b),
+			"offers with no item, no price or a later min_day are never stocked")
+	var a_index := _shelf_of(cycle, shop_pos, item_a)
+	var b_index := _shelf_of(cycle, shop_pos, item_b)
+	_expect(a_index >= 0 and b_index >= 0 and a_index != b_index, "each offer takes one shelf")
+	_expect(cycle.shop_price(shop_pos, a_index) == {CUTS: 5}, "a shelf reports its price")
+	var poor := cycle.can_buy(shop_pos, b_index)
+	_expect(not poor["ok"] and String(poor["reason"]).contains("afford"), "too expensive is refused")
+	_expect(cycle.buy(shop_pos, a_index) == item_a and cycle.stock[CUTS] == 13, "buying pays and returns the item")
+	_expect(cycle.buy(shop_pos, a_index) == item_a and cycle.stock[CUTS] == 8, "a second copy is for sale")
+	_expect(cycle.buy(shop_pos, a_index) == null and cycle.stock[CUTS] == 8, "sold out is refused and costs nothing")
+	_expect(not cycle.can_buy(Vector2i(5, 5), 0)["ok"], "no shop, no sale")
+	_expect(not cycle.can_buy(shop_pos, 7)["ok"], "a shelf that doesn't exist is refused")
+
+	# ---- on an expedition
+	cycle.start_expedition()
+	_expect(cycle.phase == DayCycle.Phase.EXPEDITION, "the expedition starts")
+	_expect(not cycle.can_buy(shop_pos, b_index)["ok"], "shops are for planning only")
+
+	# ---- rest rooms
+	_expect(cycle.can_short_rest(rest_pos)["ok"], "a rest room is usable on an expedition")
+	_expect(not cycle.can_short_rest(Vector2i.ZERO)["ok"], "a room with no rest feature is not")
+	var held := cycle.can_short_rest(guarded_pos)
+	_expect(not held["ok"] and String(held["reason"]).contains("Remnants"), "remnants alive in the room block resting")
+	_expect(cycle.use_short_rest(rest_pos) != null, "using the room hands back its RestDef")
+	_expect(not cycle.can_short_rest(rest_pos)["ok"] and cycle.use_short_rest(rest_pos) == null,
+			"it can be used once a day")
+	_expect(cycle.hit_dice_left(&"hero", 3) == 6, "hit dice per day are level times hit_dice_per_level")
+	_expect(cycle.spend_hit_dice(&"hero", 3, 4) == 4 and cycle.hit_dice_left(&"hero", 3) == 2, "spending reduces the pool")
+	_expect(cycle.spend_hit_dice(&"hero", 3, 4) == 2 and cycle.hit_dice_left(&"hero", 3) == 0, "only what is left can be spent")
+	_expect(cycle.spend_hit_dice(&"friend", 1, 5) == 2, "each character has their own pool")
+
+	# ---- hazards
+	_expect(cycle.can_trigger_hazard(trap_pos)["ok"] and not cycle.can_trigger_hazard(rest_pos)["ok"],
+			"only hazard rooms can go off")
+	_expect(cycle.trigger_hazard(trap_pos) == trap.hazard and cycle.bonus_blueprints_pending == 2,
+			"a hazard going off queues its bonus blueprints")
+	_expect(cycle.trigger_hazard(trap_pos) == null and cycle.bonus_blueprints_pending == 2,
+			"it goes off once a day")
+	_expect(cycle.trigger_hazard(trap_b_pos) != null and cycle.bonus_blueprints_pending == 3,
+			"bonus blueprints stop at hazard_bonus_cap")
+
+	# ---- the next dawn
+	cycle.return_to_exit()
+	config.require_blueprints = true
+	cycle.begin_next_day()
+	_expect(cycle.blueprints.size() == 1 + 3, "bonus blueprints join tomorrow's hand (%d)" % cycle.blueprints.size())
+	_expect(cycle.bonus_blueprints_pending == 0, "and are used up")
+	_expect(cycle.feature_uses_today(rest_pos) == 0 and cycle.feature_uses_today(trap_pos) == 0,
+			"rooms can be used again")
+	_expect(cycle.hit_dice_left(&"hero", 3) == 6, "hit dice refill at dawn")
+	var fresh := cycle.shop_offers(shop_pos)
+	_expect(fresh.size() == 2 and int(fresh[_shelf_of(cycle, shop_pos, item_a)]["left"]) == 2, "shops restock at dawn")
+
+	# ---- stock rarity by day
+	var early := false
+	var later := false
+	for _i in 40:
+		cycle.day = 2
+		cycle._restock_shops()
+		early = early or _shelf_of(cycle, shop_pos, item_c) >= 0
+		cycle.day = 3
+		cycle._restock_shops()
+		later = later or _shelf_of(cycle, shop_pos, item_c) >= 0
+	_expect(not early, "an offer is not stocked before its min_day")
+	_expect(later, "and is once that day comes")
+
+	# ---- a new run clears it all
+	cycle.bonus_blueprints_pending = 2
+	cycle.begin_run()
+	_expect(cycle.bonus_blueprints_pending == 0 and cycle.shop_offers(shop_pos).is_empty(), "a new run starts with no bonus and no shelves")
+
+
+## The shelf holding `item` in the shop on `pos`, or -1.
+func _shelf_of(cycle: DayCycle, pos: Vector2i, item: ItemDef) -> int:
+	var shelves := cycle.shop_offers(pos)
+	for i in shelves.size():
+		if (shelves[i]["offer"] as ShopOffer).item == item:
+			return i
+	return -1
+
+
+func _offer(item: ItemDef, price: Dictionary, copies := 1, min_day := 1) -> ShopOffer:
+	var offer := ShopOffer.new()
+	offer.item = item
+	offer.price = price
+	offer.copies = copies
+	offer.min_day = min_day
+	return offer
 
 
 # ---------------------------------------------------------------- helpers

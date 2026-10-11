@@ -1,0 +1,41 @@
+[gd_resource type="Resource" script_class="TileDef" format=3 uid="uid://1adhcqjd1b87"]
+
+[ext_resource type="Script" uid="uid://7e2wjvm1ll1u" path="res://Systems/Combat/enemy_template.gd" id="1_i7wmf"]
+[ext_resource type="Script" uid="uid://b2sa2hhblvquv" path="res://Systems/World/tile_def.gd" id="2_j58tk"]
+[ext_resource type="Script" uid="uid://dp52ogwaasyc" path="res://Systems/World/Features/shop_offer.gd" id="3_81qs6"]
+[ext_resource type="Resource" uid="uid://c6vlvekiauyao" path="res://Systems/Rules/Data/Items/padding.tres" id="4_ndqwn"]
+[ext_resource type="Resource" uid="uid://bxkeowheyat73" path="res://Systems/Rules/Data/Items/cool_stick.tres" id="5_i7wmf"]
+[ext_resource type="Script" uid="uid://cefmj4sucgeof" path="res://Systems/World/Features/shop_def.gd" id="6_1dyr1"]
+
+[sub_resource type="Resource" id="Resource_5535n"]
+script = ExtResource("3_81qs6")
+item = ExtResource("4_ndqwn")
+price = {
+&"cuts": 4
+}
+copies = 2
+
+[sub_resource type="Resource" id="Resource_qgtq5"]
+script = ExtResource("3_81qs6")
+item = ExtResource("5_i7wmf")
+price = {
+&"cuts": 3
+}
+copies = 2
+
+[sub_resource type="Resource" id="Resource_kygsd"]
+script = ExtResource("6_1dyr1")
+offers = Array[ExtResource("3_81qs6")]([SubResource("Resource_5535n"), SubResource("Resource_qgtq5")])
+prompt = "Check what's in stock [F]"
+
+[resource]
+script = ExtResource("2_j58tk")
+id = &"gray_shop"
+display_name = "Scavenged Goods"
+category = 0
+cost = {
+&"cuts": 3
+}
+shop = SubResource("Resource_kygsd")
+color = Vector3i(50, 50, 50)
+description = "This world is a whalefall, and who are you to refuse its bounty?"

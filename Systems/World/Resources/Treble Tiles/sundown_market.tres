@@ -1,0 +1,67 @@
+[gd_resource type="Resource" script_class="TileDef" format=3 uid="uid://7pqm8qucw17l"]
+
+[ext_resource type="Script" uid="uid://7e2wjvm1ll1u" path="res://Systems/Combat/enemy_template.gd" id="1_3whgc"]
+[ext_resource type="Script" uid="uid://b2sa2hhblvquv" path="res://Systems/World/tile_def.gd" id="2_pieoy"]
+[ext_resource type="Script" uid="uid://dp52ogwaasyc" path="res://Systems/World/Features/shop_offer.gd" id="3_ltlnn"]
+[ext_resource type="Resource" uid="uid://ba2130kfqdkv6" path="res://Systems/Rules/Data/Items/shooter.tres" id="4_85sdo"]
+[ext_resource type="Resource" uid="uid://bdtag85jp8kfj" path="res://Systems/Rules/Data/Items/umbrella.tres" id="5_eiyf7"]
+[ext_resource type="Resource" uid="uid://cv4xlujhtdmco" path="res://Systems/Rules/Data/Items/fang.tres" id="6_dme3q"]
+[ext_resource type="Resource" uid="uid://bd7l2fiw77gpr" path="res://Systems/Rules/Data/Items/fustis.tres" id="7_5n3ys"]
+[ext_resource type="Resource" uid="uid://ewhea4m212nr" path="res://Systems/Rules/Data/Items/hardwood_plating.tres" id="8_rlh1b"]
+[ext_resource type="Script" uid="uid://cefmj4sucgeof" path="res://Systems/World/Features/shop_def.gd" id="9_tuo3d"]
+
+[sub_resource type="Resource" id="Resource_uiaih"]
+script = ExtResource("3_ltlnn")
+item = ExtResource("4_85sdo")
+price = {
+&"cuts": &"15"
+}
+metadata/_custom_type_script = "uid://dp52ogwaasyc"
+
+[sub_resource type="Resource" id="Resource_mwf6t"]
+script = ExtResource("3_ltlnn")
+item = ExtResource("5_eiyf7")
+price = {
+&"cuts": 10
+}
+metadata/_custom_type_script = "uid://dp52ogwaasyc"
+
+[sub_resource type="Resource" id="Resource_jhyxr"]
+script = ExtResource("3_ltlnn")
+item = ExtResource("6_dme3q")
+price = {
+&"cuts": 12
+}
+metadata/_custom_type_script = "uid://dp52ogwaasyc"
+
+[sub_resource type="Resource" id="Resource_3chpv"]
+script = ExtResource("3_ltlnn")
+item = ExtResource("7_5n3ys")
+metadata/_custom_type_script = "uid://dp52ogwaasyc"
+
+[sub_resource type="Resource" id="Resource_yswqn"]
+script = ExtResource("3_ltlnn")
+item = ExtResource("8_rlh1b")
+price = {
+&"cuts": 10
+}
+copies = 2
+metadata/_custom_type_script = "uid://dp52ogwaasyc"
+
+[sub_resource type="Resource" id="Resource_mj5em"]
+script = ExtResource("9_tuo3d")
+offers = Array[ExtResource("3_ltlnn")]([SubResource("Resource_uiaih"), SubResource("Resource_mwf6t"), SubResource("Resource_jhyxr"), SubResource("Resource_3chpv"), SubResource("Resource_yswqn")])
+prompt = "Check what's in stock [F]"
+metadata/_custom_type_script = "uid://cefmj4sucgeof"
+
+[resource]
+script = ExtResource("2_pieoy")
+id = &"sundown_market"
+display_name = "Sundown Market"
+category = 0
+cost = {
+&"cuts": 10
+}
+shop = SubResource("Resource_mj5em")
+color = Vector3i(150, 50, 0)
+metadata/_custom_type_script = "uid://b2sa2hhblvquv"

@@ -2,12 +2,24 @@
 
 [ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="1_uoadu"]
 [ext_resource type="Script" uid="uid://ch43wbypcqtmy" path="res://Systems/Progression/feat_def.gd" id="2_mpols"]
+[ext_resource type="Script" uid="uid://0bb6gaktbv7m" path="res://Systems/Rules/mechanic.gd" id="2_w66o0"]
+[ext_resource type="Script" uid="uid://dkha5gaym4vgv" path="res://Systems/Rules/Mechanics/grant_bonus_picks.gd" id="3_w66o0"]
+
+[sub_resource type="Resource" id="Resource_rf0bv"]
+script = ExtResource("3_w66o0")
+pool_folder = "res://Systems/Rules/Data/Actions/Cantos"
+exclude_tags = PackedStringArray()
+metadata/_custom_type_script = "uid://dkha5gaym4vgv"
 
 [resource]
 script = ExtResource("2_mpols")
 id = &"virtuoso"
 display_name = "Virtuoso"
-description = "(Allows recipient to choose an additional Canto from the entire list, even one that is not in their list of available Cantos)"
+description = "The recipient may learn an additional Canto, even one that is not normally available to them."
+modifiers = {
+&"anima_max": 2
+}
+mechanics = Array[ExtResource("2_w66o0")]([SubResource("Resource_rf0bv")])
 max_stacks = 3
 tags = null
 metadata/_custom_type_script = "uid://ch43wbypcqtmy"

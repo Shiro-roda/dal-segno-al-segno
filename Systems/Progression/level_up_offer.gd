@@ -18,7 +18,8 @@ var corpus_roll: int = 0
 ## `chosen` is null until a choice is made. Options are FeatDefs, ActionDefs,
 ## or attribute ids, depending on the kind.
 var picks: Array[Dictionary] = []
-
+## True for a follow-up pick granted by a feat (see GrantBonusPicks): no level gained.
+var is_bonus: bool = false
 
 func is_empty() -> bool:
 	return picks.is_empty()

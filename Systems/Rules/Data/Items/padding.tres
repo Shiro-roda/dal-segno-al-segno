@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3 uid="uid://c6vlvekiauyao"]
+
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="1_nfjxq"]
+[ext_resource type="Script" uid="uid://m5jx56lhrgsj" path="res://Systems/Rules/item_def.gd" id="2_mwdkd"]
+[ext_resource type="Script" uid="uid://0bb6gaktbv7m" path="res://Systems/Rules/mechanic.gd" id="2_wicgi"]
+
+[resource]
+script = ExtResource("2_mwdkd")
+id = &"padding"
+display_name = "Soundproof Padding"
+description = "It's better than nothing."
+slot = &"armor"
+modifiers = Dictionary[StringName, int]({
+&"defense": 2
+})
+weapon_tags = null
+metadata/_custom_type_script = "uid://m5jx56lhrgsj"

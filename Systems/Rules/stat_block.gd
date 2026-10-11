@@ -7,6 +7,8 @@ var display_name: String = ""
 var level: int = 1
 ## This character's Corpus die. 0 uses RulesConfig.default_corpus_die.
 var corpus_die: int = 0
+## Absorbs damage before Corpus. Not capped by max Corpus. Clear it when a fight ends.
+var temp_corpus: int = 0
 ## attribute id -> score
 var scores: Dictionary = {}
 ## skill id -> ranks
@@ -21,6 +23,7 @@ var conditions: Array = []
 var known_actions: Array[ActionDef] = []
 ## slot id -> ItemDef currently equipped.
 var equipment: Dictionary = {}
+var weapon_override: ItemDef
 ## Hit-die rolls for levels 2 and up (index 0 is level 2), stored on the CharacterSheet.
 ## A level with no stored roll counts as the die's average, so enemies and test blocks
 ## that were never rolled still have sensible Corpus.
@@ -32,6 +35,15 @@ var bonus_corpus: int = 0
 var feats: Array[FeatDef] = []
 var engine: RulesEngine
 
+## Mechanics the block always has (from an EnemyTemplate).
+var innate_mechanics: Array[Mechanic] = []
+## Per-owner state for mechanics, keyed by the mechanic's instance id.
+var mechanic_state: Dictionary = {}
+## Loose flags set by custom effects (push, stop, etc.) for combat code to read.
+var flags: Dictionary = {}
+
+const PSEUDO_STATS: Array[StringName] = [&"defense", &"initiative", &"damage",
+		&"corpus_max", &"anima_max", &"attack"]
 
 func _init(p_engine: RulesEngine, p_name: String = "", p_level: int = 1) -> void:
 	engine = p_engine
@@ -43,6 +55,14 @@ func _init(p_engine: RulesEngine, p_name: String = "", p_level: int = 1) -> void
 func refill() -> void:
 	corpus = max_corpus()
 	anima = max_anima()
+
+
+## Clears what only lasts for one fight: temporary Corpus and pending push/stop requests.
+## Mechanic counters (like the Six Shooter's shot count) are kept on purpose.
+func end_of_fight() -> void:
+	temp_corpus = 0
+	weapon_override = null
+	flags.clear()
 
 
 # ---------------------------------------------------------------- stats
@@ -70,8 +90,7 @@ func _governing_parts(def: StatDef) -> Array:
 	var count := def.governing_stats.size()
 	var parts: Array = []
 	for gid in def.governing_stats:
-		var gdef := engine.get_stat(gid)
-		var label := gdef.display_name if gdef != null else String(gid)
+		var label = engine.stat_label(gid)
 		var m := total_mod(gid)
 		if count == 1:
 			parts.append({"source": label, "value": m})
@@ -106,7 +125,7 @@ func breakdown(stat_id: StringName) -> Array:
 		if ranks != 0:
 			parts.append({"source": "%s ranks" % label, "value": ranks})
 	else:
-		parts.append({"source": label, "value": base_mod(stat_id)})
+		parts.append({"source": engine.stat_label(stat_id), "value": base_mod(stat_id)})
 	for m: StatModifier in modifiers:
 		if m.stat == stat_id:
 			parts.append({"source": m.source, "value": m.value})
@@ -118,13 +137,17 @@ func breakdown(stat_id: StringName) -> Array:
 
 
 ## Returns {adv: int, dis: int}: how many conditions grant each for this stat.
-func advantage_sources(stat_id: StringName) -> Dictionary:
+func advantage_sources(stat_id: StringName, roll_key: StringName = &"") -> Dictionary:
 	var adv := 0
 	var dis := 0
+	var stat := String(stat_id)
+	var key := String(roll_key)
 	for c: ActiveCondition in conditions:
-		if c.def.advantage_on.has(String(stat_id)) or c.def.advantage_on.has("all"):
+		if c.def.advantage_on.has(stat) or c.def.advantage_on.has("all") \
+				or (key != "" and c.def.advantage_on.has(key)):
 			adv += 1
-		if c.def.disadvantage_on.has(String(stat_id)) or c.def.disadvantage_on.has("all"):
+		if c.def.disadvantage_on.has(stat) or c.def.disadvantage_on.has("all") \
+				or (key != "" and c.def.disadvantage_on.has(key)):
 			dis += 1
 	return {"adv": adv, "dis": dis}
 
@@ -205,6 +228,12 @@ func restore_anima(amount: int) -> int:
 # ----------------------------------------------------------- conditions
 
 func add_condition(def: ConditionDef, source: String = "", duration: int = -2) -> ActiveCondition:
+	for k in def.modifiers:
+		_check_stat_key(k, def.display_name)
+	for k in def.advantage_on:
+		_check_stat_key(k, def.display_name, true)
+	for k in def.disadvantage_on:
+		_check_stat_key(k, def.display_name, true)
 	# Reapplying refreshes the duration instead of stacking.
 	for c: ActiveCondition in conditions:
 		if c.def == def:
@@ -243,7 +272,11 @@ func tick_round() -> Array[String]:
 	for c: ActiveCondition in conditions:
 		if c.def.tick_damage != "":
 			var r := Dice.roll_expr(c.def.tick_damage, engine.rng)
-			var dealt := take_damage(int(r["total"]))
+			var event := DamageEvent.new()
+			event.target = self
+			event.amount = int(r["total"])
+			event.damage_type = c.def.tick_damage_type
+			var dealt := receive_damage(event)
 			var tick_line := engine.say(&"condition_tick", {"target": display_name,
 					"amount": dealt, "condition": c.def.display_name})
 			if tick_line != "":
@@ -278,6 +311,7 @@ func apply_equipment(p_equipment: Dictionary) -> void:
 		for stat_id in item.modifiers:
 			modifiers.append(StatModifier.make(
 					StringName(stat_id), int(item.modifiers[stat_id]), item.display_name, &"equipment"))
+			_check_stat_key(stat_id, item.display_name)
 	corpus = mini(corpus, max_corpus())
 	anima = mini(anima, max_anima())
 
@@ -294,16 +328,47 @@ func apply_feats(p_feats: Array) -> void:
 		for stat_id in feat.modifiers:
 			modifiers.append(StatModifier.make(
 					StringName(stat_id), int(feat.modifiers[stat_id]), feat.display_name, &"feat"))
+			_check_stat_key(stat_id, feat.display_name)
 	corpus = mini(corpus, max_corpus())
 	anima = mini(anima, max_anima())
 
 
 ## The equipped weapon, or the unarmed fallback if there isn't one.
 func weapon() -> ItemDef:
+	if weapon_override != null:
+		return weapon_override
 	var item := equipment.get(&"weapon") as ItemDef
 	if item != null and item.damage_dice != "":
 		return item
 	return engine.config.unarmed_weapon()
+
+
+func allows_secondary_weapon() -> bool:
+	for m in active_mechanics():
+		if m.allows_secondary_weapon(self):
+			return true
+	return false
+
+
+## A weapon held in the armor or trinket slot, if the owner is allowed one.
+func secondary_weapon() -> ItemDef:
+	if not allows_secondary_weapon():
+		return null
+	for slot in equipment:
+		if slot == &"weapon":
+			continue
+		var item := equipment[slot] as ItemDef
+		if item != null and item.slot == &"weapon" and item.damage_dice != "":
+			return item
+	return null
+
+
+## How many basic attacks the primary (or secondary) weapon makes per turn.
+func attacks_with(secondary: bool) -> int:
+	var n := 0 if secondary else 1
+	for m in active_mechanics():
+		n += m.extra_attacks(self, secondary)
+	return maxi(0, n)
 
 
 ## Attack stat of the equipped weapon.
@@ -361,3 +426,53 @@ func available_actions() -> Array[ActionDef]:
 			if not out.has(action):
 				out.append(action)
 	return out
+
+func active_mechanics() -> Array[Mechanic]:
+	var out: Array[Mechanic] = []
+	for m in innate_mechanics:
+		if m != null:
+			out.append(m)
+	for feat in feats:
+		for m in feat.mechanics:
+			if m != null:
+				out.append(m)
+	for slot in equipment:
+		var item := equipment[slot] as ItemDef
+		if item == null:
+			continue
+		for m in item.mechanics:
+			if m != null:
+				out.append(m)
+	for c: ActiveCondition in conditions:
+		for m in c.def.mechanics:
+			if m != null:
+				out.append(m)
+	return out
+
+
+## The one door for damage. Runs the target's mechanics, then temp Corpus, then Corpus.
+func receive_damage(event: DamageEvent) -> int:
+	for m in active_mechanics():
+		m.on_damage_taken(self, event)
+	if event.cancelled:
+		event.amount = 0
+	event.amount = maxi(0, event.amount)
+	var absorbed := mini(temp_corpus, event.amount)
+	temp_corpus -= absorbed
+	event.dealt = absorbed + take_damage(event.amount - absorbed)
+	return event.dealt
+
+
+func add_temp_corpus(amount: int, cap: int = 0) -> void:
+	temp_corpus += maxi(0, amount)
+	if cap > 0:
+		temp_corpus = mini(temp_corpus, cap)
+
+
+## Warns about modifier keys nothing reads (e.g. "attack", "speed").
+func _check_stat_key(key: Variant, source: String, allow_all: bool = false) -> void:
+	var id := StringName(key)
+	if allow_all and (id == &"all" or id == &"attack" or id == &"save"):
+		return
+	if engine.get_stat(id) == null and not PSEUDO_STATS.has(id):
+		push_warning("%s uses stat key '%s', which nothing in the rules reads." % [source, id])

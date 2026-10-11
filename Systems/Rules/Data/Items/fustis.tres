@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3 uid="uid://bd7l2fiw77gpr"]
+
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="1_ne066"]
+[ext_resource type="Resource" uid="uid://bharujhq5s6vw" path="res://Systems/Rules/Data/Actions/Special Actions/crucify.tres" id="2_cjhnb"]
+[ext_resource type="Script" uid="uid://0bb6gaktbv7m" path="res://Systems/Rules/mechanic.gd" id="3_1vael"]
+[ext_resource type="Script" uid="uid://m5jx56lhrgsj" path="res://Systems/Rules/item_def.gd" id="4_ot5vk"]
+
+[resource]
+script = ExtResource("4_ot5vk")
+id = &"fustis"
+display_name = "Fustis"
+description = "A weapon of war reserved only for one's own countrymen."
+modifiers = Dictionary[StringName, int]({
+&"tempo": 1
+})
+granted_actions = Array[ExtResource("1_ne066")]([ExtResource("2_cjhnb")])
+damage_dice = "2d4 + 1"
+attack_stat = &"volume"
+damage_stat = &"volume"
+weapon_tags = PackedStringArray("melee")
+metadata/_custom_type_script = "uid://m5jx56lhrgsj"

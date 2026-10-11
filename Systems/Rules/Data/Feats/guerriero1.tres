@@ -2,11 +2,25 @@
 
 [ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="1_pvchi"]
 [ext_resource type="Script" uid="uid://ch43wbypcqtmy" path="res://Systems/Progression/feat_def.gd" id="2_7000i"]
+[ext_resource type="Script" uid="uid://0bb6gaktbv7m" path="res://Systems/Rules/mechanic.gd" id="2_v4mkg"]
+[ext_resource type="Script" uid="uid://8vaoykifycw1" path="res://Systems/Rules/Mechanics/extra_attacks.gd" id="3_v4mkg"]
+
+[sub_resource type="Resource" id="Resource_nmo4w"]
+script = ExtResource("3_v4mkg")
+secondary = 1
+allows_secondary = true
+display_name = "Offhand Attack"
+metadata/_custom_type_script = "uid://8vaoykifycw1"
 
 [resource]
 script = ExtResource("2_7000i")
 id = &"guerriero1"
 display_name = "Guerriero I"
-description = "(allows recipient to equip a secondary weapon in place of their armor or trinket and use it to take an extra attack on their turn)"
+description = "Allows recipient to equip a secondary weapon in place of their armor or trinket and use it to take an extra attack on their turn."
+modifiers = {
+&"damage": 1
+}
+mechanics = Array[ExtResource("2_v4mkg")]([SubResource("Resource_nmo4w")])
+min_level = 2
 tags = null
 metadata/_custom_type_script = "uid://ch43wbypcqtmy"

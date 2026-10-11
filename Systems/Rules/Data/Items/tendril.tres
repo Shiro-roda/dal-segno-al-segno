@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemDef" format=3 uid="uid://ftpllnwemrbw"]
+
+[ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="1_h4qvv"]
+[ext_resource type="Script" uid="uid://0bb6gaktbv7m" path="res://Systems/Rules/mechanic.gd" id="2_eruim"]
+[ext_resource type="Script" uid="uid://m5jx56lhrgsj" path="res://Systems/Rules/item_def.gd" id="3_1kck3"]
+
+[resource]
+script = ExtResource("3_1kck3")
+id = &"tendril"
+display_name = "Smoky Tendril"
+damage_dice = "1d4"
+attack_stat = &"volume"
+damage_stat = &"volume"
+weapon_tags = PackedStringArray()
+metadata/_custom_type_script = "uid://m5jx56lhrgsj"

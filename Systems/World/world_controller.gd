@@ -40,7 +40,8 @@ signal state_changed
 @export var autoplan := false
 @export var autoplan_delay := 1.5
 ## One debug label with day, stock and blueprints.
-@export var debug_overlay := true
+## The corner text now lives in the party menu's Map tab; this is only for debugging.
+@export var debug_overlay := false
 
 var day: DayCycle
 var village_defs: Array[TileDef] = []
@@ -51,6 +52,7 @@ var _treble_nodes: Dictionary = {}  # Vector2i -> Node3D
 var _console: Interactable
 var _label: Label
 var _plan: PlanScreen
+var _shop: ShopScreen
 var _plan_locked := false  # lock_controls() is a counter, so keep our calls balanced
 var _rebuild_queued := false
 
@@ -65,6 +67,7 @@ func _ready() -> void:
 	_build_overlay()
 	if use_plan_screen and not autoplan:
 		_build_plan_screen()
+	_build_shop_screen()
 	rebuild_tiles()
 	_update_overlay()
 	_place_party.call_deferred()
@@ -146,7 +149,7 @@ func _ensure_cycle() -> void:
 			exit.id = &"exit"
 			exit.display_name = "Exit"
 			exit.category = TileDef.Category.DUNGEON
-			exit.is_exit = true
+			exit.role = TileDef.Role.EXIT
 		GameController.day_cycle = DayCycle.new(exit, config, GameController.world_persistent, -1, origin_def, segno_def)
 		GameController.day_cycle.blueprint_pool = dungeon_defs
 		GameController.day_cycle.begin_run()
@@ -218,11 +221,14 @@ func _rebuild_treble() -> void:
 	_treble_nodes.clear()
 	var grid := day.grid_for(TileDef.Clef.TREBLE)
 	for cell: Vector2i in grid.cells:
-		var node := _make_tile_node(grid.cells[cell] as TileInstance)
+		var tile := grid.cells[cell] as TileInstance
+		var node := _make_tile_node(tile)
 		node.position = world_pos(cell)
 		node.name = "Tile_%d_%d" % [cell.x, cell.y]
 		_treble_root.add_child(node)
 		_treble_nodes[cell] = node
+		if tile.def.shop != null and not tile.ruined:
+			_add_shop_counter(node, cell, tile)
 
 
 func _make_tile_node(tile: TileInstance) -> Node3D:
@@ -404,18 +410,20 @@ func _build_plan_screen() -> void:
 	add_child(_plan)
 	_plan.open(day, village_defs)
 	_plan.expedition_requested.connect(start_expedition)
+	_plan.shop_requested.connect(open_shop)
 	_plan.opened.connect(_sync_plan_lock)
 	_plan.closed.connect(_sync_plan_lock)
 	# The player may not exist yet, so lock once everything is ready.
 	_sync_plan_lock.call_deferred()
 
 
-## Freezes the player while the plan screen is open. lock_controls() is a counter,
-## so only call it when the state actually changes.
+## Freezes the player while the plan screen or a shop is open. lock_controls() is a
+## counter, so only call it when the state actually changes.
 func _sync_plan_lock() -> void:
-	var want := _plan != null and _plan.is_open()
+	var plan_open := _plan != null and _plan.is_open()
+	var want := plan_open or (_shop != null and _shop.is_open())
 	if _label != null:
-		_label.visible = not want  # the plan screen shows all of this itself
+		_label.visible = not plan_open  # the plan screen shows all of this itself
 	if want == _plan_locked:
 		return
 	var link := _party_link()
@@ -426,6 +434,44 @@ func _sync_plan_lock() -> void:
 	else:
 		link.unlock_controls()
 	_plan_locked = want
+
+
+# ------------------------------------------------------------------- shops
+
+func _build_shop_screen() -> void:
+	_shop = ShopScreen.new()
+	add_child(_shop)
+	_shop.opened.connect(_sync_plan_lock)
+	_shop.closed.connect(_sync_plan_lock)
+
+
+## Opens the shelves of the shop on Treble cell `cell`. Used by the plan screen's
+## double-click and by the shop counters standing in the Town.
+func open_shop(cell: Vector2i) -> void:
+	if _shop != null and day.shop_def_at(cell) != null:
+		_shop.open(day, cell)
+
+
+## A counter on a standing shop tile that opens the shop. Added next to whatever the
+## tile's own scene brings, so give a shop scene no counter of its own.
+func _add_shop_counter(node: Node3D, cell: Vector2i, tile: TileInstance) -> void:
+	var counter := Interactable.new()
+	counter.name = "ShopCounter"
+	counter.prompt = tile.def.shop.prompt if tile.def.shop.prompt != "" else "Shop"
+	counter.auto_shape_radius = 1.6
+	var post := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = Vector3(1.6, 1.0, 0.8)
+	post.mesh = box
+	post.position.y = 0.5
+	counter.add_child(post)
+	var counter_label := Label3D.new()
+	counter_label.text = tile.def.display_name if tile.def.display_name != "" else String(tile.def.id)
+	counter_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	counter_label.position.y = 1.6
+	counter.add_child(counter_label)
+	counter.interacted.connect(func(_who: Node3D) -> void: open_shop(cell))
+	node.add_child(counter)
 
 
 ## Placing or erasing a Town tile changes the 3D scene; several can land in one frame.

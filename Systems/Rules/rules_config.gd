@@ -31,7 +31,7 @@ extends Resource
 
 # --- Corpus Portions (health) ---
 ## Flat Corpus every character has, on top of their dice.
-@export var corpus_base: int = 10
+@export var corpus_base: int = 0
 ## Corpus die for characters that don't set their own (CharacterSheet.corpus_die).
 ## Level 1 gets a full die; each later level gets the die's average (half + 1).
 ## The corpus_stat modifier is added at every level.
@@ -134,9 +134,9 @@ func get_basic_attack() -> ActionDef:
 		_builtin_attack.display_name = "Attack"
 		_builtin_attack.description = "Attack with your equipped weapon."
 		_builtin_attack.roll = ActionDef.Roll.ATTACK
-		_builtin_attack.target = ActionDef.Target.SINGLE_ENEMY
 		var fx := EffectDef.new()
 		fx.kind = EffectDef.Kind.WEAPON_DAMAGE
+		fx.target = EffectDef.Target.SINGLE_ENEMY
 		_builtin_attack.effects = [fx]
 	return _builtin_attack
 

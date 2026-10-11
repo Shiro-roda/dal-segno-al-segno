@@ -1,9 +1,39 @@
-[gd_scene format=3 uid="uid://b8syy2dikcn71"]
+[gd_scene format=3 uid="uid://bo3qwix3hrfh2"]
 
-[node name="CombatPartyRow" type="Control" unique_id=1368375205]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+[ext_resource type="Script" uid="uid://lbfrupo28s8k" path="res://UI/2D/Scripts/combat_party_row.gd" id="1_5665s"]
+
+[node name="CombatPartyRow" type="PanelContainer" unique_id=884363924]
+script = ExtResource("1_5665s")
+
+[node name="VBox" type="VBoxContainer" parent="." unique_id=1508547865]
+layout_mode = 2
+
+[node name="SelectButton" type="Button" parent="VBox" unique_id=155517908]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+
+[node name="CorpusBar" type="ProgressBar" parent="VBox" unique_id=857655542]
+unique_name_in_owner = true
+modulate = Color(0.8, 0.2, 0.2, 1)
+custom_minimum_size = Vector2(110, 10)
+layout_mode = 2
+show_percentage = false
+
+[node name="AnimaLabel" type="Label" parent="VBox" unique_id=179632219]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Anima 0/0"
+
+[node name="GaugeBar" type="ProgressBar" parent="VBox" unique_id=996711126]
+unique_name_in_owner = true
+modulate = Color(0.9, 0.8, 0.3, 1)
+custom_minimum_size = Vector2(110, 6)
+layout_mode = 2
+max_value = 1.0
+show_percentage = false
+
+[node name="OrderLabel" type="Label" parent="VBox" unique_id=191606581]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Auto: Attack"
