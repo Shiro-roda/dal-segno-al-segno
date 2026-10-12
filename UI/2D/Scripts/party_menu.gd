@@ -596,8 +596,8 @@ func _refresh_map() -> void:
 		for side in day.open_sides(room.cell):
 			ways.append(String(DayCycle.Side.keys()[side]).capitalize())
 		MenuStyle.pair(where, "Doors", ", ".join(ways) if not ways.is_empty() else "none", &"", 100.0)
-		var here := _remnants_at(day, room.cell)
-		MenuStyle.pair(where, "Remnants", str(here), &"AlertLabel" if here > 0 else &"", 100.0)
+		var here := _enemies_at(day, room.cell)
+		MenuStyle.pair(where, "enemies", str(here), &"AlertLabel" if here > 0 else &"", 100.0)
 	else:
 		MenuStyle.pair(where, "Place", "Town" if day.phase == DayCycle.Phase.PLAN else "Not in a room", &"", 100.0)
 
@@ -619,7 +619,7 @@ func _refresh_map() -> void:
 	else:
 		MenuStyle.pair(dungeon, "Segno", "not placed", &"", 100.0)
 	MenuStyle.pair(dungeon, "Rooms", str(day.bass.size()), &"", 100.0)
-	MenuStyle.pair(dungeon, "Remnants left", str(day.remaining()), &"", 100.0)
+	MenuStyle.pair(dungeon, "enemies left", str(day.remaining()), &"", 100.0)
 
 
 func _amounts(amounts: Dictionary) -> String:
@@ -637,7 +637,7 @@ func _tile_title(tile: TileInstance) -> String:
 	return tile.def.display_name if tile.def.display_name != "" else String(tile.def.id)
 
 
-func _remnants_at(day: DayCycle, cell: Vector2i) -> int:
+func _enemies_at(day: DayCycle, cell: Vector2i) -> int:
 	var count := 0
 	for s: Dictionary in day.spawns:
 		if bool(s["alive"]) and s["pos"] == cell:

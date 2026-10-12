@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://7e2wjvm1ll1u" path="res://Systems/Combat/enemy_template.gd" id="1_wybp1"]
 [ext_resource type="Script" uid="uid://b2sa2hhblvquv" path="res://Systems/World/tile_def.gd" id="2_7j6cx"]
+[ext_resource type="Script" uid="uid://du1n8icgjv36w" path="res://Systems/World/room_upgrade.gd" id="3_7j6cx"]
 
 [resource]
 script = ExtResource("2_7j6cx")
@@ -11,5 +12,6 @@ category = 0
 income = {
 &"cuts": 1
 }
-color = Vector3i(50, 50, 50)
+build_segments = 1
+color = Vector3i(10, 10, 10)
 metadata/_custom_type_script = "uid://b2sa2hhblvquv"

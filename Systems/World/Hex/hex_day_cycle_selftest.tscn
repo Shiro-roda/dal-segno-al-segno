@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://ctbnxwxm2ff11"]
+
+[ext_resource type="Script" uid="uid://pq54vxmabi1k" path="res://Systems/World/Hex/hex_day_cycle_selftest.gd" id="1_4cisg"]
+
+[node name="HexDayCycleSelfTest" type="Node" unique_id=156929512]
+script = ExtResource("1_4cisg")

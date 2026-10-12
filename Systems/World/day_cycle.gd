@@ -48,7 +48,7 @@ var treble := ClefGrid.new(TileDef.Clef.TREBLE)
 var bass := ClefGrid.new(TileDef.Clef.BASS)
 ## The Bass Clef cell the party spawns on this day. NO_SEGNO until placed.
 var segno := NO_SEGNO
-var carried: Dictionary = {}              # Vector2i -> remnants left alive yesterday
+var carried: Dictionary = {}              # Vector2i -> enemies left alive yesterday
 var debt := 0
 var carried_loot: Dictionary = {}         # picked up this expedition, banked on return
 var spawns: Array[Dictionary] = []        # {id, pos, template, level, loot, alive}
@@ -617,7 +617,7 @@ func loot_multiplier(pos: Vector2i) -> float:
 
 # ----------------------------------------------------------- pressure
 
-## Levels added to every remnant spawned on `pos` today.
+## Levels added to every enemy spawned on `pos` today.
 func level_bonus(pos: Vector2i) -> int:
 	var bonus := int(floor((day - 1) * config.level_per_day))
 	if config.debt_per_level > 0:
@@ -724,7 +724,7 @@ func start_expedition() -> Array[Dictionary]:
 			_next_spawn_id += 1
 	carried.clear()
 	_set_phase(Phase.EXPEDITION)
-	log_line.emit("Expedition: %d remnants gather." % spawns.size())
+	log_line.emit("Expedition: %d enemies gather." % spawns.size())
 	return spawns.duplicate()
 
 
@@ -736,7 +736,7 @@ func remaining() -> int:
 	return n
 
 
-## Lays one remnant to rest. Its loot is carried, not banked, until you return. Every
+## Lays one enemy to rest. Its loot is carried, not banked, until you return. Every
 ## note of a colour it drops also raises the room's matching colour channel.
 func record_kill(spawn_id: int) -> Dictionary:
 	if phase != Phase.EXPEDITION:
@@ -769,7 +769,7 @@ func _stain_room(pos: Vector2i, loot: Dictionary) -> void:
 		log_line.emit("Spent (%d, %d)." % [pos.x, pos.y])
 
 
-## Back at the exit: loot is banked and remnants still alive wait for tomorrow.
+## Back at the exit: loot is banked and enemies still alive wait for tomorrow.
 func return_to_exit() -> Dictionary:
 	if phase != Phase.EXPEDITION:
 		return {}
@@ -784,7 +784,7 @@ func return_to_exit() -> Dictionary:
 	carried_loot.clear()
 	spawns.clear()
 	_set_phase(Phase.SUMMARY)
-	log_line.emit("Returned. %d remnants left alive." % left_alive)
+	log_line.emit("Returned. %d enemies left alive." % left_alive)
 	return {"banked": banked, "left_alive": left_alive}
 
 
@@ -869,8 +869,8 @@ func _live_bass_tile(pos: Vector2i) -> TileInstance:
 	return tile if tile != null and tile.is_live() else null
 
 
-## True if a remnant is still alive in the room at `pos`.
-func has_living_remnants(pos: Vector2i) -> bool:
+## True if a enemy is still alive in the room at `pos`.
+func has_living_enemies(pos: Vector2i) -> bool:
 	for s in spawns:
 		if bool(s["alive"]) and s["pos"] == pos:
 			return true
@@ -887,8 +887,8 @@ func can_short_rest(pos: Vector2i) -> Dictionary:
 	var tile := _live_bass_tile(pos)
 	if tile == null or tile.def.rest == null:
 		return {"ok": false, "reason": "No rest room here."}
-	if has_living_remnants(pos):
-		return {"ok": false, "reason": "Remnants still hold this room."}
+	if has_living_enemies(pos):
+		return {"ok": false, "reason": "enemies still hold this room."}
 	if feature_uses_today(pos) >= tile.def.rest.uses_per_day:
 		return {"ok": false, "reason": "Already used today."}
 	return {"ok": true, "reason": ""}
@@ -1072,7 +1072,7 @@ func _pick_enemy(tile: TileInstance) -> EnemyTemplate:
 	return tile.def.enemies[maxi(0, _weighted_index(weights))]
 
 
-## Notes one remnant drops: the enemy's own notes_per_kill, times the room's
+## Notes one enemy drops: the enemy's own notes_per_kill, times the room's
 ## note_multiplier, times `mult` (the main-path bonus), rounded. At least one, unless the
 ## enemy or the room drops none at all.
 func notes_dropped(def: TileDef, template: EnemyTemplate, mult := 1.0) -> int:
@@ -1081,7 +1081,7 @@ func notes_dropped(def: TileDef, template: EnemyTemplate, mult := 1.0) -> int:
 	return maxi(1, roundi(template.notes_per_kill * def.note_multiplier * mult))
 
 
-## What one remnant carries: its notes (all of the enemy's own colour, or a random colour
+## What one enemy carries: its notes (all of the enemy's own colour, or a random colour
 ## for each note if the enemy is uncoloured) plus the tile's other loot, scaled by the
 ## main-path bonus.
 func _loot_for(tile: TileInstance, template: EnemyTemplate, mult: float) -> Dictionary:

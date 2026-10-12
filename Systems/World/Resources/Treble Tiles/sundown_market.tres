@@ -9,6 +9,7 @@
 [ext_resource type="Resource" uid="uid://bd7l2fiw77gpr" path="res://Systems/Rules/Data/Items/fustis.tres" id="7_5n3ys"]
 [ext_resource type="Resource" uid="uid://ewhea4m212nr" path="res://Systems/Rules/Data/Items/hardwood_plating.tres" id="8_rlh1b"]
 [ext_resource type="Script" uid="uid://cefmj4sucgeof" path="res://Systems/World/Features/shop_def.gd" id="9_tuo3d"]
+[ext_resource type="Script" uid="uid://du1n8icgjv36w" path="res://Systems/World/room_upgrade.gd" id="10_85sdo"]
 
 [sub_resource type="Resource" id="Resource_uiaih"]
 script = ExtResource("3_ltlnn")
@@ -63,5 +64,6 @@ cost = {
 &"cuts": 10
 }
 shop = SubResource("Resource_mj5em")
+build_segments = 2
 color = Vector3i(150, 50, 0)
 metadata/_custom_type_script = "uid://b2sa2hhblvquv"

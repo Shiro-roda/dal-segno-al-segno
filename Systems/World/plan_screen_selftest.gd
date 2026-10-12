@@ -77,7 +77,7 @@ func _ready() -> void:
 	_expect(not day.treble.has_tile(Vector2i(0, 1)), "a dungeon tile does not appear on the town grid")
 	_expect(day.blueprints.size() == config.blueprints_per_day - 1, "placing spends one blueprint card")
 	_expect(screen._dungeon_count.text.contains("Dungeon tiles: 1")
-			and screen._dungeon_count.text.contains("Remnants: 2"), "the dungeon summary counts tiles and remnants")
+			and screen._dungeon_count.text.contains("enemies: 2"), "the dungeon summary counts tiles and enemies")
 	screen.click_cell(Vector2i(0, -1))
 	_expect(not day.bass.has_tile(Vector2i(0, -1)) and screen._status.text == "Cannot afford it.",
 			"a tile that can't be paid for is refused")

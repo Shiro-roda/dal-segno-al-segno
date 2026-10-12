@@ -19,11 +19,16 @@ extends Resource
 ## XP each active companion earns when a fight containing this enemy is won.
 ## Kendall earns none. 0 = awards nothing.
 @export var xp_value: int = 0
+## How many spawn tokens this enemy costs a room that gathers it (HexDayCycle). A room's
+## spawn_count is its token budget, so a costly enemy appears in lower numbers: a room
+## with 6 tokens gathers six 1-token enemies, or one 5-token brute and a 1-token runt.
+@export_range(1, 100) var spawn_cost: int = 1
 
 enum NoteColor { NONE, RED, GREEN, BLUE }
 ## The colour this enemy belongs to. A room is most likely to gather enemies of its
 ## lowest colour(s), and every note a kill drops is this colour. NONE (uncoloured) counts
-## as neutral when a room picks enemies, and each note it drops is a random colour.
+## as neutral when a room picks enemies. In the hex game each note it drops is grey; in
+## the square-grid game it is a random colour.
 @export var note_color: NoteColor = NoteColor.NONE
 ## How many notes this enemy drops when it is laid to rest, before the room's
 ## note_multiplier and the main-path bonus. 0 = drops none.

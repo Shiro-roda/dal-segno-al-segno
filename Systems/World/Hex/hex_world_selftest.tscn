@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://c5cjfqkcage8i"]
+
+[ext_resource type="Script" uid="uid://ciwi2qtpm6dus" path="res://Systems/World/Hex/hex_world_selftest.gd" id="1_mk5ud"]
+
+[node name="HexWorldSelfTest" type="Node" unique_id=786915747]
+script = ExtResource("1_mk5ud")

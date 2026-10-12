@@ -16,3 +16,6 @@ var seen_blueprints: Array[StringName] = [&"small_room"]
 ## The blueprint that gets one extra copy in every day's hand, at a higher note cost.
 ## Empty = none. Survives a defeat.
 var standing_blueprint: StringName = &"small_room"
+## Seed of the hex world's terrain (HexDayCycle only), so a run's ruins sit on the same
+## board next time. -1 until the first run picks one.
+var board_seed := -1

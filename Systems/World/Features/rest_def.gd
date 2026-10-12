@@ -8,7 +8,7 @@ extends Resource
 ## daily pool per character (see WorldConfig.hit_dice_per_level), shared by every rest
 ## room, and refill when the next day begins.
 ##
-## A room can't be rested in while remnants are still alive in it.
+## A room can't be rested in while enemies are still alive in it.
 
 ## Share of each character's max Anima restored, rounded up.
 @export_range(0.0, 1.0, 0.05) var anima_fraction := 0.5

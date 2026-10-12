@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://beo2gxiggy83a"]
+
+[ext_resource type="Script" uid="uid://ba0jggw1ds8p" path="res://Systems/World/Hex/hex_board_3d.gd" id="1_hq2m2"]
+
+[node name="HexBoard3D" type="Node3D" unique_id=1171767567]
+script = ExtResource("1_hq2m2")

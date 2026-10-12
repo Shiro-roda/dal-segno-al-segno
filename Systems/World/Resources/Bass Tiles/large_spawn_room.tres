@@ -6,6 +6,7 @@
 [ext_resource type="Resource" uid="uid://1gxmu62qw4qb" path="res://Systems/Combat/Data/sturdy_shadow.tres" id="3_m6sfx"]
 [ext_resource type="Resource" uid="uid://bae6cik3ru1ko" path="res://Systems/Combat/Data/deadly_shadow.tres" id="4_1rtit"]
 [ext_resource type="Resource" uid="uid://dbhadhmcml5fk" path="res://Systems/Combat/Data/small_shadow.tres" id="5_m6sfx"]
+[ext_resource type="Script" uid="uid://du1n8icgjv36w" path="res://Systems/World/room_upgrade.gd" id="7_1rtit"]
 
 [resource]
 script = ExtResource("2_cn33p")
@@ -13,6 +14,7 @@ id = &"large_room"
 display_name = "Large Room"
 enemies = Array[ExtResource("1_j2iai")]([ExtResource("2_i045u"), ExtResource("3_m6sfx"), ExtResource("4_1rtit"), ExtResource("5_m6sfx")])
 spawn_count = 3
+build_segments = 3
 blueprint_min_day = 5
 color = Vector3i(60, 60, 60)
 metadata/_custom_type_script = "uid://b2sa2hhblvquv"

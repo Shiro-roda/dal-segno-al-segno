@@ -8,6 +8,9 @@ enum Category { VILLAGE, DUNGEON }
 enum Clef { TREBLE, BASS }
 
 enum Role { NORMAL, EXIT, ORIGIN, SEGNO }
+## What a defensive room's units do: hold the room's own vertex, or roam the road network
+## for raiders.
+enum AllyBehavior { GUARD, PATROL }
 
 @export var id: StringName
 @export var display_name := ""
@@ -24,16 +27,45 @@ enum Role { NORMAL, EXIT, ORIGIN, SEGNO }
 ## Resource id -> amount produced at the start of every day while it stands.
 @export var income: Dictionary = {}
 
+@export_group("Raids")
+## Damage a structure of this kind takes before it falls (HexDayCycle). Raiders left
+## unopposed at its vertex wear it down at the end of every segment. Only town tiles are
+## raided; one that falls becomes a ruin.
+@export_range(1, 1000) var max_health := 10
+
+@export_group("Upgrades")
+## The upgrade tree rooms of this kind can grow along (HexDayCycle.upgrade_tile). Nodes
+## chain through `requires` and branch through `excludes`; ids must be unique here.
+@export var upgrades: Array[RoomUpgrade] = []
+
+@export_group("Defence")
+## The friendly unit this room musters (HexDayCycle). Null = it defends nothing. The units
+## are lost if the room falls, is erased or is spent.
+@export var ally: AllyTemplate
+## Most of this room's units that can stand at once. Fallen ones are replaced.
+@export_range(0, 20) var ally_cap := 0
+## Units mustered at the start of each segment, up to the cap.
+@export_range(0, 20) var ally_per_segment := 1
+## GUARD: units hold this room's vertex. PATROL: at the end of each segment they walk the
+## roads to the nearest raiders that nobody opposes.
+@export var ally_behavior: AllyBehavior = AllyBehavior.GUARD
+## A patrol goes no further than this many road steps from its room. 0 = anywhere the
+## roads connect.
+@export_range(0, 50) var ally_patrol_range := 0
+
 @export_group("Dungeon")
-## Remnants this tile gathers each day, chosen at random from `enemies`.
+## enemies this tile gathers each day, chosen at random from `enemies`.
 @export var enemies: Array[EnemyTemplate] = []
+## In the hex game this is the room's spawn-token budget per awake hex (enemies spend
+## their EnemyTemplate.spawn_cost from it), and it also sets the room's size: its cover
+## radius and how many enemies it can hold (see WorldConfig, Raids).
 @export var spawn_count := 0
 ## Multiplies how many notes the enemies gathered here drop. Each enemy sets its own
 ## quantity (EnemyTemplate.notes_per_kill); this scales it for the room, and then the
 ## main-path bonus applies. 1.0 = as the enemy says, 0 = this room's enemies drop no
 ## notes. Dropped notes also raise this room's matching colour channel.
 @export_range(0.0, 10.0, 0.05) var note_multiplier := 1.0
-## Other resource id -> base amount carried out per remnant (for example cuts).
+## Other resource id -> base amount carried out per enemy (for example cuts).
 ## Scaled by the main-path bonus; note_multiplier does not affect it.
 @export var loot_per_kill: Dictionary = {}
 
@@ -44,6 +76,12 @@ enum Role { NORMAL, EXIT, ORIGIN, SEGNO }
 @export var hazard: HazardDef
 ## Village tile: sells items, restocked every dawn. Paid for from the run's stock.
 @export var shop: ShopDef
+
+@export_group("Construction")
+## Segments the tile spends as a building site after it is placed (3 segments make a day).
+## It stands and anchors roads meanwhile, but does nothing until it is finished. 0 = built
+## the moment it is placed. Only the hex world uses this.
+@export_range(0, 12) var build_segments := 0
 
 @export_group("Blueprint")
 ## Dungeon tiles are placed from a blueprint drawn fresh each day. Relative draw

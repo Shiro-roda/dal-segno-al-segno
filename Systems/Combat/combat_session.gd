@@ -1025,6 +1025,8 @@ func _heals(action: ActionDef) -> bool:
 
 ## Freezes or frees the exploration player (PlayerLink) while the fight runs.
 func _set_player_lock(on: bool) -> void:
+	if not is_inside_tree():
+		return  # a headless fight (NPCs resolved off-screen) has no player to lock
 	var link := get_tree().get_first_node_in_group("party_link")
 	if link == null:
 		return
@@ -1052,7 +1054,7 @@ func spotlight() -> Combatant:
 
 
 func _start_spotlight(c: Combatant) -> void:
-	if not _focus_enabled() or c.body == null:
+	if c.body == null or not _focus_enabled():
 		return
 	if c.side == Combatant.Side.ENEMY and not focus_enemy_turns:
 		return

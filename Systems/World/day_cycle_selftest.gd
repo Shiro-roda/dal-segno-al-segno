@@ -86,7 +86,7 @@ func _test_loop() -> void:
 	_expect(cycle.set_segno(Vector2i(1, -1)), "the Segno is built in an empty cell beside a standing room")
 	var spawns := cycle.start_expedition()
 	_expect(cycle.phase == DayCycle.Phase.EXPEDITION, "the expedition starts")
-	_expect(spawns.size() == 4, "each dungeon tile gathers its remnants (got %d)" % spawns.size())
+	_expect(spawns.size() == 4, "each dungeon tile gathers its enemies (got %d)" % spawns.size())
 	_expect(not cycle.can_place(Vector2i(5, 5), haunt)["ok"], "no building during an expedition")
 	var near: Array[Dictionary] = []
 	var far: Array[Dictionary] = []
@@ -99,8 +99,8 @@ func _test_loop() -> void:
 		var loot: Dictionary = s["loot"]
 		if int(loot.get(note_id, 0)) != (5 if is_near else 4) or int(loot.get(CUTS, 0)) != 1 or loot.size() != 2:
 			loot_ok = false
-	_expect(loot_ok, "a remnant carries notes of its own colour plus the tile's other loot; the room on the main path pays 25% more")
-	_expect(near[0]["level"] == 1, "day 1 remnants have their base level")
+	_expect(loot_ok, "a enemy carries notes of its own colour plus the tile's other loot; the room on the main path pays 25% more")
+	_expect(near[0]["level"] == 1, "day 1 enemies have their base level")
 
 	var expected := Vector3i(30, 10, 50)
 	var expected_notes := {RED: 0, GREEN: 0, BLUE: 0}
@@ -119,7 +119,7 @@ func _test_loop() -> void:
 	for id in expected_notes:
 		carried_ok = carried_ok and int(cycle.carried_loot.get(id, 0)) == int(expected_notes[id])
 	_expect(carried_ok, "carried loot adds up")
-	_expect(cycle.remaining() == 2, "two remnants are left")
+	_expect(cycle.remaining() == 2, "two enemies are left")
 
 	var before := cycle.stock.duplicate()
 	var report := cycle.return_to_exit()
@@ -127,7 +127,7 @@ func _test_loop() -> void:
 	for id in [RED, GREEN, BLUE, CUTS]:
 		banked_ok = banked_ok and int(cycle.stock.get(id, 0)) == int(before.get(id, 0)) + int(report["banked"].get(id, 0))
 	_expect(banked_ok and report["left_alive"] == 2, "returning banks the loot")
-	_expect(cycle.phase == DayCycle.Phase.SUMMARY and cycle.carried[Vector2i(2, 0)] == 2, "remnants left alive are remembered")
+	_expect(cycle.phase == DayCycle.Phase.SUMMARY and cycle.carried[Vector2i(2, 0)] == 2, "enemies left alive are remembered")
 
 	# ---- next day: income, then the tithe, paid in cuts first
 	var day2 := cycle.begin_next_day()
@@ -135,9 +135,9 @@ func _test_loop() -> void:
 	_expect(int(day2["income"].get(CUTS, 0)) == 3 and day2["tithe_due"] == 1 and day2["shortfall"] == 0, "income arrives, then the tithe")
 	_expect(day2["tithe_paid_with"] == {CUTS: 1}, "the tithe is paid in cuts first")
 	_expect(cycle.stock[CUTS] == expected_cuts + 3 - 1, "cuts cover the tithe and the notes are untouched")
-	_expect(cycle.level_bonus(Vector2i(2, 0)) == 1 and cycle.level_bonus(Vector2i(1, 0)) == 0, "surviving remnants make their tile stronger")
+	_expect(cycle.level_bonus(Vector2i(2, 0)) == 1 and cycle.level_bonus(Vector2i(1, 0)) == 0, "surviving enemies make their tile stronger")
 	var day2_spawns := cycle.start_expedition()
-	_expect(day2_spawns.size() == 6, "surviving remnants return in addition to the usual ones (got %d)" % day2_spawns.size())
+	_expect(day2_spawns.size() == 6, "surviving enemies return in addition to the usual ones (got %d)" % day2_spawns.size())
 	cycle.return_to_exit()
 
 	# ---- defeat
@@ -207,7 +207,7 @@ func _test_segno() -> void:
 	_expect(is_equal_approx(cycle.loot_multiplier(Vector2i(2, 0)), 1.75), "rooms on the main path pay the bonus")
 	_expect(cycle.can_start_expedition()["ok"], "a day can start once the Segno connects to the exit")
 	var start_spawns := cycle.start_expedition()
-	_expect(start_spawns.size() == 2, "the Segno room gathers no remnants")
+	_expect(start_spawns.size() == 2, "the Segno room gathers no enemies")
 	var loot: Dictionary = start_spawns[0]["loot"]
 	_expect(int(loot.get(RED, 0)) == 7, "loot is scaled by the main-path bonus (4 x 1.75 = 7, got %s)" % str(loot))
 	cycle.return_to_exit()
@@ -427,7 +427,7 @@ func _test_colors() -> void:
 	_expect(cycle_edge.can_erase(Vector2i(1, 0))["ok"], "a spent room can be erased")
 	_expect(not cycle_edge.can_erase(Vector2i(0, 1))["ok"], "a working room can't be erased by default")
 	_expect(not cycle_edge.can_erase(Vector2i.ZERO)["ok"], "the exit can't be erased")
-	_expect(cycle_edge.start_expedition().is_empty(), "a spent room gathers no remnants")
+	_expect(cycle_edge.start_expedition().is_empty(), "a spent room gathers no enemies")
 	cycle_edge.return_to_exit()
 	cycle_edge.begin_next_day()
 	_expect(cycle_edge.erase_tile(Vector2i(1, 0)) and not cycle_edge.bass.has_tile(Vector2i(1, 0)), "erasing clears the cell")
@@ -738,7 +738,7 @@ func _test_features() -> void:
 	_expect(cycle.can_short_rest(rest_pos)["ok"], "a rest room is usable on an expedition")
 	_expect(not cycle.can_short_rest(Vector2i.ZERO)["ok"], "a room with no rest feature is not")
 	var held := cycle.can_short_rest(guarded_pos)
-	_expect(not held["ok"] and String(held["reason"]).contains("Remnants"), "remnants alive in the room block resting")
+	_expect(not held["ok"] and String(held["reason"]).contains("enemies"), "enemies alive in the room block resting")
 	_expect(cycle.use_short_rest(rest_pos) != null, "using the room hands back its RestDef")
 	_expect(not cycle.can_short_rest(rest_pos)["ok"] and cycle.use_short_rest(rest_pos) == null,
 			"it can be used once a day")

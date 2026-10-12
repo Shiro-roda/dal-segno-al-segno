@@ -3,6 +3,7 @@
 [ext_resource type="Script" uid="uid://7e2wjvm1ll1u" path="res://Systems/Combat/enemy_template.gd" id="1_rbmbn"]
 [ext_resource type="Resource" uid="uid://dbhadhmcml5fk" path="res://Systems/Combat/Data/small_shadow.tres" id="2_2hwfg"]
 [ext_resource type="Script" uid="uid://b2sa2hhblvquv" path="res://Systems/World/tile_def.gd" id="3_sednr"]
+[ext_resource type="Script" uid="uid://du1n8icgjv36w" path="res://Systems/World/room_upgrade.gd" id="4_2hwfg"]
 
 [resource]
 script = ExtResource("3_sednr")
@@ -13,6 +14,7 @@ spawn_count = 6
 loot_per_kill = {
 &"cuts": 1
 }
+build_segments = 3
 blueprint_min_day = 5
 color = Vector3i(50, 50, 50)
 metadata/_custom_type_script = "uid://b2sa2hhblvquv"

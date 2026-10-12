@@ -3,10 +3,10 @@ extends Control
 ## A top-down map drawn from live game state, in the party menu's Map tab.
 ##
 ##   Mode.ROOM      the room the party is standing in: walls, doors (and where each leads),
-##                  the exit, the Segno spawn, remnants waiting to fight, the leader with
+##                  the exit, the Segno spawn, enemies waiting to fight, the leader with
 ##                  the way they face, and the companions.
 ##   Mode.DUNGEON   the whole Bass Clef grid: every room tinted with its colour, the main
-##                  path from the Segno to the exit, remnants left in each room, and a
+##                  path from the Segno to the exit, enemies left in each room, and a
 ##                  pulsing marker on the room the party is in.
 ##
 ## North is up in both, matching the plan screen (NORTH is -Z). Hover a room, door or
@@ -104,11 +104,11 @@ func _draw_dungeon(day: DayCycle) -> void:
 	var grid_px := Vector2(_bounds.size) * _cell_px
 	_grid_origin = Vector2(PAD, TOP) + (avail - grid_px) * 0.5
 
-	var remnants := {}
+	var enemies := {}
 	for s: Dictionary in day.spawns:
 		if bool(s["alive"]):
 			var at: Vector2i = s["pos"]
-			remnants[at] = int(remnants.get(at, 0)) + 1
+			enemies[at] = int(enemies.get(at, 0)) + 1
 	var info := day.main_path()
 	var on_path: Dictionary = info["on_path"]
 	var path: Array = info["path"]
@@ -138,7 +138,7 @@ func _draw_dungeon(day: DayCycle) -> void:
 			_label(cell.position + Vector2(4.0, 13.0), "EXIT", _c("secondary"), 11)
 		if tile.def.is_segno:
 			_label(cell.position + Vector2(4.0, 13.0), "SEGNO", _c("secondary"), 11)
-		var count := int(remnants.get(pos, 0))
+		var count := int(enemies.get(pos, 0))
 		if count > 0:
 			var tag := "x%d" % count
 			var tag_w := _font().get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
@@ -161,7 +161,7 @@ func _draw_dungeon(day: DayCycle) -> void:
 	_legend([
 		[_c("primary"), "You"],
 		[_c("secondary"), "Main path"],
-		[_c("alert"), "Remnants"],
+		[_c("alert"), "enemies"],
 		[_c("dim"), "Ruined"],
 	])
 
@@ -197,9 +197,9 @@ func _tile_tip(pos: Vector2i) -> String:
 		lines.append("Spent: erase it to build again")
 	lines.append("Colour   R %d   G %d   B %d" % [
 			roundi(tile.color.x / 10.0), roundi(tile.color.y / 10.0), roundi(tile.color.z / 10.0)])
-	var count := _remnants_at(day, pos)
+	var count := _enemies_at(day, pos)
 	if count > 0:
-		lines.append("Remnants waiting: %d" % count)
+		lines.append("enemies waiting: %d" % count)
 	if tile.is_live() and not tile.def.enemies.is_empty():
 		lines.append("Loot x%.2f" % day.loot_multiplier(pos))
 	if bool(day.main_path()["on_path"].has(pos)):
@@ -237,7 +237,7 @@ func _draw_room(day: DayCycle) -> void:
 			followers.append(node as Node3D)
 	var spawn := room.get_node_or_null("SegnoSpawn") as Node3D
 	var encounter := room.get_node_or_null("Encounter") as Node3D
-	var waiting := _remnants_at(day, room.cell) if expedition else 0
+	var waiting := _enemies_at(day, room.cell) if expedition else 0
 
 	# World rectangle: the room's walls, grown to hold anything that sits outside them.
 	var world := Rect2(centre - half, half * 2.0)
@@ -272,12 +272,12 @@ func _draw_room(day: DayCycle) -> void:
 		var zone := Rect2(_to_px(_xz(encounter) - trigger * 0.5), trigger * _world_scale)
 		draw_rect(zone, MenuStyle.fade(_c("alert"), 0.1))
 		draw_rect(zone, MenuStyle.fade(_c("alert"), 0.55), false, 1.5)
-		var tag := "%d remnant%s" % [waiting, "" if waiting == 1 else "s"]
+		var tag := "%d enemy%s" % [waiting, "" if waiting == 1 else "s"]
 		var tag_w := _font().get_string_size(tag, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
 		var zc := zone.get_center()
 		_label(Vector2(zc.x - tag_w * 0.5, zc.y + 4.0), tag, _c("alert"), 12)
 		_hits.append({"pos": zc, "radius": 22.0,
-				"text": "%d remnant%s wait here.\nWalk into the marked area to start the fight." % [
+				"text": "%d enemy%s wait here.\nWalk into the marked area to start the fight." % [
 					waiting, "" if waiting == 1 else "s"]})
 
 	# The Segno spawn.
@@ -312,7 +312,7 @@ func _draw_room(day: DayCycle) -> void:
 		[_c("primary"), "You"],
 		[_c("text"), "Companions"],
 		[_c("primary"), "Open door"],
-		[_c("alert"), "Sealed / remnants"],
+		[_c("alert"), "Sealed / enemies"],
 		[_c("dim"), "grid %d m" % int(ROOM_GRID_M)],
 	])
 
@@ -417,7 +417,7 @@ func _tile_name(tile: TileInstance) -> String:
 	return tile.def.display_name if tile.def.display_name != "" else String(tile.def.id)
 
 
-func _remnants_at(day: DayCycle, pos: Vector2i) -> int:
+func _enemies_at(day: DayCycle, pos: Vector2i) -> int:
 	var count := 0
 	for s: Dictionary in day.spawns:
 		if bool(s["alive"]) and s["pos"] == pos:

@@ -6,7 +6,7 @@ extends Node3D
 ##
 ## On load it reads the run (GameController.day_cycle) and the cell it stands for, then:
 ##   - seals every RoomDoor that has no standing room behind it
-##   - turns the day's living remnants here into one CombatEncounter
+##   - turns the day's living enemies here into one CombatEncounter
 ##   - adds a RoomExit if this is the exit tile's room and the scene has none
 ##   - puts the party where it belongs: at the Segno on the first arrival, otherwise
 ##     at the door they came through
@@ -27,7 +27,7 @@ extends Node3D
 @export var room_half_size := Vector2(12.5, 12.5)
 ## Add a RoomExit to the exit tile's room if the scene doesn't have its own.
 @export var auto_exit := true
-## One debug label with day, carried loot and remnants left.
+## One debug label with day, carried loot and enemies left.
 ## The corner text now lives in the party menu's Map tab; this is only for debugging.
 @export var debug_overlay := false
 
@@ -295,6 +295,6 @@ func _update_overlay() -> void:
 	var carried: Array[String] = []
 	for key in day.carried_loot:
 		carried.append("%s %d" % [key, int(day.carried_loot[key])])
-	_label.text = "Day %d  room (%d, %d)\nCarried: %s\nRemnants left: %d" % [
+	_label.text = "Day %d  room (%d, %d)\nCarried: %s\nenemies left: %d" % [
 			day.day, cell.x, cell.y, ", ".join(carried) if not carried.is_empty() else "-",
 			day.remaining()]
