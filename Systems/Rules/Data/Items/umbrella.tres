@@ -2,7 +2,30 @@
 
 [ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="1_g4u2s"]
 [ext_resource type="Script" uid="uid://0bb6gaktbv7m" path="res://Systems/Rules/mechanic.gd" id="2_2sv70"]
+[ext_resource type="Script" uid="uid://hgdwyugnb20t" path="res://Systems/Rules/effect_def.gd" id="2_43wam"]
 [ext_resource type="Script" uid="uid://m5jx56lhrgsj" path="res://Systems/Rules/item_def.gd" id="2_a5ucl"]
+
+[sub_resource type="Resource" id="Resource_xiw0k"]
+script = ExtResource("2_43wam")
+target = 3
+kind = 4
+bonus_stat = &"aversion"
+damage_type = &"green"
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[sub_resource type="Resource" id="Resource_siifm"]
+script = ExtResource("2_43wam")
+metadata/_custom_type_script = "uid://hgdwyugnb20t"
+
+[sub_resource type="Resource" id="Resource_r1ahi"]
+script = ExtResource("1_g4u2s")
+id = &"rebuke"
+display_name = "Rebuke"
+roll = 1
+attack_stat = &"aversion"
+effects = Array[ExtResource("2_43wam")]([SubResource("Resource_xiw0k"), SubResource("Resource_siifm")])
+tags = null
+metadata/_custom_type_script = "uid://njw6l7ex23w0"
 
 [resource]
 script = ExtResource("2_a5ucl")
@@ -11,8 +34,11 @@ display_name = "Shiny Umbrella"
 modifiers = Dictionary[StringName, int]({
 &"aversion": 3
 })
+granted_actions = Array[ExtResource("1_g4u2s")]([SubResource("Resource_r1ahi")])
 damage_dice = "1d4 + 1"
-attack_stat = &"aversion"
-damage_stat = &"aversion"
-weapon_tags = PackedStringArray("ranged")
+attack_stat = &"volume"
+damage_stat = &"volume"
+damage_type = &"green"
+weapon_range = 3.5
+weapon_tags = PackedStringArray("melee", "creative")
 metadata/_custom_type_script = "uid://m5jx56lhrgsj"

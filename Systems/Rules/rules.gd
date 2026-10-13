@@ -80,12 +80,19 @@ func check(stat: String, dc: int, actor_id: String = PLAYER, mode: String = "nor
 	return _record(engine.check(actor, StringName(stat), dc, _mode(mode)))
 
 
-## Saving throw against a DC. Same arguments and results as check().
-func save(stat: String, dc: int, actor_id: String = PLAYER, mode: String = "normal") -> bool:
+## Saving throw against a DC. Same arguments and results as check(), plus `save_type`:
+## "plus" (default) succeeds on a roll on or over the DC; "minus" (also "-" or "under")
+## succeeds on a roll under it.
+func save(stat: String, dc: int, actor_id: String = PLAYER, mode: String = "normal",
+		save_type: String = "plus") -> bool:
 	var actor := _resolve(stat, actor_id)
 	if actor == null:
 		return false
-	return _record(engine.save(actor, StringName(stat), dc, _mode(mode)))
+	var kind := RollResult.SaveType.PLUS
+	match save_type.to_lower():
+		"minus", "-", "under":
+			kind = RollResult.SaveType.MINUS
+	return _record(engine.save(actor, StringName(stat), dc, _mode(mode), 0, "", kind))
 
 
 ## Total modifier for a stat, for conditions like {Rules.mod("persuasion") >= 2}.

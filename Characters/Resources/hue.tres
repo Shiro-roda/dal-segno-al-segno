@@ -56,6 +56,9 @@ scores = Dictionary[StringName, int]({
 &"tone": 14,
 &"volume": 11
 })
+save_discipline = Dictionary[StringName, int]({
+&"aversion": 1
+})
 progression = SubResource("Resource_2b8b1")
 mechanics = Array[ExtResource("1_bkgy5")]([SubResource("Resource_jkye5")])
 equipment = Dictionary[StringName, ExtResource("1_p465c")]({

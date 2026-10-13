@@ -70,6 +70,89 @@ func _ready() -> void:
 	print("[rules] ", atk.describe())
 	_expect(atk.target == brute.defense(), "attack targets defense")
 
+	# -saves: roll under the DC. Success means total < DC. Modifiers are NOT inverted, so a
+	# positive modifier makes a -save harder and a negative one makes it easier (intentional).
+	var minus := engine.save(hero, &"tempo", 12, RulesEngine.RollMode.NORMAL, 0, "", RollResult.SaveType.MINUS)
+	print("[rules] ", minus.describe())
+	_expect(minus.roll_under, "-save is flagged roll-under")
+	_expect(minus.bonus == 3, "-save keeps the tempo mod +3, not inverted (got %d)" % minus.bonus)
+	_expect(minus.success == (minus.total < 12), "-save succeeds only on a total under the DC")
+	var plus := engine.save(hero, &"tempo", 12)
+	_expect(not plus.roll_under and plus.bonus == 3, "+save adds the tempo mod (got %d)" % plus.bonus)
+	_expect(plus.success == (plus.total >= 12), "+save succeeds on a total at or over the DC")
+	# A negative attribute helps on a -save: aversion 8 is mod -1, which stays -1.
+	var neg_minus := engine.save(brute, &"delusion", 12, RulesEngine.RollMode.NORMAL, 0, "", RollResult.SaveType.MINUS)
+	_expect(neg_minus.bonus == brute.total_mod(&"delusion") and neg_minus.bonus < 0,
+			"-save with a negative modifier stays negative (got %d)" % neg_minus.bonus)
+
+	# Discipline: the bonus scales with level, and each entry is a signed multiplier on it.
+	var cfg := engine.config
+	_expect(cfg.discipline_bonus(1) == 2 and cfg.discipline_bonus(4) == 2, "discipline +2 at levels 1-4")
+	_expect(cfg.discipline_bonus(5) == 3 and cfg.discipline_bonus(8) == 3, "discipline +3 at levels 5-8")
+	_expect(cfg.discipline_bonus(9) == 4 and cfg.discipline_bonus(17) == 6, "discipline +4 at 9, +6 at 17")
+	_expect(hero.discipline_bonus() == 2, "hero (level 3) has discipline bonus 2 (got %d)" % hero.discipline_bonus())
+
+	hero.skill_discipline_mult = {&"test_skill": 1}
+	_expect(engine.check(hero, &"test_skill", 12).bonus == 6, "skill discipline x1 adds 2 to a bonus of 4")
+	hero.skill_discipline_mult = {&"test_skill": 2}
+	_expect(engine.check(hero, &"test_skill", 12).bonus == 8, "skill discipline x2 adds double: 4 + 4")
+	hero.skill_discipline_mult = {&"test_skill": -1}
+	var neg_chk := engine.check(hero, &"test_skill", 12)
+	_expect(neg_chk.bonus == 2, "skill discipline x-1 subtracts 2 from a bonus of 4 (got %d)" % neg_chk.bonus)
+	_expect(neg_chk.parts.any(func(part): return part["source"] == "Discipline" and part["value"] == -2),
+			"discipline shows as its own line")
+	hero.skill_discipline_mult = {}
+	_expect(engine.check(hero, &"test_skill", 12).bonus == 4, "no discipline entry means no bonus")
+
+	hero.save_discipline_mult = {&"test_save": 1}
+	_expect(engine.save(hero, &"test_save", 10).bonus == 3, "save discipline x1 adds 2 to a bonus of 1")
+	# On a -save the discipline is not inverted either: +1 raises the total (worse), -1 lowers it.
+	hero.save_discipline_mult = {&"tempo": 1}
+	var minus_disc := engine.save(hero, &"tempo", 12, RulesEngine.RollMode.NORMAL, 0, "", RollResult.SaveType.MINUS)
+	_expect(minus_disc.bonus == 5, "-save with discipline x1 is not inverted: 3 + 2 (got %d)" % minus_disc.bonus)
+	hero.save_discipline_mult = {&"tempo": -1}
+	minus_disc = engine.save(hero, &"tempo", 12, RulesEngine.RollMode.NORMAL, 0, "", RollResult.SaveType.MINUS)
+	_expect(minus_disc.bonus == 1, "-save with discipline x-1 helps: 3 - 2 (got %d)" % minus_disc.bonus)
+	hero.save_discipline_mult = {}
+
+	# Discipline follows the character's level.
+	hero.level = 5
+	hero.skill_discipline_mult = {&"test_skill": 1}
+	_expect(hero.skill_discipline(&"test_skill") == 3, "level 5 discipline x1 = +3 (got %d)" % hero.skill_discipline(&"test_skill"))
+	hero.skill_discipline_mult = {}
+	hero.level = 3
+
+	var sword := ItemDef.new()
+	sword.id = &"test_sword"
+	sword.weapon_tags = PackedStringArray(["melee", "sword"])
+	# Weapon disciplines never stack in a direction: the highest positive and the most
+	# negative multiplier apply, and they cancel each other.
+	hero.weapon_discipline_mult = {&"melee": -1, &"sword": 2}
+	_expect(hero.weapon_discipline(sword) == 2, "sword x2 and melee x-1 cancel to x1 -> +2 (got %d)" % hero.weapon_discipline(sword))
+	hero.weapon_discipline_mult = {&"melee": -2, &"sword": 1}
+	_expect(hero.weapon_discipline(sword) == -2, "melee x-2 and sword x1 cancel to x-1 -> -2 (got %d)" % hero.weapon_discipline(sword))
+	hero.weapon_discipline_mult = {&"melee": -1, &"sword": -3}
+	_expect(hero.weapon_discipline(sword) == -6, "two negatives don't stack: only x-3 -> -6 (got %d)" % hero.weapon_discipline(sword))
+	hero.weapon_discipline_mult = {&"test_sword": 2, &"sword": 2, &"melee": 1}
+	_expect(hero.weapon_discipline(sword) == 4, "three positives don't stack: only x2 -> +4 (got %d)" % hero.weapon_discipline(sword))
+	hero.weapon_discipline_mult = {&"test_sword": 1, &"sword": 2}
+	_expect(hero.weapon_discipline(sword) == 4, "the highest positive wins, id or tag: x2 -> +4 (got %d)" % hero.weapon_discipline(sword))
+	hero.weapon_discipline_mult = {&"test_sword": 3, &"sword": -3}
+	_expect(hero.weapon_discipline(sword) == 0, "equal opposite multipliers cancel fully (got %d)" % hero.weapon_discipline(sword))
+	hero.weapon_discipline_mult = {&"test_sword": 2, &"melee": -1, &"sword": -3}
+	_expect(hero.weapon_discipline(sword) == -2, "+2 with -1 and -3 -> 2 + -3 = x-1 -> -2 (got %d)" % hero.weapon_discipline(sword))
+	_expect(hero.weapon_discipline() == 0, "unmatched weapon (fists) gets no discipline")
+	hero.weapon_discipline_mult = {}
+
+	var dc_before := engine.save_dc(hero, &"attachment")
+	hero.spell_discipline_mult = {&"attachment": 1}
+	_expect(engine.save_dc(hero, &"attachment") == dc_before + 2, "spellcasting discipline x1 raises the spell DC by 2")
+	hero.spell_discipline_mult = {&"attachment": 2}
+	_expect(engine.save_dc(hero, &"attachment") == dc_before + 4, "spellcasting discipline x2 raises it by 4")
+	hero.spell_discipline_mult = {&"attachment": -1}
+	_expect(engine.save_dc(hero, &"attachment") == dc_before - 2, "spellcasting discipline x-1 lowers it by 2")
+	hero.spell_discipline_mult = {}
+
 	# Disadvantage via condition: advantage_on only matches listed stats
 	var attack_action := engine.config.get_basic_attack()
 	_expect(attack_action != null, "built-in Attack action exists")
@@ -152,7 +235,7 @@ func _sheet(char_id: StringName, scores: Dictionary) -> CharacterSheet:
 	sheet.id = char_id
 	sheet.display_name = String(char_id).capitalize()
 	sheet.level = 2
-	sheet.scores = scores
+	sheet.scores.assign(scores)
 	return sheet
 
 
@@ -237,17 +320,20 @@ func _test_spell(id: StringName, level: int, max_level: int) -> ActionDef:
 ## Corpus dice, weapon dice and Cantos.
 func _test_new_rules(engine: RulesEngine) -> void:
 	# --- Corpus die: a full die at level 1, the average each level after ---
+	# Expected values add the configured flat Corpus (RulesConfig.corpus_base) rather than
+	# assuming a particular number.
+	var base := engine.config.corpus_base
 	var fighter := StatBlock.new(engine, "Fighter", 3)
 	fighter.scores = {&"tone": 12, &"volume": 12, &"tempo": 10}
-	_expect(fighter.max_corpus() == 31, "default d8 at level 3 = 10 + 9 + 2*6 = 31 (got %d)" % fighter.max_corpus())
+	_expect(fighter.max_corpus() == base + 21, "default d8 at level 3 = base + 9 + 2*6 = %d (got %d)" % [base + 21, fighter.max_corpus()])
 	fighter.corpus_die = 12
-	_expect(fighter.max_corpus() == 39, "d12 at level 3 = 10 + 13 + 2*8 = 39 (got %d)" % fighter.max_corpus())
+	_expect(fighter.max_corpus() == base + 29, "d12 at level 3 = base + 13 + 2*8 = %d (got %d)" % [base + 29, fighter.max_corpus()])
 	fighter.corpus_die = 6
-	_expect(fighter.max_corpus() == 27, "d6 at level 3 = 10 + 7 + 2*5 = 27 (got %d)" % fighter.max_corpus())
+	_expect(fighter.max_corpus() == base + 17, "d6 at level 3 = base + 7 + 2*5 = %d (got %d)" % [base + 17, fighter.max_corpus()])
 	var newcomer := StatBlock.new(engine, "Newcomer", 1)
 	newcomer.scores = {&"tone": 10}
 	newcomer.corpus_die = 10
-	_expect(newcomer.max_corpus() == 20, "level 1 gets a full die: 10 + 10 (got %d)" % newcomer.max_corpus())
+	_expect(newcomer.max_corpus() == base + 10, "level 1 gets a full die: base + 10 = %d (got %d)" % [base + 10, newcomer.max_corpus()])
 	var die_sheet := CharacterSheet.new()
 	die_sheet.corpus_die = 12
 	_expect(die_sheet.build_block(engine).corpus_die == 12, "a sheet's Corpus die reaches its block")

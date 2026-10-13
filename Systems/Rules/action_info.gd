@@ -53,8 +53,10 @@ static func details(action: ActionDef, level: int = 0) -> String:
 			var stat := String(action.attack_stat) if action.attack_stat != &"" else "weapon stat"
 			lines.append("Roll: attack, using %s" % stat)
 		ActionDef.Roll.SAVE:
-			lines.append("Roll: target saves with %s against DC from your %s" % [
-					_stat(action.save_stat), _stat(action.dc_stat)])
+			var sign_text := "-save, must roll under" if action.save_type == RollResult.SaveType.MINUS \
+					else "+save, must roll on or over"
+			lines.append("Roll: target saves with %s (%s) the DC from your %s" % [
+					_stat(action.save_stat), sign_text, _stat(action.dc_stat)])
 		_:
 			lines.append("Roll: none, always lands")
 

@@ -3,6 +3,8 @@ extends RefCounted
 ## Full breakdown of one d20 roll, suitable for a combat log.
 
 enum Kind { CHECK, ATTACK, SAVE }
+## PLUS: roll on or over the DC to save (+save). MINUS: roll under the DC to save (-save).
+enum SaveType { PLUS, MINUS }
 
 var kind: Kind = Kind.CHECK
 var label: String = ""
@@ -18,6 +20,8 @@ var total: int = 0
 ## DC for checks and saves, defense for attacks.
 var target: int = 0
 var success: bool = false
+## True for a -save: success means the total came in strictly under `target`.
+var roll_under: bool = false
 var crit: bool = false
 var fumble: bool = false
 ## Where the wording comes from. Set by the engine; a default is used if null.
@@ -45,5 +49,8 @@ func describe() -> String:
 		outcome_event = &"outcome_critical_success"
 	elif fumble:
 		outcome_event = &"outcome_fumble"
+	var target_text: Variant = target
+	if roll_under:
+		target_text = "<%d" % target
 	return t.line(&"roll_line", {"label": label, "math": math, "total": total,
-			"target": target, "outcome": t.line(outcome_event)})
+			"target": target_text, "outcome": t.line(outcome_event)})

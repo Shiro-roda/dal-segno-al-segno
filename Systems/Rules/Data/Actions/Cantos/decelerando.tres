@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://hgdwyugnb20t" path="res://Systems/Rules/effect_def.gd" id="1_mfbcn"]
 [ext_resource type="Script" uid="uid://0bb6gaktbv7m" path="res://Systems/Rules/mechanic.gd" id="2_2qg60"]
 [ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="2_ebgy8"]
-[ext_resource type="Script" uid="uid://6nbup8pfuhsr" path="res://Systems/Rules/condition_def.gd" id="2_hpua0"]
+[ext_resource type="Resource" uid="uid://crcmciqa5jhup" path="res://Systems/Rules/Data/Conditions/slow.tres" id="2_hpua0"]
 
 [sub_resource type="Resource" id="Resource_hpua0"]
 script = ExtResource("1_mfbcn")
@@ -13,24 +13,11 @@ damage_type = &"green"
 upcast_dice = "1d4"
 metadata/_custom_type_script = "uid://hgdwyugnb20t"
 
-[sub_resource type="Resource" id="Resource_xn4av"]
-script = ExtResource("2_hpua0")
-id = &"slow"
-display_name = "Slow"
-duration_rounds = 5
-modifiers = {
-&"speed": -10,
-&"tempo": -3
-}
-advantage_on = null
-disadvantage_on = null
-metadata/_custom_type_script = "uid://6nbup8pfuhsr"
-
 [sub_resource type="Resource" id="Resource_2qg60"]
 script = ExtResource("1_mfbcn")
 target = 3
 kind = 2
-condition = SubResource("Resource_xn4av")
+condition = ExtResource("2_hpua0")
 upcast_duration = 2
 metadata/_custom_type_script = "uid://hgdwyugnb20t"
 

@@ -94,7 +94,7 @@ void fragment() {
 }
 """
 
-enum Mode { ROAD, TOWN, DEN, POST, ERASE, SELECT, WALK, PLACE }
+enum Mode { TOWN, DEN, POST, ERASE, SELECT, WALK, PLACE }
 
 ## Every TileDef .tres under here (subfolders included) becomes a room tool.
 const ROOM_DIR := "res://Systems/World/Resources"
@@ -113,7 +113,7 @@ var exit_def: TileDef
 var town_def: TileDef
 var den_def: TileDef
 var post_def: TileDef
-var mode := Mode.ROAD
+var mode := Mode.TOWN
 var time_left := SEGMENT_SECONDS
 var overtime := false
 ## The room the Select tool is looking at (HexGrid.NONE = none).
@@ -147,11 +147,12 @@ var _lbl_title: Label
 var _lbl_roll: Label
 var _lbl_stock: Label
 var _lbl_timer: Label
+var _lbl_origin: Label
+var _over_panel: PanelContainer
+var _over_label: Label
 var _lbl_log: Label
 var _lbl_status: Label
 var _btn_end: Button
-var _btn_to_colors: Button
-var _btn_to_grey: Button
 var _panel: PanelContainer
 var _panel_box: VBoxContainer
 var _overlay_root: Node3D
@@ -194,7 +195,11 @@ func _ready() -> void:
 	cycle.phase_changed.connect(func(_p: int) -> void: _refresh_hud())
 	cycle.tile_changed.connect(func(_v: Vector3i) -> void: _sync_all())
 	cycle.road_changed.connect(func(_e: Vector3i) -> void: _sync_all())
-	cycle.raids_changed.connect(_sync_all)
+	cycle.hyle_changed.connect(_refresh_hud)
+	cycle.raids_changed.connect(func() -> void:
+		_sync_all()
+		_refresh_hud())
+	cycle.run_ended.connect(_on_run_ended)
 	cycle.explored_changed.connect(_sync_all)
 	cycle.explored_changed.connect(_refresh_cells)
 	cycle.party_changed.connect(_sync_all)
@@ -202,6 +207,7 @@ func _ready() -> void:
 	cycle.present_fights = true
 	cycle.fight_starting.connect(_on_fight_starting)
 	cycle.fight_started.connect(_on_fight_started)
+	cycle.xp_awarded.connect(_on_xp_awarded)
 	cycle.begin_run()
 	_make_test_party()
 	_ensure_party_menu()
@@ -216,7 +222,7 @@ func _ready() -> void:
 	_sync_all()
 	_refresh_cells()
 	_refresh_hud()
-	_log("Build roads out from the gate, then rooms along them.")
+	_log("The origin grows the roads. Build rooms where they end.")
 
 
 # ------------------------------------------------------------------ content
@@ -240,6 +246,9 @@ func _build_defs() -> void:
 	]
 	config.raids_enabled = true
 	config.raider_templates = [_enemy("Raider", EnemyTemplate.NoteColor.NONE)]
+	# Explored ground outside any dungeon's safe zone breeds raiders that march on the town
+	# and, in the end, the origin.
+	config.frontier_raids_enabled = true
 
 	exit_def = TileDef.new()
 	exit_def.id = &"gate"
@@ -274,31 +283,38 @@ func _build_defs() -> void:
 	var red: StringName = config.note_ids[0]
 	var green: StringName = config.note_ids[1]
 	var blue: StringName = config.note_ids[2]
-	var deepen := _upgrade(&"deepen", "Deep Lair", {red: 3},
-			"More enemies gather here, so the room grows. Sturdier too.")
-	deepen.spawn_count_add = 2
-	deepen.max_health_add = 5
-	var reach := _upgrade(&"reach", "Long Reach", {green: 3}, "The safe zone reaches one road further.")
-	reach.cover_radius_add = 1
-	var garrison := _upgrade(&"garrison", "Garrison", {blue: 4}, "Guards hold this room.")
-	garrison.requires = [&"deepen"]
-	garrison.excludes = [&"rangers", &"warren"]
+	# The Den's upgrade tree is a tree of buildings. A room's size (safe-zone reach and how
+	# many enemies it holds) comes from its spawn count: 2 is small, 3+ medium, 6+ large.
+	#   Dungeon room -> Deep lair -> Garrison / Ranger camp / Warren
+	#                -> Lookout
+	var deep := _variant(den_def, &"den_deep", "Deep lair")
+	deep.spawn_count = 4  # medium: more enemies gather and the zone reaches further
+	deep.max_health = 15
+	var lookout := _variant(den_def, &"den_lookout", "Lookout")
+	lookout.spawn_count = 3  # medium, but no sturdier
+	var garrison := _variant(deep, &"garrison", "Garrison")
 	garrison.ally = guard
-	garrison.ally_cap_add = 2
-	garrison.ally_behavior = RoomUpgrade.AllyBehaviorChange.GUARD
-	var rangers := _upgrade(&"rangers", "Ranger Camp", {blue: 4}, "Rangers patrol the roads for raiders.")
-	rangers.requires = [&"deepen"]
-	rangers.excludes = [&"garrison", &"warren"]
+	garrison.ally_cap = 2
+	garrison.ally_per_segment = 1
+	garrison.ally_behavior = TileDef.AllyBehavior.GUARD
+	var rangers := _variant(deep, &"rangers", "Ranger camp")
 	rangers.ally = guard
-	rangers.ally_cap_add = 2
-	rangers.ally_behavior = RoomUpgrade.AllyBehaviorChange.PATROL
-	rangers.ally_patrol_range_add = 4
-	var warren := _upgrade(&"warren", "Warren", {blue: 4}, "No defenders, but it holds far more and covers further.")
-	warren.requires = [&"deepen"]
-	warren.excludes = [&"garrison", &"rangers"]
-	warren.capacity_add = 6
-	warren.cover_radius_add = 1
-	den_def.upgrades = [deepen, reach, garrison, rangers, warren]
+	rangers.ally_cap = 2
+	rangers.ally_per_segment = 1
+	rangers.ally_behavior = TileDef.AllyBehavior.PATROL
+	rangers.ally_patrol_range = 4
+	var warren := _variant(deep, &"warren", "Warren")
+	warren.spawn_count = 6  # large: it holds far more and covers further, with no defenders
+
+	deep.upgrades = [
+		_upgrade(garrison, {blue: 4}, "Guards hold this room."),
+		_upgrade(rangers, {blue: 4}, "Rangers patrol the roads for raiders."),
+		_upgrade(warren, {blue: 4}, "No defenders, but it holds far more and covers further."),
+	]
+	den_def.upgrades = [
+		_upgrade(deep, {red: 3}, "More enemies gather here, so the room grows. Sturdier too."),
+		_upgrade(lookout, {green: 3}, "The room grows, so its safe zone reaches further."),
+	]
 
 	post_def = TileDef.new()
 	post_def.id = &"post"
@@ -310,12 +326,16 @@ func _build_defs() -> void:
 	post_def.ally_cap = 1
 	post_def.ally_per_segment = 1
 	post_def.ally_behavior = TileDef.AllyBehavior.GUARD
-	var barracks := _upgrade(&"barracks", "Barracks", {red: 3}, "Two more guards.")
-	barracks.ally_cap_add = 2
-	var routes := _upgrade(&"routes", "Patrol Routes", {green: 3}, "Its guards patrol the roads instead of standing watch.")
-	routes.ally_behavior = RoomUpgrade.AllyBehaviorChange.PATROL
-	routes.ally_patrol_range_add = 5
-	post_def.upgrades = [barracks, routes]
+	# Guard post -> Barracks (more guards) or Patrol post (guards roam the roads).
+	var barracks := _variant(post_def, &"barracks", "Barracks")
+	barracks.ally_cap = 3
+	var patrol_post := _variant(post_def, &"patrol_post", "Patrol post")
+	patrol_post.ally_behavior = TileDef.AllyBehavior.PATROL
+	patrol_post.ally_patrol_range = 5
+	post_def.upgrades = [
+		_upgrade(barracks, {red: 3}, "Two more guards."),
+		_upgrade(patrol_post, {green: 3}, "Its guards patrol the roads instead of standing watch."),
+	]
 
 	# Nothing finishes instantly: rooms and upgrades take segments to build.
 	town_def.build_segments = 2
@@ -323,10 +343,20 @@ func _build_defs() -> void:
 	post_def.build_segments = 2
 
 
-func _upgrade(id: StringName, label: String, price: Dictionary, text: String) -> RoomUpgrade:
+## A copy of `base` to hang an upgrade step on: the same building until the caller changes it,
+## with no steps of its own yet.
+func _variant(base: TileDef, id: StringName, label: String) -> TileDef:
+	var def: TileDef = base.duplicate()
+	def.id = id
+	def.display_name = label
+	def.upgrades = []
+	return def
+
+
+## The step that turns a room into `into`, for `price`.
+func _upgrade(into: TileDef, price: Dictionary, text: String) -> RoomUpgrade:
 	var up := RoomUpgrade.new()
-	up.id = id
-	up.display_name = label
+	up.into = into
 	up.description = text
 	up.cost = price
 	up.build_segments = 2
@@ -405,12 +435,35 @@ func _on_fight_ended(_victory: bool) -> void:
 	_refresh_hud()
 
 
+## Level-ups are spent in the party menu (TAB), not forced on the player. Characters set to
+## pick automatically (CharacterSheet.auto_pick_recommended) level up right here; for
+## everyone else this only says who has earned one.
+func _on_xp_awarded(_amount: int, ready_ids: Array) -> void:
+	var names: Array[String] = []
+	var auto_names: Array[String] = []
+	for id in ready_ids:
+		var sheet := Rules.roster.get_sheet(id)
+		if sheet == null or not Leveling.can_level_up(sheet):
+			continue
+		var who := sheet.display_name if sheet.display_name != "" else String(id)
+		if sheet.auto_pick_recommended \
+				and Leveling.auto_resolve(Rules.roster, Leveling.build_offer(Rules.roster, id)):
+			auto_names.append("%s (level %d)" % [who, sheet.level])
+		else:
+			names.append(who)
+	if not auto_names.is_empty():
+		_log("Levelled up: %s." % ", ".join(auto_names))
+	if not names.is_empty():
+		_log("%s can level up. Open the party menu (TAB)." % ", ".join(names))
+
+
 func _enemy(display_name: String, note_color: EnemyTemplate.NoteColor) -> EnemyTemplate:
 	var template := EnemyTemplate.new()
 	template.display_name = display_name
 	template.level = 1
 	template.note_color = note_color
 	template.notes_per_kill = 2
+	template.xp_value = 5  # each active companion earns this when a fight with it is won
 	return template
 
 
@@ -741,8 +794,8 @@ func _refresh_tags() -> void:
 			text = tile.def.display_name
 			if cycle.raids_enabled():
 				text += "  %d/%d" % [tile.health, cycle.effective_max_health(tile)]
-		if not tile.upgrades.is_empty():
-			text += "  *%d" % tile.upgrades.size()
+		if not tile.lineage.is_empty():
+			text += "  *%d" % tile.lineage.size()
 		tag.text = text
 
 
@@ -1015,9 +1068,6 @@ func _target_at(screen: Vector2) -> Dictionary:
 		return {}
 	var p: Vector2 = ground
 	match mode:
-		Mode.ROAD:
-			var e := HexGrid.nearest_edge(p, SIZE)
-			return {"kind": "road", "key": e, "check": _gate(cycle.can_build_road(e))}
 		Mode.TOWN, Mode.DEN, Mode.POST, Mode.PLACE:
 			var v := HexGrid.nearest_vertex(p, SIZE)
 			var def := _placing_def()
@@ -1055,9 +1105,6 @@ func _target_at(screen: Vector2) -> Dictionary:
 			var v := HexGrid.nearest_vertex(p, SIZE)
 			if cycle.tile_at(v) != null and HexGrid.vertex_pos(v, SIZE).distance_to(p) < 0.45:
 				return {"kind": "erase_room", "key": v, "check": _gate(cycle.can_erase(v))}
-			var e := HexGrid.nearest_edge(p, SIZE)
-			if cycle.world.has_road(e):
-				return {"kind": "erase_road", "key": e, "check": _gate(cycle.can_erase_road(e))}
 	return {}
 
 
@@ -1095,7 +1142,7 @@ func _update_hover(screen: Vector2) -> void:
 	_ghost_mat.albedo_color = Color(tint.r, tint.g, tint.b, 0.55).darkened(0.75)
 	_ghost_mat.albedo_color.a = 0.55
 	var kind: String = target["kind"]
-	if kind == "road" or kind == "erase_road" or kind == "walk":
+	if kind == "walk":
 		_ghost_road.transform = _road_transform(target["key"])
 		_ghost_road.transform.origin.y = 0.08
 		_ghost_road.visible = true
@@ -1122,14 +1169,10 @@ func _apply(screen: Vector2) -> void:
 		_log(String(check["reason"]))
 		return
 	match String(target["kind"]):
-		"road":
-			cycle.build_road(target["key"])
 		"room":
 			cycle.place_tile(target["key"], target["def"])
 		"erase_room":
 			cycle.erase_tile(target["key"])
-		"erase_road":
-			cycle.erase_road(target["key"])
 		"walk", "walk_vertex":
 			cycle.travel_party(target["to"])
 	_sync_all()
@@ -1182,7 +1225,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if click.button_index == MOUSE_BUTTON_LEFT and click.pressed:
 			_apply(click.position)
 	elif key != null:
-		if key.pressed and not key.echo and key.keycode >= KEY_1 and key.keycode <= KEY_7:
+		if key.pressed and not key.echo and key.keycode >= KEY_1 and key.keycode <= KEY_6:
 			var index := key.keycode - KEY_1
 			_mode_buttons[index].button_pressed = true
 			_set_mode(index)
@@ -1276,6 +1319,31 @@ func _on_segment_changed(_segment: int) -> void:
 	_refresh_hud()
 
 
+## The run ended (the party fell, or raiders took the origin): show the game-over panel.
+func _on_run_ended(reason: String) -> void:
+	selected = HexGrid.NONE
+	if _over_label != null:
+		_over_label.text = reason
+	_sync_all()
+	_refresh_hud()
+
+
+## Starts a fresh run on the same board seed and puts the sandbox back to its opening state.
+func _restart_run() -> void:
+	if cycle.phase != HexDayCycle.Phase.OVER:
+		return
+	selected = HexGrid.NONE
+	overtime = false
+	time_left = SEGMENT_SECONDS
+	for b in cycle.party:
+		b.refill()
+	cycle.begin_run()
+	_log("A new run begins. The origin grows the roads. Build rooms where they end.")
+	_sync_all()
+	_refresh_cells()
+	_refresh_hud()
+
+
 func _end_segment() -> void:
 	var result := cycle.begin_next_segment()
 	if result.is_empty():
@@ -1333,29 +1401,26 @@ func _refresh_hud() -> void:
 	var tags := ["Red", "Green", "Blue"]
 	for i in 3:
 		notes.append("%s %d" % [tags[i], int(cycle.stock.get(config.note_ids[i], 0))])
-	_lbl_stock.text = "Notes: " + "   ".join(notes) + "   Grey %d" % int(cycle.stock.get(config.grey_note_id, 0))
+	_lbl_stock.text = "Notes: " + "   ".join(notes) + "    Hyle %d / %d  (next segment takes %d of each)" % [
+			cycle.hyle, cycle.hyle_cost_of_next_road(), cycle.hyle_draw()]
 	var planning := cycle.phase == HexDayCycle.Phase.PLAN
+	if _lbl_origin != null:
+		var origin_tile: TileInstance = cycle.world.structures.get(cycle.origin_vertex())
+		if origin_tile != null and config.frontier_raids_enabled:
+			_lbl_origin.text = "Origin: %d / %d    Frontier raiders: %d" % [
+					maxi(0, origin_tile.health), cycle.effective_max_health(origin_tile),
+					cycle.frontier_raider_count()]
+			_lbl_origin.modulate = Color(1.0, 0.45, 0.4) if origin_tile.health < cycle.effective_max_health(origin_tile) else Color.WHITE
+		else:
+			_lbl_origin.text = ""
+	if _over_panel != null:
+		_over_panel.visible = cycle.phase == HexDayCycle.Phase.OVER
 	_btn_end.disabled = cycle.fighting() or not (planning or cycle.phase == HexDayCycle.Phase.SUMMARY)
 	_btn_end.text = "End day" if cycle.segment == HexDayCycle.Segment.DUSK else "End segment"
 	for i in _mode_buttons.size():
 		_mode_buttons[i].disabled = (not planning or overtime) and i != int(Mode.SELECT)
-	_btn_to_colors.text = "1 grey -> %d of each colour" % cycle.exchange_amount()
-	_btn_to_grey.text = "%d of each colour -> 1 grey" % cycle.exchange_amount()
-	_btn_to_colors.disabled = overtime or not bool(cycle.can_exchange_to_colors()["ok"])
-	_btn_to_grey.disabled = overtime or not bool(cycle.can_exchange_to_grey()["ok"])
 	_refresh_tags()
 	_refresh_panel()
-
-
-func _convert(to_colors: bool) -> void:
-	if overtime:
-		_log("Overtime: the world is locked.")
-		return
-	if to_colors:
-		cycle.exchange_to_colors()
-	else:
-		cycle.exchange_to_grey()
-	_refresh_hud()
 
 
 # ------------------------------------------------------ selected-room panel
@@ -1378,8 +1443,8 @@ func _panel_line(text: String, dim := false) -> Label:
 	return label
 
 
-## Rebuilds the Select tool's panel: the room's stats, the upgrades it has taken, and a
-## button for each one still to take (greyed with the reason when it can't be bought).
+## Rebuilds the Select tool's panel: the room's stats, and a button for each building it can
+## be upgraded into (greyed with the reason when it can't be bought).
 func _refresh_panel() -> void:
 	if _panel == null or _panel_box == null:
 		return
@@ -1409,22 +1474,18 @@ func _refresh_panel() -> void:
 	if tile.def.ally != null or cycle.allies_of(selected) > 0:
 		var patrol := cycle.ally_behavior_of(tile) == int(TileDef.AllyBehavior.PATROL)
 		_panel_line("Defenders: %d (%s)" % [cycle.allies_of(selected), "patrol" if patrol else "guard"])
-	var taken := cycle.upgrades_of(tile)
-	if not taken.is_empty():
-		var names: PackedStringArray = []
-		for up in taken:
-			names.append(up.display_name if up.display_name != "" else String(up.id))
-		_panel_line("Taken: " + ", ".join(names), true)
+	if not tile.lineage.is_empty():
+		_panel_line("Upgraded %d time(s)." % tile.lineage.size(), true)
 	var shown := false
 	for up in tile.def.upgrades:
-		if up == null or tile.has_upgrade(up.id):
+		if up == null or up.into == null:
 			continue
 		if not shown:
-			_panel_line("Upgrades", true)
+			_panel_line("Can become", true)
 			shown = true
 		var check := _gate(cycle.can_upgrade(selected, up.id))
 		var b := Button.new()
-		b.text = "%s  (%s)" % [up.display_name if up.display_name != "" else String(up.id), _price_text(cycle.upgrade_cost(up))]
+		b.text = "%s  (%s)" % [up.label(), _price_text(cycle.upgrade_cost(up))]
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.focus_mode = Control.FOCUS_NONE
 		b.disabled = not bool(check["ok"])
@@ -1434,7 +1495,7 @@ func _refresh_panel() -> void:
 		if not bool(check["ok"]):
 			_panel_line("   " + String(check["reason"]), true)
 	if not shown:
-		_panel_line("No more upgrades.", true)
+		_panel_line("Nothing further to upgrade into.", true)
 
 
 func _buy_upgrade(id: StringName) -> void:
@@ -1479,6 +1540,7 @@ func _build_hud() -> void:
 	_lbl_roll = _label(info)
 	_lbl_stock = _label(info)
 	_lbl_timer = _label(info)
+	_lbl_origin = _label(info)
 	var hint := _label(info)
 	hint.text = "Right-drag / Q E: rotate    WASD / middle-drag: pan    Wheel: zoom"
 	hint.modulate = Color(1.0, 1.0, 1.0, 0.5)
@@ -1487,9 +1549,9 @@ func _build_hud() -> void:
 	tools.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top.add_child(tools)
 	var group := ButtonGroup.new()
-	var entries := [["1  Road", Mode.ROAD], ["2  Room", Mode.TOWN], ["3  Dungeon room", Mode.DEN],
-			["4  Guard post", Mode.POST], ["5  Erase", Mode.ERASE], ["6  Select", Mode.SELECT],
-			["7  Walk", Mode.WALK]]
+	var entries := [["1  Room", Mode.TOWN], ["2  Dungeon room", Mode.DEN],
+			["3  Guard post", Mode.POST], ["4  Erase", Mode.ERASE], ["5  Select", Mode.SELECT],
+			["6  Walk", Mode.WALK]]
 	for entry: Array in entries:
 		var b := Button.new()
 		b.text = entry[0]
@@ -1523,18 +1585,6 @@ func _build_hud() -> void:
 			rb.pressed.connect(_pick_room.bind(def))
 			list.add_child(rb)
 			_mode_buttons.append(rb)
-
-	# ---- grey note conversion
-	_btn_to_colors = Button.new()
-	_btn_to_colors.text = "1 grey -> colours"
-	_btn_to_colors.focus_mode = Control.FOCUS_NONE
-	_btn_to_colors.pressed.connect(_convert.bind(true))
-	tools.add_child(_btn_to_colors)
-	_btn_to_grey = Button.new()
-	_btn_to_grey.text = "colours -> 1 grey"
-	_btn_to_grey.focus_mode = Control.FOCUS_NONE
-	_btn_to_grey.pressed.connect(_convert.bind(false))
-	tools.add_child(_btn_to_grey)
 
 	# ---- the selected room's panel (filled by _refresh_panel)
 	_panel = PanelContainer.new()
@@ -1579,6 +1629,37 @@ func _build_hud() -> void:
 	party_btn.custom_minimum_size = Vector2(150.0, 0.0)
 	party_btn.pressed.connect(_open_party_menu)
 	actions.add_child(party_btn)
+
+	# ---- game over: centred over everything, hidden until the run ends
+	_over_panel = PanelContainer.new()
+	_over_panel.visible = false
+	_over_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	_over_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_over_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	layer.add_child(_over_panel)
+	var over_pad := MarginContainer.new()
+	for side in ["left", "top", "right", "bottom"]:
+		over_pad.add_theme_constant_override("margin_" + side, 24)
+	_over_panel.add_child(over_pad)
+	var over_box := VBoxContainer.new()
+	over_box.add_theme_constant_override("separation", 12)
+	over_pad.add_child(over_box)
+	var over_title := Label.new()
+	over_title.text = "GAME OVER"
+	over_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	over_title.add_theme_font_size_override("font_size", 36)
+	over_title.add_theme_color_override("font_color", RAIDER_TINT)
+	over_box.add_child(over_title)
+	_over_label = Label.new()
+	_over_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_over_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_over_label.custom_minimum_size = Vector2(320.0, 0.0)
+	over_box.add_child(_over_label)
+	var restart_btn := Button.new()
+	restart_btn.text = "Start a new run"
+	restart_btn.focus_mode = Control.FOCUS_NONE
+	restart_btn.pressed.connect(_restart_run)
+	over_box.add_child(restart_btn)
 
 
 ## Opens the party menu directly. Its own TAB check needs the full game's world layer, which

@@ -100,19 +100,29 @@ func roll_die(mode: int) -> Dictionary:
 	return {"natural": chosen, "rolls": [first, second]}
 
 
+## DC of a spell save: base + the casting attribute's modifier + level scaling + the
+## caster's spellcasting discipline for that attribute.
 func save_dc(caster: StatBlock, stat_id: StringName) -> int:
 	return config.save_dc_base + caster.total_mod(stat_id) \
-			+ floori(caster.level / float(maxi(1, config.save_dc_level_step)))
+			+ floori(caster.level / float(maxi(1, config.save_dc_level_step))) \
+			+ caster.spell_discipline(stat_id)
 
 
 # --------------------------------------------------------------- rolls
 
+## `roll_under` is for -saves: the roll must come in strictly under `target`, and advantage
+## keeps the lower die. Modifiers are NOT inverted: a negative modifier stays negative, so on
+## a -save it lowers the total and helps. That is intentional.
+## `discipline` is the roller's discipline bonus for this roll (the level-based bonus times
+## their multiplier, positive or negative); it appears as its own "Discipline" line.
 func _resolve(kind: RollResult.Kind, actor: StatBlock, stat_id: StringName, target: int,
-		mode: RollMode, extra_bonus: int, label: String) -> RollResult:
+		mode: RollMode, extra_bonus: int, label: String, roll_under := false,
+		discipline := 0) -> RollResult:
 	var r := RollResult.new()
 	r.kind = kind
 	r.stat = stat_id
 	r.target = target
+	r.roll_under = roll_under
 	var roll_key := &""
 	if kind == RollResult.Kind.ATTACK:
 		roll_key = &"attack"
@@ -120,19 +130,22 @@ func _resolve(kind: RollResult.Kind, actor: StatBlock, stat_id: StringName, targ
 		roll_key = &"save"
 	var adv := actor.advantage_sources(stat_id, roll_key)
 	r.mode = resolve_mode(mode, adv["adv"], adv["dis"])
-	var die := roll_die(r.mode)
+	# Advantage means "better outcome": the higher die normally, the lower die for a -save.
+	var die := roll_die(-r.mode if roll_under else r.mode)
 	r.natural = die["natural"]
 	r.rolls.assign(die["rolls"])
 	r.parts = actor.breakdown(stat_id)
 	if extra_bonus != 0:
 		r.parts.append({"source": "Bonus", "value": extra_bonus})
+	if discipline != 0:
+		r.parts.append({"source": "Discipline", "value": discipline})
 	r.bonus = 0
 	for p in r.parts:
 		r.bonus += int(p["value"])
 	r.total = r.natural + r.bonus
 	r.crit = r.natural >= config.crit_min
 	r.fumble = r.natural <= config.fumble_max
-	r.success = r.total >= target
+	r.success = r.total < target if roll_under else r.total >= target
 	# Natural crit / fumble overrides apply to attacks only.
 	if kind == RollResult.Kind.ATTACK:
 		if r.crit and config.natural_crit_auto_hit:
@@ -153,25 +166,31 @@ func _resolve(kind: RollResult.Kind, actor: StatBlock, stat_id: StringName, targ
 	return r
 
 
-## Skill or attribute check against a DC.
+## Skill or attribute check against a DC. The actor's skill discipline for `stat_id` applies.
 func check(actor: StatBlock, stat_id: StringName, dc: int, mode: RollMode = RollMode.NORMAL,
 		extra_bonus: int = 0, label: String = "") -> RollResult:
-	return _resolve(RollResult.Kind.CHECK, actor, stat_id, dc, mode, extra_bonus, label)
+	return _resolve(RollResult.Kind.CHECK, actor, stat_id, dc, mode, extra_bonus, label,
+			false, actor.skill_discipline(stat_id))
 
 
-## Attack roll against the defender's defense.
+## Attack roll against the defender's defense. `discipline` is the weapon or spellcasting
+## discipline to add; use_action works it out from the action being used.
 func attack(attacker: StatBlock, stat_id: StringName, defender: StatBlock,
-		mode: RollMode = RollMode.NORMAL, extra_bonus: int = 0, label: String = "") -> RollResult:
+		mode: RollMode = RollMode.NORMAL, extra_bonus: int = 0, label: String = "",
+		discipline: int = 0) -> RollResult:
 	if label == "":
 		label = say(&"attack_label", {"attacker": attacker.display_name, "defender": defender.display_name})
 	var flat := attacker.modifier_bonus(&"attack")
 	return _resolve(RollResult.Kind.ATTACK, attacker, stat_id, defender.defense(), mode,
-			extra_bonus + flat, label)
+			extra_bonus + flat, label, false, discipline)
 
-## Saving throw for `target` against a fixed DC.
+## Saving throw for `target` against a fixed DC. A PLUS save (+save) succeeds on a total
+## at or over the DC; a MINUS save (-save) succeeds on a total strictly under it.
 func save(target: StatBlock, stat_id: StringName, dc: int, mode: RollMode = RollMode.NORMAL,
-		extra_bonus: int = 0, label: String = "") -> RollResult:
-	return _resolve(RollResult.Kind.SAVE, target, stat_id, dc, mode, extra_bonus, label)
+		extra_bonus: int = 0, label: String = "",
+		save_type: RollResult.SaveType = RollResult.SaveType.PLUS) -> RollResult:
+	return _resolve(RollResult.Kind.SAVE, target, stat_id, dc, mode, extra_bonus, label,
+			save_type == RollResult.SaveType.MINUS, target.save_discipline(stat_id))
 
 
 ## Initiative roll. Returns the total.
@@ -289,7 +308,8 @@ func _apply_to_target(user: StatBlock, action: ActionDef, target: StatBlock, by_
 		match action.roll:
 			ActionDef.Roll.ATTACK:
 				var attack_stat := action.attack_stat if action.attack_stat != &"" else user.weapon_attack_stat()
-				var r := attack(user, attack_stat, target)
+				var r := attack(user, attack_stat, target, RollMode.NORMAL, 0, "",
+						_attack_discipline(user, action, attack_stat))
 				for m in _mechanics_for(user, action):
 					m.on_attack_rolled(user, action, r, target)
 				result["rolls"].append(r)
@@ -303,13 +323,13 @@ func _apply_to_target(user: StatBlock, action: ActionDef, target: StatBlock, by_
 				crit = r.crit
 			ActionDef.Roll.SAVE:
 				var dc := save_dc(user, action.dc_stat)
-				var r := save(target, action.save_stat, dc)
+				var r := save(target, action.save_stat, dc, RollMode.NORMAL, 0, "", action.save_type)
 				result["rolls"].append(r)
 				var save_line := r.describe()
 				if save_line != "":
 					result["log"].append(save_line)
 				_readout(result, &"save", r.total, target.display_name, user.display_name,
-						"d20 %d %+d  vs DC %d" % [r.natural, r.bonus, r.target],
+						"d20 %d %+d  vs DC %s%d" % [r.natural, r.bonus, "<" if r.roll_under else "", r.target],
 						&"saved" if r.success else &"failed")
 				saved = r.success
 	for effect in action.effects:
@@ -398,6 +418,17 @@ func _upcast_total(effect: EffectDef, levels_up: int, mult: int = 1) -> int:
 	for _i in levels_up:
 		total += int(Dice.roll_expr(effect.upcast_dice, rng, mult)["total"])
 	return total
+
+## The discipline bonus an attack roll gets. A weapon action uses the discipline for the
+## weapon in hand (the secondary weapon on its own passes). A Canto or cantrip uses the
+## caster's spellcasting discipline for its attack stat. Anything else gets none.
+func _attack_discipline(user: StatBlock, action: ActionDef, attack_stat: StringName) -> int:
+	if action.is_weapon_action():
+		return user.weapon_discipline()
+	if action.is_canto() or action.is_cantrip():
+		return user.spell_discipline(attack_stat)
+	return 0
+
 
 func _mechanics_for(user: StatBlock, action: ActionDef) -> Array[Mechanic]:
 	var out = user.active_mechanics()

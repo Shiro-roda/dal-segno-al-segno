@@ -10,6 +10,7 @@ target = 4
 kind = 1
 dice = "1d8"
 bonus_stat = &"delusion"
+damage_type = &"blue"
 upcast_dice = "1d8"
 metadata/_custom_type_script = "uid://hgdwyugnb20t"
 

@@ -27,8 +27,8 @@ extends Resource
 enum NoteColor { NONE, RED, GREEN, BLUE }
 ## The colour this enemy belongs to. A room is most likely to gather enemies of its
 ## lowest colour(s), and every note a kill drops is this colour. NONE (uncoloured) counts
-## as neutral when a room picks enemies. In the hex game each note it drops is grey; in
-## the square-grid game it is a random colour.
+## as neutral when a room picks enemies, and its notes are all of one randomly picked
+## colour.
 @export var note_color: NoteColor = NoteColor.NONE
 ## How many notes this enemy drops when it is laid to rest, before the room's
 ## note_multiplier and the main-path bonus. 0 = drops none.

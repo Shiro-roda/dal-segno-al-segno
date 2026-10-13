@@ -25,13 +25,30 @@ var upgrade_left := 0
 ## Damage left before raiders bring this structure down. Starts at the def's max_health.
 var health := 1
 
-## Ids of the RoomUpgrades this structure has taken, in the order it took them. Lost with the
-## structure (a ruin starts again from the bare def).
-var upgrades: Array[StringName] = []
+## Ids of the buildings this structure used to be, oldest first, one per upgrade step it has
+## taken (so the length is the number of upgrades). Lost with the structure: a ruin starts
+## again from whatever it was when it fell, but its history is gone.
+var lineage: Array[StringName] = []
 
 
-func has_upgrade(id: StringName) -> bool:
-	return upgrades.has(id)
+## True if this structure is, or ever was, the building with `id`. Unlocks and blueprint
+## sources count a building's earlier forms, so a Den upgraded into a Warren still counts
+## as a Den.
+func is_or_was(id: StringName) -> bool:
+	return (def != null and def.id == id) or lineage.has(id)
+
+
+## Turns this structure into `new_def` (an upgrade step finished). Position and colour stay;
+## health moves by the difference between the two buildings' maximums, never below 1 and
+## never above the new maximum.
+func become(new_def: TileDef) -> void:
+	if new_def == null or new_def == def:
+		return
+	var old_max := def.max_health if def != null else 1
+	if def != null:
+		lineage.append(def.id)
+	def = new_def
+	health = clampi(health + new_def.max_health - old_max, 1, maxi(1, new_def.max_health))
 
 
 func _init(p_def: TileDef, p_pos: Vector2i, p_ruined := false) -> void:

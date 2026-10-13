@@ -5,20 +5,21 @@ const RED := &"red_notes"
 const GREEN := &"green_notes"
 const BLUE := &"blue_notes"
 const CUTS := &"cuts"
-const GREY := &"grey_notes"
 
 var _failures := 0
 var _checks := 0
 
 
 func _ready() -> void:
+	# The older checks lay out their own roads and count their own notes, so the origin's
+	# growth is off for them. _test_growth turns it back on.
+	HexDayCycle.growth_disabled = true
 	_test_loop()
 	_test_roads_and_segno()
 	_test_spent_rooms()
 	_test_dawn()
 	_test_segments()
 	_test_blueprints()
-	_test_grey_notes()
 	_test_neutral_drops()
 	_test_spawn_tokens()
 	_test_raids()
@@ -26,6 +27,10 @@ func _ready() -> void:
 	_test_upgrades()
 	_test_construction()
 	_test_exploration_and_wild()
+	_test_xp_and_collection()
+	HexDayCycle.growth_disabled = false
+	_test_growth()
+	_test_start_guards()
 	print("[hexday] %d checks, %d failures." % [_checks, _failures])
 	if _failures == 0:
 		print("[hexday] ALL PASSED")
@@ -53,7 +58,6 @@ func _test_loop() -> void:
 	config.require_blueprints = false
 	config.board_radius = 3
 	config.starting_resources = {RED: 10, GREEN: 10, BLUE: 10}
-	config.road_cost = {}
 	config.level_per_day = 0.5
 	config.main_path_bonus_per_step = 0.125  # the Segno below is 6 roads out: +75%
 	config.loop_penalty = 0.25
@@ -114,7 +118,7 @@ func _test_loop() -> void:
 	var spawns := c.start_expedition()
 	_expect(c.phase == HexDayCycle.Phase.EXPEDITION, "the expedition starts")
 	_expect(want >= 4 and spawns.size() == want, "each room gathers 2 enemies per awake hex beside it (got %d, want %d)" % [spawns.size(), want])
-	_expect(c.open_road_spots().is_empty() and c.open_structure_spots().is_empty(), "no building during an expedition")
+	_expect(c.open_structure_spots().is_empty(), "no building during an expedition")
 	_expect(is_equal_approx(c.loot_multiplier(b), 1.75) and c.loot_multiplier(b2) == 1.0, "rooms on the main path pay more; others pay normally")
 	var loot_ok := true
 	for s in spawns:
@@ -192,8 +196,8 @@ func _test_loop() -> void:
 	_expect(ruin != null and ruin.ruined and not ruin.is_live(), "the town comes back as ruins")
 	_expect(not c.tile_at(o).ruined and c.tile_at(o).def.is_origin, "the origin is never a ruin")
 	_expect(not c.world.has_structure(b2), "a ruin is not a standing structure, so it anchors nothing")
-	c.build_road(_road_between(side[0], side[1]))
-	c.build_road(_road_between(side[1], side[2]))
+	c.world.grow_road(_road_between(side[0], side[1]))
+	c.world.grow_road(_road_between(side[1], side[2]))
 	_expect(c.can_place(b2, shrine)["reason"] == "Ruins of something else stand here.", "ruins can only be rebuilt as what they were")
 	_expect(c.can_erase(b2)["ok"], "a ruin can be cleared to build something else")
 	_expect(c.cost_of(b2, hut) == {RED: 1}, "rebuilding ruins is discounted")
@@ -210,24 +214,19 @@ func _test_roads_and_segno() -> void:
 	config.require_blueprints = false
 	config.board_radius = 3
 	config.starting_resources = {CUTS: 20}
-	config.road_cost = {CUTS: 1}
 	var c := HexDayCycle.new(gate, config, WorldPersistent.new(), 3)
 	c.begin_run()
 	var o := c.origin_vertex()
-	_expect(c.road_price() == {CUTS: 1}, "road cost is read from the config")
 
 	var chain := _chain(c, o, 4, {})
-	_expect(chain.size() == 5 and c.stock[CUTS] == 16, "each road costs one cut (got %d roads, %d cuts)" % [chain.size() - 1, int(c.stock.get(CUTS, 0))])
+	_expect(chain.size() == 5 and c.stock[CUTS] == 20, "roads are laid by growth and cost no notes (got %d roads, %d cuts)" % [chain.size() - 1, int(c.stock.get(CUTS, 0))])
 	if chain.size() < 5:
 		return
-	c.stock[CUTS] = 0
-	var spots := c.open_road_spots()
-	_expect(not spots.is_empty() and c.can_build_road(spots[0])["reason"] == "Cannot afford it." and not c.build_road(spots[0]),
-			"a road you cannot pay for is refused")
-	c.stock[CUTS] = 10
 	var middle := _road_between(chain[1], chain[2])
-	_expect(c.erase_road(middle) and not c.world.has_road(middle) and c.stock[CUTS] == 10, "a road can be torn up, with no refund")
-	_expect(c.build_road(middle) and c.stock[CUTS] == 9, "and laid again")
+	_cut(c, middle)
+	_expect(not c.world.has_road(middle), "a road can be cut")
+	_mend(c, middle)
+	_expect(c.world.has_road(middle), "and mended")
 
 	# ---- the Segno
 	_expect(c.can_set_segno(chain[1])["ok"], "the Segno may stand right next to the origin")
@@ -239,10 +238,10 @@ func _test_roads_and_segno() -> void:
 	_expect(not c.can_set_segno(chain[4])["ok"], "the Segno is already there")
 	_expect(c.can_start_expedition()["ok"], "a Segno joined to the exit can start the day")
 
-	c.erase_road(middle)
+	_cut(c, middle)
 	_expect(not bool(c.main_path()["connected"]) and c.distance_to_exit(chain[4]) == -1, "cutting the road cuts the Segno off")
 	_expect(c.can_start_expedition()["reason"] == "The Segno must connect to the exit.", "a cut-off Segno cannot start the day")
-	c.build_road(middle)
+	_mend(c, middle)
 	_expect(bool(c.main_path()["connected"]) and c.can_start_expedition()["ok"], "mending the road reconnects it")
 
 	c.clear_segno()
@@ -265,7 +264,6 @@ func _test_spent_rooms() -> void:
 	config.require_blueprints = false
 	config.board_radius = 3
 	config.starting_resources = {RED: 100, GREEN: 100, BLUE: 100}
-	config.road_cost = {}
 	config.erase_any_tile = false
 	var c := HexDayCycle.new(gate, config, WorldPersistent.new(), 5)
 	c.begin_run()
@@ -305,7 +303,6 @@ func _test_blueprints() -> void:
 	var config := WorldConfig.new()
 	config.require_blueprints = true
 	config.blueprints_per_day = 1
-	config.road_cost = {}
 	config.board_radius = 3
 	config.starting_resources = {RED: 10, GREEN: 10, BLUE: 10}
 	var c := HexDayCycle.new(gate, config, WorldPersistent.new(), 9)
@@ -345,7 +342,6 @@ func _test_dawn() -> void:
 	config.require_segno = false
 	config.board_radius = 3
 	config.starting_resources = {RED: 100, GREEN: 100, BLUE: 100}
-	config.road_cost = {}
 	config.wake_rolls_per_segment = 2
 	config.terrain_affinity_multiplier = 100000.0
 	var c := HexDayCycle.new(gate, config, WorldPersistent.new(), 11)
@@ -437,7 +433,6 @@ func _test_segments() -> void:
 	config.require_segno = false
 	config.board_radius = 3
 	config.starting_resources = {RED: 100, GREEN: 100, BLUE: 100}
-	config.road_cost = {}
 	var c := HexDayCycle.new(gate, config, WorldPersistent.new(), 21)
 	var segments_seen: Array[int] = []
 	c.segment_changed.connect(func(s: int) -> void: segments_seen.append(s))
@@ -501,49 +496,92 @@ func _test_segments() -> void:
 	_expect(third.size() == 3, "a quiet dawn still meets the 2 waiting enemies and the 1 leftover (got %d)" % third.size())
 
 
-# --------------------------------------------------------------- grey notes
+# ------------------------------------------------------------------ growth
 
-func _test_grey_notes() -> void:
-	var gate := _tile(&"gate", TileDef.Category.DUNGEON)
-	gate.is_exit = true
-	var config := WorldConfig.new()  # the defaults: a road costs one grey note
+func _growth_config() -> WorldConfig:
+	var config := WorldConfig.new()  # the growth defaults: start 50%, -5% a road, floor 10%, 3 Hyle first
 	config.require_blueprints = false
 	config.require_segno = false
 	config.board_radius = 3
-	config.starting_resources = {GREY: 2, RED: 3, GREEN: 3, BLUE: 3}
+	config.starting_resources = {RED: 10, GREEN: 6, BLUE: 8}
+	return config
+
+
+func _test_growth() -> void:
+	var gate := _tile(&"gate", TileDef.Category.DUNGEON)
+	gate.is_exit = true
+	var config := _growth_config()
 	var c := HexDayCycle.new(gate, config, WorldPersistent.new(), 4)
 	c.begin_run()
 	var o := c.origin_vertex()
 
-	_expect(c.road_price() == {GREY: 1}, "a road costs one grey note by default")
-	_expect(WorldConfig.new().starting_resources.has(GREY), "a run starts with grey notes in hand")
-	var chain := _chain(c, o, 2, {})
-	_expect(chain.size() == 3 and c.stock[GREY] == 0, "two roads spend two grey notes (got %d roads, %d grey)" % [chain.size() - 1, int(c.stock.get(GREY, 0))])
-	var spots := c.open_road_spots()
-	_expect(not spots.is_empty() and c.can_build_road(spots[0])["reason"] == "Cannot afford it." and not c.build_road(spots[0]),
-			"with no grey notes left, no road")
+	# ---- the start: three free roads, no Hyle, a cheap first road, a high ratio
+	_expect(c.world.roads.size() == 3 and c.roads_grown == 0,
+			"a run begins with 3 roads that do not count as grown (got %d, %d grown)" % [c.world.roads.size(), c.roads_grown])
+	_expect(c.hyle == 0 and c.hyle_cost_of_next_road() == 3, "no Hyle at the start, and the first road costs 3")
+	_expect(is_equal_approx(c.hyle_ratio_now(), 0.5), "the ratio starts high")
 
-	_expect(c.exchange_to_grey() and c.stock[GREY] == 1 and c.stock[RED] == 2 and c.stock[GREEN] == 2 and c.stock[BLUE] == 2,
-			"one note of each colour makes one grey note")
-	_expect(c.build_road(spots[0]) and c.stock[GREY] == 0, "and the grey note pays for a road")
-	_expect(c.can_exchange_to_colors()["reason"] == "Not enough grey notes." and not c.exchange_to_colors(), "you cannot convert grey notes you do not have")
-	c.stock[GREY] = 2
-	_expect(c.exchange_to_colors(2) and c.stock[GREY] == 0 and c.stock[RED] == 4 and c.stock[GREEN] == 4 and c.stock[BLUE] == 4,
-			"a grey note makes one note of each colour, and conversions can be batched")
-	c.stock[GREEN] = 0
-	_expect(c.can_exchange_to_grey()["reason"] == "Not enough of every colour." and not c.exchange_to_grey(), "making grey needs every colour")
-	_expect(c.stock[RED] == 4 and c.stock[BLUE] == 4, "a refused conversion takes nothing")
+	# ---- cost rises and the ratio shrinks to its floor with every road grown
+	c.roads_grown = 4
+	_expect(c.hyle_cost_of_next_road() == 7 and is_equal_approx(c.hyle_ratio_now(), 0.3),
+			"after 4 roads the next costs 7 Hyle and the ratio is 30%")
+	c.roads_grown = 100
+	_expect(is_equal_approx(c.hyle_ratio_now(), 0.1), "the ratio never falls below its 10% floor")
+	c.stock = {RED: 10, GREEN: 10, BLUE: 10}
+	_expect(c.hyle_draw() == 1, "at the floor, 10% of 10 notes is one of each colour")
+	c.roads_grown = 0
 
-	config.grey_exchange_rate = 2
-	c.stock = {GREY: 1, RED: 0, GREEN: 0, BLUE: 0}
-	_expect(c.exchange_amount() == 2 and c.exchange_to_colors() and c.stock[RED] == 2 and c.stock[GREEN] == 2 and c.stock[BLUE] == 2 and c.stock[GREY] == 0,
-			"at rate 2, one grey note is worth two of each colour")
-	_expect(c.exchange_to_grey() and c.stock[GREY] == 1 and c.stock[RED] == 0 and c.stock[GREEN] == 0 and c.stock[BLUE] == 0,
-			"and two of each colour make one grey note")
+	# ---- the draw is a share of the LOWEST colour, taken evenly from all three
+	c.stock = {RED: 10, GREEN: 6, BLUE: 8}
+	_expect(c.hyle_draw() == 3, "50% of the lowest colour (6) is 3 notes from each colour")
+	c.stock = {RED: 5, GREEN: 0, BLUE: 5}
+	_expect(c.hyle_draw() == 0 and c._convert_to_hyle() == 0 and c.hyle == 0, "with a colour missing nothing is drawn")
+	c.stock = {RED: 10, GREEN: 6, BLUE: 8}
 
-	c.start_expedition()
-	_expect(c.phase == HexDayCycle.Phase.EXPEDITION and not c.can_exchange_to_grey()["ok"] and not c.can_exchange_to_colors()["ok"],
-			"notes are only converted while planning")
+	# ---- the end of a segment: notes become Hyle, Hyle becomes roads
+	var hits := [0]
+	c.hyle_changed.connect(func() -> void: hits[0] += 1)
+	c.begin_next_segment()
+	_expect(c.stock[RED] == 7 and c.stock[GREEN] == 3 and c.stock[BLUE] == 5,
+			"3 notes were taken from each colour (got %d, %d, %d)" % [c.stock[RED], c.stock[GREEN], c.stock[BLUE]])
+	_expect(c.roads_grown == 2 and c.world.roads.size() == 5 and c.hyle == 2,
+			"9 Hyle bought a 3 and a 4 Hyle road, leaving 2 (got %d roads grown, %d Hyle)" % [c.roads_grown, c.hyle])
+	_expect(hits[0] > 0, "hyle_changed fired")
+	_expect(is_equal_approx(c.hyle_ratio_now(), 0.4) and c.hyle_cost_of_next_road() == 5, "the ratio shrank and the next road costs more")
+	var graph := c.world.road_graph()
+	_expect(graph.size() == c.world.roads.size() + 1, "roads only extend outward, so the network never loops")
+
+	# ---- growth spreads out rather than running in a line
+	var wide := _growth_config()
+	wide.max_roads_per_segment = 10
+	var d := HexDayCycle.new(gate, wide, WorldPersistent.new(), 9)
+	d.begin_run()
+	d.hyle = 500
+	_expect(d._grow_network() == 10 and d.world.roads.size() == 13, "the cap on roads per segment is the only limit when Hyle is plentiful")
+	var deepest := 0
+	var depth := d._road_depths(d.world.road_graph())
+	for v in depth:
+		deepest = maxi(deepest, int(depth[v]))
+	_expect(deepest < d.world.roads.size() - 3, "13 roads fan out instead of forming one line (deepest is %d steps)" % deepest)
+
+	# ---- roads reach wild ground, but the vertex must be cleared before it can be built on
+	var shed := _tile(&"shed", TileDef.Category.VILLAGE)
+	var grunts: Array[EnemyTemplate] = [_enemy(&"grunt", EnemyTemplate.NoteColor.NONE)]
+	var w := HexDayCycle.new(gate, _wild_config(grunts), WorldPersistent.new(), 77)
+	w.begin_run()
+	w.hyle = 500
+	w._grow_network()
+	var wild_reached := 0
+	var refused := true
+	var explored := true
+	for v: Vector3i in w.world.road_graph():
+		explored = explored and w.world.is_explored(v)
+		if w.has_wild(v):
+			wild_reached += 1
+			var verdict := w.can_place(v, shed)
+			refused = refused and not verdict["ok"] and String(verdict["reason"]).contains("Wild")
+	_expect(explored, "a vertex a road reaches is explored, fog or not")
+	_expect(wild_reached > 0 and refused, "roads reached %d wild vertices, and none can be built on until cleared" % wild_reached)
 
 
 # ------------------------------------------------------------ neutral drops
@@ -562,22 +600,25 @@ func _test_neutral_drops() -> void:
 	room.note_multiplier = 1.0
 	var tile := TileInstance.new(room, Vector2i.ZERO)
 
-	var grey_loot := c._loot_for(tile, _enemy(&"wisp", EnemyTemplate.NoteColor.NONE, 3), 1.0)
-	_expect(int(grey_loot.get(GREY, 0)) == 3 and not grey_loot.has(RED) and not grey_loot.has(GREEN) and not grey_loot.has(BLUE),
-			"a neutral enemy drops only grey notes (got %s)" % str(grey_loot))
+	var seen := {}
+	var one_colour := true
+	for _i in 60:
+		var loot := c._loot_for(tile, _enemy(&"wisp", EnemyTemplate.NoteColor.NONE, 3), 1.0)
+		var kinds := 0
+		for id in [RED, GREEN, BLUE]:
+			if int(loot.get(id, 0)) > 0:
+				kinds += 1
+				seen[id] = true
+		one_colour = one_colour and kinds == 1 and _note_total(loot) == 3
+	_expect(one_colour, "an uncoloured enemy drops all its notes in a single colour")
+	_expect(seen.size() == 3, "and over many enemies every colour turns up (saw %d)" % seen.size())
 
 	var red_loot := c._loot_for(tile, _enemy(&"imp", EnemyTemplate.NoteColor.RED, 3), 1.0)
-	_expect(int(red_loot.get(RED, 0)) == 3 and not red_loot.has(GREY),
-			"a coloured enemy still drops its own colour, not grey (got %s)" % str(red_loot))
+	_expect(int(red_loot.get(RED, 0)) == 3 and _note_total(red_loot) == 3,
+			"a coloured enemy still drops its own colour (got %s)" % str(red_loot))
 
 	var none_loot := c._loot_for(tile, _enemy(&"dud", EnemyTemplate.NoteColor.NONE, 0), 1.0)
-	_expect(none_loot.is_empty(), "a neutral enemy that drops nothing drops no grey either")
-
-	# Grey notes do not stain the room they were looted from.
-	var before := tile.color
-	c.world.build_structure(c.origin_vertex(), tile)
-	c._stain_room(c.origin_vertex(), grey_loot)
-	_expect(tile.color == before, "grey loot leaves the room's colour unchanged")
+	_expect(none_loot.is_empty(), "an enemy that drops nothing drops nothing")
 
 
 # ------------------------------------------------------------ spawn tokens
@@ -605,7 +646,6 @@ func _test_spawn_tokens() -> void:
 	config.require_segno = false
 	config.board_radius = 3
 	config.starting_resources = {RED: 100, GREEN: 100, BLUE: 100}
-	config.road_cost = {}
 	var c := HexDayCycle.new(gate, config, WorldPersistent.new(), 41)
 	c.begin_run()
 	var chain := _chain(c, c.origin_vertex(), 2, {})
@@ -672,7 +712,6 @@ func _test_raids() -> void:
 	config.require_segno = false
 	config.board_radius = 3
 	config.starting_resources = {RED: 100, GREEN: 100, BLUE: 100}
-	config.road_cost = {}
 	config.raids_enabled = true
 	var raider_list: Array[EnemyTemplate] = [raider]
 	config.raider_templates = raider_list
@@ -829,10 +868,19 @@ func _test_raids() -> void:
 
 # ----------------------------------------------------------------- upgrades
 
-func _upgrade(id: StringName, label: String, price := 5) -> RoomUpgrade:
+## A copy of `base` under a new id, with no upgrade steps of its own yet.
+func _variant(base: TileDef, id: StringName) -> TileDef:
+	var def: TileDef = base.duplicate()
+	def.id = id
+	def.display_name = String(id)
+	def.upgrades = []
+	return def
+
+
+## The step that turns a room into `into` for `price` red notes (instant).
+func _upgrade(into: TileDef, price := 5) -> RoomUpgrade:
 	var up := RoomUpgrade.new()
-	up.id = id
-	up.display_name = label
+	up.into = into
 	up.cost = {RED: price}
 	return up
 
@@ -847,33 +895,33 @@ func _test_upgrades() -> void:
 	den.max_health = 10
 	var stall := _tile(&"stall", TileDef.Category.VILLAGE)
 
+	# Den -> Lookout, or Den -> Deep lair -> Rangers / Wardens.
 	var recruit_t := AllyTemplate.new()
-	var reach := _upgrade(&"reach", "Long Reach")
-	reach.cover_radius_add = 1
-	var deep := _upgrade(&"deep", "Deep Lair")
-	deep.spawn_count_add = 3
-	deep.max_health_add = 5
-	var ranger := _upgrade(&"ranger", "Rangers")
-	ranger.requires = [&"deep"]
-	ranger.excludes = [&"warden"]
+	var lookout := _variant(den, &"lookout")
+	lookout.spawn_count = 3  # medium
+	var deep := _variant(den, &"deep")
+	deep.spawn_count = 5  # medium
+	deep.max_health = 15
+	var ranger := _variant(deep, &"ranger")
 	ranger.ally = recruit_t
-	ranger.ally_cap_add = 2
-	ranger.ally_behavior = RoomUpgrade.AllyBehaviorChange.PATROL
-	ranger.ally_patrol_range_add = 4
-	var warden := _upgrade(&"warden", "Wardens")
-	warden.requires = [&"deep"]
+	ranger.ally_cap = 2
+	ranger.ally_per_segment = 1
+	ranger.ally_behavior = TileDef.AllyBehavior.PATROL
+	ranger.ally_patrol_range = 4
+	var warden := _variant(deep, &"warden")
+	warden.spawn_count = 6  # large
 	warden.ally = recruit_t
-	warden.ally_cap_add = 1
-	warden.capacity_add = 3
-	warden.ally_behavior = RoomUpgrade.AllyBehaviorChange.GUARD
-	den.upgrades = [reach, deep, ranger, warden]
+	warden.ally_cap = 1
+	warden.ally_per_segment = 1
+	warden.ally_behavior = TileDef.AllyBehavior.GUARD
+	deep.upgrades = [_upgrade(ranger), _upgrade(warden)]
+	den.upgrades = [_upgrade(lookout), _upgrade(deep)]
 
 	var config := WorldConfig.new()
 	config.require_blueprints = false
 	config.require_segno = false
 	config.board_radius = 3
 	config.starting_resources = {RED: 100, GREEN: 100, BLUE: 100}
-	config.road_cost = {}
 	config.raids_enabled = true
 	var c := HexDayCycle.new(gate, config, WorldPersistent.new(), 77)
 	var engine := RulesEngine.new(null, 4242)
@@ -902,43 +950,45 @@ func _test_upgrades() -> void:
 	_expect(not c.is_covered(y), "the stall two steps off is outside a small den's zone")
 	_expect(c.cover_zone(x).has(x) and not c.cover_zone(x).has(y) and c.cover_zone(y).is_empty(),
 			"a safe room's zone holds its own vertex and what it reaches, and only safe rooms have one")
-	_expect(c.available_upgrades(x).size() == 2, "only the roots of the tree are open at first")
-	_expect(c.available_upgrades(y).is_empty(), "a tile with no tree has nothing to take")
+	_expect(c.available_upgrades(x).size() == 2, "a den can become two different buildings")
+	_expect(c.available_upgrades(y).is_empty(), "a tile with no tree has nothing to become")
+	_expect(room.lineage.is_empty() and room.def == den, "a fresh room has no history")
 
-	# ---- buying: prerequisites, cost, and stat changes
-	_expect(not c.can_upgrade(x, &"ranger")["ok"] and String(c.can_upgrade(x, &"ranger")["reason"]).begins_with("Needs"),
-			"a branch needs its prerequisite first")
+	# ---- buying: only what the current building lists, cost, and the swap itself
+	_expect(not c.can_upgrade(x, &"ranger")["ok"], "a building further down the tree is not offered yet")
 	_expect(not c.can_upgrade(x, &"nope")["ok"], "an upgrade the room does not have is refused")
-	var red_before := int(c.stock.get(RED, 0))
-	_expect(c.upgrade_tile(x, &"reach"), "the room takes Long Reach")
-	_expect(int(c.stock.get(RED, 0)) == red_before - 5, "an upgrade is paid for")
-	_expect(c.cover_radius(room) == 2 and c.is_covered(y), "a wider zone now covers the stall")
-	_expect(c.cover_zone(x).has(y), "and the zone includes it")
-	_expect(not c.upgrade_tile(x, &"reach"), "an upgrade cannot be taken twice")
 
 	c.stock[RED] = 0
 	_expect(String(c.can_upgrade(x, &"deep")["reason"]) == "Cannot afford it.", "an upgrade needs its price in stock")
 	c.stock[RED] = 100
 
+	var red_before := int(c.stock.get(RED, 0))
 	var hp_before := room.health
-	_expect(c.upgrade_tile(x, &"deep"), "the room takes Deep Lair")
-	_expect(c.effective_spawn_count(room) == 5 and c.room_size(room) == 1, "more spawn count raises the room's size tier")
-	_expect(c.cover_radius(room) == 3 and c.room_capacity(room) == 8, "a medium room covers further and holds more")
-	_expect(c.effective_max_health(room) == 15 and room.health == hp_before + 5, "health upgrades add to current health too")
+	_expect(c.upgrade_tile(x, &"deep"), "the den becomes a Deep lair")
+	_expect(int(c.stock.get(RED, 0)) == red_before - 5, "an upgrade is paid for")
+	_expect(room.def == deep and room.lineage == [&"den"], "the room is now the new building and remembers the old one")
+	_expect(room.is_or_was(&"den") and room.is_or_was(&"deep") and not room.is_or_was(&"lookout"),
+			"a room counts as every building it was")
+	_expect(c.effective_spawn_count(room) == 5 and c.room_size(room) == 1, "the new building's spawn count sets the size tier")
+	_expect(c.cover_radius(room) == 2 and c.room_capacity(room) == 8, "a medium room covers further and holds more")
+	_expect(c.is_covered(y), "the wider zone now covers the stall")
+	_expect(c.cover_zone(x).has(y), "and the zone includes it")
+	_expect(c.effective_max_health(room) == 15 and room.health == hp_before + 5, "health follows the new building's maximum")
 
 	# the bigger spawn count feeds the day's gathering
 	var ring := c.world.hexes_at(x)
 	var one: Array[Vector2i] = [ring[0]]
 	c.set_awake(one)
-	_expect(c.spawn_count_at(x) == 5, "the upgraded spawn count is gathered for each awake hex")
+	_expect(c.spawn_count_at(x) == 5, "the new spawn count is gathered for each awake hex")
 
-	# ---- branches lock each other out
-	_expect(c.available_upgrades(x).size() == 2, "both branches are open once the prerequisite is taken")
+	# ---- picking a branch closes the others
+	var closed := c.can_upgrade(x, &"lookout")
+	_expect(not closed["ok"], "the sibling branch is closed once the room has left that building")
+	_expect(c.available_upgrades(x).size() == 2, "the Deep lair offers its own two steps")
 	_expect(c.upgrade_tile(x, &"ranger"), "the room takes the Rangers branch")
-	var blocked := c.can_upgrade(x, &"warden")
-	_expect(not blocked["ok"] and String(blocked["reason"]).begins_with("Locked out"), "the sibling branch is locked out")
-	_expect(c.available_upgrades(x).is_empty(), "nothing else is open")
-	_expect(room.upgrades == [&"reach", &"deep", &"ranger"], "the room remembers its choices in order")
+	_expect(not c.can_upgrade(x, &"warden")["ok"], "the sibling branch is closed")
+	_expect(c.available_upgrades(x).is_empty(), "nothing further is open")
+	_expect(room.lineage == [&"den", &"deep"], "the room remembers its path in order")
 
 	# ---- the branch decides what the garrison does
 	_expect(c.effective_ally(room) == recruit_t and c.ally_cap_of(room) == 2, "an upgrade can give a room a garrison")
@@ -949,16 +999,21 @@ func _test_upgrades() -> void:
 	_expect(int(c.allies[0]["behavior"]) == TileDef.AllyBehavior.PATROL and int(c.allies[0]["range"]) == 4,
 			"the Rangers patrol the roads")
 
-	# ---- the lockout works from either side
-	var twin := TileInstance.new(den, Vector2i.ZERO)
-	twin.upgrades = [&"deep", &"warden"]
-	_expect(String(c._upgrade_block(twin, ranger)).begins_with("Locked out"), "the lockout holds whichever way round it is listed")
-
 	# ---- a different branch gives a different room
 	var guard_room := TileInstance.new(den, Vector2i.ZERO)
-	guard_room.upgrades = [&"deep", &"warden"]
-	_expect(c.room_capacity(guard_room) == 11 and c.ally_cap_of(guard_room) == 1, "the Wardens branch trades patrols for capacity")
-	_expect(c.ally_behavior_of(guard_room) == TileDef.AllyBehavior.GUARD, "and its units guard")
+	guard_room.become(deep)
+	guard_room.become(warden)
+	_expect(c.room_size(guard_room) == 2 and c.room_capacity(guard_room) == 14, "the Wardens branch is a large room")
+	_expect(c.ally_cap_of(guard_room) == 1 and c.ally_behavior_of(guard_room) == TileDef.AllyBehavior.GUARD,
+			"and its units guard")
+	_expect(guard_room.lineage == [&"den", &"deep"], "with its own history")
+
+	# ---- become() ignores no-op swaps
+	var slow := TileInstance.new(den, Vector2i.ZERO)
+	slow.become(null)
+	_expect(slow.def == den and slow.lineage.is_empty(), "becoming nothing changes nothing")
+	slow.become(den)
+	_expect(slow.lineage.is_empty(), "becoming the same building changes nothing")
 
 	# ---- not while the day is under way, and not for rooms that fell
 	c.set_awake([])
@@ -995,7 +1050,6 @@ func _test_allies() -> void:
 	config.require_segno = false
 	config.board_radius = 3
 	config.starting_resources = {RED: 100, GREEN: 100, BLUE: 100}
-	config.road_cost = {}
 	config.raids_enabled = true
 	config.raid_repair_per_day = 0
 	var c := HexDayCycle.new(gate, config, WorldPersistent.new(), 63)
@@ -1100,7 +1154,6 @@ func _test_construction() -> void:
 	config.require_blueprints = false
 	config.require_segno = false
 	config.board_radius = 3
-	config.road_cost = {}
 	config.starting_resources = {RED: 100, GREEN: 100, BLUE: 100}
 	var c := HexDayCycle.new(gate, config, WorldPersistent.new(), 31)
 	c.begin_run()
@@ -1154,7 +1207,6 @@ func _wild_config(templates: Array[EnemyTemplate]) -> WorldConfig:
 	config.require_blueprints = false
 	config.require_segno = false
 	config.board_radius = 4
-	config.road_cost = {}
 	config.starting_resources = {}
 	config.explore_vertices = true
 	config.start_explored_radius = 0
@@ -1163,6 +1215,7 @@ func _wild_config(templates: Array[EnemyTemplate]) -> WorldConfig:
 	config.wild_group_min = 1
 	config.wild_group_max = 1
 	config.wild_safe_radius = 1
+	config.start_guards = false  # the older checks expect the origin's surroundings to be clear
 	config.wild_templates = templates
 	return config
 
@@ -1201,19 +1254,17 @@ func _test_exploration_and_wild() -> void:
 	_expect(c.is_frontier_edge(e1) and c.unexplored_end(e1) == n, "an edge from the explored to the unexplored is a frontier edge")
 	_expect(not c.is_frontier_edge(e2), "an edge between two unexplored vertices is not")
 	_expect(c.frontier_edges().size() == 3, "the origin has three frontier edges (got %d)" % c.frontier_edges().size())
-	_expect(not c.can_build_road(e1)["ok"], "no road runs to a vertex nobody has explored")
+	_expect(not c.world.can_build_road(e1)["ok"], "no road runs to a vertex nobody has explored")
 	_expect(c.world.explore(n) and not c.world.explore(n), "a vertex is explored once")
 	_expect(c.world.is_revealed(c.world.hexes_at(n)[0]), "exploring a vertex reveals the hexes at its corners")
 	_expect(not c.is_frontier_edge(e1) and c.is_frontier_edge(e2), "the frontier moves outward as vertices are explored")
 	_expect(c.known_edges().size() == 1 and c.known_edges()[0] == e1, "an edge with both ends explored is a known edge")
-	_expect(c.can_build_road(e1)["ok"] and c.build_road(e1), "a road to an explored vertex can be built")
+	_expect(c.world.can_build_road(e1)["ok"] and c.world.build_road(e1), "a road to an explored vertex can be laid")
 
 	# ---- wild enemies hold ground
 	_expect(not c.has_wild(o) and not c.has_wild(n) and c.has_wild(w), "wild enemies keep clear of the origin's surroundings and fill the rest")
 	c.world.explore(w)
-	var wild_road := c.can_build_road(e2)
-	_expect(not wild_road["ok"] and String(wild_road["reason"]).contains("Wild"), "a road cannot end on wild enemies")
-	_expect(c.world.build_road(e2), "(the road is laid directly, to test the room rule)")
+	_expect(c.world.build_road(e2) and c.has_wild(w), "a road may reach wild enemies, and they stay where they are")
 	var blocked := c.can_place(w, shed)
 	_expect(not blocked["ok"] and String(blocked["reason"]).contains("Wild"), "a room cannot be built on wild enemies")
 
@@ -1227,11 +1278,11 @@ func _test_exploration_and_wild() -> void:
 	var r2 := c.move_party(w)
 	_expect(not r2.is_empty() and bool(r2["fought"]) and r2["result"] == HexDayCycle.FightResult.WON, "walking into wild enemies is a fight, and the hero wins it")
 	_expect(not c.has_wild(w) and c.party_vertex == w, "the cleared vertex is open and the party stands on it")
-	_expect(int(c.party_loot.get(GREY, 0)) == 4 and int(c.stock.get(GREY, 0)) == 0, "loot is carried, not banked, away from the origin")
+	_expect(_note_total(c.party_loot) == 4 and _note_total(c.stock) == 0, "loot is carried, not banked, away from the origin")
 	_expect(c.can_place(w, shed)["ok"] and c.place_tile(w, shed), "a cleared vertex can be built on")
 	c.move_party(n)
 	c.move_party(o)
-	_expect(int(c.stock.get(GREY, 0)) == 4 and c.party_loot.is_empty(), "the loot is banked when the party reaches the origin")
+	_expect(_note_total(c.stock) == 4 and c.party_loot.is_empty(), "the loot is banked when the party reaches the origin")
 	_expect(c.party_moves_left == 2, "each step cost a move (got %d left)" % c.party_moves_left)
 
 	# ---- travel through the dark, by way of a frontier edge
@@ -1280,6 +1331,214 @@ func _test_exploration_and_wild() -> void:
 	_expect(not plain.world.vertex_fog and plain.frontier_edges().is_empty() and plain.wild.is_empty(), "with the options off there is no fog and no wild enemies")
 
 
+# ------------------------------------------------ XP, and rooms collecting from the ground
+
+func _xp_sheet(id: StringName) -> CharacterSheet:
+	var s := CharacterSheet.new()
+	s.id = id
+	s.display_name = String(id)
+	s.scores = {&"volume": 12, &"tempo": 10, &"tone": 12, &"attachment": 14}
+	return s
+
+
+func _test_xp_and_collection() -> void:
+	var gate := _tile(&"gate", TileDef.Category.DUNGEON)
+	gate.is_exit = true
+	var engine := RulesEngine.new(null, 4242)
+	engine.load_stat_defs("res://Systems/Rules/Data/Stats")
+
+	# ---- a won fight pays XP to the companions, not the player character
+	var grunt := _enemy(&"grunt", EnemyTemplate.NoteColor.NONE)
+	grunt.xp_value = 7
+	var grunts: Array[EnemyTemplate] = [grunt]
+	var roster := PartyRoster.new(engine)
+	var hero_sheet := _xp_sheet(&"hero")
+	hero_sheet.is_player = true
+	var friend_sheet := _xp_sheet(&"friend")
+	friend_sheet.progression = ProgressionDef.new()
+	roster.recruit(hero_sheet)
+	roster.recruit(friend_sheet)
+
+	var c := HexDayCycle.new(gate, _wild_config(grunts), WorldPersistent.new(), 77)
+	c.combat_engine = engine
+	c.roster = roster
+	c.begin_run()
+	var o := c.origin_vertex()
+	var n: Vector3i = HexGrid.vertex_neighbours(o)[0]
+	var w := HexGrid.NONE
+	for x: Vector3i in HexGrid.vertex_neighbours(n):
+		if x != o and c.world.has_vertex(x):
+			w = x
+			break
+	_expect(w != HexGrid.NONE and c.has_wild(w), "there is a wild group two steps out")
+	var got: Array[int] = []
+	c.xp_awarded.connect(func(amount: int, _ids: Array) -> void: got.append(amount))
+	c.set_party([_fighter(engine, "Hero", 5, 500, 18)])
+	c.move_party(n)
+	var won := c.move_party(w)
+	_expect(not won.is_empty() and won["result"] == HexDayCycle.FightResult.WON, "the hero wins the fight")
+	_expect(friend_sheet.xp == 7, "the companion earns the fallen enemy's XP (got %d)" % friend_sheet.xp)
+	_expect(hero_sheet.xp == 0, "the player character earns none")
+	_expect(got.size() == 1 and got[0] == 7, "the win is announced once, with the amount")
+
+	# a fight that is lost pays nothing
+	var ogre := _enemy(&"ogre", EnemyTemplate.NoteColor.NONE)
+	ogre.level = 6
+	ogre.corpus_die = 20
+	ogre.xp_value = 50
+	var ogres: Array[EnemyTemplate] = [ogre]
+	var d := HexDayCycle.new(gate, _wild_config(ogres), WorldPersistent.new(), 77)
+	d.combat_engine = engine
+	d.roster = roster
+	d.begin_run()
+	d.set_party([_fighter(engine, "Weak", 1, 1, 3)])
+	d.move_party(n)
+	var lost := d.move_party(w)
+	_expect(not lost.is_empty() and lost["result"] == HexDayCycle.FightResult.WIPED, "the weak party is wiped out")
+	_expect(friend_sheet.xp == 7, "a lost fight earns no XP")
+
+	# ---- a room collects from every explored vertex in its reach, built on or not
+	var raider := _enemy(&"raider", EnemyTemplate.NoteColor.NONE)
+	var runt := _enemy(&"runt", EnemyTemplate.NoteColor.NONE)
+	var den := _tile(&"den", TileDef.Category.DUNGEON)
+	den.enemies = [runt]
+	den.spawn_count = 2
+	var config := WorldConfig.new()
+	config.require_blueprints = false
+	config.require_segno = false
+	config.board_radius = 4
+	config.starting_resources = {RED: 100, GREEN: 100, BLUE: 100}
+	config.explore_vertices = true
+	config.start_explored_radius = 4
+	config.raids_enabled = true
+	config.raider_templates = [raider]
+	config.frontier_raids_enabled = true
+	var e := HexDayCycle.new(gate, config, WorldPersistent.new(), 77)
+	e.combat_engine = engine
+	e.begin_run()
+	var visited := {}
+	var chain := _chain(e, e.origin_vertex(), 2, visited)
+	if chain.size() < 3:
+		_expect(false, "a chain of two roads can be laid")
+		return
+	var mid: Vector3i = chain[1]
+	var room_v: Vector3i = chain[2]
+	_expect(e.place_tile(room_v, den), "the den is placed")
+	_expect(e.cover_zone(room_v).has(mid) and not e.world.structures.has(mid),
+			"the den reaches a bare road vertex")
+	_expect(e.world.is_explored(mid), "and it is explored")
+
+	e.gathered.clear()
+	e.set_awake([e.world.hexes_at(mid)[0]])
+	e.spawn_frontier_raids()
+	var collected := 0
+	for t: EnemyTemplate in (e.gathered.get(room_v, []) as Array):
+		if t == raider:
+			collected += 1
+	_expect(collected == 1, "the room gathers what wakes on the bare vertex it reaches (got %d)" % collected)
+	_expect(e.raiders_at(mid) == 0, "and nothing roams there")
+
+	# a full room cannot take more, so the surplus roams instead
+	var filler: Array = []
+	for _i in e.room_capacity(e.world.structures[room_v]):
+		filler.append(runt)
+	e.gathered[room_v] = filler
+	e.set_awake([e.world.hexes_at(mid)[0]])
+	e.spawn_frontier_raids()
+	_expect((e.gathered[room_v] as Array).size() == filler.size(), "a full room takes in nothing more")
+	_expect(e.raiders_at(mid) == 1, "the surplus roams the vertex instead (got %d)" % e.raiders_at(mid))
+
+	# raiders only rise where a road reaches: an explored vertex with no road stays quiet
+	var network := e.world.road_graph()
+	var off := HexGrid.NONE
+	for v: Vector3i in e.world.explored:
+		if not network.has(v) and e.world.has_vertex(v) and not e.world.hexes_at(v).is_empty():
+			off = v
+			break
+	_expect(off != HexGrid.NONE, "some explored vertex has no road to it")
+	if off != HexGrid.NONE:
+		e.raiders.clear()
+		e.set_awake([e.world.hexes_at(off)[0]])
+		e.spawn_frontier_raids()
+		_expect(e.raiders_at(off) == 0, "no raiders rise on a vertex no road reaches (got %d)" % e.raiders_at(off))
+
+	# raiders follow the roads toward the origin and hit whatever stands in their way
+	e.raiders.clear()
+	e.gathered.clear()
+	config.raid_repair_per_day = 0
+	config.raider_steps = 2
+	e._add_raider(mid, raider, true)
+	e._resolve_raids()
+	_expect(e.raiders_at(e.origin_vertex()) == 1,
+			"a raider on a bare road walks it to the origin (got %d there)" % e.raiders_at(e.origin_vertex()))
+
+	e.raiders.clear()
+	var den_tile: TileInstance = e.world.structures[room_v]
+	var den_before := den_tile.health
+	e._add_raider(room_v, raider, true)
+	e._resolve_raids()
+	_expect(den_tile.health < den_before or not e.world.has_structure(room_v),
+			"a raider attacks a dungeon room it stands on")
+	_expect(e.raiders_at(room_v) == 1 and e.world.has_structure(room_v) == (den_tile.health > 0),
+			"and it stays there while the room stands")
+
+	e.raiders.clear()
+	den_tile.health = 1
+	e._add_raider(room_v, raider, true)
+	e._resolve_raids()
+	_expect(not e.world.has_structure(room_v), "a room with no health left falls to the raider")
+	_expect(e.raiders_at(e.origin_vertex()) == 1,
+			"and the raider then walks on toward the origin (got %d there)" % e.raiders_at(e.origin_vertex()))
+
+	e.raiders.clear()
+	config.raider_steps = 0
+	e._add_raider(mid, raider, true)
+	e._resolve_raids()
+	_expect(e.raiders_at(mid) == 1, "with raider_steps at 0 raiders stay where they are")
+
+
+# ------------------------------------------------------------ start guards
+
+func _test_start_guards() -> void:
+	var gate := _tile(&"gate", TileDef.Category.DUNGEON)
+	gate.is_exit = true
+	var grunts: Array[EnemyTemplate] = [_enemy(&"grunt", EnemyTemplate.NoteColor.NONE)]
+
+	var config := _wild_config(grunts)
+	config.start_guards = true
+	var c := HexDayCycle.new(gate, config, WorldPersistent.new(), 77)
+	c.begin_run()
+	var o := c.origin_vertex()
+	var ring: Array[Vector3i] = HexGrid.vertex_neighbours(o)
+	var guarded := ring.size() == 3
+	for v in ring:
+		guarded = guarded and c.has_wild(v)
+	_expect(guarded, "a run starts with enemies on all three vertices around the origin")
+	_expect(not c.has_wild(o), "the origin itself is clear")
+
+	var twin := HexDayCycle.new(gate, config, WorldPersistent.new(), 77)
+	twin.begin_run()
+	var same := twin.wild.size() == c.wild.size()
+	for k in c.wild.keys():
+		same = same and twin.wild.has(k) and twin.wild_count_at(k) == c.wild_count_at(k)
+	_expect(same, "one seed deals the same guards")
+
+	var bare_config := _wild_config(grunts)  # guards off
+	var bare := HexDayCycle.new(gate, bare_config, WorldPersistent.new(), 77)
+	bare.begin_run()
+	var quiet := true
+	for v in ring:
+		quiet = quiet and not bare.has_wild(v)
+	_expect(quiet, "with the guards off the surroundings stay clear")
+
+	var endless_config := _wild_config(grunts)
+	endless_config.start_guards = true
+	endless_config.infinite_board = true
+	var endless := HexDayCycle.new(gate, endless_config, WorldPersistent.new(), 77)
+	endless.begin_run()
+	_expect(endless.wild.size() == 3, "an endless board gets the three guards and nothing else (got %d groups)" % endless.wild.size())
+
+
 # ----------------------------------------------------------------- helpers
 
 ## Wakes the first hex beside each of the vertices in `rooms`.
@@ -1316,7 +1575,7 @@ func _chain(c: HexDayCycle, start: Vector3i, steps: int, visited: Dictionary) ->
 			var nxt := _other_end(e, cur)
 			if visited.has(nxt) or _crowded(nxt, cur, visited):
 				continue
-			if not c.build_road(e):
+			if not c.world.grow_road(e):
 				continue
 			visited[nxt] = true
 			walked.append(nxt)
@@ -1346,6 +1605,23 @@ func _road_between(u: Vector3i, v: Vector3i) -> Vector3i:
 		if HexGrid.edge_ends(e).has(v):
 			return e
 	return HexGrid.NONE
+
+
+## All the coloured notes in a stock or loot dictionary.
+func _note_total(d: Dictionary) -> int:
+	return int(d.get(RED, 0)) + int(d.get(GREEN, 0)) + int(d.get(BLUE, 0))
+
+
+## Takes a road away (growth never does).
+func _cut(c: HexDayCycle, e: Vector3i) -> void:
+	c.world.remove_road(e)
+
+
+## Puts a cut road back. Growth only extends outward, so a road between two vertices the
+## network already holds has to be set directly.
+func _mend(c: HexDayCycle, e: Vector3i) -> void:
+	c.world.roads[e] = true
+	c.world.road_changed.emit(e)
 
 
 func _enemy(id: StringName, note_color: EnemyTemplate.NoteColor, notes := 4) -> EnemyTemplate:

@@ -21,4 +21,5 @@ known_actions = Array[ExtResource("3_5ppgw")]([ExtResource("4_d8me6"), ExtResour
 equipment = Dictionary[StringName, ExtResource("1_rxlwe")]({
 &"weapon": ExtResource("2_acapp")
 })
+xp_value = 9
 metadata/_custom_type_script = "uid://7e2wjvm1ll1u"

@@ -358,6 +358,45 @@ func build_road(e: Vector3i, data: Variant = true) -> bool:
 	return true
 
 
+## Every way the network can grow by one road: an edge that leaves a structure or a road end
+## for a vertex the network does not hold yet. Fog does not matter. Each entry is
+## {edge: Vector3i, from: Vector3i, to: Vector3i}, sorted by edge.
+func growth_candidates() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if origin == NO_VERTEX:
+		return out
+	var seen := {}
+	for anchor: Vector3i in _anchor_vertices():
+		for e: Vector3i in HexGrid.vertex_edges(anchor):
+			if seen.has(e) or roads.has(e) or not has_edge(e):
+				continue
+			var ends := HexGrid.edge_ends(e)
+			var to: Vector3i = ends[1] if ends[0] == anchor else ends[0]
+			if not has_vertex(to) or _anchors(to):
+				continue
+			seen[e] = true
+			out.append({"edge": e, "from": anchor, "to": to})
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return _vec3_less(a["edge"], b["edge"]))
+	return out
+
+
+## Lays one of growth_candidates(). Unlike build_road it runs into unexplored ground: the
+## far end is explored, as are the hexes the road touches. False if `e` is not a candidate.
+func grow_road(e: Vector3i) -> bool:
+	var to := NO_VERTEX
+	for c in growth_candidates():
+		if c["edge"] == e:
+			to = c["to"]
+			break
+	if to == NO_VERTEX:
+		return false
+	roads[e] = true
+	_reveal(HexGrid.edge_hexes(e))
+	explore(to)
+	road_changed.emit(e)
+	return true
+
+
 ## {ok: bool, reason: String}. A structure stands where a road ends. A structure at
 ## `ignoring` does not count towards the distance rule, for moving one that is about to go.
 func can_build_structure(v: Vector3i, ignoring := NO_VERTEX) -> Dictionary:

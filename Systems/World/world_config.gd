@@ -10,14 +10,8 @@ extends Resource
 ## The resource hub tiles produce passively (list it under a tile's income). It buys
 ## items and upgrades, and it is one way to pay the tithe.
 @export var cuts_id: StringName = &"cuts"
-## Grey notes: the building material for roads (HexDayCycle only). Uncoloured (neutral)
-## enemies drop them; you can also convert coloured notes into them, and back.
-@export var grey_note_id: StringName = &"grey_notes"
-## Converting is reversible: one grey note becomes this many notes of EACH colour (red,
-## green and blue), and this many of each colour become one grey note.
-@export_range(1, 10) var grey_exchange_rate := 1
 ## What the player has at the start of each run (resource id -> amount).
-@export var starting_resources: Dictionary = {&"red_notes": 10, &"green_notes": 10, &"blue_notes": 10, &"grey_notes": 10}
+@export var starting_resources: Dictionary = {&"red_notes": 10, &"green_notes": 10, &"blue_notes": 10}
 ## Colour points per note. A room's colour divided by this is its note cost, and each
 ## note dropped in a room raises its matching colour channel by this much.
 @export var color_per_note := 10
@@ -70,9 +64,43 @@ extends Resource
 ## Ignore board_radius: the world is an endless plane of hexes, dealt from the seed as
 ## they are looked at.
 @export var infinite_board := false
-## Resource id -> amount spent to build one road (HexDayCycle only). Empty = free. One
-## grey note by default; grey notes are made by converting coloured ones.
-@export var road_cost: Dictionary = {&"grey_notes": 1}
+
+@export_group("Growth")
+## The origin grows the road network by itself (HexDayCycle only). At the end of every
+## segment it turns a share of the banked notes into Hyle, drawn evenly from all three
+## colours; each time enough Hyle has built up, a road is laid. Roads push into unexplored
+## ground, but a vertex a road reaches holds whatever wild enemies stand on it: they must
+## be cleared before anything can be built there.
+##
+## The share of the LOWEST banked note colour that is consumed each segment. That many notes
+## are taken from each colour, so the draw is even. The share starts at hyle_ratio_start and
+## falls by hyle_ratio_step for every road the origin has grown, down to hyle_ratio_floor.
+## At least one note of each colour is taken whenever every colour is banked.
+@export_range(0.0, 1.0, 0.01) var hyle_ratio_start := 0.5
+@export_range(0.0, 1.0, 0.01) var hyle_ratio_floor := 0.1
+@export_range(0.0, 0.5, 0.01) var hyle_ratio_step := 0.05
+## Hyle produced by each note consumed.
+@export_range(1, 20) var hyle_per_note := 1
+## Hyle the run starts with.
+@export var starting_hyle := 0
+## Hyle for the next road is road_hyle_base + road_hyle_per_road * (roads grown so far,
+## not counting the starting roads). The first road costs the base.
+@export var road_hyle_base := 3
+@export var road_hyle_per_road := 1
+## Roads laid for free when a run begins, so the first rooms have somewhere to stand.
+@export_range(1, 6) var start_roads := 3
+## Most roads that can be laid in one segment, however much Hyle there is.
+@export_range(1, 10) var max_roads_per_segment := 3
+## Where the next road goes is the candidate with the lowest score. Each road step
+## between a candidate's end and the origin adds growth_distance_penalty. Each vertex of
+## another branch within growth_crowd_radius steps of the end adds growth_crowd_penalty,
+## so branches spread apart instead of filling in a blob.
+@export var growth_distance_penalty := 1.0
+@export var growth_crowd_penalty := 1.5
+@export_range(1, 4) var growth_crowd_radius := 2
+## A random amount up to this is added to each candidate's score, so ties break differently
+## between runs.
+@export var growth_jitter := 0.5
 
 @export_group("Dawn")
 ## How many times the dice are rolled at the start of each segment of the day (HexDayCycle
@@ -138,12 +166,29 @@ extends Resource
 @export var capacity_by_size: Array[int] = [4, 8, 14]
 ## Health lost by a structure for each raider left unopposed on it at the end of a segment.
 @export_range(0, 100) var raid_damage_per_raider := 1
+## Road steps every raider walks toward the origin as each segment ends. Raiders follow the
+## roads and never leave them. One that reaches a structure of any kind (a town tile, a
+## dungeon room, the origin itself) stops there and attacks it until it falls, then walks
+## on. The Segno is only a marker and is walked past. 0 = raiders stay where they appear.
+@export_range(0, 20) var raider_steps := 2
 ## Health every damaged structure regains when a new day begins.
 @export_range(0, 100) var raid_repair_per_day := 2
 ## Longest an off-screen fight between allies and raiders runs, in seconds of combat time.
 ## It is the real CombatSession, stepped without bodies or any presentation. A fight
 ## still going at the limit is left as it stands.
 @export_range(5.0, 600.0, 1.0) var raid_fight_seconds := 120.0
+
+@export_group("Frontier raids")
+## HexDayCycle only; needs raids_enabled, raider_templates and explore_vertices. On: every
+## explored vertex a road reaches that no dungeon room's safe zone covers draws raiders when
+## a hex beside it wakes. They follow the roads toward the origin (see raider_steps), attacking
+## whatever stands in their way. When the origin's health reaches zero the run is over.
+@export var frontier_raids_enabled := false
+## Raiders drawn at an uncovered explored vertex for each awake hex beside it.
+@export_range(0, 10) var frontier_raiders_per_wake := 1
+## Most frontier raiders that may be alive at once. 0 = no limit. Stops a wide explored
+## area from flooding the map.
+@export_range(0, 500) var frontier_raider_cap := 60
 
 @export_group("Exploration")
 ## HexDayCycle only. On: every vertex starts unexplored. Nothing can be built on, or road
@@ -158,8 +203,8 @@ extends Resource
 
 @export_group("Wild enemies")
 ## HexDayCycle only. On: enemies are scattered over the board at the start of a run. A
-## vertex holding living wild enemies cannot be built on (nor roaded to) until they are
-## cleared.
+## vertex holding living wild enemies cannot be built on until they are cleared. Roads
+## may still grow onto it.
 @export var wild_enemies_enabled := false
 ## Chance, per vertex, that a group of wild enemies is waiting there.
 @export_range(0.0, 1.0, 0.005) var wild_density := 0.75
@@ -170,6 +215,10 @@ extends Resource
 @export_range(0, 10) var wild_safe_radius := 2
 ## Wild groups are drawn at random from these.
 @export var wild_templates: Array[EnemyTemplate] = []
+## A run starts with a wild group on each of the three vertices around the origin, inside
+## the safe radius, so the first rooms have to be won. Needs wild_enemies_enabled and
+## wild_templates; applies on an endless board too.
+@export var start_guards := true
 
 @export_group("Party")
 ## Vertices the party can walk in one segment (HexDayCycle map movement). Refilled as each

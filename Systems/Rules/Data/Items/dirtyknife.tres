@@ -1,6 +1,7 @@
 [gd_resource type="Resource" script_class="ItemDef" format=3 uid="uid://b3a4csh51vycu"]
 
 [ext_resource type="Script" uid="uid://njw6l7ex23w0" path="res://Systems/Rules/action_def.gd" id="1_lktfk"]
+[ext_resource type="Script" uid="uid://0bb6gaktbv7m" path="res://Systems/Rules/mechanic.gd" id="2_72yra"]
 [ext_resource type="Script" uid="uid://m5jx56lhrgsj" path="res://Systems/Rules/item_def.gd" id="2_l2wnj"]
 
 [resource]
@@ -10,5 +11,5 @@ display_name = "Dirty Knife"
 damage_dice = "1d6"
 attack_stat = &"tempo"
 damage_stat = &"tempo"
-weapon_tags = PackedStringArray("melee", "starter")
+weapon_tags = PackedStringArray("melee", "starter", "light")
 metadata/_custom_type_script = "uid://m5jx56lhrgsj"

@@ -68,7 +68,8 @@ static func resolve_hazard(def: HazardDef, roster: PartyRoster) -> Dictionary:
 		var block := roster.get_block(char_id)
 		if block == null or block.is_down():
 			continue
-		var roll := engine.save(block, def.save_stat, def.save_dc)
+		var roll := engine.save(block, def.save_stat, def.save_dc, RulesEngine.RollMode.NORMAL, 0, "",
+				def.save_type)
 		var amount := int(Dice.roll_expr(def.damage, engine.rng)["total"])
 		if roll.success:
 			match def.on_save:

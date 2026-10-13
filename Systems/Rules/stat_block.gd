@@ -13,6 +13,18 @@ var temp_corpus: int = 0
 var scores: Dictionary = {}
 ## skill id -> ranks
 var skill_ranks: Dictionary = {}
+## Discipline: each entry is a signed multiplier on the level-based discipline bonus
+## (RulesConfig.discipline_bonus). 1 adds the bonus, -1 subtracts it, 2 doubles it,
+## and anything missing (or 0) means no discipline. It shows up as its own "Discipline"
+## line in a roll.
+## skill (or attribute) id -> multiplier for checks made with that stat.
+var skill_discipline_mult: Dictionary = {}
+## stat id -> multiplier for saving throws made with that stat.
+var save_discipline_mult: Dictionary = {}
+## weapon id or weapon tag -> multiplier for attack rolls with a matching weapon.
+var weapon_discipline_mult: Dictionary = {}
+## casting attribute id -> multiplier for spell attack rolls and spell save DCs built on it.
+var spell_discipline_mult: Dictionary = {}
 var corpus: int = 0
 var anima: int = 0
 ## Array of StatModifier (equipment, buffs, etc.)
@@ -112,6 +124,47 @@ func modifier_bonus(stat_id: StringName) -> int:
 
 func total_mod(stat_id: StringName) -> int:
 	return base_mod(stat_id) + modifier_bonus(stat_id)
+
+
+# ----------------------------------------------------------- discipline
+
+## The discipline bonus at this character's level, before any multiplier.
+func discipline_bonus() -> int:
+	return engine.config.discipline_bonus(level)
+
+
+## Discipline added to checks made with `stat_id` (the bonus times the multiplier).
+func skill_discipline(stat_id: StringName) -> int:
+	return int(skill_discipline_mult.get(stat_id, 0)) * discipline_bonus()
+
+
+## Discipline added to saving throws made with `stat_id`.
+func save_discipline(stat_id: StringName) -> int:
+	return int(save_discipline_mult.get(stat_id, 0)) * discipline_bonus()
+
+
+## Discipline added to attack rolls with `item` (the equipped weapon by default). Every entry
+## that matches counts (the weapon's own id and each of its tags), but they never stack in a
+## direction: only the highest positive multiplier and the most negative multiplier apply,
+## and those two are added together, so opposite signs cancel. For example sword +2 and
+## melee -1 gives +1, and sword +2 with test_sword +3 gives just +3.
+func weapon_discipline(item: ItemDef = null) -> int:
+	var w := item if item != null else weapon()
+	var keys: Array[StringName] = [w.id]
+	for tag in w.weapon_tags:
+		keys.append(StringName(tag))
+	var best_positive := 0
+	var best_negative := 0
+	for key in keys:
+		var m := int(weapon_discipline_mult.get(key, 0))
+		best_positive = maxi(best_positive, m)
+		best_negative = mini(best_negative, m)
+	return (best_positive + best_negative) * discipline_bonus()
+
+
+## Discipline added to spell attack rolls and spell save DCs that use `attribute_id`.
+func spell_discipline(attribute_id: StringName) -> int:
+	return int(spell_discipline_mult.get(attribute_id, 0)) * discipline_bonus()
 
 
 ## Array of {source, value} describing total_mod(stat_id).

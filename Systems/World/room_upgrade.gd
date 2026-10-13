@@ -1,47 +1,34 @@
 class_name RoomUpgrade
 extends Resource
-## One node of a room's upgrade tree. A TileDef lists the upgrades its rooms can take
-## (TileDef.upgrades); the tree's shape comes from `requires` (prerequisites) and
-## `excludes` (branches that lock each other out, so taking one closes the other for that
-## room). Each placed room records the ids it took (TileInstance.upgrades), and
-## HexDayCycle adds the modifiers below to the room's base stats. Upgrade ids must be
-## unique within one TileDef.
+## One step up a building's upgrade tree: a building can be turned into `into`, a different
+## building with its own TileDef (its own income, units, spawn count, health, scene...).
+## A TileDef lists the steps it can take in TileDef.upgrades, so the tree is simply
+## buildings pointing at the buildings they can become. Taking a step swaps the placed
+## room's def for `into`; the room keeps its place, colour and (proportionally) its health.
+## Each branch of the tree is a different path, and a room that has taken one can only
+## continue along what that building offers. The tree must not loop back on itself.
 
-## How an upgrade changes what its room's units do.
-enum AllyBehaviorChange { KEEP, GUARD, PATROL }
+## The step's id is the target building's id, so one def's steps must lead to different
+## buildings.
+var id: StringName:
+	get: return into.id if into != null else &""
 
-@export var id: StringName = &""
+## The building this step turns the room into.
+@export var into: TileDef
+## Name shown for the step. Empty = the target building's own name.
 @export var display_name := ""
 @export_multiline var description := ""
-## Resource id -> amount paid when the upgrade is taken (like TileDef.cost).
+## Resource id -> amount paid to take the step (like TileDef.cost).
 @export var cost: Dictionary = {}
-## Segments the upgrade takes to finish once bought. While it is under way the room keeps
-## working with its old stats and cannot take another upgrade. 0 = instant.
+## Segments the step takes to finish once bought. While it is under way the room keeps
+## working as the old building and cannot be upgraded again. 0 = instant.
 @export_range(0, 20) var build_segments := 0
 
-@export_group("Tree")
-## Upgrade ids the room must already have. All of them are needed.
-@export var requires: Array[StringName] = []
-## Upgrade ids this one is exclusive with. The lockout works both ways: it is enough for
-## either of the two upgrades to list the other.
-@export var excludes: Array[StringName] = []
 
-@export_group("Stats")
-## Added to the room's spawn count. Raising it also raises the room's size tier.
-@export var spawn_count_add := 0
-## Added to the safe zone's reach, in road steps, on top of the size tier's radius.
-@export var cover_radius_add := 0
-## Added to the number of enemies the room can hold, on top of the size tier's capacity.
-@export var capacity_add := 0
-## Added to the structure's health (a negative value is allowed; health never drops below 1).
-@export var max_health_add := 0
-
-@export_group("Defence")
-## Replaces the unit the room musters. The latest upgrade taken that sets one wins. Null =
-## keep whatever the room already musters.
-@export var ally: AllyTemplate
-@export var ally_cap_add := 0
-@export var ally_per_segment_add := 0
-## Change what the room's units do. The latest upgrade taken that changes it wins.
-@export var ally_behavior: AllyBehaviorChange = AllyBehaviorChange.KEEP
-@export var ally_patrol_range_add := 0
+## What to call this step in the log and the panel.
+func label() -> String:
+	if display_name != "":
+		return display_name
+	if into != null and into.display_name != "":
+		return into.display_name
+	return String(id)

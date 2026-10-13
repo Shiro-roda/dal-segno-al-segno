@@ -21,6 +21,22 @@ extends Resource
 @export var scores: Dictionary[StringName, int] = {}
 ## skill id -> ranks
 @export var skill_ranks: Dictionary = {}
+@export_group("Discipline")
+## Discipline works like a proficiency bonus: the bonus grows with character level
+## (RulesConfig.discipline_base / discipline_level_step), and each entry below is a signed
+## multiplier on it. 1 adds the bonus, -1 subtracts it, 2 doubles it. Anything left out
+## has no discipline. It appears as a "Discipline" line in the roll.
+## Skill (or attribute) id -> multiplier for checks made with it.
+@export var skill_discipline: Dictionary[StringName, int] = {}
+## Stat id -> multiplier for saving throws made with it.
+@export var save_discipline: Dictionary[StringName, int] = {}
+## Weapon id or weapon tag (e.g. "sword", "ranged") -> multiplier for attack rolls with a
+## matching weapon. Matches never stack in a direction: only the highest positive and the
+## most negative multiplier count, and they cancel each other (sword +2, melee -1 = +1).
+@export var weapon_discipline: Dictionary[StringName, int] = {}
+## Casting attribute id -> multiplier for spell attack rolls and spell save DCs built on it.
+@export var spellcasting_discipline: Dictionary[StringName, int] = {}
+@export_group("")
 @export var known_actions: Array[ActionDef] = []
 ## The player character: always first in the active party. Only one sheet should set this.
 @export var is_player: bool = false
@@ -71,6 +87,10 @@ func build_block(engine: RulesEngine) -> StatBlock:
 		if not block.scores.has(def.id):
 			block.scores[def.id] = engine.config.attribute_base
 	block.skill_ranks = skill_ranks.duplicate()
+	block.skill_discipline_mult = skill_discipline.duplicate()
+	block.save_discipline_mult = save_discipline.duplicate()
+	block.weapon_discipline_mult = weapon_discipline.duplicate()
+	block.spell_discipline_mult = spellcasting_discipline.duplicate()
 	block.known_actions = known_actions.duplicate()
 	block.innate_mechanics.assign(mechanics)
 	fill_corpus_rolls(engine)

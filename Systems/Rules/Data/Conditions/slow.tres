@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ConditionDef" format=3 uid="uid://crcmciqa5jhup"]
+
+[ext_resource type="Script" uid="uid://0bb6gaktbv7m" path="res://Systems/Rules/mechanic.gd" id="1_0c1cc"]
+[ext_resource type="Script" uid="uid://6nbup8pfuhsr" path="res://Systems/Rules/condition_def.gd" id="2_3r5g0"]
+
+[resource]
+script = ExtResource("2_3r5g0")
+id = &"slow"
+display_name = "Slow"
+duration_rounds = 5
+modifiers = {
+&"speed": -10,
+&"tempo": -3
+}
+advantage_on = null
+disadvantage_on = null
+metadata/_custom_type_script = "uid://6nbup8pfuhsr"

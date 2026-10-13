@@ -11,6 +11,7 @@
 script = ExtResource("2_6dx2u")
 id = &"small_room"
 display_name = "Small Room"
+max_health = 5
 enemies = Array[ExtResource("1_n0ylm")]([ExtResource("2_atpkf"), ExtResource("3_dtyfx"), ExtResource("4_dtyfx")])
 spawn_count = 1
 loot_per_kill = {

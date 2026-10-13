@@ -17,5 +17,5 @@ granted_actions = Array[ExtResource("1_ne066")]([ExtResource("2_cjhnb")])
 damage_dice = "2d4 + 1"
 attack_stat = &"volume"
 damage_stat = &"volume"
-weapon_tags = PackedStringArray("melee")
+weapon_tags = PackedStringArray("melee", "heavy")
 metadata/_custom_type_script = "uid://m5jx56lhrgsj"

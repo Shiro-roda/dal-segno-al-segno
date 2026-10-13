@@ -21,6 +21,14 @@ extends Resource
 ## Bonus per rank in a skill.
 @export var skill_rank_bonus: int = 1
 
+# --- Discipline (the proficiency bonus) ---
+## The discipline bonus at level 1. Characters add it (times their per-skill, per-save,
+## per-weapon or per-spellcasting multiplier) to anything they are disciplined in.
+@export var discipline_base: int = 2
+## The bonus grows by 1 every this many levels after the first. With the defaults it is
+## +2 at levels 1-4, +3 at 5-8, +4 at 9-12, +5 at 13-16 and +6 at 17-20.
+@export var discipline_level_step: int = 4
+
 # --- Defense and saves ---
 @export var base_defense: int = 10
 @export var defense_stat: StringName = &"tempo"
@@ -139,6 +147,11 @@ func get_basic_attack() -> ActionDef:
 		fx.target = EffectDef.Target.SINGLE_ENEMY
 		_builtin_attack.effects = [fx]
 	return _builtin_attack
+
+
+## The discipline bonus for a character of `character_level`.
+func discipline_bonus(character_level: int) -> int:
+	return discipline_base + floori(maxi(0, character_level - 1) / float(maxi(1, discipline_level_step)))
 
 
 func ability_mod(score: int) -> int:

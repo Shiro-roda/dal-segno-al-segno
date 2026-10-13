@@ -7,14 +7,16 @@ extends RefCounted
 ##   Rooms    structures on vertices. A TileDef's clef() is now only a tag: TREBLE
 ##            structures are the town (income, services, ruins after a defeat), BASS
 ##            structures are the dungeon (blueprints, enemies, wiped on defeat).
-##   Roads    edges. Each costs config.road_cost (one grey note by default) and extends from
-##            a structure or road. Grey notes come from converting coloured ones, and back.
+##   Roads    edges. The origin grows them itself: at the end of each segment it turns a share
+##            of the banked notes into Hyle, and each time enough Hyle has built up a road is
+##            laid, into the fog if need be (see _grow_network). A vertex a road reaches must
+##            be cleared of wild enemies before it can be built on.
 ##   Building A room with build_segments above 0 is a building site for that many segments
 ##            after it is placed. It anchors roads but is not live until finished.
 ##
 ## The exit and the Town Square are one structure on the origin vertex.
 ##
-## PLAN        spend stock on roads and rooms and place the Segno (the day's spawn).
+## PLAN        spend stock on rooms and place the Segno (the day's spawn).
 ## EXPEDITION  the party appears at the Segno, works the dungeon, then walks to the exit.
 ## SUMMARY     you made it back; loot is banked. begin_next_day() starts the next plan.
 ## OVER        defeated. Loot carried is lost, the dungeon and every road are wiped, the
@@ -44,6 +46,8 @@ signal blueprints_changed
 ## A room was placed, erased, stained or changed.
 signal tile_changed(vertex: Vector3i)
 signal road_changed(edge: Vector3i)
+## The origin's Hyle changed: notes were turned into it, or a road was paid for with it.
+signal hyle_changed
 signal revealed_changed
 ## The Segno was placed, moved or cleared.
 signal segno_changed
@@ -69,6 +73,10 @@ enum Segment { DAWN, MIDDAY, DUSK }
 ## Stands for "no Segno placed".
 const NO_SEGNO := HexGrid.NONE
 
+## Switches the origin's growth off: no starting roads, no Hyle, no new roads. For the
+## self-test, whose older checks lay out their own roads and count their own notes.
+static var growth_disabled := false
+
 var config: WorldConfig
 var persistent: WorldPersistent
 var exit_def: TileDef
@@ -87,6 +95,12 @@ var gathered: Dictionary = {}
 ## True once this segment's enemies have been gathered (an expedition started in it).
 var _gathered_this_segment := false
 var stock: Dictionary = {}                # resource id -> int
+## Hyle the origin has produced and not yet spent on a road. At the end of each segment a
+## share of the banked notes becomes Hyle; every road grown takes hyle_cost_of_next_road().
+var hyle := 0
+## Roads the origin has grown since the run began, not counting the starting ones. Sets the
+## Hyle price of the next road and how much of the banked notes a segment turns into Hyle.
+var roads_grown := 0
 var world := HexWorld.new()               # structures hold TileInstances, roads hold true
 ## Town tiles left as ruins: Vector3i -> TileInstance (ruined). Kept out of
 ## world.structures so a ruin anchors no road and blocks no neighbour.
@@ -165,7 +179,9 @@ func _init(p_exit: TileDef, p_config: WorldConfig = null, p_persistent: WorldPer
 		rng.seed = seed_value
 	else:
 		rng.randomize()
-	world.road_changed.connect(func(e: Vector3i) -> void: road_changed.emit(e))
+	world.road_changed.connect(func(e: Vector3i) -> void:
+		_path_dirty = true
+		road_changed.emit(e))
 	world.revealed_changed.connect(func() -> void: revealed_changed.emit())
 	world.explored_changed.connect(func() -> void: explored_changed.emit())
 
@@ -192,6 +208,8 @@ func begin_run() -> void:
 	gathered.clear()
 	_gathered_this_segment = false
 	stock = _normalised(config.starting_resources)
+	hyle = maxi(0, config.starting_hyle)
+	roads_grown = 0
 	segno = NO_SEGNO
 	carried.clear()
 	carried_loot.clear()
@@ -211,6 +229,9 @@ func begin_run() -> void:
 	party_vertex = _origin
 	party_moves_left = config.party_moves_per_segment
 	_scatter_wild()
+	for _i in (0 if growth_disabled else config.start_roads):
+		if not _grow_one_road():
+			break
 	for ruin in persistent.ruins:
 		if not ruin.has("vertex"):
 			continue
@@ -241,14 +262,22 @@ func _new_board() -> void:
 # ------------------------------------------------------------ unlocks
 
 ## Ids of the tiles that currently count as built: every standing Town tile (ruins do
-## not count), plus the dungeon exit. Unlocks last only while these stand.
+## not count), plus the dungeon exit. A tile also counts as every building it was upgraded
+## from. Unlocks last only while these stand.
 func _built_ids() -> Dictionary:
 	var ids := {exit_def.id: true, origin_def.id: true}
 	for v: Vector3i in world.structures:
 		var tile: TileInstance = world.structures[v]
 		if tile.def.clef() == TileDef.Clef.TREBLE and tile.is_live():
-			ids[tile.def.id] = true
+			_mark_ids(ids, tile)
 	return ids
+
+
+## Marks `tile`'s building, and the ones it was upgraded from, in `ids`.
+func _mark_ids(ids: Dictionary, tile: TileInstance) -> void:
+	ids[tile.def.id] = true
+	for earlier in tile.lineage:
+		ids[earlier] = true
 
 
 ## Ids `def` needs that have not been built yet.
@@ -349,60 +378,168 @@ func place_tile(v: Vector3i, def: TileDef) -> bool:
 	return true
 
 
-## What one road costs, normalised to StringName keys.
-func road_price() -> Dictionary:
-	return _normalised(config.road_cost)
+# --------------------------------------------------------------- growth
+
+## Hyle the next road costs: the base, plus a step for every road the origin has already
+## grown (the starting roads do not count), so a larger network is slower to extend.
+func hyle_cost_of_next_road() -> int:
+	return maxi(1, config.road_hyle_base + config.road_hyle_per_road * roads_grown)
 
 
-## {ok: bool, reason: String}. A road runs from a room or another road and costs
-## config.road_cost.
-func can_build_road(e: Vector3i) -> Dictionary:
-	if phase != Phase.PLAN:
-		return _no("Not planning.")
-	var spot := world.can_build_road(e)
-	if not spot["ok"]:
-		return spot
-	for end: Vector3i in HexGrid.edge_ends(e):
-		if has_wild(end):
-			return _no("Wild enemies hold the end of that road: clear them first.")
-	var price := road_price()
-	for key in price:
-		if int(stock.get(key, 0)) < int(price[key]):
-			return _no("Cannot afford it.")
-	return _yes()
+## The share of the lowest banked colour turned into Hyle at the end of a segment. High at
+## first, it falls with every road grown until it reaches config.hyle_ratio_floor.
+func hyle_ratio_now() -> float:
+	var ratio := config.hyle_ratio_start - config.hyle_ratio_step * roads_grown
+	return clampf(ratio, config.hyle_ratio_floor, 1.0)
 
 
-func build_road(e: Vector3i) -> bool:
-	var check := can_build_road(e)
-	if not check["ok"]:
-		log_line.emit(String(check["reason"]))
+## Notes the origin would take from EACH colour if the segment ended now. Zero unless every
+## colour is banked. That many are drawn from the lowest colour's stock, rounded up, so the
+## draw is the same for all three.
+func hyle_draw() -> int:
+	if growth_disabled or hyle_ratio_now() <= 0.0:
+		return 0
+	var lowest := -1
+	for i in 3:
+		var banked := int(stock.get(_note_id(i), 0))
+		lowest = banked if lowest < 0 else mini(lowest, banked)
+	if lowest <= 0:
+		return 0
+	return mini(lowest, maxi(1, ceili(lowest * hyle_ratio_now())))
+
+
+## Turns the segment's share of the banked notes into Hyle. Returns the Hyle made.
+func _convert_to_hyle() -> int:
+	var each := hyle_draw()
+	if each <= 0:
+		return 0
+	for i in 3:
+		stock[_note_id(i)] = int(stock.get(_note_id(i), 0)) - each
+	var made := each * 3 * maxi(1, config.hyle_per_note)
+	hyle += made
+	hyle_changed.emit()
+	log_line.emit("The origin takes %d of each note and makes %d Hyle (%d banked)." % [each, made, hyle])
+	return made
+
+
+## Roads laid as the segment ends, as many as the Hyle pays for (at most
+## config.max_roads_per_segment). Returns how many.
+func _grow_network() -> int:
+	var laid := 0
+	while laid < config.max_roads_per_segment and hyle >= hyle_cost_of_next_road():
+		var cost := hyle_cost_of_next_road()
+		if not _grow_one_road():
+			break  # nowhere left to grow
+		hyle -= cost
+		roads_grown += 1
+		laid += 1
+	if laid > 0:
+		hyle_changed.emit()
+		log_line.emit("The roads grow by %d." % laid)
+	return laid
+
+
+## The end of a segment for the origin: banked notes become Hyle, and Hyle becomes roads.
+## Returns {"hyle": made, "roads": laid}.
+func _grow_at_segment_end() -> Dictionary:
+	if growth_disabled:
+		return {"hyle": 0, "roads": 0}
+	var made := _convert_to_hyle()
+	return {"hyle": made, "roads": _grow_network()}
+
+
+## Lays the road with the lowest score and returns true, or false if the network cannot
+## grow. Wild enemies on the vertex it reaches stay where they are: the vertex must be
+## cleared before it can be built on (see can_place).
+func _grow_one_road() -> bool:
+	var pick := _pick_growth()
+	if pick.is_empty():
 		return false
-	var price := road_price()
-	for key in price:
-		stock[key] = int(stock.get(key, 0)) - int(price[key])
-	world.build_road(e, true)
+	if not world.grow_road(pick["edge"]):
+		return false
 	_path_dirty = true
 	return true
 
 
-## {ok: bool, reason: String}. Roads can be torn up freely while planning. Rooms they
-## carried are cut off, and the Segno must still connect to the exit to start the day.
-func can_erase_road(e: Vector3i) -> Dictionary:
-	if phase != Phase.PLAN:
-		return _no("Not planning.")
-	if not world.has_road(e):
-		return _no("No road there.")
-	return _yes()
+## The best growth candidate, {edge, from, to, score}, or {} if there is none. A candidate
+## scores growth_distance_penalty for each road step its far end is from the origin, plus
+## growth_crowd_penalty for each vertex of another branch within growth_crowd_radius steps
+## of it, plus a little jitter. The lowest score wins, so the network spreads outward
+## evenly (the distance term) without clumping (the crowd term).
+func _pick_growth() -> Dictionary:
+	var candidates := world.growth_candidates()
+	if candidates.is_empty():
+		return {}
+	var graph := world.road_graph()
+	var depth := _road_depths(graph)
+	var held := {_origin: true}  # every vertex the network holds
+	for v: Vector3i in world.structures:
+		held[v] = true
+	for v: Vector3i in graph:
+		held[v] = true
+	var best := {}
+	for c in candidates:
+		var from: Vector3i = c["from"]
+		var to: Vector3i = c["to"]
+		# The candidate's own branch: what is within two road steps back along it. It is not
+		# "another branch", however close.
+		var own := _within_steps(graph, from, 2)
+		var crowd := 0
+		var near := _vertices_within(to, config.growth_crowd_radius)
+		for v: Vector3i in near:
+			if held.has(v) and not own.has(v):
+				crowd += 1
+		var score := config.growth_distance_penalty * float(int(depth.get(from, 0)) + 1)
+		score += config.growth_crowd_penalty * float(crowd)
+		score += rng.randf() * maxf(0.0, config.growth_jitter)
+		if best.is_empty() or score < float(best["score"]):
+			best = {"edge": c["edge"], "from": from, "to": to, "score": score}
+	return best
 
 
-func erase_road(e: Vector3i) -> bool:
-	var check := can_erase_road(e)
-	if not check["ok"]:
-		log_line.emit(String(check["reason"]))
-		return false
-	world.remove_road(e)
-	_path_dirty = true
-	return true
+## Road steps from the origin to each vertex the network reaches.
+func _road_depths(graph: Dictionary) -> Dictionary:
+	var depth := {_origin: 0}
+	var queue: Array[Vector3i] = [_origin]
+	while not queue.is_empty():
+		var cur: Vector3i = queue.pop_front()
+		for nxt: Vector3i in graph.get(cur, []):
+			if not depth.has(nxt):
+				depth[nxt] = int(depth[cur]) + 1
+				queue.append(nxt)
+	return depth
+
+
+## The vertices within `steps` road steps of `v` (including `v`), as a set.
+func _within_steps(graph: Dictionary, v: Vector3i, steps: int) -> Dictionary:
+	var seen := {v: 0}
+	var queue: Array[Vector3i] = [v]
+	while not queue.is_empty():
+		var cur: Vector3i = queue.pop_front()
+		if int(seen[cur]) >= steps:
+			continue
+		for nxt: Vector3i in graph.get(cur, []):
+			if not seen.has(nxt):
+				seen[nxt] = int(seen[cur]) + 1
+				queue.append(nxt)
+	return seen
+
+
+## The vertices within `steps` neighbour steps of `v` (not road steps), excluding `v`.
+func _vertices_within(v: Vector3i, steps: int) -> Array[Vector3i]:
+	var seen := {v: 0}
+	var queue: Array[Vector3i] = [v]
+	var out: Array[Vector3i] = []
+	while not queue.is_empty():
+		var cur: Vector3i = queue.pop_front()
+		if int(seen[cur]) >= steps:
+			continue
+		for nxt: Vector3i in HexGrid.vertex_neighbours(cur):
+			if world.has_vertex(nxt) and not seen.has(nxt):
+				seen[nxt] = int(seen[cur]) + 1
+				queue.append(nxt)
+				out.append(nxt)
+	return out
 
 
 ## {ok: bool, reason: String}. A spent room (every colour channel at 250) must be erased
@@ -454,13 +591,6 @@ func open_structure_spots() -> Array[Vector3i]:
 	if phase != Phase.PLAN:
 		return []
 	return world.open_structure_spots()
-
-
-## Edges a road could be built on right now. Sorted.
-func open_road_spots() -> Array[Vector3i]:
-	if phase != Phase.PLAN:
-		return []
-	return world.open_road_spots()
 
 
 # ------------------------------------------------------------ construction
@@ -523,9 +653,21 @@ func wild_count_at(v: Vector3i) -> int:
 ## deal from, so it gets none.
 func _scatter_wild() -> void:
 	wild.clear()
-	if not config.wild_enemies_enabled or config.wild_templates.is_empty() or world.infinite:
+	if not config.wild_enemies_enabled or config.wild_templates.is_empty():
 		wild_changed.emit()
 		return
+	var dice := RandomNumberGenerator.new()
+	dice.seed = persistent.board_seed ^ 0x5bd1e995
+	var lo := mini(config.wild_group_min, config.wild_group_max)
+	var hi := maxi(config.wild_group_min, config.wild_group_max)
+	if not world.infinite:
+		_scatter_wild_ground(dice, lo, hi)
+	_guard_start(dice, lo, hi)
+	wild_changed.emit()
+
+
+## The scatter proper: a group on each vertex outside the safe radius, by chance.
+func _scatter_wild_ground(dice: RandomNumberGenerator, lo: int, hi: int) -> void:
 	var safe := {_origin: 0}
 	var queue: Array[Vector3i] = [_origin]
 	while not queue.is_empty():
@@ -536,10 +678,6 @@ func _scatter_wild() -> void:
 			if not safe.has(nxt):
 				safe[nxt] = int(safe[cur]) + 1
 				queue.append(nxt)
-	var dice := RandomNumberGenerator.new()
-	dice.seed = persistent.board_seed ^ 0x5bd1e995
-	var lo := mini(config.wild_group_min, config.wild_group_max)
-	var hi := maxi(config.wild_group_min, config.wild_group_max)
 	for v: Vector3i in world.vertices():
 		if safe.has(v) or dice.randf() >= config.wild_density:
 			continue
@@ -547,7 +685,21 @@ func _scatter_wild() -> void:
 		for _i in dice.randi_range(lo, hi):
 			group.append({"template": config.wild_templates[dice.randi_range(0, config.wild_templates.size() - 1)]})
 		wild[v] = group
-	wild_changed.emit()
+
+
+## A wild group on each of the three vertices around the origin, whatever the safe radius,
+## so a run opens with something to clear on every side. Dealt from the same seeded dice,
+## after the scatter, so it does not change where the rest of the board's groups fall.
+func _guard_start(dice: RandomNumberGenerator, lo: int, hi: int) -> void:
+	if not config.start_guards:
+		return
+	for v: Vector3i in HexGrid.vertex_neighbours(_origin):
+		if not world.has_vertex(v):
+			continue
+		var group: Array = []
+		for _i in maxi(1, dice.randi_range(lo, hi)):
+			group.append({"template": config.wild_templates[dice.randi_range(0, config.wild_templates.size() - 1)]})
+		wild[v] = group
 
 
 # ------------------------------------------------------------------- party
@@ -564,6 +716,11 @@ var fight: Dictionary = {}
 signal fight_starting(session: CombatSession)
 ## A watched fight has begun: bind a HUD to the session.
 signal fight_started(session: CombatSession)
+## The party won a fight and earned `amount` XP each. `ready` lists the companions who can
+## now level up (see Leveling.award_xp).
+signal xp_awarded(amount: int, ready: Array)
+## The roster XP is awarded to. Null = Rules.roster.
+var roster: PartyRoster = null
 
 ## Gives the map a party to walk. The blocks are used as given, so wounds carry over.
 func set_party(blocks: Array) -> void:
@@ -722,12 +879,14 @@ func _settle_fight() -> FightResult:
 	var downed := 0
 	var raiders_hit := false
 	var had_room := false
+	var xp_earned := 0
 	var room_tile: TileInstance = world.structures.get(v)
 	for entry in group:
 		var is_room = entry.has("room")
 		had_room = had_room or is_room
 		if (entry["block"] as StatBlock).is_down():
 			downed += 1
+			xp_earned += maxi(0, (entry["template"] as EnemyTemplate).xp_value)
 			var loot: Dictionary
 			if is_room and room_tile != null:
 				loot = _loot_for(room_tile, entry["template"], loot_multiplier(v))
@@ -763,6 +922,7 @@ func _settle_fight() -> FightResult:
 		tile_changed.emit(v)
 	if left.is_empty():
 		log_line.emit("Cleared %d enemies at (%d, %d, %d)." % [downed, v.x, v.y, v.z])
+		_award_xp(xp_earned)
 		return FightResult.WON
 	if not party_alive():
 		party_loot.clear()
@@ -775,6 +935,19 @@ func _settle_fight() -> FightResult:
 	party_vertex = from
 	log_line.emit("The fight dragged on. The party fell back.")
 	return FightResult.STALEMATE
+
+
+## Gives every active companion `amount` XP for a won fight (the player character earns
+## none). Nothing happens for 0 or with no roster.
+func _award_xp(amount: int) -> void:
+	if amount <= 0:
+		return
+	var target: PartyRoster = roster if roster != null else Rules.roster
+	if target == null:
+		return
+	var ready := Leveling.award_xp(target, amount)
+	log_line.emit("The party gains %d XP." % amount)
+	xp_awarded.emit(amount, ready)
 
 
 ## Brings what the party carries into stock when it stands on the origin.
@@ -905,62 +1078,6 @@ func travel_party(to: Vector3i) -> Dictionary:
 	return report
 
 
-# ------------------------------------------------------------- grey notes
-
-## Notes of each colour that one grey note is worth.
-func exchange_amount() -> int:
-	return maxi(1, config.grey_exchange_rate)
-
-
-## {ok: bool, reason: String}. Turns `count` grey notes into exchange_amount() notes of each
-## colour apiece.
-func can_exchange_to_colors(count := 1) -> Dictionary:
-	if phase != Phase.PLAN:
-		return _no("Not planning.")
-	if count < 1:
-		return _no("Nothing to convert.")
-	if int(stock.get(config.grey_note_id, 0)) < count:
-		return _no("Not enough grey notes.")
-	return _yes()
-
-
-func exchange_to_colors(count := 1) -> bool:
-	var check := can_exchange_to_colors(count)
-	if not check["ok"]:
-		log_line.emit(String(check["reason"]))
-		return false
-	stock[config.grey_note_id] = int(stock.get(config.grey_note_id, 0)) - count
-	for i in 3:
-		stock[_note_id(i)] = int(stock.get(_note_id(i), 0)) + count * exchange_amount()
-	log_line.emit("Converted %d grey into colours." % count)
-	return true
-
-
-## {ok: bool, reason: String}. Turns exchange_amount() notes of each colour into one grey
-## note, `count` times over.
-func can_exchange_to_grey(count := 1) -> Dictionary:
-	if phase != Phase.PLAN:
-		return _no("Not planning.")
-	if count < 1:
-		return _no("Nothing to convert.")
-	for i in 3:
-		if int(stock.get(_note_id(i), 0)) < count * exchange_amount():
-			return _no("Not enough of every colour.")
-	return _yes()
-
-
-func exchange_to_grey(count := 1) -> bool:
-	var check := can_exchange_to_grey(count)
-	if not check["ok"]:
-		log_line.emit(String(check["reason"]))
-		return false
-	for i in 3:
-		stock[_note_id(i)] = int(stock.get(_note_id(i), 0)) - count * exchange_amount()
-	stock[config.grey_note_id] = int(stock.get(config.grey_note_id, 0)) + count
-	log_line.emit("Converted colours into %d grey." % count)
-	return true
-
-
 # ------------------------------------------------------------ blueprints
 
 ## True if `def` can only be built from a blueprint drawn today: dungeon (Bass Clef) tiles.
@@ -1003,14 +1120,14 @@ func draw_blueprints() -> void:
 	blueprints_changed.emit()
 
 
-## Ids of every standing dungeon room, plus the exit (which always stands). Blueprint
-## sources are checked against these.
+## Ids of every standing dungeon room, plus the exit (which always stands). A room also
+## counts as every building it was upgraded from. Blueprint sources are checked against these.
 func _standing_bass_ids() -> Dictionary:
 	var ids := {exit_def.id: true}
 	for v: Vector3i in world.structures:
 		var tile: TileInstance = world.structures[v]
 		if tile.def.clef() == TileDef.Clef.BASS and tile.is_live():
-			ids[tile.def.id] = true
+			_mark_ids(ids, tile)
 	return ids
 
 
@@ -1289,6 +1406,7 @@ func _roll_wake() -> void:
 	awake_changed.emit()
 	muster_allies()
 	spawn_raids()
+	spawn_frontier_raids()
 
 
 func _roll_2d6() -> int:
@@ -1380,15 +1498,17 @@ var _next_raider_id := 0
 
 ## Raiders were added, fought, or a structure was hurt or fell.
 signal raids_changed
+## The run is over (the party was defeated, or the origin fell to raiders). `reason` says why.
+signal run_ended(reason: String)
 
 
 func raids_enabled() -> bool:
 	return config.raids_enabled
 
 
-## The spawn count that decides a room's size: the def's, plus its upgrades.
+## The spawn count that decides a room's size: its building's own.
 func effective_spawn_count(tile: TileInstance) -> int:
-	return maxi(0, tile.def.spawn_count + _upgrade_sum(tile, &"spawn_count_add"))
+	return maxi(0, tile.def.spawn_count)
 
 
 ## 0 small, 1 medium, 2 large: how many of the size thresholds the room's spawn count meets.
@@ -1407,14 +1527,14 @@ func _by_size(table: Array[int], tile: TileInstance) -> int:
 	return table[clampi(room_size(tile), 0, table.size() - 1)]
 
 
-## Road steps the room's safe zone reaches: its size tier's radius plus upgrades.
+## Road steps the room's safe zone reaches: its size tier's radius.
 func cover_radius(tile: TileInstance) -> int:
-	return maxi(0, _by_size(config.cover_radius_by_size, tile) + _upgrade_sum(tile, &"cover_radius_add"))
+	return maxi(0, _by_size(config.cover_radius_by_size, tile))
 
 
-## Enemies the room can hold before it is full: its size tier's capacity plus upgrades.
+## Enemies the room can hold before it is full: its size tier's capacity.
 func room_capacity(tile: TileInstance) -> int:
-	return maxi(0, _by_size(config.capacity_by_size, tile) + _upgrade_sum(tile, &"capacity_add"))
+	return maxi(0, _by_size(config.capacity_by_size, tile))
 
 
 ## A finished dungeon room that gathers enemies, so it can act as a safe zone.
@@ -1445,16 +1565,20 @@ func _can_be_raided(v: Vector3i) -> bool:
 			and not tile.def.is_origin and v != _origin
 
 
+## True if raiders standing at `v` can hurt what is there: any structure, a town tile, a
+## dungeon room or the origin itself (its fall ends the run). Only the Segno, a marker
+## rather than a building, is left alone. Raiders walking the roads stop at the first one.
+func _can_be_attacked(v: Vector3i) -> bool:
+	var tile: TileInstance = world.structures.get(v)
+	return tile != null and not tile.def.is_segno
+
+
 ## The nearest safe room (by road steps) whose zone reaches `v` and that has room left in
 ## `spare` (vertex -> room left, filled in as rooms are first met). NONE if there is none.
 func _covering_room(v: Vector3i, graph: Dictionary, spare: Dictionary) -> Vector3i:
 	var max_radius := 0
 	for r in config.cover_radius_by_size:
 		max_radius = maxi(max_radius, r)
-	for sv: Vector3i in world.structures:  # upgrades can reach past the size table
-		var st: TileInstance = world.structures[sv]
-		if not st.upgrades.is_empty() and is_safe_room(st):
-			max_radius = maxi(max_radius, cover_radius(st))
 	var seen := {v: 0}
 	var queue: Array[Vector3i] = [v]
 	while not queue.is_empty():
@@ -1527,8 +1651,11 @@ func raiders_at(v: Vector3i) -> int:
 	return n
 
 
-func _add_raider(v: Vector3i, template: EnemyTemplate) -> void:
-	raiders.append({"id": _next_raider_id, "vertex": v, "template": template})
+func _add_raider(v: Vector3i, template: EnemyTemplate, frontier := false) -> void:
+	var entry := {"id": _next_raider_id, "vertex": v, "template": template}
+	if frontier:
+		entry["frontier"] = true  # counts toward frontier_raider_cap; walks the roads like any raider
+	raiders.append(entry)
 	_next_raider_id += 1
 
 
@@ -1590,20 +1717,152 @@ func _leak_overflow() -> void:
 		raids_changed.emit()
 
 
-## What a raider carries: the enemy's own notes (grey if it is uncoloured).
+# ---- frontier raids
+
+## True when explored ground outside the dungeons draws raiders of its own.
+func frontier_raids_active() -> bool:
+	return config.frontier_raids_enabled and config.raids_enabled and world.vertex_fog \
+			and not config.raider_templates.is_empty()
+
+
+## How many frontier raiders are alive on the map.
+func frontier_raider_count() -> int:
+	var n := 0
+	for r in raiders:
+		if r.get("frontier", false):
+			n += 1
+	return n
+
+
+## Every vertex some dungeon room's safe zone reaches (road steps within its cover radius,
+## the room's own vertex included). Capacity is ignored: this is the room's territory.
+func _covered_vertices() -> Dictionary:
+	var covered := {}
+	var graph := _live_graph()
+	for sv: Vector3i in world.structures:
+		var tile: TileInstance = world.structures[sv]
+		if not is_safe_room(tile):
+			continue
+		var radius := cover_radius(tile)
+		var seen := {sv: 0}
+		var queue: Array[Vector3i] = [sv]
+		while not queue.is_empty():
+			var cur: Vector3i = queue.pop_front()
+			covered[cur] = true
+			if int(seen[cur]) >= radius:
+				continue
+			for nxt: Vector3i in graph.get(cur, []):
+				if not seen.has(nxt):
+					seen[nxt] = int(seen[cur]) + 1
+					queue.append(nxt)
+	return covered
+
+
+## Called as a segment's roll is made. Every explored vertex a road reaches (the origin's
+## own aside) draws
+## `frontier_raiders_per_wake` enemies for each awake hex beside it.
+##   - Outside every dungeon room's reach they roam as frontier raiders.
+##   - Inside a room's reach they gather in that room instead, taking up its space, exactly
+##     as a town tile's raiders do (see spawn_raids). This covers every explored vertex the
+##     room reaches, built on or not. Vertices with a structure are left to spawn_raids (town
+##     tiles) and to the room's own gathering (dungeon rooms), so nothing is drawn twice.
+##   - If the covering room is full, they roam like the rest.
+## Roaming ones are shuffled so that, under the cap, no corner of the map is favoured; the
+## cap counts only the roamers, since enemies gathered in a room are limited by its capacity.
+func spawn_frontier_raids() -> void:
+	if not frontier_raids_active() or config.frontier_raiders_per_wake <= 0:
+		return
+	var cap := config.frontier_raider_cap
+	var alive := frontier_raider_count()
+	var graph := _live_graph()
+	var covered := _covered_vertices()
+	var spare := {}
+	var candidates: Array[Vector3i] = []
+	var network := world.road_graph()  # raiders only rise where a road reaches
+	for v: Vector3i in world.explored:
+		if v == _origin or not network.has(v) or awake_borders(v).is_empty():
+			continue
+		if covered.has(v) and world.structures.has(v):
+			continue  # town tiles and dungeon rooms have their own rules
+		candidates.append(v)
+	candidates.sort_custom(_vertex_less)
+	for i in range(candidates.size() - 1, 0, -1):  # Fisher-Yates, on the cycle's own rng
+		var j := rng.randi_range(0, i)
+		var tmp := candidates[i]
+		candidates[i] = candidates[j]
+		candidates[j] = tmp
+	var spawned := 0
+	var collected := 0
+	for v: Vector3i in candidates:
+		for _i in awake_borders(v).size() * config.frontier_raiders_per_wake:
+			var room := _covering_room(v, graph, spare) if covered.has(v) else HexGrid.NONE
+			if room != HexGrid.NONE:
+				var held: Array = gathered.get(room, [])
+				held.append(config.raider_templates[
+						rng.randi_range(0, config.raider_templates.size() - 1)])
+				gathered[room] = held
+				spare[room] = int(spare[room]) - 1
+				collected += 1
+				continue
+			if cap > 0 and alive >= cap:
+				break
+			_add_raider(v, config.raider_templates[
+					rng.randi_range(0, config.raider_templates.size() - 1)], true)
+			alive += 1
+			spawned += 1
+	if collected > 0:
+		log_line.emit("%d enemies gather in the rooms from the ground they reach." % collected)
+		raids_changed.emit()
+	if spawned > 0:
+		log_line.emit("%d raiders rise from the unguarded dark." % spawned)
+		raids_changed.emit()
+
+
+## Every raider not standing on something it can attack walks up to config.raider_steps
+## vertices along the roads toward the origin (the road step that is nearer the origin; ties
+## go to the lowest vertex), and stops at the first structure it can attack, so whatever
+## stands in the way is hit before the raider goes on. Raiders never leave the roads.
+func _march_raiders() -> void:
+	if config.raider_steps <= 0 or raiders.is_empty():
+		return
+	var graph := world.road_graph()
+	var depth := _road_depths(graph)
+	for r in raiders:
+		for _s in config.raider_steps:
+			var here: Vector3i = r["vertex"]
+			if _can_be_attacked(here) or not depth.has(here) or int(depth[here]) == 0:
+				break
+			var best := HexGrid.NONE
+			for nxt: Vector3i in graph.get(here, []):
+				if depth.has(nxt) and int(depth[nxt]) < int(depth[here]) \
+						and (best == HexGrid.NONE or _vertex_less(nxt, best)):
+					best = nxt
+			if best == HexGrid.NONE:
+				break
+			r["vertex"] = best
+
+
+## What a raider carries: the enemy's own notes (a random colour if it is uncoloured).
 func _raider_loot(template: EnemyTemplate) -> Dictionary:
 	var out := {}
-	var channel := int(template.note_color) - 1
-	var note := _note_id(channel) if channel >= 0 else config.grey_note_id
 	if template.notes_per_kill > 0:
-		out[note] = int(template.notes_per_kill)
+		out[_drop_note_id(template)] = int(template.notes_per_kill)
 	return out
+
+
+## The note colour `template` drops: its own, or one picked at random if it has none.
+func _drop_note_id(template: EnemyTemplate) -> StringName:
+	var channel := int(template.note_color) - 1
+	if channel < 0:
+		channel = rng.randi_range(0, 2)
+	return _note_id(channel)
 
 
 ## The end of a segment for raiders nobody fought in person. Where allies stand guard they
 ## fight the raiders in a real CombatSession, stepped without any presentation. Raiders
-## still standing with no ally left hurt the town tile they are on; one that falls becomes a
-## ruin, and its raiders move on to the nearest town tile.
+## still standing with no ally left hurt the structure they are on (any kind, the origin
+## included); one that falls becomes a ruin. Then every raider not on a structure walks
+## `raider_steps` along the roads toward the origin, stopping at the first thing in its way.
 func _resolve_raids() -> void:
 	_prune_allies()
 	if raiders.is_empty():
@@ -1620,15 +1879,12 @@ func _resolve_raids() -> void:
 		var group: Array = by_vertex[v]
 		if not allies_at(v).is_empty():
 			_fight_raiders(group, allies_at(v))
-		if group.is_empty() or not allies_at(v).is_empty() or not _can_be_raided(v):
+		if group.is_empty() or not allies_at(v).is_empty() or not _can_be_attacked(v):
 			continue
 		_damage_structure(v, group.size() * config.raid_damage_per_raider)
-	var graph := _live_graph()
-	for r in raiders:
-		if not _can_be_raided(r["vertex"]):
-			var target := _raid_target(r["vertex"], graph)
-			if target != HexGrid.NONE:
-				r["vertex"] = target
+		if phase == Phase.OVER:  # the origin fell: the run, and this resolution, are done
+			return
+	_march_raiders()
 	raids_changed.emit()
 
 
@@ -1673,84 +1929,56 @@ func _fight_raiders(group: Array, guards: Array) -> void:
 
 
 # ----------------------------------------------------------------- upgrades
+#
+# An upgrade turns a finished room into a different building (RoomUpgrade.into). The
+# steps a room can take are the ones listed on the TileDef it is right now, so each
+# building offers its own next steps and the tree is simply buildings pointing at buildings.
 
-## The upgrades `tile` has taken, in the order it took them.
-func upgrades_of(tile: TileInstance) -> Array[RoomUpgrade]:
-	var out: Array[RoomUpgrade] = []
-	for id in tile.upgrades:
-		var up := _upgrade_def(tile.def, id)
-		if up != null:
-			out.append(up)
-	return out
-
-
+## The step on `def` that leads to the building `id`, or null.
 func _upgrade_def(def: TileDef, id: StringName) -> RoomUpgrade:
+	if def == null:
+		return null
 	for up in def.upgrades:
-		if up != null and up.id == id:
+		if up != null and up.into != null and up.id == id:
 			return up
 	return null
 
 
-## Sum of one RoomUpgrade modifier (a `*_add` property) over everything `tile` has taken.
-func _upgrade_sum(tile: TileInstance, property: StringName) -> int:
-	var total := 0
-	for up in upgrades_of(tile):
-		total += int(up.get(property))
-	return total
-
-
 func effective_max_health(tile: TileInstance) -> int:
-	return maxi(1, tile.def.max_health + _upgrade_sum(tile, &"max_health_add"))
+	return maxi(1, tile.def.max_health)
 
 
-## The unit the room musters: its def's, unless an upgrade replaced it (the latest wins).
+## The unit the room musters: its building's.
 func effective_ally(tile: TileInstance) -> AllyTemplate:
-	var out := tile.def.ally
-	for up in upgrades_of(tile):
-		if up.ally != null:
-			out = up.ally
-	return out
+	return tile.def.ally
 
 
 func ally_cap_of(tile: TileInstance) -> int:
-	return maxi(0, tile.def.ally_cap + _upgrade_sum(tile, &"ally_cap_add"))
+	return maxi(0, tile.def.ally_cap)
 
 
 func ally_per_segment_of(tile: TileInstance) -> int:
-	return maxi(0, tile.def.ally_per_segment + _upgrade_sum(tile, &"ally_per_segment_add"))
+	return maxi(0, tile.def.ally_per_segment)
 
 
 func ally_patrol_range_of(tile: TileInstance) -> int:
-	return maxi(0, tile.def.ally_patrol_range + _upgrade_sum(tile, &"ally_patrol_range_add"))
+	return maxi(0, tile.def.ally_patrol_range)
 
 
-## What the room's units do: the def's behaviour, unless an upgrade changed it (latest wins).
+## What the room's units do: its building's behaviour.
 func ally_behavior_of(tile: TileInstance) -> int:
-	var out := int(tile.def.ally_behavior)
-	for up in upgrades_of(tile):
-		if up.ally_behavior != RoomUpgrade.AllyBehaviorChange.KEEP:
-			out = int(TileDef.AllyBehavior.GUARD) \
-					if up.ally_behavior == RoomUpgrade.AllyBehaviorChange.GUARD \
-					else int(TileDef.AllyBehavior.PATROL)
-	return out
+	return int(tile.def.ally_behavior)
 
 
 ## Why `up` cannot be taken by `tile` right now, ignoring cost. "" if nothing stops it.
 func _upgrade_block(tile: TileInstance, up: RoomUpgrade) -> String:
-	if tile.has_upgrade(up.id):
-		return "Already taken."
+	if up == null or up.into == null:
+		return "That upgrade leads nowhere."
 	if tile.upgrading != &"":
 		var busy := _upgrade_def(tile.def, tile.upgrading)
-		return "Busy: %s finishes in %d segment(s)." % [
-				busy.display_name if busy != null and busy.display_name != "" else String(tile.upgrading),
+		return "Busy: becoming %s in %d segment(s)." % [
+				busy.label() if busy != null else String(tile.upgrading),
 				tile.upgrade_left]
-	for need in up.requires:
-		if not tile.has_upgrade(need):
-			var prior := _upgrade_def(tile.def, need)
-			return "Needs %s first." % (prior.display_name if prior != null and prior.display_name != "" else String(need))
-	for owned in upgrades_of(tile):
-		if up.excludes.has(owned.id) or owned.excludes.has(up.id):
-			return "Locked out by %s." % (owned.display_name if owned.display_name != "" else String(owned.id))
 	return ""
 
 
@@ -1758,8 +1986,8 @@ func upgrade_cost(up: RoomUpgrade) -> Dictionary:
 	return _normalised(up.cost)
 
 
-## The upgrades the room at `v` could take next, ignoring cost: not taken, prerequisites met,
-## and not locked out by a branch it already chose.
+## The steps the room at `v` could take next, ignoring cost: the buildings its current
+## building can be upgraded into, unless it is already busy becoming one.
 func available_upgrades(v: Vector3i) -> Array[RoomUpgrade]:
 	var out: Array[RoomUpgrade] = []
 	var tile: TileInstance = world.structures.get(v)
@@ -1804,26 +2032,31 @@ func upgrade_tile(v: Vector3i, id: StringName) -> bool:
 	if up.build_segments > 0:
 		tile.upgrading = id
 		tile.upgrade_left = up.build_segments
-		log_line.emit("Upgrading %s: %s takes %d segments." % [tile.def.display_name,
-				up.display_name if up.display_name != "" else String(up.id), up.build_segments])
+		log_line.emit("Upgrading %s into %s: %d segments." % [tile.def.display_name,
+				up.label(), up.build_segments])
 		tile_changed.emit(v)
 		return true
 	_finish_upgrade(v, tile, up)
 	return true
 
 
-## The upgrade takes effect: recorded on the room, health raised, standing units re-ordered.
+## The upgrade takes effect: the room becomes the new building, its health follows, and its
+## standing units take the new building's orders (or stand down if it musters none).
 func _finish_upgrade(v: Vector3i, tile: TileInstance, up: RoomUpgrade) -> void:
 	tile.upgrading = &""
 	tile.upgrade_left = 0
-	var old_max := effective_max_health(tile)
-	tile.upgrades.append(up.id)
-	tile.health = clampi(tile.health + effective_max_health(tile) - old_max, 1, effective_max_health(tile))
-	for a in allies:  # units already standing take on the new orders
-		if a["home"] == v:
+	var old_name := tile.def.display_name
+	tile.become(up.into)
+	var musters := effective_ally(tile) != null and ally_cap_of(tile) > 0
+	for a in allies.duplicate():  # units already standing take on the new orders
+		if a["home"] != v:
+			continue
+		if not musters:
+			allies.erase(a)
+		else:
 			a["behavior"] = ally_behavior_of(tile)
 			a["range"] = ally_patrol_range_of(tile)
-	log_line.emit("%s upgraded: %s." % [tile.def.display_name, up.display_name if up.display_name != "" else String(up.id)])
+	log_line.emit("%s upgraded into %s." % [old_name, up.label()])
 	tile_changed.emit(v)
 	raids_changed.emit()
 
@@ -1955,13 +2188,17 @@ func _patrol_goal(a: Dictionary, graph: Dictionary, need: Dictionary) -> Vector3
 
 func _damage_structure(v: Vector3i, amount: int) -> void:
 	var tile: TileInstance = world.structures.get(v)
-	if tile == null or amount <= 0 or not _can_be_raided(v):
+	if tile == null or amount <= 0 or not _can_be_attacked(v):
 		return
 	tile.health -= amount
 	tile_changed.emit(v)
 	if tile.health > 0:
 		log_line.emit("%s at (%d, %d, %d) is raided (%d left)." % [
 				tile.def.display_name, v.x, v.y, v.z, tile.health])
+		return
+	if v == _origin:
+		log_line.emit("%s falls to raiders." % tile.def.display_name)
+		_end_run("The origin fell to raiders on day %d." % day)
 		return
 	world.remove_structure(v)
 	ruins[v] = TileInstance.new(tile.def, Vector2i.ZERO, true)
@@ -2113,6 +2350,11 @@ func return_to_exit() -> Dictionary:
 func defeat() -> void:
 	if phase != Phase.EXPEDITION:
 		return
+	_end_run("The run ends on day %d." % day)
+
+
+## Ends the run from any phase: the party fell, or the origin did. Same fallout either way.
+func _end_run(reason: String) -> void:
 	persistent.runs += 1
 	persistent.best_day = maxi(persistent.best_day, day)
 	var left_standing: Array[Dictionary] = []
@@ -2143,7 +2385,8 @@ func defeat() -> void:
 	_gathered_this_segment = false
 	awake_changed.emit()
 	_set_phase(Phase.OVER)
-	log_line.emit("The run ends on day %d." % day)
+	log_line.emit(reason)
+	run_ended.emit(reason)
 
 
 # ------------------------------------------------------- next segment, next day
@@ -2162,7 +2405,10 @@ func begin_next_segment() -> Dictionary:
 		return begin_next_day()
 	_gather_segment()
 	_resolve_raids()
+	if phase == Phase.OVER:  # raiders took the origin
+		return {}
 	_advance_construction()
+	_grow_at_segment_end()
 	segment = (int(segment) + 1) as Segment
 	_gathered_this_segment = false
 	_roll_wake()
@@ -2177,13 +2423,18 @@ func begin_next_segment() -> Dictionary:
 
 # ---------------------------------------------------------------- next day
 
-## Town income arrives. Returns a report: {"income": {resource id: amount}}.
+## Town income arrives, and the origin makes Hyle and grows the roads. Returns a report:
+## {"income": {resource id: amount}, "hyle": Hyle made, "roads": roads laid}.
 func begin_next_day() -> Dictionary:
 	if phase != Phase.SUMMARY:
 		return {}
 	_gather_segment()  # a segment nobody delved in still fills its rooms
 	_resolve_raids()
+	if phase == Phase.OVER:  # raiders took the origin
+		return {}
 	_advance_construction()
+	# Dusk is a segment's end too: the origin works on what was banked before income arrives.
+	var grown := _grow_at_segment_end()
 	_repair_structures()
 	_rest_allies()
 	day += 1
@@ -2209,7 +2460,7 @@ func begin_next_day() -> Dictionary:
 	party_changed.emit()
 	segment_changed.emit(segment)
 	log_line.emit("Day %d begins." % day)
-	return {"income": income}
+	return {"income": income, "hyle": grown["hyle"], "roads": grown["roads"]}
 
 
 # ------------------------------------------------------- room features
@@ -2465,15 +2716,15 @@ func notes_dropped(def: TileDef, template: EnemyTemplate, mult := 1.0) -> int:
 	return maxi(1, roundi(template.notes_per_kill * def.note_multiplier * mult))
 
 
-## What one enemy carries: its notes (all of the enemy's own colour, or grey notes if the
-## enemy is uncoloured) plus the tile's other loot, scaled by the main-path bonus. Grey
-## notes build roads and do not stain the room (see _stain_room).
+## What one enemy carries: its notes (all of the enemy's own colour, or all of one randomly
+## picked colour if the enemy is uncoloured) plus the tile's other loot, scaled by the
+## main-path bonus.
 func _loot_for(tile: TileInstance, template: EnemyTemplate, mult: float) -> Dictionary:
 	var out := _scaled_loot(tile.def.loot_per_kill, mult)
-	var channel := int(template.note_color) - 1  # -1 = uncoloured
-	for _i in notes_dropped(tile.def, template, mult):
-		var note := _note_id(channel) if channel >= 0 else config.grey_note_id
-		out[note] = int(out.get(note, 0)) + 1
+	var dropped := notes_dropped(tile.def, template, mult)
+	if dropped > 0:
+		var note := _drop_note_id(template)
+		out[note] = int(out.get(note, 0)) + dropped
 	return out
 
 

@@ -18,6 +18,8 @@ enum Roll { AUTO, ATTACK, SAVE }
 @export var attack_stat: StringName
 ## SAVE: the stat the target rolls.
 @export var save_stat: StringName
+## SAVE: PLUS = target must roll on or over the DC. MINUS = target must roll under it.
+@export var save_type: RollResult.SaveType = RollResult.SaveType.PLUS
 ## SAVE: the user's stat that sets the DC.
 @export var dc_stat: StringName
 ## Reach in metres for single-target use. 0 = the session's default spell range.

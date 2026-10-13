@@ -10,6 +10,8 @@ extends Resource
 ## Stat id the save is rolled with.
 @export var save_stat: StringName = &"tempo"
 @export var save_dc := 12
+## PLUS = roll on or over the DC to save. MINUS = roll under the DC to save.
+@export var save_type: RollResult.SaveType = RollResult.SaveType.PLUS
 ## Dice expression, e.g. "1d6" or "2d4+1".
 @export var damage := "1d6"
 @export var damage_type: StringName = &"physical"

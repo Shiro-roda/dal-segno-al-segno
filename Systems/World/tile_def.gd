@@ -34,8 +34,10 @@ enum AllyBehavior { GUARD, PATROL }
 @export_range(1, 1000) var max_health := 10
 
 @export_group("Upgrades")
-## The upgrade tree rooms of this kind can grow along (HexDayCycle.upgrade_tile). Nodes
-## chain through `requires` and branch through `excludes`; ids must be unique here.
+## The buildings this one can be upgraded into (HexDayCycle.upgrade_tile). Each step names
+## the building it leads to (RoomUpgrade.into), so the upgrade tree is buildings pointing at
+## the buildings they can become, and each of those lists its own steps. Steps from one
+## building must lead to different buildings, and the tree must never loop.
 @export var upgrades: Array[RoomUpgrade] = []
 
 @export_group("Defence")
